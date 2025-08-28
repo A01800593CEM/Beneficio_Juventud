@@ -1,4 +1,5 @@
-# Beneficio_Juventud
-Cryptopia #1
+# 📱 Beneficio Joven — App de Cupones para Jóvenes
 
-Test nº1
+**Beneficio Joven** es una aplicación móvil diseñada para ayudar a personas entre 12 y 29 años a ahorrar en lo que realmente les interesa. Desde comida rápida hasta moda, entretenimiento y bienestar, la app ofrece cupones personalizados según los gustos del usuario.
+
+---
