@@ -1,45 +1,53 @@
-# Archivos generados por Android Studio
+# === Gradle ===
 .gradle/
-local.properties
-.idea/
-.idea/caches
-.idea/libraries
-.idea/modules.xml
-.idea/workspace.xml
-.idea/navEditor.xml
-.idea/assetWizardSettings.xml
-
-# Archivos de compilación
 build/
-captures/
-outputs/
+*/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# === Android Studio / IntelliJ IDEA ===
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Archivos de configuración que no deben versionarse
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+
+# === Archivos locales ===
+local.properties
+
+# === Artefactos Android ===
 *.apk
 *.ap_
 *.aab
 *.dex
 *.class
-*.jar
-*.war
-*.ear
 
-# Archivos de sistema
-.DS_Store
-Thumbs.db
+# === Llaves y firmas (NO subir nunca) ===
+*.jks
+*.keystore
+*.keystore.properties
 
-# Configuración específica del entorno
-*.iml
-
-# Archivos de logs
-*.log
-
-# Carpetas de Gradle Wrapper
-gradle/wrapper/gradle-wrapper.properties
-
-# Cache de Android
+# === NDK / C++ ===
 .cxx/
 .externalNativeBuild/
 
-# Archivos temporales
-tmp/
+# === Logs y temporales ===
+*.log
 *.tmp
-*.temp
+*.swp
+*.lock
+.DS_Store
+Thumbs.db
+
+# === Capturas automáticas ===
+captures/
+
+# === Kotlin/Java backups ===
+*.kt~
+*.java~
