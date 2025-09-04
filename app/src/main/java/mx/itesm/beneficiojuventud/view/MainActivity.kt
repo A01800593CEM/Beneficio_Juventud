@@ -8,10 +8,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,10 +20,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -31,7 +30,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -113,8 +112,8 @@ fun Login(modifier: Modifier = Modifier) {
                 )
             }
             Column (modifier = modifier.fillMaxWidth(0.94f)){
-                MainButton("Inicia Sesión", modifier = Modifier.padding(top = 50.dp))
-                MainButton("Regístrate", modifier = Modifier.padding(top = 20.dp))
+                MainButton("Inicia Sesión", modifier = Modifier.padding(top = 50.dp)){ TODO() }
+                MainButton("Regístrate", modifier = Modifier.padding(top = 20.dp)){ TODO() }
                 GradientDivider(modifier = modifier.padding(vertical = 50.dp))
                 AltLoginButton(
                     "Continuar con Google",
@@ -145,7 +144,7 @@ fun Login(modifier: Modifier = Modifier) {
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF7D7A7A))
                 )
-                TextButton(onClick = {}) {
+                TextButton(onClick = { TODO() }) {
                     Text("Ver más",
                         style = TextStyle(
                             fontSize = 14.sp,
@@ -161,44 +160,49 @@ fun Login(modifier: Modifier = Modifier) {
 
 @Composable
 fun MainButton(
-    inputText: String,
+    text: String,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit = {
-        /* TODO */
-    }
+    onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(12.dp)
-    Box(
+
+    Button(
+        onClick = onClick,
+        shape = shape,
         modifier = modifier
             .fillMaxWidth()
-            .height(60.dp)
-            .shadow(
-                elevation = 8.dp,
-                shape = shape,
-            )
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF4B4C7E),
-                        Color(0xFF008D96)
+            .height(60.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            contentColor = Color.White
+        ),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(shape)
+                .background(
+                    brush = Brush.linearGradient(
+                        listOf(Color(0xFF4B4C7E), Color(0xFF008D96))
                     )
                 ),
-                shape = shape
-            )
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            inputText,
-            style = TextStyle(
-                fontSize = 20.sp,
-                fontFamily = inter,
-                fontWeight = FontWeight.ExtraBold,
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                style = TextStyle(
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFamily = inter,
+                    fontSize = 20.sp
+                ),
                 color = Color.White
             )
-        )
+        }
     }
 }
+
+
 
 
 @Composable
@@ -222,7 +226,7 @@ fun GradientDivider(modifier: Modifier = Modifier) {
                     shape = RoundedCornerShape(50)
                 )
         )
-        Box(){
+        Box{
             Text("  O  ",
                 style = TextStyle(
                     fontSize = 14.sp,
@@ -258,7 +262,7 @@ fun AltLoginButton(
 ) {
     OutlinedButton(
         onClick = onClick,
-        shape = RoundedCornerShape(8.dp), // bordes redondeados
+        shape = RoundedCornerShape(8.dp),
         border = BorderStroke(1.dp, Color.LightGray),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = Color.White,
@@ -277,7 +281,7 @@ fun AltLoginButton(
             Icon(
                 painter = icon,
                 contentDescription = contentDescription,
-                tint = Color.Unspecified, // 👈 para que conserve sus colores originales
+                tint = Color.Unspecified,
                 modifier = Modifier.size(24.dp)
             )
 
