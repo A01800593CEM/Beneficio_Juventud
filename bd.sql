@@ -1,109 +1,64 @@
 -- ============================================================================
--- Base de datos Beneficio Juve+  (MySQL 8.0+)
+-- Beneficio Juve+  (MySQL 8.0.21+)
+-- Esquema con IDs INT UNSIGNED en todas las PK/FK
 -- ============================================================================
 
+/*---------------------------------------------------------------------------
+  0) Configuración inicial de BD
+---------------------------------------------------------------------------*/
 CREATE DATABASE IF NOT EXISTS beneficioJuveplus
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_0900_ai_ci;
 
 USE beneficioJuveplus;
 
--- ============================================================================
--- TABLAS DE APOYO (Lealtad / Niveles)
--- ============================================================================
+-- Opcional:
+-- SET sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
-CREATE TABLE nivel (
-  nivelId        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  nombreNivel    VARCHAR(40) NOT NULL,
-  puntosMinimos  INT UNSIGNED NOT NULL DEFAULT 0,
-  beneficios     TEXT,
-  prioridad      INT UNSIGNED NOT NULL DEFAULT 0,
-  PRIMARY KEY (nivelId),
-  UNIQUE KEY uqNivelNombre (nombreNivel)
-) ENGINE=InnoDB;
 
--- ============================================================================
--- USUARIOS
--- ============================================================================
-
+/*---------------------------------------------------------------------------
+  1) USUARIOS
+---------------------------------------------------------------------------*/
 CREATE TABLE usuario (
-  usuarioId         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  usuarioId         INT UNSIGNED NOT NULL AUTO_INCREMENT,
   nombreCompleto    VARCHAR(150) NOT NULL,
   fechaNacimiento   DATE NOT NULL,
-  curp              VARCHAR(18),
-  direccion         VARCHAR(255),
-  codigoPostal      VARCHAR(10),
   telefono          VARCHAR(20),
   correoElectronico VARCHAR(160) NOT NULL,
   contrasenaHash    VARCHAR(255) NOT NULL,
   fechaRegistro     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  nivelId           BIGINT UNSIGNED,
-  puntos            INT UNSIGNED NOT NULL DEFAULT 0,
+  updatedAt         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   qrUsuario         VARCHAR(100) NOT NULL,
   estadoCuenta      ENUM('activo','suspendido','eliminado') NOT NULL DEFAULT 'activo',
   fotoPerfil        VARCHAR(255),
   verificado        TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (usuarioId),
   UNIQUE KEY uqUsuarioCorreo (correoElectronico),
-  UNIQUE KEY uqUsuarioQr (qrUsuario),
-  KEY idxUsuarioCp (codigoPostal),
-  CONSTRAINT fkUsuarioNivel
-    FOREIGN KEY (nivelId) REFERENCES nivel(nivelId)
-    ON UPDATE CASCADE ON DELETE SET NULL
+  UNIQUE KEY uqUsuarioQr (qrUsuario)
 ) ENGINE=InnoDB;
 
--- Documentos de verificación (INE, CURP, comprobante)
-CREATE TABLE documentoVerif (
-  docId         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  usuarioId     BIGINT UNSIGNED NOT NULL,
-  tipo          ENUM('INE','CURP','COMPROBANTE') NOT NULL,
-  archivoUrl    VARCHAR(255) NOT NULL,
-  fechaCarga    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  estado        ENUM('pendiente','aprobado','rechazado') NOT NULL DEFAULT 'pendiente',
-  motivoRechazo VARCHAR(255),
-  PRIMARY KEY (docId),
-  KEY idxDocUsuario (usuarioId, estado),
-  CONSTRAINT fkDocUsuario
-    FOREIGN KEY (usuarioId) REFERENCES usuario(usuarioId)
-    ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
 
--- Migración desde tarjeta física
-CREATE TABLE tarjetaFisicaMigra (
-  migracionId     BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  usuarioId       BIGINT UNSIGNED NOT NULL,
-  numeroTarjeta   VARCHAR(50) NOT NULL,
-  fechaMigracion  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  puntosBono      INT UNSIGNED NOT NULL DEFAULT 0,
-  PRIMARY KEY (migracionId),
-  UNIQUE KEY uqNumeroTarjeta (numeroTarjeta),
-  KEY idxMigraUsuario (usuarioId),
-  CONSTRAINT fkMigraUsuario
-    FOREIGN KEY (usuarioId) REFERENCES usuario(usuarioId)
-    ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
-
--- ============================================================================
--- COLABORADORES (NEGOCIOS)
--- ============================================================================
-
+/*---------------------------------------------------------------------------
+  2) COLABORADORES y SUCURSALES
+---------------------------------------------------------------------------*/
 CREATE TABLE colaborador (
-  colaboradorId     BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  nombreNegocio     VARCHAR(160) NOT NULL,
-  rfc               VARCHAR(20),
+  colaboradorId       INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  nombreNegocio       VARCHAR(160) NOT NULL,
+  rfc                 VARCHAR(20),
   representanteNombre VARCHAR(120),
-  telefono          VARCHAR(20),
-  correo            VARCHAR(160),
-  direccion         VARCHAR(255),
-  codigoPostal      VARCHAR(10),
-  categoria         VARCHAR(60),
-  logoUrl           VARCHAR(255),
-  descripcion       TEXT,
-  fechaRegistro     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  estado            ENUM('pendiente','activo','inactivo') NOT NULL DEFAULT 'pendiente',
-  usuarioAdminId    BIGINT UNSIGNED,
-  lat               DECIMAL(10,7),
-  lng               DECIMAL(10,7),
+  telefono            VARCHAR(20),
+  correo              VARCHAR(160),
+  direccion           VARCHAR(255),
+  codigoPostal        VARCHAR(10),
+  categoria           VARCHAR(60),
+  logoUrl             VARCHAR(255),
+  descripcion         TEXT,
+  fechaRegistro       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedAt           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  estado              ENUM('pendiente','activo','inactivo') NOT NULL DEFAULT 'pendiente',
+  usuarioAdminId      INT UNSIGNED,
+  lat                 DECIMAL(10,7),
+  lng                 DECIMAL(10,7),
   PRIMARY KEY (colaboradorId),
   KEY idxColCategoria (categoria),
   KEY idxColCp (codigoPostal),
@@ -112,50 +67,81 @@ CREATE TABLE colaborador (
     ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- PROMOCIONES / CUPONES
--- ============================================================================
+CREATE TABLE sucursal (
+  sucursalId     INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  colaboradorId  INT UNSIGNED NOT NULL,
+  nombre         VARCHAR(160) NOT NULL,
+  telefono       VARCHAR(20),
+  direccion      VARCHAR(255),
+  codigoPostal   VARCHAR(10),
+  ubicacion      POINT NOT NULL SRID 4326,
+  horarioJson    JSON,
+  estado         ENUM('activo','inactivo') NOT NULL DEFAULT 'activo',
+  createdAt      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedAt      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fkSucursalColab FOREIGN KEY (colaboradorId)
+    REFERENCES colaborador(colaboradorId)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  SPATIAL INDEX idxSucursalUbicacion (ubicacion),
+  KEY idxSucursalCp (codigoPostal)
+) ENGINE=InnoDB;
 
+
+/*---------------------------------------------------------------------------
+  3) PROMOCIONES / CUPONES
+---------------------------------------------------------------------------*/
 CREATE TABLE promocion (
-  promocionId      BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  colaboradorId    BIGINT UNSIGNED NOT NULL,
-  titulo           VARCHAR(140) NOT NULL,
-  descripcion      TEXT,
-  imagenUrl        VARCHAR(255),
-  fechaInicio      DATE NOT NULL,
-  fechaFin         DATE NOT NULL,
-  categoria        VARCHAR(60),
-  descuento        DECIMAL(10,2) NOT NULL,        -- define en app si es % o monto
-  stockTotal       INT UNSIGNED NOT NULL DEFAULT 0,
-  stockDisponible  INT UNSIGNED NOT NULL DEFAULT 0,
-  nivelMinimo      BIGINT UNSIGNED,
-  estado           ENUM('activa','inactiva','agotada') NOT NULL DEFAULT 'activa',
-  requiereQr       TINYINT(1) NOT NULL DEFAULT 1,
+  promocionId       INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  colaboradorId     INT UNSIGNED NOT NULL,
+  titulo            VARCHAR(140) NOT NULL,
+  descripcion       TEXT,
+  imagenUrl         VARCHAR(255),
+  fechaInicio       DATE NOT NULL,
+  fechaFin          DATE NOT NULL,
+  categoria         VARCHAR(60),
+  tipoDescuento     ENUM('PORCENTAJE','MONTO') NOT NULL DEFAULT 'PORCENTAJE',
+  descuento         DECIMAL(10,2) NOT NULL,
+  stockTotal        INT UNSIGNED NOT NULL DEFAULT 0,
+  stockDisponible   INT UNSIGNED NOT NULL DEFAULT 0,
+  limitePorUsuario        INT UNSIGNED NOT NULL DEFAULT 1,
+  limiteDiarioPorUsuario  INT UNSIGNED NOT NULL DEFAULT 1,
+  estado            ENUM('activa','inactiva','agotada') NOT NULL DEFAULT 'activa',
+  requiereQr        TINYINT(1) NOT NULL DEFAULT 1,
+  createdAt         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedAt         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (promocionId),
   KEY idxPromocionVigencia (fechaInicio, fechaFin),
   KEY idxPromocionCategoria (categoria),
   CONSTRAINT fkPromoColab
     FOREIGN KEY (colaboradorId) REFERENCES colaborador(colaboradorId)
     ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT fkPromoNivelMin
-    FOREIGN KEY (nivelMinimo) REFERENCES nivel(nivelId)
-    ON UPDATE CASCADE ON DELETE SET NULL
+  CHECK (fechaFin >= fechaInicio),
+  CHECK (descuento >= 0),
+  CHECK (
+    (tipoDescuento = 'MONTO') OR
+    (tipoDescuento = 'PORCENTAJE' AND descuento <= 100)
+  ),
+  CHECK (stockDisponible <= stockTotal)
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- RESERVAS
--- ============================================================================
 
+/*---------------------------------------------------------------------------
+  4) RESERVAS
+---------------------------------------------------------------------------*/
 CREATE TABLE reserva (
-  reservaId        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  usuarioId        BIGINT UNSIGNED NOT NULL,
-  promocionId      BIGINT UNSIGNED NOT NULL,
-  fechaReserva     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  fechaLimiteUso   TIMESTAMP NULL,
-  estado           ENUM('reservado','usado','liberado','expirado') NOT NULL DEFAULT 'reservado',
-  qrCupon          VARCHAR(120) NOT NULL,
+  reservaId          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  usuarioId          INT UNSIGNED NOT NULL,
+  promocionId        INT UNSIGNED NOT NULL,
+  fechaReserva       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fechaLimiteUso     TIMESTAMP NULL,
+  estado             ENUM('reservado','usado','liberado','expirado') NOT NULL DEFAULT 'reservado',
+  qrCupon            VARCHAR(120) NOT NULL,
+  promocionReservada INT UNSIGNED GENERATED ALWAYS AS (
+    CASE WHEN estado = 'reservado' THEN promocionId END
+  ) STORED,
   PRIMARY KEY (reservaId),
   UNIQUE KEY uqReservaQr (qrCupon),
+  UNIQUE KEY uqReservaActiva (usuarioId, promocionReservada),
   KEY idxReservaUsuarioEstado (usuarioId, estado),
   KEY idxReservaPromocion (promocionId),
   CONSTRAINT fkReservaUsuario
@@ -163,76 +149,88 @@ CREATE TABLE reserva (
     ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT fkReservaPromocion
     FOREIGN KEY (promocionId) REFERENCES promocion(promocionId)
-    ON UPDATE CASCADE ON DELETE CASCADE
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CHECK (fechaLimiteUso IS NULL OR fechaLimiteUso >= fechaReserva)
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- USO / REDENCIÓN
--- ============================================================================
 
+/*---------------------------------------------------------------------------
+  5) USO / REDENCIÓN
+---------------------------------------------------------------------------*/
 CREATE TABLE usoCupon (
-  usoId            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  usuarioId        BIGINT UNSIGNED NOT NULL,
-  colaboradorId    BIGINT UNSIGNED NOT NULL,
-  promocionId      BIGINT UNSIGNED NOT NULL,
+  usoId            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  usuarioId        INT UNSIGNED NOT NULL,
+  colaboradorId    INT UNSIGNED NOT NULL,
+  sucursalId       INT UNSIGNED NULL,
+  promocionId      INT UNSIGNED NOT NULL,
   fechaUso         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   montoAhorrado    DECIMAL(12,2) NOT NULL DEFAULT 0,
-  puntosOtorgados  INT UNSIGNED NOT NULL DEFAULT 0,
   metodoValidacion ENUM('QR','CODIGO','POS') NOT NULL DEFAULT 'QR',
   PRIMARY KEY (usoId),
   KEY idxUsoFechas (fechaUso),
   KEY idxUsoSegmentacion (colaboradorId, promocionId),
-  CONSTRAINT fkUsoUsuario
-    FOREIGN KEY (usuarioId) REFERENCES usuario(usuarioId)
-    ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT fkUsoColab
-    FOREIGN KEY (colaboradorId) REFERENCES colaborador(colaboradorId)
-    ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT fkUsoPromocion
-    FOREIGN KEY (promocionId) REFERENCES promocion(promocionId)
-    ON UPDATE CASCADE ON DELETE CASCADE
+  UNIQUE KEY uqUsoUnico (usuarioId, promocionId),
+  CONSTRAINT fkUsoUsuario   FOREIGN KEY (usuarioId)     REFERENCES usuario(usuarioId)       ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fkUsoColab     FOREIGN KEY (colaboradorId) REFERENCES colaborador(colaboradorId) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fkUsoSucursal  FOREIGN KEY (sucursalId)    REFERENCES sucursal(sucursalId)     ON UPDATE CASCADE ON DELETE SET NULL,
+  CONSTRAINT fkUsoPromocion FOREIGN KEY (promocionId)   REFERENCES promocion(promocionId)   ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- NOTIFICACIONES (con segmentación JSON)
--- ============================================================================
 
+/*---------------------------------------------------------------------------
+  6) FAVORITOS
+---------------------------------------------------------------------------*/
+CREATE TABLE favorito (
+  usuarioId     INT UNSIGNED NOT NULL,
+  colaboradorId INT UNSIGNED NOT NULL,
+  createdAt     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (usuarioId, colaboradorId),
+  CONSTRAINT fkFavUsuario FOREIGN KEY (usuarioId)     REFERENCES usuario(usuarioId)       ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fkFavColab   FOREIGN KEY (colaboradorId) REFERENCES colaborador(colaboradorId) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+/*---------------------------------------------------------------------------
+  7) NOTIFICACIONES
+---------------------------------------------------------------------------*/
 CREATE TABLE notificacion (
-  notificacionId     BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  notificacionId     INT UNSIGNED NOT NULL AUTO_INCREMENT,
   titulo             VARCHAR(140) NOT NULL,
   mensaje            TEXT NOT NULL,
   tipo               ENUM('promocion','sistema','recordatorio') NOT NULL,
   fechaEnvio         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   destinatarioTipo   ENUM('usuario','colaborador','todos','segmento') NOT NULL,
-  destinatarioId     BIGINT UNSIGNED NULL,
+  destinatarioId     INT UNSIGNED NULL,
   estado             ENUM('pendiente','enviada','error') NOT NULL DEFAULT 'pendiente',
   criteriosSegmento  JSON NULL,
   PRIMARY KEY (notificacionId),
   KEY idxNotifTipoEstado (tipo, estado)
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- ADMINISTRADORES
--- ============================================================================
 
+/*---------------------------------------------------------------------------
+  8) ADMINISTRADORES
+---------------------------------------------------------------------------*/
 CREATE TABLE administrador (
-  adminId        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  adminId        INT UNSIGNED NOT NULL AUTO_INCREMENT,
   nombre         VARCHAR(120) NOT NULL,
   correo         VARCHAR(160) NOT NULL,
   telefono       VARCHAR(20),
   contrasenaHash VARCHAR(255) NOT NULL,
   rol            ENUM('superadmin','soporte','marketing') NOT NULL DEFAULT 'soporte',
   estado         ENUM('activo','inactivo') NOT NULL DEFAULT 'activo',
+  createdAt      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedAt      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (adminId),
   UNIQUE KEY uqAdminCorreo (correo)
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- REPORTES (resultado resumido + URL a export)
--- ============================================================================
 
+/*---------------------------------------------------------------------------
+  9) REPORTES
+---------------------------------------------------------------------------*/
 CREATE TABLE reporte (
-  reporteId        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  reporteId        INT UNSIGNED NOT NULL AUTO_INCREMENT,
   tipoReporte      VARCHAR(80) NOT NULL,
   fechaGeneracion  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   parametros       JSON NOT NULL,
@@ -242,68 +240,40 @@ CREATE TABLE reporte (
   KEY idxReporteTipoFecha (tipoReporte, fechaGeneracion)
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- TRIGGERS / REGLAS DE NEGOCIO
--- ============================================================================
 
--- 1) Al insertar un uso: descuenta stock de la promoción y suma puntos al usuario.
+/*---------------------------------------------------------------------------
+  10) TRIGGERS
+---------------------------------------------------------------------------*/
 DELIMITER $$
 
 CREATE TRIGGER trgUsoAfterInsert
 AFTER INSERT ON usoCupon
 FOR EACH ROW
 BEGIN
-  -- Descontar stockDisponible (sin bajar de 0)
   UPDATE promocion
-    SET stockDisponible = CASE
-                    WHEN stockDisponible > 0 THEN stockDisponible - 1
-                    ELSE 0
-                   END,
-      estado = CASE
-              WHEN stockDisponible <= 1 THEN 'agotada'
-              ELSE estado
-            END
-  WHERE promocionId = NEW.promocionId;
-
-  -- Sumar puntos al usuario
-  UPDATE usuario
-    SET puntos = puntos + NEW.puntosOtorgados
-  WHERE usuarioId = NEW.usuarioId;
-
-  -- Recalcular nivel por puntos (elige el nivel con mayor puntosMinimos <= puntos)
-  UPDATE usuario u
-    JOIN (
-        SELECT n.nivelId
-        FROM nivel n
-        WHERE n.puntosMinimos <= u.puntos
-        ORDER BY n.puntosMinimos DESC
-        LIMIT 1
-       ) x
-     SET u.nivelId = x.nivelId
-  WHERE u.usuarioId = NEW.usuarioId;
+     SET stockDisponible = CASE WHEN stockDisponible > 0 THEN stockDisponible - 1 ELSE 0 END,
+         estado = CASE WHEN stockDisponible <= 1 THEN 'agotada' ELSE estado END
+   WHERE promocionId = NEW.promocionId;
 END$$
 
--- 2) Al actualizar una reserva: si se libera o expira, reponer stock de la promoción.
 CREATE TRIGGER trgReservaAfterUpdate
 AFTER UPDATE ON reserva
 FOR EACH ROW
 BEGIN
-  IF (OLD.estado IN ('reservado') AND NEW.estado IN ('liberado','expirado')) THEN
-      UPDATE promocion
-         SET stockDisponible = stockDisponible + 1,
-             estado = 'activa'
-       WHERE promocionId = NEW.promocionId
-         AND stockDisponible < stockTotal;
+  IF (OLD.estado = 'reservado' AND NEW.estado IN ('liberado','expirado')) THEN
+    UPDATE promocion
+       SET stockDisponible = LEAST(stockTotal, stockDisponible + 1),
+           estado = 'activa'
+     WHERE promocionId = NEW.promocionId;
   END IF;
 END$$
 
 DELIMITER ;
 
--- ============================================================================
--- EVENTO (opcional) para expirar reservas automáticamente al pasar fecha_limite_uso
--- Habilita el event scheduler: SET GLOBAL event_scheduler = ON;
--- ============================================================================
 
+/*---------------------------------------------------------------------------
+  11) EVENTOS (Scheduler)
+---------------------------------------------------------------------------*/
 CREATE EVENT IF NOT EXISTS evExpiraReservas
 ON SCHEDULE EVERY 5 MINUTE
 DO
@@ -313,10 +283,10 @@ DO
      AND fechaLimiteUso IS NOT NULL
      AND fechaLimiteUso < CURRENT_TIMESTAMP;
 
--- ============================================================================
--- VISTAS (agregados para métricas). MySQL no tiene materialized views nativas.
--- ============================================================================
 
+/*---------------------------------------------------------------------------
+  12) VISTAS
+---------------------------------------------------------------------------*/
 CREATE OR REPLACE VIEW vUsoPorZona AS
 SELECT
   c.codigoPostal,
@@ -325,26 +295,29 @@ SELECT
   COUNT(*) AS usos,
   SUM(u.montoAhorrado) AS ahorroTotal
 FROM usoCupon u
-JOIN usuario us   ON us.usuarioId = u.usuarioId
-JOIN colaborador c ON c.colaboradorId = u.colaboradorId
-JOIN promocion p   ON p.promocionId = u.promocionId
+JOIN usuario us     ON us.usuarioId = u.usuarioId
+JOIN colaborador c  ON c.colaboradorId = u.colaboradorId
+JOIN promocion p    ON p.promocionId = u.promocionId
 GROUP BY c.codigoPostal, p.categoria, DATE_FORMAT(u.fechaUso, '%Y-%m-01');
 
 CREATE OR REPLACE VIEW vRfmUsuarios AS
 SELECT
   u.usuarioId,
-  MAX(uc.fechaUso) AS lastUse,
-  COUNT(uc.usoId)  AS frequency,
-  COALESCE(SUM(uc.montoAhorrado),0) AS monetary
+  MAX(uc.fechaUso)                    AS lastUse,
+  COUNT(uc.usoId)                     AS frequency,
+  COALESCE(SUM(uc.montoAhorrado), 0)  AS monetary
 FROM usuario u
 LEFT JOIN usoCupon uc ON uc.usuarioId = u.usuarioId
 GROUP BY u.usuarioId;
 
--- ============================================================================
--- ÍNDICES ADICIONALES RECOMENDADOS
--- ============================================================================
+
+/*---------------------------------------------------------------------------
+  13) ÍNDICES adicionales (FULLTEXT y por estado/fechas)
+---------------------------------------------------------------------------*/
+CREATE FULLTEXT INDEX ftColaboradorNombreDesc ON colaborador (nombreNegocio, descripcion);
+CREATE FULLTEXT INDEX ftPromocionTituloDesc   ON promocion   (titulo, descripcion);
 
 CREATE INDEX idxUsuarioFechaRegistro ON usuario(fechaRegistro);
-CREATE INDEX idxPromocionEstado ON promocion(estado);
-CREATE INDEX idxReservaEstadoFecha ON reserva(estado, fechaReserva);
-CREATE INDEX idxUsoUsuarioFecha ON usoCupon(usuarioId, fechaUso);
+CREATE INDEX idxPromocionEstado      ON promocion(estado);
+CREATE INDEX idxReservaEstadoFecha   ON reserva(estado, fechaReserva);
+CREATE INDEX idxUsoUsuarioFecha      ON usoCupon(usuarioId, fechaUso);
