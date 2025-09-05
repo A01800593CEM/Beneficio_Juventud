@@ -57,8 +57,6 @@ CREATE TABLE colaborador (
   updatedAt           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   estado              ENUM('pendiente','activo','inactivo') NOT NULL DEFAULT 'pendiente',
   usuarioAdminId      INT UNSIGNED,
-  lat                 DECIMAL(10,7),
-  lng                 DECIMAL(10,7),
   PRIMARY KEY (colaboradorId),
   KEY idxColCategoria (categoria),
   KEY idxColCp (codigoPostal),
@@ -79,6 +77,8 @@ CREATE TABLE sucursal (
   estado         ENUM('activo','inactivo') NOT NULL DEFAULT 'activo',
   createdAt      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updatedAt      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  lat                 DECIMAL(10,7),
+  lng                 DECIMAL(10,7),
   CONSTRAINT fkSucursalColab FOREIGN KEY (colaboradorId)
     REFERENCES colaborador(colaboradorId)
     ON UPDATE CASCADE ON DELETE CASCADE,
