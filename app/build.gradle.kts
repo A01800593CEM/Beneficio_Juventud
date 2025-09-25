@@ -53,7 +53,6 @@ dependencies {
     implementation(libs.material3)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.ui.text)
-    implementation(libs.navigation.compose)
 
     implementation(libs.retrofit.lib)
     implementation(libs.converter.lib)
