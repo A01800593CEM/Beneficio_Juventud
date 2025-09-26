@@ -56,6 +56,10 @@ dependencies {
 
     implementation(libs.retrofit.lib)
     implementation(libs.converter.lib)
+    implementation(libs.androidx.material.icons.core)      // provee Icons
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.foundation)
+    implementation(libs.androidx.ui.unit)  // provee outlined.Email, etc.
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

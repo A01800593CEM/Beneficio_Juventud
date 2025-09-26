@@ -31,8 +31,8 @@ private fun AppNav() {
     val nav = rememberNavController()
     NavHost(navController = nav, startDestination = Screens.MainMenu.route) {
         composable(Screens.MainMenu.route) { MainMenu(nav) }
-        //composable(Screens.Login.route) { Login(nav) }
-        //composable(Screens.Register.route) { Register(nav) }
+        composable(Screens.Login.route) { Login(nav) }
+        composable(Screens.Register.route) { Register(nav) }
 
     }
 }
