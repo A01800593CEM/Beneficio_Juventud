@@ -33,6 +33,7 @@ private fun AppNav() {
         composable(Screens.MainMenu.route) { MainMenu(nav) }
         composable(Screens.Login.route) { Login(nav) }
         composable(Screens.Register.route) { Register(nav) }
+        composable(Screens.ForgotPassword.route) { ForgotPassword(nav)}
 
     }
 }

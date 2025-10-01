@@ -42,7 +42,7 @@ fun PasswordTextField(
         singleLine = true,
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp),                 // igual que tu EmailTextField
+            .height(48.dp),
         shape = shape,
         leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null) },
         trailingIcon = {

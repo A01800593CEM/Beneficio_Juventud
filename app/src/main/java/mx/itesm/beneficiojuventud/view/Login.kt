@@ -1,10 +1,7 @@
 package mx.itesm.beneficiojuventud.view
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,17 +18,6 @@ import androidx.navigation.NavHostController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import mx.itesm.beneficiojuventud.components.AltLoginButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.components.PasswordTextField
@@ -145,7 +131,7 @@ fun Login(nav: NavHostController, modifier: Modifier = Modifier) {
                         )
                     )
                 }
-                TextButton(onClick = { /* TODO: recuperar contraseña */ }) {
+                TextButton(onClick = { nav.navigate(Screens.ForgotPassword.route) }) {
                     Text(
                         "¿Olvidaste tu contraseña?",
                         style = TextStyle(
@@ -220,86 +206,4 @@ fun Login(nav: NavHostController, modifier: Modifier = Modifier) {
     }
 }
 
-/* =======================================================================
- *  COMPONENTES PRIVADOS
- * ======================================================================= */
 
-@Composable
-private fun PasswordTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    isVisible: Boolean,
-    onToggleVisibility: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        singleLine = true,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(48.dp),
-        leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null) },
-        trailingIcon = {
-            IconButton(onClick = onToggleVisibility) {
-                if (isVisible)
-                    Icon(Icons.Outlined.VisibilityOff, contentDescription = "Ocultar contraseña")
-                else
-                    Icon(Icons.Outlined.Visibility, contentDescription = "Mostrar contraseña")
-            }
-        },
-        placeholder = {
-            Text(
-                text = "************",
-                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            )
-        },
-        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
-        visualTransformation = if (isVisible) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
-            focusedIndicatorColor = Color(0xFFE0E0E0),
-            unfocusedIndicatorColor = Color(0xFFE0E0E0),
-            cursorColor = Color(0xFF008D96),
-            focusedLeadingIconColor = Color(0xFF7D7A7A),
-            unfocusedLeadingIconColor = Color(0xFF7D7A7A),
-            focusedTrailingIconColor = Color(0xFF7D7A7A),
-            unfocusedTrailingIconColor = Color(0xFF7D7A7A),
-            focusedPlaceholderColor = Color(0xFF7D7A7A),
-            unfocusedPlaceholderColor = Color(0xFF7D7A7A),
-        )
-    )
-}
-
-@Composable
-private fun DividerWithDot(
-    brush: Brush,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Divider(
-            modifier = Modifier
-                .weight(1f)
-                .height(1.dp)
-                .background(brush)
-        )
-        Box(
-            modifier = Modifier
-                .padding(horizontal = 12.dp)
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFBDBDBD))
-        )
-        Divider(
-            modifier = Modifier
-                .weight(1f)
-                .height(1.dp)
-                .background(brush)
-        )
-    }
-}
