@@ -14,7 +14,6 @@ import androidx.navigation.NavHostController
 @Composable
 fun BackButton(
     nav: NavHostController,
-    modifier: Modifier = Modifier,
     destination: String? = null
 ) {
     IconButton(
@@ -25,13 +24,12 @@ fun BackButton(
                 nav.popBackStack()
             }
         },
-        modifier = modifier
+        modifier = Modifier.padding(10.dp, 16.dp ,0.dp,0.dp)
     ) {
         Icon(
             imageVector = Icons.Default.ArrowBackIosNew,
             contentDescription = "Regresar",
             tint = Color(0xFF616161),
-            modifier = Modifier.padding(10.dp, 16.dp ,0.dp,0.dp)
         )
     }
 }
