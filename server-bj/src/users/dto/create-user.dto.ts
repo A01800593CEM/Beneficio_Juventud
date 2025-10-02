@@ -1,7 +1,8 @@
 import { IsString, IsEmail, IsEnum, MinLength, IsNotEmpty, IsDate, IsPhoneNumber } from 'class-validator';
+import { Type } from "class-transformer";
 import { UserState } from "../enums/user-state.enum";
 
-export class CreateUsuarioDto {
+export class CreateUserDto {
     @IsString()
     @IsNotEmpty()
     firstName: string;
@@ -15,22 +16,19 @@ export class CreateUsuarioDto {
     lastNameMaternal: string;
 
     @IsDate()
+    @Type(() => Date)
     birthDate: Date
 
     @IsPhoneNumber("MX")
-    phoneNumber: String
+    phoneNumber: string
 
     @IsEmail()
-    email: String
+    email: string
 
     @IsDate()
-    registrationDate: Date
-
-    @IsDate()
+    @Type(() => Date)
     updatedAt: Date
 
     @IsEnum(UserState)
     accountState: UserState
-
-
 }

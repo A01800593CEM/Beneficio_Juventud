@@ -3,7 +3,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UsuariosModule } from './usuarios/usuarios.module';
+import { UsersModule } from './users/users.module';
+import { CollaboratorsModule } from './collaborators/collaborators.module';
+import { AdministratorsModule } from './administrators/administrators.module';
+import { PromotionsModule } from './promotions/promotions.module';
+import { CategoriesModule } from './categories/categories.module';
 
 @Module({
   imports: [
@@ -24,7 +28,11 @@ import { UsuariosModule } from './usuarios/usuarios.module';
         synchronize: false,
       })
     }),
-    UsuariosModule],
+    UsersModule,
+    CollaboratorsModule,
+    AdministratorsModule,
+    PromotionsModule,
+    CategoriesModule],
   controllers: [AppController],
   providers: [AppService],
 })

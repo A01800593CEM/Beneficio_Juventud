@@ -1,8 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
 import { UserState } from "../enums/user-state.enum";
 
 @Entity({name: "usuario"})
-export class Usuario {
+export class User {
     @PrimaryGeneratedColumn({name: "usuario_id"})
     id: number;
 
@@ -24,10 +24,10 @@ export class Usuario {
     @Column({name: "correo_electronico"})
     email: String;
 
-    @Column({name: "fecha_registro"})
+    @CreateDateColumn({name: "fecha_registro"})
     registrationDate: Date;
 
-    @Column({name: "updated_at"})
+    @UpdateDateColumn({name: "updated_at"})
     updatedAt: Date;
 
     @Column({
@@ -36,5 +36,4 @@ export class Usuario {
         name: "estado_cuenta"
     })
     accountState: UserState;
-
 }
