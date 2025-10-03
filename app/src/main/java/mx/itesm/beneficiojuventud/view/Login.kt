@@ -22,28 +22,34 @@ import mx.itesm.beneficiojuventud.components.AltLoginButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.components.PasswordTextField
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.AppViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
-fun Login(nav: NavHostController, modifier: Modifier = Modifier, viewModel: AuthViewModel = viewModel()) {
+fun Login(nav: NavHostController, appViewModel: AppViewModel? = null, modifier: Modifier = Modifier, viewModel: AuthViewModel = viewModel()) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
+    var showError by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
     val authState by viewModel.authState.collectAsState()
 
     LaunchedEffect(authState.isSuccess) {
         if (authState.isSuccess) {
-            nav.navigate(Screens.Onboarding.route)
+            // Navegar directamente sin refrescar - el estado ya está correcto
+            nav.navigate(Screens.Onboarding.route) {
+                popUpTo(Screens.LoginRegister.route) { inclusive = true }
+            }
             // Limpiar el estado de autenticación
             viewModel.clearState()
         }
     }
 
     // Mostrar errores
-    authState.error?.let { error ->
-        LaunchedEffect(error) {
-            // Aquí puedes mostrar un Snackbar o diálogo con el error
-            println("Error de autenticación: $error")
+    LaunchedEffect(authState.error) {
+        authState.error?.let { error ->
+            errorMessage = error
+            showError = true
         }
     }
 
@@ -162,13 +168,47 @@ fun Login(nav: NavHostController, modifier: Modifier = Modifier, viewModel: Auth
                 }
             }
 
+            // Mostrar error si existe
+            if (showError && errorMessage.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = errorMessage,
+                            color = Color(0xFFD32F2F),
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = {
+                                showError = false
+                                errorMessage = ""
+                                viewModel.clearState()
+                            }
+                        ) {
+                            Text("✕", color = Color(0xFFD32F2F))
+                        }
+                    }
+                }
+            }
+
             // Botón primario (gradiente) — usa tu MainButton
             MainButton(
-                text = "Inicia Sesión",
+                text = if (authState.isLoading) "Iniciando sesión..." else "Inicia Sesión",
                 enabled = !authState.isLoading && email.isNotEmpty() && password.isNotEmpty(),
                 modifier = Modifier
                     .padding(horizontal = 24.dp, vertical = 16.dp)
             ) {
+                showError = false
                 viewModel.signIn(email, password)
             }
 

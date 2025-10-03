@@ -18,7 +18,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -43,10 +45,10 @@ fun RecoveryCode(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     emailArg: String = "beneficio_user@juventud.com",
-    onVerify: (code: String) -> Unit = { nav.navigate(Screens.NewPassword.route) },
-    onResend: () -> Unit = {}
+    viewModel: AuthViewModel = viewModel()
 ) {
     var email by remember { mutableStateOf(emailArg) }
+    val authState by viewModel.authState.collectAsState()
 
     // ----- OTP state (6 casillas) -----
     val length = 6
@@ -66,7 +68,7 @@ fun RecoveryCode(
 
     fun handleResend() {
         if (canResend) {
-            onResend()
+            viewModel.resetPassword(email)
             canResend = false
             seconds = 60
             code = ""
@@ -159,8 +161,10 @@ fun RecoveryCode(
                         .padding(top = 12.dp)
                         .fillMaxWidth(0.95f)
                         .align(Alignment.CenterHorizontally),
-                    enabled = code.length == length
-                ) { onVerify(code) }
+                    enabled = code.length == length && !authState.isLoading
+                ) {
+                    nav.navigate(Screens.newPasswordWithEmailAndCode(email, code))
+                }
             }
 
             // ----- Reenviar -----

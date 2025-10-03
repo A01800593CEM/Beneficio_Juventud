@@ -13,10 +13,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -36,14 +39,34 @@ import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier) {
+fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier, viewModel: AuthViewModel = viewModel()) {
     var email by remember { mutableStateOf("") }
     val emailValid = remember(email) {
         Regex("^[A-Za-z0-9][A-Za-z0-9+_.-]*@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\$").matches(email)
+    }
+
+    val authState by viewModel.authState.collectAsState()
+
+    // Navegar a RecoveryCode cuando se envíe el código exitosamente
+    LaunchedEffect(authState.isSuccess, authState.needsConfirmation) {
+        if (authState.isSuccess && authState.needsConfirmation) {
+            // Pasar el email como argumento a la pantalla de RecoveryCode
+            nav.navigate(Screens.recoveryCodeWithEmail(email))
+            viewModel.clearState()
+        }
+    }
+
+    // Mostrar errores
+    authState.error?.let { error ->
+        LaunchedEffect(error) {
+            // Aquí puedes mostrar un Snackbar o diálogo con el error
+            println("Error reset password: $error")
+        }
     }
 
     Scaffold(
@@ -131,9 +154,9 @@ fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier) {
                         .padding(top = 20.dp)
                         .fillMaxWidth(0.95f)
                         .align(Alignment.CenterHorizontally),
-                    enabled = emailValid
+                    enabled = emailValid && !authState.isLoading
                 ) {
-                    nav.navigate(Screens.RecoveryCode.route)
+                    viewModel.resetPassword(email)
                 }
             }
         }

@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +27,7 @@ import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.PasswordTextField
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,8 +35,10 @@ import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 fun NewPassword(
     nav: NavHostController,
     modifier: Modifier = Modifier,
+    emailArg: String = "",
+    codeArg: String = "",
+    viewModel: AuthViewModel = viewModel(),
     imageRes: Int = R.drawable.new_password,
-    onConfirm: (newPassword: String) -> Unit = { nav.navigate(Screens.Login.route) },
     minLength: Int = 8,
     requireLetter: Boolean = true,
     requireDigit: Boolean = true
@@ -46,6 +50,25 @@ fun NewPassword(
         mutableStateOf(isPasswordValid(pass, minLength, requireLetter, requireDigit))
     }
     val matches by remember(pass, confirm) { mutableStateOf(pass.isNotEmpty() && pass == confirm) }
+
+    val authState by viewModel.authState.collectAsState()
+
+    // Navegar al Login cuando la contraseña se resetee exitosamente
+    LaunchedEffect(authState.isSuccess) {
+        if (authState.isSuccess && !authState.needsConfirmation) {
+            nav.navigate(Screens.Login.route) {
+                popUpTo(Screens.LoginRegister.route) { inclusive = false }
+            }
+            viewModel.clearState()
+        }
+    }
+
+    // Mostrar errores
+    authState.error?.let { error ->
+        LaunchedEffect(error) {
+            println("Error confirmando nueva contraseña: $error")
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -155,13 +178,13 @@ fun NewPassword(
                 // Botón Confirmar
                 MainButton(
                     text = "Confirmar",
-                    enabled = passValid && matches,
+                    enabled = passValid && matches && !authState.isLoading,
                     modifier = Modifier
                         .padding(top = 24.dp)
                         .fillMaxWidth(0.95f)
                         .align(Alignment.CenterHorizontally)
                 ) {
-                    onConfirm(pass)
+                    viewModel.confirmResetPassword(emailArg, pass, codeArg)
                 }
             }
         }

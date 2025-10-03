@@ -8,4 +8,10 @@ sealed class Screens(val route: String) {
     data object RecoveryCode : Screens("recovery_code")
     data object NewPassword : Screens("new_password")
     data object Onboarding : Screens("onboarding")
+
+    // Rutas con parámetros
+    companion object {
+        fun recoveryCodeWithEmail(email: String) = "recovery_code/$email"
+        fun newPasswordWithEmailAndCode(email: String, code: String) = "new_password/$email/$code"
+    }
 }
