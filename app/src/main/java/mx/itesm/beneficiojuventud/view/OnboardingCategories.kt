@@ -98,8 +98,11 @@ fun OnboardingCategories(
                 .fillMaxWidth()
                 .padding(top = 4.dp)
         ) {
-            // TODO: Guarda selección y navega a lo que siga del onboarding
-            nav.navigate(Screens.LoginRegister.route)
+            // TODO: Implementar navegación al menú principal cuando esté listo
+            // Por ahora navegar de vuelta al login
+            nav.navigate(Screens.LoginRegister.route) {
+                popUpTo(0) { inclusive = true }
+            }
         }
     }
 }

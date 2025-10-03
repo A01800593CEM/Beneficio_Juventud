@@ -35,7 +35,7 @@ fun Onboarding(
     appViewModel: AppViewModel? = null,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = viewModel(),
-    imageRes: Int = R.drawable.onboarding_one
+    imageRes: Int = R.drawable.onboarding_one,
     onStart: () -> Unit = { nav.navigate(Screens.OnboardingCategories.route) }
 ) {
     var currentUser by remember { mutableStateOf<String?>(null) }
@@ -117,13 +117,18 @@ fun Onboarding(
                         onClick = {
                             logoutPressed = true
                             authViewModel.signOut()
-                        }
+                        },
+                        enabled = !authState.isLoading
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.ExitToApp,
-                            contentDescription = "Cerrar sesión",
-                            tint = Color(0xFFD32F2F)
-                        )
+                        if (authState.isLoading && logoutPressed) {
+                            Text("...", color = Color(0xFFD32F2F), fontSize = 18.sp)
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.ExitToApp,
+                                contentDescription = "Cerrar sesión",
+                                tint = Color(0xFFD32F2F)
+                            )
+                        }
                     }
                 }
 
@@ -186,8 +191,7 @@ fun Onboarding(
                         .fillMaxWidth()
                         .padding(top = buttonTop)
                 ) {
-                    // Por ahora solo para mostrar que funciona
-                    println("Usuario ${authViewModel.getCurrentUserName()} ha iniciado la app")
+                    onStart()
                 }
 
                 Spacer(Modifier.height(12.dp))
