@@ -125,7 +125,7 @@ fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier) {
                         .fillMaxWidth(0.95f)
                         .align(Alignment.CenterHorizontally)
                 ) {
-                    nav.navigate(Screens.Register.route)
+                    nav.navigate(Screens.RecoveryCode.route)
                 }
             }
         }

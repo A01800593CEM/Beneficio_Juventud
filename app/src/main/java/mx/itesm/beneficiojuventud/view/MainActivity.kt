@@ -34,6 +34,7 @@ private fun AppNav() {
         composable(Screens.Login.route) { Login(nav) }
         composable(Screens.Register.route) { Register(nav) }
         composable(Screens.ForgotPassword.route) { ForgotPassword(nav)}
+        composable(Screens.RecoveryCode.route) { RecoveryCode(nav) }
 
     }
 }
