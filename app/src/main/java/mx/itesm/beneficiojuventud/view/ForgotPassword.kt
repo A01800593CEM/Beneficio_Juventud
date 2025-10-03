@@ -40,6 +40,10 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 @Composable
 fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier) {
     var email by remember { mutableStateOf("") }
+    val emailValid = remember(email) {
+        Regex("^[A-Za-z0-9][A-Za-z0-9+_.-]*@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\$").matches(email)
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -123,7 +127,8 @@ fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .padding(top = 20.dp)
                         .fillMaxWidth(0.95f)
-                        .align(Alignment.CenterHorizontally)
+                        .align(Alignment.CenterHorizontally),
+                    enabled = emailValid
                 ) {
                     nav.navigate(Screens.RecoveryCode.route)
                 }

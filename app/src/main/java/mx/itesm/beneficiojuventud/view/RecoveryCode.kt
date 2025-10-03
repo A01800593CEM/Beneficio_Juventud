@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -41,7 +42,7 @@ fun RecoveryCode(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     emailArg: String = "beneficio_user@juventud.com",
-    onVerify: (code: String) -> Unit = { nav.navigate(Screens.Register.route) },
+    onVerify: (code: String) -> Unit = { nav.navigate(Screens.NewPassword.route) },
     onResend: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf(emailArg) }
@@ -187,7 +188,7 @@ private fun OtpCodeInput(
     // Mantiene cursor siempre al final
     LaunchedEffect(code) {
         if (tf.text != code) {
-            tf = tf.copy(text = code, selection = androidx.compose.ui.text.TextRange(code.length))
+            tf = tf.copy(text = code, selection = TextRange(code.length))
         }
     }
 
@@ -195,7 +196,7 @@ private fun OtpCodeInput(
         value = tf,
         onValueChange = { new ->
             val filtered = new.text.filter { it.isDigit() }.take(length)
-            tf = new.copy(text = filtered, selection = androidx.compose.ui.text.TextRange(filtered.length))
+            tf = new.copy(text = filtered, selection = TextRange(filtered.length))
             onCodeChange(filtered)
         },
         keyboardOptions = KeyboardOptions(
