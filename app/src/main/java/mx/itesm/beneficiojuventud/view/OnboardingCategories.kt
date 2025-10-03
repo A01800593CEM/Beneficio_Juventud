@@ -32,7 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.components.MainButton
 
 @Composable
-fun OnboardingCategoriesScreen(
+fun OnboardingCategories(
     nav: NavHostController,
     modifier: Modifier = Modifier
 ) {
@@ -175,5 +175,5 @@ private fun CategoryItem(
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun OnboardingCategoriesPreview() {
-    OnboardingCategoriesScreen(nav = rememberNavController())
+    OnboardingCategories(nav = rememberNavController())
 }

@@ -82,6 +82,10 @@ private fun AppNav(startDestination: String, appViewModel: AppViewModel) {
             NewPassword(nav, emailArg = email, codeArg = code)
         }
         composable(Screens.Onboarding.route){ Onboarding(nav, appViewModel) }
+        composable(Screens.Onboarding.route){ Onboarding(nav) }
+        composable(Screens.OnboardingCategories.route){ OnboardingCategories(nav) }
+        composable(Screens.MainMenu.route){ MainMenu(nav) }
+
     }
 }
 

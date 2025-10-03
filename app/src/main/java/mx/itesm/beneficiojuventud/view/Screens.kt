@@ -14,4 +14,6 @@ sealed class Screens(val route: String) {
         fun recoveryCodeWithEmail(email: String) = "recovery_code/$email"
         fun newPasswordWithEmailAndCode(email: String, code: String) = "new_password/$email/$code"
     }
+    data object OnboardingCategories : Screens("onboarding_categories")
+    data object MainMenu : Screens("main_menu")
 }

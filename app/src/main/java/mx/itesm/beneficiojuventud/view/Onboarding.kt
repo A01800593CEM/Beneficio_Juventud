@@ -36,6 +36,7 @@ fun Onboarding(
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = viewModel(),
     imageRes: Int = R.drawable.onboarding_one
+    onStart: () -> Unit = { nav.navigate(Screens.OnboardingCategories.route) }
 ) {
     var currentUser by remember { mutableStateOf<String?>(null) }
     val authState by authViewModel.authState.collectAsState()

@@ -1,12 +1,22 @@
 package mx.itesm.beneficiojuventud.view
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,34 +28,34 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Phone
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.Dp
 import mx.itesm.beneficiojuventud.components.PasswordTextField
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
-
+import java.time.*
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun Register(nav: NavHostController, modifier: Modifier = Modifier) {
     var nombre by remember { mutableStateOf("") }
     var apPaterno by remember { mutableStateOf("") }
     var apMaterno by remember { mutableStateOf("") }
-    var fechaNac by remember { mutableStateOf("01/Febrero/2003") } // mock
+
+    // Fecha de nacimiento: display (UI) + db (ISO para PostgreSQL)
+    var fechaNacDisplay by remember { mutableStateOf("") }     // ej. "01/febrero/2003"
+    var fechaNacDb by remember { mutableStateOf("") }          // ej. "2003-02-01"
+
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
     var acceptTerms by remember { mutableStateOf(false) }
 
     val scroll = rememberScrollState()
@@ -79,7 +89,7 @@ fun Register(nav: NavHostController, modifier: Modifier = Modifier) {
                 modifier = Modifier.padding(24.dp, 18.dp, 20.dp, 14.dp)
             )
 
-            // Fila: Nombre / Apellido Paterno / Apellido Materno
+            // Nombre
             Label("Nombre")
             OutlinedTextField(
                 value = nombre,
@@ -129,30 +139,18 @@ fun Register(nav: NavHostController, modifier: Modifier = Modifier) {
                 colors = textFieldColors()
             )
 
-            // Fecha de Nacimiento
+            // Fecha de Nacimiento (UI + DB)
             Label("Fecha de Nacimiento", top = 20.dp)
-            OutlinedTextField(
-                value = fechaNac,
-                onValueChange = { fechaNac = it },
-                singleLine = true,
-                readOnly = true,
-                modifier = Modifier
-                    .padding(horizontal = 24.dp)
-                    .fillMaxWidth()
-                    .heightIn(min = TextFieldDefaults.MinHeight),
-                shape = RoundedCornerShape(18.dp),
-                placeholder = { Text("DD/Mes/AAAA", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-                trailingIcon = {
-                    IconButton(onClick = { /* TODO: DatePickerDialog */ }) {
-                        Icon(Icons.Outlined.CalendarMonth, contentDescription = "Elegir fecha")
-                    }
+            BirthDateField(
+                value = fechaNacDisplay,
+                onDateSelected = { localDate ->
+                    fechaNacDisplay = localDate.format(displayFormatterEs)   // bonito para UI
+                    fechaNacDb = localDate.format(storageFormatter)          // ISO para PostgreSQL
                 },
-                textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                colors = textFieldColors()
+                modifier = Modifier.padding(horizontal = 24.dp)
             )
 
-            // Número Telefónico (debajo del mail)
+            // Número Telefónico
             Label("Número Telefónico", top = 20.dp)
             OutlinedTextField(
                 value = phone,
@@ -170,7 +168,6 @@ fun Register(nav: NavHostController, modifier: Modifier = Modifier) {
                 colors = textFieldColors()
             )
 
-
             // Correo
             Label("Correo Electrónico", top = 20.dp)
             EmailTextField(
@@ -179,7 +176,6 @@ fun Register(nav: NavHostController, modifier: Modifier = Modifier) {
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
 
-
             // Contraseña
             Label("Contraseña", top = 20.dp)
             PasswordTextField(
@@ -187,7 +183,6 @@ fun Register(nav: NavHostController, modifier: Modifier = Modifier) {
                 onValueChange = { password = it },
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
-
 
             // Términos y condiciones
             Row(
@@ -214,12 +209,15 @@ fun Register(nav: NavHostController, modifier: Modifier = Modifier) {
                 )
             }
 
-            // Botón Continuar
+            // Botón Continuar (usa fechaNacDb para enviar a la BD)
             MainButton(
                 text = "Continuar",
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
             ) {
-                // TODO: validar y registrar
+                // Ejemplo: ViewModel.register(
+                //   ...,
+                //   birthDate = fechaNacDb   // <- "2003-02-01" listo para columna DATE en PostgreSQL
+                // )
             }
 
             // ¿Ya tienes cuenta?
@@ -235,12 +233,105 @@ fun Register(nav: NavHostController, modifier: Modifier = Modifier) {
                     style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
                 )
                 TextButton(onClick = { nav.navigate(Screens.Login.route) }) {
-                    Text("Inicia Sesión", style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF008D96)))
+                    Text(
+                        "Inicia Sesión",
+                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF008D96))
+                    )
                 }
             }
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BirthDateField(
+    value: String,                       // lo que se muestra en el TextField
+    onDateSelected: (LocalDate) -> Unit, // devuelve la fecha elegida
+    modifier: Modifier = Modifier
+) {
+    val showDialog = remember { mutableStateOf(false) }
+
+    // Limitar fechas: 1900..hoy
+    val today = remember { LocalDate.now() }
+    val zone = remember { ZoneId.systemDefault() }
+    val minMillis = remember { LocalDate.of(1900, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli() }
+    val maxMillis = remember { today.atStartOfDay(zone).toInstant().toEpochMilli() }
+
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = value.toMillisFromDisplayOrNull(zone),
+        yearRange = 1900..today.year,
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean = utcTimeMillis in minMillis..maxMillis
+            override fun isSelectableYear(year: Int): Boolean = year in 1900..today.year
+        }
+    )
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = { /* readOnly */ },
+        readOnly = true,
+        singleLine = true,
+        placeholder = { Text("DD/MM/AAAA", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
+        trailingIcon = {
+            IconButton(onClick = { showDialog.value = true }) {
+                Icon(Icons.Outlined.CalendarMonth, contentDescription = "Elegir fecha")
+            }
+        },
+        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        colors = textFieldColors(),
+        shape = RoundedCornerShape(18.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = TextFieldDefaults.MinHeight)
+            .clickable { showDialog.value = true } // tap en todo el campo abre el date picker
+    )
+
+    if (showDialog.value) {
+        DatePickerDialog(
+            onDismissRequest = { showDialog.value = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val localDate = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
+                        onDateSelected(localDate)
+                    }
+                    showDialog.value = false
+                }) { Text("Aceptar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog.value = false }) { Text("Cancelar") }
+            }
+        ) {
+            DatePicker(
+                state = datePickerState,
+                showModeToggle = true
+            )
+        }
+    }
+}
+
+/* ---------- utils para formateo/parsing ---------- */
+
+// Locale recomendado (sin deprecated)
+private val localeEsMx: Locale = Locale.Builder()
+    .setLanguage("es")
+    .setRegion("MX")
+    .build()
+
+// Formato para mostrar en UI: "01/febrero/2003"
+private val displayFormatterEs: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("dd/MM/yyyy", localeEsMx) // p. ej. 01/02/2003
+// Formato para BD (PostgreSQL DATE): "2003-02-01"
+private val storageFormatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
+
+// Convierte el string de display (si no está vacío) a millis para preseleccionar el DatePicker
+private fun String.toMillisFromDisplayOrNull(zone: ZoneId): Long? = runCatching {
+    if (this.isBlank()) return null
+    val parsed = LocalDate.parse(this, displayFormatterEs)
+    parsed.atStartOfDay(zone).toInstant().toEpochMilli()
+}.getOrNull()
 
 /* ---------- helpers de estilo ---------- */
 

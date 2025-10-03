@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "mx.itesm.beneficiojuventud"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -62,10 +62,12 @@ dependencies {
 
     implementation(libs.retrofit.lib)
     implementation(libs.converter.lib)
-    implementation(libs.androidx.material.icons.core)      // provee Icons
+    implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.foundation)
-    implementation(libs.androidx.ui.unit)  // provee outlined.Email, etc.
+    implementation(libs.androidx.ui.unit)
+    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("androidx.compose.material:material:1.6.8")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
