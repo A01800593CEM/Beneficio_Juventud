@@ -70,11 +70,13 @@ fun ConfirmSignUp(
     LaunchedEffect(authState.isSuccess) {
         if (authState.isSuccess) {
             authViewModel.clearState()
-            nav.navigate(Screens.Onboarding.route) {
+            nav.navigate(Screens.Login.route) {
                 popUpTo(Screens.LoginRegister.route) { inclusive = true }
+                launchSingleTop = true
             }
         }
     }
+
 
     // Mostrar error del estado
     LaunchedEffect(authState.error) {
