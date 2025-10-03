@@ -7,25 +7,41 @@ import com.amplifyframework.auth.cognito.AWSCognitoAuthPlugin
 import com.amplifyframework.core.Amplify
 
 class AmplifyApp : Application() {
+    companion object {
+        private const val TAG = "AmplifyApp"
+    }
+
     override fun onCreate() {
         super.onCreate()
 
-        Log.d("AmplifyApp", "Iniciando configuración de Amplify...")
+        Log.d(TAG, "Iniciando configuración de Amplify...")
 
         try {
-            // 1. Agregar el plugin
+            configureAmplify()
+        } catch (error: AmplifyException) {
+            Log.e(TAG, "❌ Error Amplify: ${error.message}", error)
+            Log.e(TAG, "Causa raíz: ${error.cause?.message}")
+        } catch (error: Exception) {
+            Log.e(TAG, "❌ Error inesperado: ${error.message}", error)
+        }
+    }
+
+    private fun configureAmplify() {
+        try {
+            // 1. Agregar plugins
             Amplify.addPlugin(AWSCognitoAuthPlugin())
-            Log.d("AmplifyApp", "Plugin agregado")
+            Log.d(TAG, "Plugin Auth agregado exitosamente")
 
             // 2. Configurar Amplify (lee automáticamente amplifyconfiguration.json de res/raw)
             Amplify.configure(applicationContext)
-            Log.d("AmplifyApp", "✅ Amplify configurado exitosamente")
+            Log.d(TAG, "✅ Amplify configurado exitosamente")
 
             // 3. Verificar configuración
             verifyConfiguration()
 
         } catch (error: AmplifyException) {
-            Log.e("AmplifyApp", "❌ Error Amplify: ${error.message}", error)
+            Log.e(TAG, "❌ Error configurando Amplify: ${error.message}", error)
+            throw error
         }
     }
 
@@ -33,14 +49,22 @@ class AmplifyApp : Application() {
         try {
             Amplify.Auth.fetchAuthSession(
                 { session ->
-                    Log.i("AmplifyApp", "✅ Auth verificado. Autenticado: ${session.isSignedIn}")
+                    Log.i(TAG, "✅ Auth verificado exitosamente")
+                    Log.i(TAG, "Usuario autenticado: ${session.isSignedIn}")
+
+                    // Solo mostrar información básica de la sesión
+                    if (session.isSignedIn) {
+                        Log.i(TAG, "Sesión activa detectada")
+                    } else {
+                        Log.i(TAG, "No hay sesión activa")
+                    }
                 },
                 { error ->
-                    Log.w("AmplifyApp", "⚠️ Verificación (esperado si no hay sesión): ${error.message}")
+                    Log.w(TAG, "⚠️ Verificación Auth (normal si no hay sesión activa): ${error.message}")
                 }
             )
         } catch (e: Exception) {
-            Log.e("AmplifyApp", "❌ Error verificando: ${e.message}")
+            Log.e(TAG, "❌ Error verificando configuración: ${e.message}", e)
         }
     }
 }

@@ -30,6 +30,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "11"
@@ -40,6 +41,7 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -53,10 +55,10 @@ dependencies {
     implementation(libs.material3)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.ui.text)
-    implementation("com.amplifyframework:core:2.14.0")
-    implementation("com.amplifyframework:aws-auth-cognito:2.14.0")
-    implementation("com.amplifyframework:aws-datastore:2.14.0")
-    implementation("com.amplifyframework:aws-api:2.14.0")
+    implementation(libs.amplify.core)
+    implementation(libs.amplify.auth)
+    implementation(libs.amplify.datastore)
+    implementation(libs.amplify.api)
 
     implementation(libs.retrofit.lib)
     implementation(libs.converter.lib)

@@ -18,7 +18,7 @@ class AuthViewModel : ViewModel() {
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     /**
-     * Registrar usuario
+     * Registrar usuario siguiendo las mejores prácticas de Amplify
      */
     fun signUp(
         email: String,
@@ -32,10 +32,10 @@ class AuthViewModel : ViewModel() {
             val result = authRepository.signUp(email, password, nombreCompleto, telefono)
 
             result.fold(
-                onSuccess = {
+                onSuccess = { signUpResult ->
                     _authState.value = AuthState(
-                        isSuccess = true,
-                        needsConfirmation = true
+                        isSuccess = signUpResult.isSignUpComplete,
+                        needsConfirmation = !signUpResult.isSignUpComplete
                     )
                 },
                 onFailure = { error ->
@@ -70,7 +70,7 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
-     * Iniciar sesión
+     * Iniciar sesión siguiendo las mejores prácticas de Amplify
      */
     fun signIn(email: String, password: String) {
         viewModelScope.launch {
@@ -79,8 +79,11 @@ class AuthViewModel : ViewModel() {
             val result = authRepository.signIn(email, password)
 
             result.fold(
-                onSuccess = {
-                    _authState.value = AuthState(isSuccess = true)
+                onSuccess = { signInResult ->
+                    _authState.value = AuthState(
+                        isSuccess = signInResult.isSignedIn,
+                        needsConfirmation = !signInResult.isSignedIn
+                    )
                 },
                 onFailure = { error ->
                     _authState.value = AuthState(
@@ -94,10 +97,22 @@ class AuthViewModel : ViewModel() {
     /**
      * Cerrar sesión
      */
-    fun signOut() {
+    fun signOut(globalSignOut: Boolean = true) {
         viewModelScope.launch {
-            authRepository.signOut()
-            _authState.value = AuthState()
+            _authState.value = AuthState(isLoading = true)
+
+            val result = authRepository.signOut(globalSignOut)
+
+            result.fold(
+                onSuccess = {
+                    _authState.value = AuthState()
+                },
+                onFailure = { error ->
+                    _authState.value = AuthState(
+                        error = error.message ?: "Error al cerrar sesión"
+                    )
+                }
+            )
         }
     }
 
@@ -126,6 +141,64 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Confirmar nueva contraseña
+     */
+    fun confirmResetPassword(email: String, newPassword: String, confirmationCode: String) {
+        viewModelScope.launch {
+            _authState.value = AuthState(isLoading = true)
+
+            val result = authRepository.confirmResetPassword(email, newPassword, confirmationCode)
+
+            result.fold(
+                onSuccess = {
+                    _authState.value = AuthState(isSuccess = true)
+                },
+                onFailure = { error ->
+                    _authState.value = AuthState(
+                        error = error.message ?: "Error al confirmar nueva contraseña"
+                    )
+                }
+            )
+        }
+    }
+
+
+    /**
+     * Actualizar contraseña del usuario autenticado
+     */
+    fun updatePassword(existingPassword: String, newPassword: String) {
+        viewModelScope.launch {
+            _authState.value = AuthState(isLoading = true)
+
+            val result = authRepository.updatePassword(existingPassword, newPassword)
+
+            result.fold(
+                onSuccess = {
+                    _authState.value = AuthState(isSuccess = true)
+                },
+                onFailure = { error ->
+                    _authState.value = AuthState(
+                        error = error.message ?: "Error al actualizar contraseña"
+                    )
+                }
+            )
+        }
+    }
+
+    /**
+     * Verificar si el usuario está autenticado al iniciar la app
+     */
+    fun checkAuthState() {
+        viewModelScope.launch {
+            val isSignedIn = authRepository.isUserSignedIn()
+            if (isSignedIn) {
+                _authState.value = AuthState(isSuccess = true)
+            } else {
+                _authState.value = AuthState()
+            }
+        }
+    }
 
     /**
      * Limpiar estado
