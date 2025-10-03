@@ -6,14 +6,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import mx.itesm.beneficiojuventud.repository.AuthRepository
+import mx.itesm.beneficiojuventud.model.AuthState
+import mx.itesm.beneficiojuventud.model.AuthRepository
 
-data class AuthState(
-    val isLoading: Boolean = false,
-    val isSuccess: Boolean = false,
-    val error: String? = null,
-    val needsConfirmation: Boolean = false
-)
 
 class AuthViewModel : ViewModel() {
 

@@ -1,14 +1,12 @@
-package mx.itesm.beneficiojuventud.repository
+package mx.itesm.beneficiojuventud.model
 
 import android.util.Log
-import com.amplifyframework.auth.AuthException
 import com.amplifyframework.auth.AuthUserAttribute
 import com.amplifyframework.auth.AuthUserAttributeKey
 import com.amplifyframework.auth.options.AuthSignUpOptions
 import com.amplifyframework.core.Amplify
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 class AuthRepository {
 
@@ -43,7 +41,10 @@ class AuthRepository {
             options,
             { result ->
                 try {
-                    Log.i(TAG, "Sign up exitoso. isSignUpComplete=${result.isSignUpComplete}, nextStep=${result.nextStep?.signUpStep}")
+                    Log.i(
+                        TAG,
+                        "Sign up exitoso. isSignUpComplete=${result.isSignUpComplete}, nextStep=${result.nextStep.signUpStep}"
+                    )
                     // En algunas versiones: result.userId (v2) / otras: result.user?.userId
                     val userId = result.userId ?: result.userId ?: email
                     if (!continuation.isCancelled) {

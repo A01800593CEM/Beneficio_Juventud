@@ -23,7 +23,7 @@ import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.MainButton
 
 @Composable
-fun OnboardingScreen(
+fun Onboarding(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     imageRes: Int = R.drawable.onboarding_one,
@@ -122,5 +122,5 @@ fun OnboardingScreen(
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun OnboardingPreview() {
-    OnboardingScreen(nav = rememberNavController())
+    Onboarding(nav = rememberNavController())
 }

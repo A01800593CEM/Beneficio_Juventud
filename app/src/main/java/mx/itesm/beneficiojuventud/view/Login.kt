@@ -33,8 +33,7 @@ fun Login(nav: NavHostController, modifier: Modifier = Modifier, viewModel: Auth
 
     LaunchedEffect(authState.isSuccess) {
         if (authState.isSuccess) {
-            // Navegar a la pantalla principal cuando el login sea exitoso
-            println("Login exitoso")
+            nav.navigate(Screens.Onboarding.route)
             // Limpiar el estado de autenticación
             viewModel.clearState()
         }

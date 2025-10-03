@@ -1,4 +1,4 @@
-package mx.itesm.beneficiojuventud
+package mx.itesm.beneficiojuventud.viewmodel
 
 import android.app.Application
 import android.util.Log
