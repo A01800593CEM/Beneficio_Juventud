@@ -24,27 +24,36 @@ class AuthViewModel : ViewModel() {
     fun signUp(
         email: String,
         password: String,
-        nombreCompleto: String,
         telefono: String? = null
     ) {
         viewModelScope.launch {
-            _authState.value = AuthState(isLoading = true)
+            try {
+                Log.d("AuthViewModel", "Iniciando signUp para: $email")
+                _authState.value = AuthState(isLoading = true)
 
-            val result = authRepository.signUp(email, password, nombreCompleto, telefono)
+                val result = authRepository.signUp(email, password, telefono)
 
-            result.fold(
-                onSuccess = { signUpResult ->
-                    _authState.value = AuthState(
-                        isSuccess = signUpResult.isSignUpComplete,
-                        needsConfirmation = !signUpResult.isSignUpComplete
-                    )
-                },
-                onFailure = { error ->
-                    _authState.value = AuthState(
-                        error = error.message ?: "Error desconocido al registrar"
-                    )
-                }
-            )
+                result.fold(
+                    onSuccess = { signUpResult ->
+                        Log.d("AuthViewModel", "SignUp exitoso: needsConfirmation=${!signUpResult.isSignUpComplete}")
+                        _authState.value = AuthState(
+                            isSuccess = signUpResult.isSignUpComplete,
+                            needsConfirmation = !signUpResult.isSignUpComplete
+                        )
+                    },
+                    onFailure = { error ->
+                        Log.e("AuthViewModel", "SignUp falló: ${error.message}", error)
+                        _authState.value = AuthState(
+                            error = error.message ?: "Error desconocido al registrar"
+                        )
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Error inesperado en signUp: ${e.message}", e)
+                _authState.value = AuthState(
+                    error = "Error de conexión. Verifica tu internet e intenta de nuevo."
+                )
+            }
         }
     }
 

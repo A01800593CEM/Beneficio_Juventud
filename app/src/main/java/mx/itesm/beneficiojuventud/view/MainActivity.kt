@@ -68,21 +68,28 @@ private fun AppNav(startDestination: String, appViewModel: AppViewModel) {
     NavHost(navController = nav, startDestination = startDestination) {
         composable(Screens.LoginRegister.route) { LoginRegister(nav) }
         composable(Screens.Login.route) { Login(nav, appViewModel) }
-        composable(Screens.Register.route) { Register(nav) }
+        composable(Screens.Register.route) { Register(nav, appViewModel = appViewModel) }
         composable(Screens.ForgotPassword.route) { ForgotPassword(nav)}
         composable(Screens.RecoveryCode.route) { RecoveryCode(nav) }
         composable("recovery_code/{email}") { backStackEntry ->
-            val email = backStackEntry.arguments?.getString("email") ?: ""
+            val encodedEmail = backStackEntry.arguments?.getString("email") ?: ""
+            val email = java.net.URLDecoder.decode(encodedEmail, "UTF-8")
             RecoveryCode(nav, emailArg = email)
+        }
+        composable(Screens.ConfirmSignUp.route) { ConfirmSignUp(nav, "") }
+        composable("confirm_signup/{email}") { backStackEntry ->
+            val encodedEmail = backStackEntry.arguments?.getString("email") ?: ""
+            val email = java.net.URLDecoder.decode(encodedEmail, "UTF-8")
+            ConfirmSignUp(nav, email, appViewModel = appViewModel)
         }
         composable(Screens.NewPassword.route){ NewPassword(nav) }
         composable("new_password/{email}/{code}") { backStackEntry ->
-            val email = backStackEntry.arguments?.getString("email") ?: ""
+            val encodedEmail = backStackEntry.arguments?.getString("email") ?: ""
+            val email = java.net.URLDecoder.decode(encodedEmail, "UTF-8")
             val code = backStackEntry.arguments?.getString("code") ?: ""
             NewPassword(nav, emailArg = email, codeArg = code)
         }
         composable(Screens.Onboarding.route){ Onboarding(nav, appViewModel) }
-        composable(Screens.Onboarding.route){ Onboarding(nav) }
         composable(Screens.OnboardingCategories.route){ OnboardingCategories(nav) }
         composable(Screens.MainMenu.route){ MainMenu(nav) }
 

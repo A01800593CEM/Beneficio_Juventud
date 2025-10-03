@@ -23,13 +23,11 @@ class AuthRepository {
     suspend fun signUp(
         email: String,
         password: String,
-        nombreCompleto: String,
         telefono: String? = null
     ): Result<AuthSignUpResult> = suspendCancellableCoroutine { continuation ->
 
         val attributes = mutableListOf(
-            AuthUserAttribute(AuthUserAttributeKey.email(), email),
-            AuthUserAttribute(AuthUserAttributeKey.name(), nombreCompleto)
+            AuthUserAttribute(AuthUserAttributeKey.email(), email)
         )
 
         telefono?.let { phone ->

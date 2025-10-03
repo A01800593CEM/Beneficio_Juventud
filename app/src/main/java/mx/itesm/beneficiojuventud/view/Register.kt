@@ -18,6 +18,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -38,27 +39,67 @@ import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.PasswordTextField
+import mx.itesm.beneficiojuventud.model.UserProfile
+import mx.itesm.beneficiojuventud.model.RegistrationData
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.AppViewModel
 import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun Register(nav: NavHostController, modifier: Modifier = Modifier) {
+fun Register(
+    nav: NavHostController,
+    modifier: Modifier = Modifier,
+    appViewModel: AppViewModel? = null,
+    authViewModel: AuthViewModel = viewModel()
+) {
     var nombre by remember { mutableStateOf("") }
     var apPaterno by remember { mutableStateOf("") }
     var apMaterno by remember { mutableStateOf("") }
 
     // Fecha de nacimiento: display (UI) + db (ISO para PostgreSQL)
-    var fechaNacDisplay by remember { mutableStateOf("") }     // ej. "01/febrero/2003"
+    var fechaNacDisplay by remember { mutableStateOf("") }     // ej. "01/02/2003"
     var fechaNacDb by remember { mutableStateOf("") }          // ej. "2003-02-01"
 
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var acceptTerms by remember { mutableStateOf(false) }
+    var showError by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
 
+    val authState by authViewModel.authState.collectAsState()
     val scroll = rememberScrollState()
+
+    // Manejar navegación después del registro exitoso
+    LaunchedEffect(authState.needsConfirmation) {
+        if (authState.needsConfirmation) {
+            // Navegar a la pantalla de confirmación de registro (no recovery)
+            nav.navigate(Screens.confirmSignUpWithEmail(email)) {
+                popUpTo(Screens.Register.route) { inclusive = true }
+            }
+        }
+    }
+
+    // Manejar errores de registro
+    LaunchedEffect(authState.error) {
+        authState.error?.let { error ->
+            errorMessage = error
+            showError = true
+        }
+    }
+
+    // Validar campos
+    val isFormValid = nombre.isNotBlank() &&
+                     apPaterno.isNotBlank() &&
+                     apMaterno.isNotBlank() &&
+                     fechaNacDb.isNotBlank() &&
+                     email.isNotBlank() &&
+                     phone.isNotBlank() &&
+                     password.isNotBlank() &&
+                     acceptTerms
 
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(
@@ -209,15 +250,62 @@ fun Register(nav: NavHostController, modifier: Modifier = Modifier) {
                 )
             }
 
-            // Botón Continuar (usa fechaNacDb para enviar a la BD)
+            // Mostrar error si existe
+            if (showError && errorMessage.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = errorMessage,
+                            color = Color(0xFFD32F2F),
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = {
+                                showError = false
+                                errorMessage = ""
+                                authViewModel.clearState()
+                            }
+                        ) {
+                            Text("✕", color = Color(0xFFD32F2F))
+                        }
+                    }
+                }
+            }
+
+            // Botón Continuar
             MainButton(
-                text = "Continuar",
+                text = if (authState.isLoading) "Registrando..." else "Continuar",
+                enabled = !authState.isLoading && isFormValid,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
             ) {
-                // Ejemplo: ViewModel.register(
-                //   ...,
-                //   birthDate = fechaNacDb   // <- "2003-02-01" listo para columna DATE en PostgreSQL
-                // )
+                showError = false
+
+                // Crear el perfil de usuario para guardar después en BD
+                val userProfile = UserProfile(
+                    nombre = nombre,
+                    apellidoPaterno = apPaterno,
+                    apellidoMaterno = apMaterno,
+                    fechaNacimiento = fechaNacDb,
+                    telefono = phone,
+                    email = email
+                )
+
+                // Guardar datos del usuario temporalmente en AppViewModel
+                appViewModel?.savePendingUserProfile(userProfile)
+
+                // Solo enviar email, password y teléfono a Amplify
+                authViewModel.signUp(email, password, phone)
             }
 
             // ¿Ya tienes cuenta?
