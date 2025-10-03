@@ -16,6 +16,7 @@ retrofitVersion = "3.0.0"
 gsonVersion = "3.0.0"
 foundation = "1.9.2"
 uiUnit = "1.9.2"
+amplify = "2.30.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,6 +45,10 @@ retrofit-lib = { group = "com.squareup.retrofit2", name = "retrofit", version.re
 converter-lib = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "gsonVersion" }
 androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 androidx-ui-unit = { group = "androidx.compose.ui", name = "ui-unit", version.ref = "uiUnit" }
+amplify-core = { group = "com.amplifyframework", name = "core", version.ref = "amplify" }
+amplify-auth = { group = "com.amplifyframework", name = "aws-auth-cognito", version.ref = "amplify" }
+amplify-datastore = { group = "com.amplifyframework", name = "aws-datastore", version.ref = "amplify" }
+amplify-api = { group = "com.amplifyframework", name = "aws-api", version.ref = "amplify" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

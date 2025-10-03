@@ -53,6 +53,10 @@ dependencies {
     implementation(libs.material3)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.ui.text)
+    implementation("com.amplifyframework:core:2.14.0")
+    implementation("com.amplifyframework:aws-auth-cognito:2.14.0")
+    implementation("com.amplifyframework:aws-datastore:2.14.0")
+    implementation("com.amplifyframework:aws-api:2.14.0")
 
     implementation(libs.retrofit.lib)
     implementation(libs.converter.lib)
