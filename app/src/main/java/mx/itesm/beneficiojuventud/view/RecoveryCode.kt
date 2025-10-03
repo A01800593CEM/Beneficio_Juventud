@@ -1,12 +1,8 @@
 package mx.itesm.beneficiojuventud.view
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -22,12 +18,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -37,6 +29,7 @@ import kotlinx.coroutines.delay
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.MainButton
+import mx.itesm.beneficiojuventud.components.CodeTextField
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -140,14 +133,22 @@ fun RecoveryCode(
             }
 
             // ----- Fila de OTP -----
-            OtpCodeInput(
-                code = code,
-                length = length,
-                onCodeChange = { code = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp)
-            )
+            Row (modifier = modifier.fillMaxWidth(0.9f)){
+                CodeTextField(
+                    value = code,
+                    onValueChange = { code = it },
+                    length = 6,
+                    isError = false, // o true si quieres resaltar error
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    onFilled = { filled ->
+                        // Opcional: navegar en automático cuando se complete
+                        // nav.navigate(Screens.newPasswordWithEmailAndCode(email, filled))
+                    }
+                )
+            }
+
 
             // ----- Botón Verificar -----
             Column(
@@ -181,67 +182,6 @@ fun RecoveryCode(
             )
         }
     }
-}
-
-@Composable
-private fun OtpCodeInput(
-    code: String,
-    length: Int,
-    onCodeChange: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var tf by remember { mutableStateOf(TextFieldValue(code)) }
-
-    // Mantiene cursor siempre al final
-    LaunchedEffect(code) {
-        if (tf.text != code) {
-            tf = tf.copy(text = code, selection = TextRange(code.length))
-        }
-    }
-
-    BasicTextField(
-        value = tf,
-        onValueChange = { new ->
-            val filtered = new.text.filter { it.isDigit() }.take(length)
-            tf = new.copy(text = filtered, selection = TextRange(filtered.length))
-            onCodeChange(filtered)
-        },
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.NumberPassword,
-            imeAction = ImeAction.Done
-        ),
-        singleLine = true,
-        modifier = modifier,
-        decorationBox = { inner ->
-            // Oculta el campo original pero mantiene el foco
-            Box(Modifier.size(0.dp)) { inner() }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                repeat(length) { i ->
-                    val char = code.getOrNull(i)?.toString() ?: ""
-                    Box(
-                        modifier = Modifier
-                            .size(50.dp)
-                            .border(
-                                width = 2.dp,
-                                color = if (char.isEmpty()) Color(0xFFE3E3E3) else Color(0xFF008D96),
-                                shape = RoundedCornerShape(12.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = char,
-                            style = TextStyle(fontSize = 20.sp, textAlign = TextAlign.Center)
-                        )
-                    }
-                }
-            }
-        }
-    )
 }
 
 

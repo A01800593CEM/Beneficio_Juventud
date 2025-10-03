@@ -1,82 +1,132 @@
 package mx.itesm.beneficiojuventud.components
 
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Sms
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.min
+import androidx.compose.ui.unit.max
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.BoxWithConstraints
 
 @Composable
 fun CodeTextField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = "123456"
+    length: Int = 6,
+    enabled: Boolean = true,
+    isError: Boolean = false,
+    onFilled: ((String) -> Unit)? = null,
+    // límites responsivos
+    minBoxSize: Dp = 40.dp,
+    maxBoxSize: Dp = 56.dp,
+    boxCorner: Dp = 12.dp,
+    boxSpacing: Dp = 4.dp,
+    emptyBorderColor: Color = Color(0xFFE3E3E3),
+    filledBorderColor: Color = Color(0xFF008D96),
+    errorBorderColor: Color = Color(0xFFD32F2F),
 ) {
-    val shape = RoundedCornerShape(18.dp)
+    var tf by remember { mutableStateOf(TextFieldValue(value)) }
 
-    OutlinedTextField(
-        value = value,
-        onValueChange = { newValue ->
-            // Solo permitir números y máximo 6 caracteres
-            if (newValue.all { it.isDigit() } && newValue.length <= 6) {
-                onValueChange(newValue)
+    // Mantener cursor al final si el texto externo cambia
+    LaunchedEffect(value) {
+        if (tf.text != value) {
+            tf = tf.copy(text = value, selection = TextRange(value.length))
+        }
+    }
+
+    val shape = RoundedCornerShape(boxCorner)
+
+    BasicTextField(
+        value = tf,
+        onValueChange = { new ->
+            if (!enabled) return@BasicTextField
+            val filtered = new.text.filter { it.isDigit() }.take(length)
+            tf = new.copy(text = filtered, selection = TextRange(filtered.length))
+            onValueChange(filtered)
+            if (filtered.length == length && filtered != value) {
+                onFilled?.invoke(filtered)
             }
         },
-        singleLine = true,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(48.dp),
-        shape = shape,
-        leadingIcon = { Icon(Icons.Outlined.Sms, contentDescription = null) },
-        placeholder = {
-            Text(
-                text = placeholder,
-                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
-                textAlign = TextAlign.Start
-            )
-        },
-        textStyle = TextStyle(
-            fontSize = 18.sp,
-            color = Color(0xFF2F2F2F),
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            letterSpacing = 4.sp // Espaciado entre números para mejor legibilidad
-        ),
+        enabled = enabled,
         keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Number,
+            keyboardType = KeyboardType.NumberPassword,
             imeAction = ImeAction.Done
         ),
-        colors = TextFieldDefaults.colors(
-            // Fondo
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
-            // Borde (indicator en M3)
-            focusedIndicatorColor = Color(0xFF008D96),
-            unfocusedIndicatorColor = Color(0xFFE0E0E0),
-            // Cursor
-            cursorColor = Color(0xFF008D96),
-            // Placeholder
-            focusedPlaceholderColor = Color(0xFF7D7A7A),
-            unfocusedPlaceholderColor = Color(0xFF7D7A7A),
-            // Icono
-            focusedLeadingIconColor = Color(0xFF008D96),
-            unfocusedLeadingIconColor = Color(0xFF7D7A7A)
-        )
+        singleLine = true,
+        modifier = modifier,
+        decorationBox = { inner ->
+            // Campo invisible para conservar foco/teclado
+            Box(Modifier.size(0.dp)) { inner() }
+
+            // Layout responsivo
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                // Ancho disponible
+                val availableWidth = maxWidth
+                val totalSpacing = boxSpacing * (length - 1)
+
+                // tamaño calculado = (ancho - espacios) / casillas, acotado entre min y max
+                var calcBox = (availableWidth - totalSpacing) / length
+                calcBox = max(minBoxSize, min(calcBox, maxBoxSize))
+
+                // ancho real del grupo (para centrarlo)
+                val groupWidth = calcBox * length + boxSpacing * (length - 1)
+
+                // Tamaño de letra proporcional a la caja
+                val fontSize = (calcBox.value * 0.40f).sp
+
+                Row(
+                    modifier = Modifier.width(groupWidth),
+                    horizontalArrangement = Arrangement.spacedBy(boxSpacing),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(length) { i ->
+                        val char = value.getOrNull(i)?.toString() ?: ""
+                        val borderColor = when {
+                            isError -> errorBorderColor
+                            char.isEmpty() -> emptyBorderColor
+                            else -> filledBorderColor
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(calcBox)
+                                .border(width = 2.dp, color = borderColor, shape = shape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = char,
+                                style = TextStyle(
+                                    fontSize = fontSize,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
     )
 }

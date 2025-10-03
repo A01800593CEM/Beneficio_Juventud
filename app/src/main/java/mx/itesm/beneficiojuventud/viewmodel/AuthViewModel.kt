@@ -57,6 +57,8 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+
+
     /**
      * Confirmar registro
      */
@@ -78,6 +80,30 @@ class AuthViewModel : ViewModel() {
             )
         }
     }
+
+    // en AuthViewModel
+    fun resendSignUpCode(email: String) {
+        viewModelScope.launch {
+            // mostramos loading, pero NO marcamos isSuccess para no navegar
+            _authState.value = AuthState(isLoading = true)
+
+            val result = authRepository.resendSignUpCode(email)
+
+            result.fold(
+                onSuccess = {
+                    // Limpia a un estado "neutro" que puedes interpretar como "listo, re-enviado"
+                    // Si quieres mostrar un mensaje de éxito, puedes manejarlo en UI con un Snackbar/Toast.
+                    _authState.value = AuthState(needsConfirmation = true)
+                },
+                onFailure = { error ->
+                    _authState.value = AuthState(
+                        error = error.message ?: "No se pudo reenviar el código"
+                    )
+                }
+            )
+        }
+    }
+
 
     /**
      * Iniciar sesión siguiendo las mejores prácticas de Amplify

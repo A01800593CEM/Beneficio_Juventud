@@ -117,6 +117,21 @@ class AuthRepository {
         )
     }
 
+    // en AuthRepository
+    suspend fun resendSignUpCode(email: String): Result<Unit> =
+        kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+            try {
+                com.amplifyframework.core.Amplify.Auth.resendSignUpCode(
+                    email,
+                    { /* onSuccess */ continuation.resume(Result.success(Unit)) },
+                    { error -> continuation.resume(Result.failure(error)) }
+                )
+            } catch (e: Exception) {
+                continuation.resume(Result.failure(e))
+            }
+        }
+
+
     /**
      * Cerrar sesión con manejo completo de resultados AWS Cognito
      */

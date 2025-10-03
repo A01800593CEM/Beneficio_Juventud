@@ -1,8 +1,8 @@
 package mx.itesm.beneficiojuventud.view
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -10,21 +10,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.delay
 import mx.itesm.beneficiojuventud.R
+import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.CodeTextField
+import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.AppViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfirmSignUp(
     nav: NavHostController,
@@ -39,19 +44,39 @@ fun ConfirmSignUp(
 
     val authState by authViewModel.authState.collectAsState()
 
-    // Manejar confirmación exitosa
+    // ----- Temporizador Reenviar -----
+    var seconds by remember { mutableIntStateOf(60) }
+    var canResend by remember { mutableStateOf(false) }
+    LaunchedEffect(seconds) {
+        if (!canResend && seconds > 0) {
+            delay(1000)
+            seconds--
+        } else if (seconds == 0) {
+            canResend = true
+        }
+    }
+
+    fun handleResend() {
+        if (!canResend) return
+        authViewModel.resendSignUpCode(email)
+        canResend = false
+        seconds = 60
+        code = ""
+        showError = false
+        errorMessage = ""
+    }
+
+    // Navegar al onboarding cuando se confirme con éxito
     LaunchedEffect(authState.isSuccess) {
         if (authState.isSuccess) {
-            // Registro completado exitosamente
             authViewModel.clearState()
-            // Navegar al onboarding
             nav.navigate(Screens.Onboarding.route) {
                 popUpTo(Screens.LoginRegister.route) { inclusive = true }
             }
         }
     }
 
-    // Manejar errores
+    // Mostrar error del estado
     LaunchedEffect(authState.error) {
         authState.error?.let { error ->
             errorMessage = error
@@ -59,7 +84,12 @@ fun ConfirmSignUp(
         }
     }
 
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+    Scaffold(
+        topBar = {
+            TopAppBar(title = {}, navigationIcon = { BackButton(nav = nav) })
+        },
+        modifier = Modifier.fillMaxSize()
+    ) { innerPadding ->
         Column(
             modifier = modifier
                 .padding(innerPadding)
@@ -114,16 +144,25 @@ fun ConfirmSignUp(
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
-            // Campo de código
+            // Campo de código (CodeTextField con casillas)
             CodeTextField(
                 value = code,
                 onValueChange = {
-                    if (it.length <= 6) {
-                        code = it
-                        showError = false
-                    }
+                    code = it
+                    showError = false
                 },
-                modifier = Modifier.fillMaxWidth()
+                length = 6,
+                isError = showError,
+                enabled = !authState.isLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                onFilled = { filled ->
+                    if (!authState.isLoading) {
+                        showError = false
+                        authViewModel.confirmSignUp(email, filled)
+                    }
+                }
             )
 
             Spacer(Modifier.height(24.dp))
@@ -161,7 +200,7 @@ fun ConfirmSignUp(
                 }
             }
 
-            // Botón confirmar
+            // Botón confirmar (manual)
             MainButton(
                 text = if (authState.isLoading) "Confirmando..." else "Confirmar",
                 enabled = !authState.isLoading && code.length == 6,
@@ -173,42 +212,37 @@ fun ConfirmSignUp(
                 authViewModel.confirmSignUp(email, code)
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // Reenviar código
-            TextButton(
-                onClick = {
-                    // TODO: Implementar reenvío de código
-                }
-            ) {
-                Text(
-                    "¿No recibiste el código? Reenviar",
-                    style = TextStyle(
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF008D96)
-                    )
-                )
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            // Volver
-            TextButton(
-                onClick = {
-                    appViewModel?.clearPendingUserProfile()
-                    nav.navigate(Screens.Register.route)
-                }
-            ) {
-                Text(
-                    "Volver al registro",
-                    style = TextStyle(
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF7D7A7A)
-                    )
-                )
-            }
+            // ----- Reenviar (mismo estilo que RecoveryCode) -----
+            Text(
+                text = if (canResend) "Reenviar código" else "Reenviar código  (00:${
+                    seconds.toString().padStart(2, '0')
+                })",
+                color = if (canResend) Color(0xFF008D96) else Color(0xFF7D7A7A),
+                fontSize = 13.sp,
+                modifier = Modifier
+                    .padding(top = 4.dp, bottom = 8.dp)
+                    .noRippleClickable { handleResend() }
+            )
         }
+    }
+}
+
+// Igual que en RecoveryCode: click sin ripple para el "Reenviar"
+@Composable
+private fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier =
+    this.then(Modifier.pointerInput(Unit) {
+        detectTapGestures(onTap = { onClick() })
+    })
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun ConfirmSignUpPreview() {
+    BeneficioJuventudTheme {
+        ConfirmSignUp(
+            nav = NavHostController(LocalContext.current),
+            email = "usuario@correo.com"
+        )
     }
 }
