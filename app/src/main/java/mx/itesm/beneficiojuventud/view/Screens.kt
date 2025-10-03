@@ -8,4 +8,6 @@ sealed class Screens(val route: String) {
     data object RecoveryCode : Screens("recovery_code")
     data object NewPassword : Screens("new_password")
     data object Onboarding : Screens("onboarding")
+    data object OnboardingCategories : Screens("onboarding_categories")
+    data object MainMenu : Screens("main_menu")
 }

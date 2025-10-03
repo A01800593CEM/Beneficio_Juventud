@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppNav() {
     val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = Screens.LoginRegister.route) {
+    NavHost(navController = nav, startDestination = Screens.Register.route) {
         composable(Screens.LoginRegister.route) { LoginRegister(nav) }
         composable(Screens.Login.route) { Login(nav) }
         composable(Screens.Register.route) { Register(nav) }
@@ -37,6 +37,9 @@ private fun AppNav() {
         composable(Screens.RecoveryCode.route) { RecoveryCode(nav) }
         composable(Screens.NewPassword.route){ NewPassword(nav) }
         composable(Screens.Onboarding.route){ Onboarding(nav) }
+        composable(Screens.OnboardingCategories.route){ OnboardingCategories(nav) }
+        composable(Screens.MainMenu.route){ MainMenu(nav) }
+
     }
 }
 

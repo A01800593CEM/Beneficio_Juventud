@@ -27,7 +27,7 @@ fun Onboarding(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     imageRes: Int = R.drawable.onboarding_one,
-    onStart: () -> Unit = { nav.navigate(Screens.LoginRegister.route) }
+    onStart: () -> Unit = { nav.navigate(Screens.OnboardingCategories.route) }
 ) {
     Scaffold(
         modifier = Modifier.fillMaxSize()
