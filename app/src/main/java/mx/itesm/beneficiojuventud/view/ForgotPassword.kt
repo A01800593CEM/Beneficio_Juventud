@@ -35,6 +35,8 @@ import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +64,7 @@ fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier) {
             modifier = modifier
                 .padding(innerPadding)
                 .fillMaxWidth()
+                .dismissKeyboardOnTap()
                 .padding(top = 85.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {

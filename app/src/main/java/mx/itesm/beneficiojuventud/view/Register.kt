@@ -33,6 +33,8 @@ import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import mx.itesm.beneficiojuventud.components.PasswordTextField
+import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+
 
 @Composable
 fun Register(nav: NavHostController, modifier: Modifier = Modifier) {
@@ -53,6 +55,7 @@ fun Register(nav: NavHostController, modifier: Modifier = Modifier) {
             modifier = modifier
                 .padding(innerPadding)
                 .fillMaxSize()
+                .dismissKeyboardOnTap()
                 .verticalScroll(scroll)
                 .padding(top = 85.dp, bottom = 24.dp) // bottom para que no tape el botón
         ) {

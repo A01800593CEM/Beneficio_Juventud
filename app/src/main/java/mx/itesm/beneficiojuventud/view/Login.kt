@@ -21,6 +21,8 @@ import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.AltLoginButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.components.PasswordTextField
+import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+
 
 @Composable
 fun Login(nav: NavHostController, modifier: Modifier = Modifier) {
@@ -34,6 +36,7 @@ fun Login(nav: NavHostController, modifier: Modifier = Modifier) {
             modifier = modifier
                 .padding(innerPadding)
                 .fillMaxWidth()
+                .dismissKeyboardOnTap()
                 .padding(top = 85.dp)
         ) {
             // Logo arriba a la izquierda

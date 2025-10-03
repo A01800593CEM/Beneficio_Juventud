@@ -25,6 +25,8 @@ import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.PasswordTextField
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +56,7 @@ fun NewPassword(
             modifier = modifier
                 .padding(inner)
                 .fillMaxWidth()
+                .dismissKeyboardOnTap()
                 .padding(top = 70.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {

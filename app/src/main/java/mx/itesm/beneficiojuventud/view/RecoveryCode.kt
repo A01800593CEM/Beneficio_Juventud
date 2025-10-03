@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -83,7 +84,9 @@ fun RecoveryCode(
             modifier = modifier
                 .padding(innerPadding)
                 .fillMaxWidth()
-                .padding(top = 85.dp),
+                .dismissKeyboardOnTap()
+                .padding(top = 85.dp)
+                .imePadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
@@ -236,6 +239,7 @@ private fun OtpCodeInput(
         }
     )
 }
+
 
 @Composable
 private fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier =
