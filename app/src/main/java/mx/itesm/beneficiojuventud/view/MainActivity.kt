@@ -29,8 +29,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppNav() {
     val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = Screens.MainMenu.route) {
-        composable(Screens.MainMenu.route) { MainMenu(nav) }
+    NavHost(navController = nav, startDestination = Screens.LoginRegister.route) {
+        composable(Screens.LoginRegister.route) { LoginRegister(nav) }
         composable(Screens.Login.route) { Login(nav) }
         composable(Screens.Register.route) { Register(nav) }
         composable(Screens.ForgotPassword.route) { ForgotPassword(nav)}

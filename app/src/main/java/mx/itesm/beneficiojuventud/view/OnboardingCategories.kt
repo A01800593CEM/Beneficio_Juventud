@@ -99,7 +99,7 @@ fun OnboardingCategoriesScreen(
                 .padding(top = 4.dp)
         ) {
             // TODO: Guarda selección y navega a lo que siga del onboarding
-            nav.navigate(Screens.MainMenu.route)
+            nav.navigate(Screens.LoginRegister.route)
         }
     }
 }

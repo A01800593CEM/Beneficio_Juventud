@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 @Composable
-fun MainMenu(nav: NavHostController, modifier: Modifier = Modifier) {
+fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(
             modifier = modifier
