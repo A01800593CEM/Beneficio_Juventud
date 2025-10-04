@@ -25,10 +25,6 @@ export class CreateUserDto {
     @IsEmail()
     email: string
 
-    @IsDate()
-    @Type(() => Date)
-    updatedAt: Date
-
     @IsEnum(UserState)
     accountState: UserState
 }

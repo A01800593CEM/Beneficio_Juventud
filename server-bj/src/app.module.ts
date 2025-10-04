@@ -6,8 +6,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
 import { CollaboratorsModule } from './collaborators/collaborators.module';
 import { AdministratorsModule } from './administrators/administrators.module';
-import { PromotionsModule } from './promotions/promotions.module';
 import { CategoriesModule } from './categories/categories.module';
+
 
 @Module({
   imports: [
@@ -31,7 +31,6 @@ import { CategoriesModule } from './categories/categories.module';
     UsersModule,
     CollaboratorsModule,
     AdministratorsModule,
-    PromotionsModule,
     CategoriesModule],
   controllers: [AppController],
   providers: [AppService],
