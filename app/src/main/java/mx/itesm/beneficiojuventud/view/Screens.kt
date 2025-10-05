@@ -18,4 +18,5 @@ sealed class Screens(val route: String) {
     }
     data object OnboardingCategories : Screens("onboarding_categories")
     data object MainMenu : Screens("main_menu")
+    data object Profile : Screens("profile")
 }

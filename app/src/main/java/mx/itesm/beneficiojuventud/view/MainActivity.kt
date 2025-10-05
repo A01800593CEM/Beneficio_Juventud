@@ -65,7 +65,7 @@ private fun AppContent(appViewModel: AppViewModel = viewModel()) {
 @Composable
 private fun AppNav(startDestination: String, appViewModel: AppViewModel) {
     val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = startDestination) {
+    NavHost(navController = nav, startDestination = Screens.Profile.route) {
         composable(Screens.LoginRegister.route) { LoginRegister(nav) }
         composable(Screens.Login.route) { Login(nav, appViewModel) }
         composable(Screens.Register.route) { Register(nav, appViewModel = appViewModel) }
@@ -92,7 +92,7 @@ private fun AppNav(startDestination: String, appViewModel: AppViewModel) {
         composable(Screens.Onboarding.route){ Onboarding(nav, appViewModel) }
         composable(Screens.OnboardingCategories.route){ OnboardingCategories(nav) }
         composable(Screens.MainMenu.route){ MainMenu(nav) }
-
+        composable(Screens.Profile.route){ Profile(nav) }
     }
 }
 

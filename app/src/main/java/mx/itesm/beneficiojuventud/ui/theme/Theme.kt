@@ -1,7 +1,5 @@
 package mx.itesm.beneficiojuventud.ui.theme
 
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -27,15 +25,15 @@ private val LightColorScheme = lightColorScheme(
     background = Color(0xFFFFFFFF),
     surface = Color(0xFFFFFFFF),
 
-    // Texto sobre fondos blancos
+    // 🔹 Texto oscuro sobre fondo blanco
     onBackground = Color(0xFF000000),
     onSurface = Color(0xFF000000)
 )
 
 @Composable
 fun BeneficioJuventudTheme(
-    darkTheme: Boolean = false,          // Fuerza tema claro (opcional)
-    dynamicColor: Boolean = false,        // Desactiva colores dinámicos
+    darkTheme: Boolean = false,  // Puedes cambiar a isSystemInDarkTheme() si quieres detectar sistema
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme

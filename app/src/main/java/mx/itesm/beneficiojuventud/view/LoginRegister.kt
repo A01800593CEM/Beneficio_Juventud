@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.AltLoginButton
-import mx.itesm.beneficiojuventud.components.GradientDivider
+import mx.itesm.beneficiojuventud.components.GradientDivider_OR
 import mx.itesm.beneficiojuventud.components.MainButton
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -59,7 +59,7 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
                 MainButton("Regístrate", modifier = Modifier.padding(top = 20.dp)) {
                     nav.navigate(Screens.Register.route)
                 }
-                GradientDivider(modifier = modifier.padding(vertical = 50.dp))
+                GradientDivider_OR(modifier = modifier.padding(vertical = 50.dp))
                 AltLoginButton(
                     "Continuar con Google",
                     painterResource(id = R.drawable.logo_google),

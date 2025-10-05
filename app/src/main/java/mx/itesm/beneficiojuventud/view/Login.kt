@@ -19,7 +19,7 @@ import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.AltLoginButton
-import mx.itesm.beneficiojuventud.components.GradientDivider
+import mx.itesm.beneficiojuventud.components.GradientDivider_OR
 import mx.itesm.beneficiojuventud.components.PasswordTextField
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.AppViewModel
@@ -212,7 +212,7 @@ fun Login(nav: NavHostController, appViewModel: AppViewModel? = null, modifier: 
                 viewModel.signIn(email, password)
             }
 
-            GradientDivider(
+            GradientDivider_OR(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
             )
 
