@@ -32,6 +32,7 @@ import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
 private val CardWhite     = Color(0xFFFFFFFF)
 private val TextPrimary   = Color(0xFF616161)
@@ -39,12 +40,54 @@ private val TextSecondary = Color(0xFFAEAEAE)
 private val Danger        = Color(0xFFDC3A2C)
 
 @Composable
-fun Profile(nav: NavHostController) {
-    // Datos temporales internos (para no pasar props)
-    val name = "Ivan Serrano de León"
+fun Profile(
+    nav: NavHostController,
+    authViewModel: AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
+    // Datos temporales (mientras no conectas user real)
+    val name = authViewModel.getCurrentUserName() ?: "Iván"
     val email = "ivandl@beneficio.com"
     val appVersion = "1.0.01"
+
     var selectedTab by remember { mutableStateOf(BJTab.Perfil) }
+
+    // Estado de auth
+    val authState by authViewModel.authState.collectAsState()
+    var signOutRequested by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    // Navegar cuando el signOut termina OK
+    LaunchedEffect(authState.isLoading, authState.error, signOutRequested) {
+        if (signOutRequested && !authState.isLoading) {
+            if (authState.error == null) {
+                authViewModel.clearState()
+                nav.navigate(Screens.LoginRegister.route) {
+                    popUpTo(0) { inclusive = true }   // limpia back stack
+                    launchSingleTop = true
+                }
+            } else {
+                errorMsg = authState.error
+                signOutRequested = false
+            }
+        }
+    }
+
+    // Overlay de carga
+    if (authState.isLoading) {
+        LoadingDialog()
+    }
+
+    // Snackbar/alerta simple (usa tu propio SnackbarHost si ya tienes uno)
+    if (errorMsg != null) {
+        AlertDialog(
+            onDismissRequest = { errorMsg = null },
+            confirmButton = {
+                TextButton(onClick = { errorMsg = null }) { Text("OK") }
+            },
+            title = { Text("Error") },
+            text = { Text(errorMsg!!) }
+        )
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -53,7 +96,6 @@ fun Profile(nav: NavHostController) {
                 selected = selectedTab,
                 onSelect = { tab ->
                     selectedTab = tab
-                    // Navegación básica; ajusta las rutas si cambian
                     when (tab) {
                         BJTab.Menu      -> nav.navigate(Screens.MainMenu.route)
                         BJTab.Cupones   -> { /* nav.navigate(...) */ }
@@ -152,7 +194,7 @@ fun Profile(nav: NavHostController) {
                     icon = Icons.Outlined.MonitorHeart,
                     title = "Historial",
                     subtitle = "Actividad reciente de cupones",
-                    onClick = { /* nav.navigate(...) */ }
+                    onClick = { nav.navigate(Screens.EditProfile.route) }
                 )
                 ProfileItemCard(
                     icon = Icons.Outlined.Settings,
@@ -170,7 +212,11 @@ fun Profile(nav: NavHostController) {
                     icon = Icons.AutoMirrored.Outlined.Logout,
                     title = "Cerrar Sesión",
                     subtitle = "Hasta la próxima :)",
-                    onClick = { /* nav to login & limpiar sesión en el futuro */ },
+                    onClick = {
+                        // Dispara logout real
+                        signOutRequested = true
+                        authViewModel.signOut(globalSignOut = true)
+                    },
                     isLogout = true
                 )
 
@@ -187,6 +233,25 @@ fun Profile(nav: NavHostController) {
         }
     }
 }
+
+@Composable
+private fun LoadingDialog() {
+    AlertDialog(
+        onDismissRequest = { /* bloqueado mientras carga */ },
+        confirmButton = {},
+        title = { Text("Cerrando Sesión...") },
+        text = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                CircularProgressIndicator(strokeWidth = 3.dp)
+                Text("Por favor espera…")
+            }
+        }
+    )
+}
+
 
 @Composable
 private fun ProfileItemCard(

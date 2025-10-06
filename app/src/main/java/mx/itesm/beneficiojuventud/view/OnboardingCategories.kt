@@ -62,8 +62,8 @@ fun OnboardingCategories(
             "Personaliza tu\nExperiencia",
             style = TextStyle(
                 brush = gradient,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.ExtraBold
+                fontSize = 38.sp,
+                fontWeight = FontWeight.Black
             ),
             textAlign = TextAlign.Center
         )
@@ -71,6 +71,7 @@ fun OnboardingCategories(
         Text(
             "Selecciona al menos 3 categorías para personalizar tus promociones",
             style = TextStyle(fontSize = 14.sp, color = Color(0xFF7D7A7A)),
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center
         )
 
@@ -100,7 +101,7 @@ fun OnboardingCategories(
         ) {
             // TODO: Implementar navegación al menú principal cuando esté listo
             // Por ahora navegar de vuelta al login
-            nav.navigate(Screens.LoginRegister.route) {
+            nav.navigate(Screens.Profile.route) {
                 popUpTo(0) { inclusive = true }
             }
         }
@@ -116,8 +117,8 @@ private fun CategoryItem(
 ) {
     val borderBrush = if (selected) gradient else SolidColor(Color(0xFFE5E5E5))
     val borderWidth = if (selected) 2.dp else 1.dp
-    val textColor = if (selected) Color(0xFF008D96) else Color(0xFF2F2F2F)
-    val weight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+    val textColor = if (selected) Color(0xFF008D96) else Color(0xFF616161)
+    val weight = if (selected) FontWeight.Bold else FontWeight.Bold
 
     // Card + borde con Brush para replicar el estilo
     Card(

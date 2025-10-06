@@ -83,54 +83,7 @@ fun Onboarding(
                     .padding(horizontal = sidePad, vertical = 100.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Información del usuario y logout en la parte superior
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Info del usuario
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "Usuario",
-                            tint = Color(0xFF008D96),
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = authViewModel.getCurrentUserName() ?: "Usuario",
-                            style = TextStyle(
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF2F2F2F)
-                            )
-                        )
-                    }
 
-                    // Botón logout
-                    IconButton(
-                        onClick = {
-                            logoutPressed = true
-                            authViewModel.signOut()
-                        },
-                        enabled = !authState.isLoading
-                    ) {
-                        if (authState.isLoading && logoutPressed) {
-                            Text("...", color = Color(0xFFD32F2F), fontSize = 18.sp)
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.ExitToApp,
-                                contentDescription = "Cerrar sesión",
-                                tint = Color(0xFFD32F2F)
-                            )
-                        }
-                    }
-                }
 
                 Spacer(Modifier.height(if (isCompact) 8.dp else 16.dp))
 
@@ -139,8 +92,8 @@ fun Onboarding(
                     "Bienvenid@ a",
                     style = TextStyle(
                         fontSize = title1Size,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFF2F2F2F)
+                        fontWeight = FontWeight.Black,
+                        brush = Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96)))
                     ),
                     textAlign = TextAlign.Center
                 )
@@ -149,7 +102,7 @@ fun Onboarding(
                     style = TextStyle(
                         brush = Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96))),
                         fontSize = title2Size,
-                        fontWeight = FontWeight.Black
+                        fontWeight = FontWeight.ExtraBold
                     ),
                     textAlign = TextAlign.Center
                 )
@@ -159,7 +112,7 @@ fun Onboarding(
                 Text(
                     "Encuentra cupones hechos para ti",
                     style = TextStyle(
-                        fontSize = subtitleSize,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF7D7A7A)
                     ),
