@@ -17,6 +17,7 @@ gsonVersion = "3.0.0"
 foundation = "1.9.2"
 uiUnit = "1.9.2"
 amplify = "2.30.1"
+foundationLayout = "1.9.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -49,6 +50,7 @@ amplify-core = { group = "com.amplifyframework", name = "core", version.ref = "a
 amplify-auth = { group = "com.amplifyframework", name = "aws-auth-cognito", version.ref = "amplify" }
 amplify-datastore = { group = "com.amplifyframework", name = "aws-datastore", version.ref = "amplify" }
 amplify-api = { group = "com.amplifyframework", name = "aws-api", version.ref = "amplify" }
+androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -41,6 +41,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.foundation.layout)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     implementation(libs.androidx.core.ktx)
@@ -68,6 +69,7 @@ dependencies {
     implementation(libs.androidx.ui.unit)
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("androidx.compose.material:material:1.6.8")
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
