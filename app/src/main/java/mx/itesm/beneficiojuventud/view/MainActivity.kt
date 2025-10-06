@@ -93,6 +93,7 @@ private fun AppNav(startDestination: String, appViewModel: AppViewModel) {
         composable(Screens.OnboardingCategories.route){ OnboardingCategories(nav) }
         composable(Screens.MainMenu.route){ MainMenu(nav) }
         composable(Screens.Profile.route){ Profile(nav) }
+        composable(Screens.EditProfile.route){ EditProfile(nav) }
     }
 }
 

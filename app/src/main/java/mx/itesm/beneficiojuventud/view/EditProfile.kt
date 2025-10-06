@@ -36,9 +36,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
+import mx.itesm.beneficiojuventud.utils.ImageStorageManager
+import mx.itesm.beneficiojuventud.utils.AmplifyUserHelper
+import com.amplifyframework.core.Amplify
+import android.util.Log
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
 import mx.itesm.beneficiojuventud.components.GradientDivider
@@ -51,6 +56,7 @@ fun EditProfile(nav: NavHostController, modifier: Modifier = Modifier) {
     var selectedTab by remember { mutableStateOf(BJTab.Perfil) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val appVersion = "1.0.01"
 
     var name by rememberSaveable { mutableStateOf("Ivan Serrano de León") }
@@ -59,9 +65,40 @@ fun EditProfile(nav: NavHostController, modifier: Modifier = Modifier) {
     var birth by rememberSaveable { mutableStateOf("18 / 09 / 2004") }
 
     var avatarUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var profileImageUrl by remember { mutableStateOf<String?>(null) }
+    var isUploadingImage by remember { mutableStateOf(false) }
+    var currentUserProfileImageKey by remember { mutableStateOf<String?>(null) }
+
+    // Cargar imagen existente al abrir la pantalla
+    LaunchedEffect(Unit) {
+        val userId = AmplifyUserHelper.getCurrentUserId()
+        if (userId != null) {
+            // Usar directamente el path estándar del usuario
+            val userImagePath = "profile-images/$userId.jpg"
+            Log.d("EditProfile", "Intentando cargar imagen del usuario: $userImagePath")
+
+            val result = ImageStorageManager.getProfileImageUrl(userImagePath)
+            result.fold(
+                onSuccess = { url ->
+                    profileImageUrl = url
+                    currentUserProfileImageKey = userImagePath
+                    Log.d("EditProfile", "Imagen del usuario cargada: $userImagePath")
+                },
+                onFailure = { error ->
+                    Log.d("EditProfile", "No hay imagen de perfil para el usuario: ${error.message}")
+                }
+            )
+        }
+    }
+
     val pickImage = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> if (uri != null) avatarUri = uri }
+    ) { uri ->
+        if (uri != null) {
+            avatarUri = uri
+            profileImageUrl = null // Limpiar URL anterior al seleccionar nueva imagen
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -159,25 +196,48 @@ fun EditProfile(nav: NavHostController, modifier: Modifier = Modifier) {
                         .size(100.dp)
                         .clip(CircleShape)
                         .clickable {
-                            pickImage.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
+                            if (!isUploadingImage) {
+                                pickImage.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (avatarUri != null) {
-                        AsyncImage(
-                            model = avatarUri,
-                            contentDescription = "Foto de perfil",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.matchParentSize().clip(CircleShape)
-                        )
-                    } else {
-                        Image(
-                            painter = painterResource(id = R.drawable.user_icon),
-                            contentDescription = "Avatar",
-                            modifier = Modifier.size(90.dp)
-                        )
+                    when {
+                        isUploadingImage -> {
+                            // Mostrar loading mientras se sube la imagen
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(40.dp),
+                                color = Color(0xFF008D96)
+                            )
+                        }
+                        avatarUri != null -> {
+                            // Imagen seleccionada localmente
+                            AsyncImage(
+                                model = avatarUri,
+                                contentDescription = "Foto de perfil",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.matchParentSize().clip(CircleShape)
+                            )
+                        }
+                        profileImageUrl != null -> {
+                            // Imagen desde S3
+                            AsyncImage(
+                                model = profileImageUrl,
+                                contentDescription = "Foto de perfil",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.matchParentSize().clip(CircleShape)
+                            )
+                        }
+                        else -> {
+                            // Imagen por defecto
+                            Image(
+                                painter = painterResource(id = R.drawable.user_icon),
+                                contentDescription = "Avatar",
+                                modifier = Modifier.size(90.dp)
+                            )
+                        }
                     }
                 }
 
@@ -222,13 +282,71 @@ fun EditProfile(nav: NavHostController, modifier: Modifier = Modifier) {
 
                 // Botón principal
                 MainButton(
-                    text = "Guardar Cambios",
+                    text = if (isUploadingImage) "Guardando..." else "Guardar Cambios",
                     onClick = {
                         scope.launch {
-                            snackbarHostState.showSnackbar("Cambios guardados correctamente.")
+                            try {
+                                var newImageKey: String? = null
+
+                                // Si hay una nueva imagen seleccionada, subirla primero
+                                if (avatarUri != null) {
+                                    isUploadingImage = true
+
+                                    // Obtener el ID del usuario autenticado
+                                    val userId = AmplifyUserHelper.getCurrentUserId()
+                                    if (userId == null) {
+                                        snackbarHostState.showSnackbar("Error: Usuario no autenticado")
+                                        return@launch
+                                    }
+
+                                    val uploadResult = ImageStorageManager.uploadProfileImage(
+                                        context = context,
+                                        imageUri = avatarUri!!,
+                                        userId = userId
+                                    )
+
+                                    uploadResult.fold(
+                                        onSuccess = { imageKey ->
+                                            newImageKey = imageKey
+                                            currentUserProfileImageKey = imageKey
+                                            avatarUri = null // Limpiar URI local
+
+                                            // La imagen se guarda automáticamente con el path del usuario
+                                            Log.d("EditProfile", "Imagen subida y guardada exitosamente: $imageKey")
+
+                                            // Cargar la nueva URL para mostrar inmediatamente
+                                            scope.launch {
+                                                val urlResult = ImageStorageManager.getProfileImageUrl(imageKey)
+                                                urlResult.fold(
+                                                    onSuccess = { url ->
+                                                        profileImageUrl = url
+                                                        Log.d("EditProfile", "URL de imagen obtenida: $url")
+                                                    },
+                                                    onFailure = { urlError ->
+                                                        Log.e("EditProfile", "Error obteniendo URL: ${urlError.message}")
+                                                    }
+                                                )
+                                            }
+                                        },
+                                        onFailure = { error ->
+                                            Log.e("EditProfile", "Error subiendo imagen: ${error.message}")
+                                        }
+                                    )
+
+                                    isUploadingImage = false
+                                }
+
+                                snackbarHostState.showSnackbar("Cambios guardados correctamente.")
+
+                            } catch (e: Exception) {
+                                isUploadingImage = false
+                                Log.e("EditProfile", "Error guardando cambios: ${e.message}")
+                                snackbarHostState.showSnackbar("Error al guardar cambios: ${e.message}")
+                            }
                         }
                     }
                 )
+
 
                 Spacer(Modifier.height(80.dp)) // Espacio adicional para que el scroll no tape el botón
             }
