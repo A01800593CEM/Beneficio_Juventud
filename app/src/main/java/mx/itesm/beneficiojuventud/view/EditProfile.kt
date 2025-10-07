@@ -15,6 +15,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.ChevronLeft
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Person
@@ -97,14 +99,15 @@ fun EditProfile(nav: NavHostController, modifier: Modifier = Modifier) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { nav.popBackStack() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Volver"
+                                imageVector = Icons.Outlined.ChevronLeft,
+                                contentDescription = "Volver",
+                                modifier = Modifier.size(30.dp)
                             )
                         }
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = "Editar Perfil",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
+                            fontWeight = FontWeight.Black,
                             fontSize = 20.sp,
                             color = Color(0xFF616161)
                         )
@@ -112,7 +115,8 @@ fun EditProfile(nav: NavHostController, modifier: Modifier = Modifier) {
                     Icon(
                         imageVector = Icons.Outlined.NotificationsNone,
                         contentDescription = "Notificaciones",
-                        tint = Color(0xFF008D96)
+                        tint = Color(0xFF008D96),
+                        modifier = Modifier.size(26.dp)
                     )
                 }
 

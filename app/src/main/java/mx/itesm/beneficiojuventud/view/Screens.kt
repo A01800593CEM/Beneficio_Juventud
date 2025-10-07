@@ -20,4 +20,7 @@ sealed class Screens(val route: String) {
     data object MainMenu : Screens("main_menu")
     data object Profile : Screens("profile")
     data object EditProfile : Screens ("edit_profile")
+    data object History : Screens ("history")
+    data object Settings : Screens ("settings")
+    data object Help : Screens ("help")
 }
