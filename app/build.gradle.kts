@@ -60,7 +60,7 @@ dependencies {
     implementation(libs.amplify.auth)
     implementation(libs.amplify.datastore)
     implementation(libs.amplify.api)
-    implementation(libs.amplify.storage.s3)
+    implementation(libs.amplify.storage)
 
     implementation(libs.retrofit.lib)
     implementation(libs.converter.lib)
