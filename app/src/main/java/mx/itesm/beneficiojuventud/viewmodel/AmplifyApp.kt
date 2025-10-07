@@ -6,7 +6,6 @@ import com.amplifyframework.AmplifyException
 import com.amplifyframework.auth.cognito.AWSCognitoAuthPlugin
 import com.amplifyframework.storage.s3.AWSS3StoragePlugin
 import com.amplifyframework.core.Amplify
-import com.amplifyframework.storage.s3.AWSS3StoragePlugin
 
 class AmplifyApp : Application() {
     companion object {

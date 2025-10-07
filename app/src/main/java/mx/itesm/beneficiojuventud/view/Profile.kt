@@ -34,9 +34,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.amplifyframework.core.Amplify
-import com.amplifyframework.storage.StorageException
 import com.amplifyframework.storage.StoragePath
-import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
@@ -254,19 +252,19 @@ fun Profile(
                     icon = Icons.Outlined.MonitorHeart,
                     title = "Historial",
                     subtitle = "Actividad reciente de cupones",
-                    onClick = { /* nav.navigate(...) */ }
+                    onClick = { nav.navigate(Screens.History.route) }
                 )
                 ProfileItemCard(
                     icon = Icons.Outlined.Settings,
                     title = "Configuración",
                     subtitle = "Preferencias y notificaciones",
-                    onClick = { /* nav.navigate(...) */ }
+                    onClick = { nav.navigate(Screens.Settings.route)}
                 )
                 ProfileItemCard(
                     icon = Icons.AutoMirrored.Outlined.HelpOutline,
                     title = "Ayuda y Soporte",
                     subtitle = "Preguntas frecuentes y contacto",
-                    onClick = { /* nav.navigate(...) */ }
+                    onClick = { nav.navigate(Screens.Help.route) }
                 )
                 ProfileItemCard(
                     icon = Icons.AutoMirrored.Outlined.Logout,
