@@ -94,6 +94,10 @@ private fun AppNav(startDestination: String, appViewModel: AppViewModel) {
         composable(Screens.MainMenu.route){ MainMenu(nav) }
         composable(Screens.Profile.route){ Profile(nav) }
         composable(Screens.EditProfile.route){ EditProfile(nav) }
+        composable(Screens.History.route){ History(nav) }
+        composable(Screens.Settings.route){ Settings(nav) }
+        composable(Screens.Help.route){ Help(nav) }
+
     }
 }
 
