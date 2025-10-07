@@ -1,4 +1,4 @@
-package mx.itesm.beneficiojuventud.viewcollab
+package mx.itesm.beneficiojuventud.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,29 +45,29 @@ fun BJBottomBarCollab(
                 onClick = { onSelect(tabs[0]) },
                 icon = { Icon(tabs[0].icon, contentDescription = tabs[0].label) },
                 label = { Text(tabs[0].label, fontSize = 10.sp) },
-                colors = navigationBarItemColors(selected, tabs[0])
+                colors = navigationBarItemColors()
             )
             NavigationBarItem(
                 selected = selected == tabs[1],
                 onClick = { onSelect(tabs[1]) },
                 icon = { Icon(tabs[1].icon, contentDescription = tabs[1].label) },
                 label = { Text(tabs[1].label, fontSize = 10.sp) },
-                colors = navigationBarItemColors(selected, tabs[1])
+                colors = navigationBarItemColors()
             )
-            Spacer(modifier = Modifier.weight(1f)) // Espacio para el botón '+'
+            Spacer(modifier = Modifier.weight(1f))
             NavigationBarItem(
                 selected = selected == tabs[2],
                 onClick = { onSelect(tabs[2]) },
                 icon = { Icon(tabs[2].icon, contentDescription = tabs[2].label) },
                 label = { Text(tabs[2].label, fontSize = 10.sp) },
-                colors = navigationBarItemColors(selected, tabs[2])
+                colors = navigationBarItemColors()
             )
             NavigationBarItem(
                 selected = selected == tabs[3],
                 onClick = { onSelect(tabs[3]) },
                 icon = { Icon(tabs[3].icon, contentDescription = tabs[3].label) },
                 label = { Text(tabs[3].label, fontSize = 10.sp) },
-                colors = navigationBarItemColors(selected, tabs[3])
+                colors = navigationBarItemColors()
             )
         }
 
@@ -92,7 +92,7 @@ fun BJBottomBarCollab(
 }
 
 @Composable
-private fun navigationBarItemColors(selected: BJTabCollab, current: BJTabCollab) = NavigationBarItemDefaults.colors(
+private fun navigationBarItemColors() = NavigationBarItemDefaults.colors(
     selectedIconColor = Teal,
     unselectedIconColor = Color(0xFF969696),
     selectedTextColor = Teal,
