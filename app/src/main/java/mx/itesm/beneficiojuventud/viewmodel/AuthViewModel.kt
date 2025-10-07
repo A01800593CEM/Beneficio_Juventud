@@ -250,36 +250,44 @@ class AuthViewModel : ViewModel() {
      * Obtener información del usuario actual
      */
     fun getCurrentUser() {
-        // Solo obtener si no hemos obtenido ya o si estamos en un estado inicial
-        if (currentUser == null && !_authState.value.isLoading) {
+        // Siempre obtener información del usuario para mantener datos actualizados
+        if (!_authState.value.isLoading) {
             viewModelScope.launch {
                 val result = authRepository.getCurrentUser()
                 result.fold(
                     onSuccess = { user ->
                         // Usuario obtenido exitosamente, mantener estado actual
-                        currentUser = user?.username
+                        _currentUser.value = user?.username
+                        _currentUserId.value = user?.userId
+                        Log.d("AuthViewModel", "User loaded: username=${_currentUser.value}, userId=${_currentUserId.value}")
                     },
                     onFailure = { error ->
                         // Error obteniendo usuario, posiblemente no autenticado
-                        currentUser = null
+                        _currentUser.value = null
+                        _currentUserId.value = null
+                        Log.d("AuthViewModel", "User not found or not authenticated")
                     }
                 )
             }
         }
     }
 
-    private var currentUser: String? = null
+    private val _currentUser = MutableStateFlow<String?>(null)
+    private val _currentUserId = MutableStateFlow<String?>(null)
 
-    fun getCurrentUserName(): String? = currentUser
+    val currentUserId: StateFlow<String?> = _currentUserId.asStateFlow()
+
+    fun getCurrentUserName(): String? = _currentUser.value
+    fun getCurrentUserId(): String? = _currentUserId.value
 
     /**
      * Limpiar estado
      */
     fun clearState() {
         _authState.value = AuthState()
-        // También limpiar información del usuario al hacer logout
-        if (!_authState.value.isSuccess) {
-            currentUser = null
-        }
+        // Siempre limpiar información del usuario al hacer logout
+        _currentUser.value = null
+        _currentUserId.value = null
+        Log.d("AuthViewModel", "State cleared: username and userId reset to null")
     }
 }

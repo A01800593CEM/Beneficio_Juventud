@@ -1,10 +1,13 @@
 package mx.itesm.beneficiojuventud.view
 
+import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -18,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -27,12 +32,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
+import com.amplifyframework.core.Amplify
+import com.amplifyframework.storage.StorageException
+import com.amplifyframework.storage.StoragePath
+import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import java.io.File
 
 private val CardWhite     = Color(0xFFFFFFFF)
 private val TextPrimary   = Color(0xFF616161)
@@ -48,8 +59,34 @@ fun Profile(
     val name = authViewModel.getCurrentUserName() ?: "Iván"
     val email = "ivandl@beneficio.com"
     val appVersion = "1.0.01"
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableStateOf(BJTab.Perfil) }
+    var profileImageUrl by remember { mutableStateOf<String?>(null) }
+    var isLoadingImage by remember { mutableStateOf(false) }
+
+    // Load user info when screen opens
+    LaunchedEffect(Unit) {
+        authViewModel.getCurrentUser()
+    }
+
+    val currentUserId by authViewModel.currentUserId.collectAsState()
+    val actualUserId = currentUserId ?: "anonymous"
+    Log.d("Profile", "Current User ID: $actualUserId")
+
+    // Load profile image on startup
+    LaunchedEffect(actualUserId) {
+        try {
+            downloadProfileImageForDisplay(context, actualUserId,
+                onSuccess = { url -> profileImageUrl = url },
+                onError = { Log.d("Profile", "Storage not configured yet: $it") },
+                onLoading = { loading -> isLoadingImage = loading }
+            )
+        } catch (e: Exception) {
+            Log.d("Profile", "Storage not configured yet, skipping image download")
+        }
+    }
 
     // Estado de auth
     val authState by authViewModel.authState.collectAsState()
@@ -144,13 +181,36 @@ fun Profile(
                 Spacer(Modifier.height(10.dp))
 
                 // Avatar
-                Image(
-                    painter = painterResource(id = R.drawable.user_icon),
-                    contentDescription = "Avatar",
+                Box(
                     modifier = Modifier
                         .size(100.dp)
-                        .clip(RoundedCornerShape(50))
-                )
+                        .clip(CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when {
+                        isLoadingImage -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(40.dp),
+                                color = Color(0xFF008D96)
+                            )
+                        }
+                        profileImageUrl != null -> {
+                            AsyncImage(
+                                model = profileImageUrl,
+                                contentDescription = "Foto de perfil",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.matchParentSize().clip(CircleShape)
+                            )
+                        }
+                        else -> {
+                            Image(
+                                painter = painterResource(id = R.drawable.user_icon),
+                                contentDescription = "Avatar",
+                                modifier = Modifier.size(90.dp)
+                            )
+                        }
+                    }
+                }
 
                 Spacer(Modifier.height(16.dp))
 
@@ -188,13 +248,13 @@ fun Profile(
                     icon = Icons.Outlined.PersonOutline,
                     title = "Editar Perfil",
                     subtitle = "Actualiza tu información personal",
-                    onClick = { /* nav.navigate(...) */ }
+                    onClick = { nav.navigate(Screens.EditProfile.route) }
                 )
                 ProfileItemCard(
                     icon = Icons.Outlined.MonitorHeart,
                     title = "Historial",
                     subtitle = "Actividad reciente de cupones",
-                    onClick = { nav.navigate(Screens.EditProfile.route) }
+                    onClick = { /* nav.navigate(...) */ }
                 )
                 ProfileItemCard(
                     icon = Icons.Outlined.Settings,
@@ -293,6 +353,43 @@ private fun ProfileItemCard(
             }
             Icon(Icons.Outlined.ChevronRight, null, tint = Color(0xFF9AA1AA), modifier = Modifier.size(20.dp))
         }
+    }
+}
+
+// Download profile image for display in Profile screen
+fun downloadProfileImageForDisplay(
+    context: Context,
+    userId: String,
+    onSuccess: (String) -> Unit,
+    onError: (String) -> Unit,
+    onLoading: (Boolean) -> Unit
+) {
+    try {
+        onLoading(true)
+        Log.d("ProfileDisplay", "Starting download for user: $userId")
+
+        val storagePath = StoragePath.fromString("public/profile-images/$userId.jpg")
+        Log.d("ProfileDisplay", "Storage path: public/profile-images/$userId.jpg")
+        val localFile = File(context.cacheDir, "displayed_profile_$userId.jpg")
+
+        Amplify.Storage.downloadFile(
+            storagePath,
+            localFile,
+            { result ->
+                Log.d("ProfileDisplay", "Download completed: ${result.file.path}")
+                onLoading(false)
+                onSuccess(localFile.absolutePath)
+            },
+            { error ->
+                Log.e("ProfileDisplay", "Download failed", error)
+                onLoading(false)
+                onError(error.message ?: "Error desconocido")
+            }
+        )
+    } catch (e: Exception) {
+        Log.e("ProfileDisplay", "Exception during download", e)
+        onLoading(false)
+        onError(e.message ?: "Error desconocido")
     }
 }
 

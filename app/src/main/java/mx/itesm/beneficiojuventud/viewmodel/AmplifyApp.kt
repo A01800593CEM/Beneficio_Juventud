@@ -5,6 +5,7 @@ import android.util.Log
 import com.amplifyframework.AmplifyException
 import com.amplifyframework.auth.cognito.AWSCognitoAuthPlugin
 import com.amplifyframework.core.Amplify
+import com.amplifyframework.storage.s3.AWSS3StoragePlugin
 
 class AmplifyApp : Application() {
     companion object {
@@ -31,6 +32,9 @@ class AmplifyApp : Application() {
             // 1. Agregar plugins
             Amplify.addPlugin(AWSCognitoAuthPlugin())
             Log.d(TAG, "Plugin Auth agregado exitosamente")
+
+            Amplify.addPlugin(AWSS3StoragePlugin())
+            Log.d(TAG, "Plugin Storage agregado exitosamente")
 
             // 2. Configurar Amplify (lee automáticamente amplifyconfiguration.json de res/raw)
             Amplify.configure(applicationContext)

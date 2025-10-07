@@ -40,5 +40,14 @@
         }
       }
     }
+  },
+  "storage": {
+    "plugins": {
+      "awsS3StoragePlugin": {
+        "bucket": "beneficiojuventud-profile-images",
+        "region": "us-east-2",
+        "defaultAccessLevel": "public"
+      }
+    }
   }
 }
