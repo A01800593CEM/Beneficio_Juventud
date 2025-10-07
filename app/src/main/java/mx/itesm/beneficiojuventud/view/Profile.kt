@@ -1,11 +1,12 @@
 package mx.itesm.beneficiojuventud.view
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -29,19 +31,15 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
-import mx.itesm.beneficiojuventud.R
-import mx.itesm.beneficiojuventud.utils.ImageStorageManager
-import mx.itesm.beneficiojuventud.utils.AmplifyUserHelper
 import com.amplifyframework.core.Amplify
 import kotlinx.coroutines.launch
-import android.util.Log
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalContext
+import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.utils.AmplifyUserHelper
+import mx.itesm.beneficiojuventud.utils.ImageStorageManager
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
 private val CardWhite     = Color(0xFFFFFFFF)
@@ -66,6 +64,11 @@ fun Profile(
     var signOutRequested by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
 
+    // Estado para manejar la imagen de perfil
+    var profileImageUrl by remember { mutableStateOf<String?>(null) }
+    var isLoadingImage by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
     // Navegar cuando el signOut termina OK
     LaunchedEffect(authState.isLoading, authState.error, signOutRequested) {
         if (signOutRequested && !authState.isLoading) {
@@ -78,11 +81,9 @@ fun Profile(
             } else {
                 errorMsg = authState.error
                 signOutRequested = false
-    // Estado para manejar la imagen de perfil
-    var profileImageUrl by remember { mutableStateOf<String?>(null) }
-    var isLoadingImage by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
+            }
+        }
+    }
 
     // Efecto para cargar la imagen de perfil al inicio
     LaunchedEffect(Unit) {
@@ -316,7 +317,6 @@ private fun LoadingDialog() {
     )
 }
 
-
 @Composable
 private fun ProfileItemCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -351,7 +351,13 @@ private fun ProfileItemCard(
                 Column {
                     Text(text = title, color = textColor, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                     if (subtitle.isNotEmpty()) {
-                        Text(text = subtitle, color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            text = subtitle,
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
@@ -359,7 +365,6 @@ private fun ProfileItemCard(
         }
     }
 }
-
 
 /* --- Preview con nav falso --- */
 @Preview(showBackground = true, showSystemUi = true)
