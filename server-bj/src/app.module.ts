@@ -4,6 +4,9 @@ import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
+import { CollaboratorsModule } from './collaborators/collaborators.module';
+import { CategoriesModule } from './categories/categories.module';
+import { PromotionsModule } from './promotions/promotions.module';
 
 
 @Module({
@@ -28,7 +31,10 @@ import { UsersModule } from './users/users.module';
         synchronize: false,
       }),
     }),
-    UsersModule
+    UsersModule,
+    CollaboratorsModule,
+    CategoriesModule,
+    PromotionsModule
   ],
   controllers: [AppController],
   providers: [AppService],
