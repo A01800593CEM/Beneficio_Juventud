@@ -7,7 +7,8 @@ data class UserProfile(
     val fechaNacimiento: String, // Formato ISO (YYYY-MM-DD) para base de datos
     val telefono: String,
     val email: String,
-    val categorias: List<String> = emptyList() // Para guardar las categorías seleccionadas del onboarding
+    val categorias: List<String> = emptyList(), // Para guardar las categorías seleccionadas del onboarding
+    val profileImageKey: String? = null // Key de la imagen en S3
 )
 
 data class RegistrationData(

@@ -50,6 +50,7 @@ amplify-core = { group = "com.amplifyframework", name = "core", version.ref = "a
 amplify-auth = { group = "com.amplifyframework", name = "aws-auth-cognito", version.ref = "amplify" }
 amplify-datastore = { group = "com.amplifyframework", name = "aws-datastore", version.ref = "amplify" }
 amplify-api = { group = "com.amplifyframework", name = "aws-api", version.ref = "amplify" }
+amplify-storage-s3 = { group = "com.amplifyframework", name = "aws-storage-s3", version.ref = "amplify" }
 androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
 
 [plugins]

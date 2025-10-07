@@ -2,6 +2,7 @@ package mx.itesm.beneficiojuventud.view
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -27,7 +28,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
 import mx.itesm.beneficiojuventud.R
+import mx.itesm.beneficiojuventud.utils.ImageStorageManager
+import mx.itesm.beneficiojuventud.utils.AmplifyUserHelper
+import com.amplifyframework.core.Amplify
+import kotlinx.coroutines.launch
+import android.util.Log
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
 import mx.itesm.beneficiojuventud.components.GradientDivider
@@ -68,6 +78,35 @@ fun Profile(
             } else {
                 errorMsg = authState.error
                 signOutRequested = false
+    // Estado para manejar la imagen de perfil
+    var profileImageUrl by remember { mutableStateOf<String?>(null) }
+    var isLoadingImage by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Efecto para cargar la imagen de perfil al inicio
+    LaunchedEffect(Unit) {
+        scope.launch {
+            val userId = AmplifyUserHelper.getCurrentUserId()
+            if (userId != null) {
+                // Usar directamente el path estándar del usuario
+                val userImagePath = "profile-images/$userId.jpg"
+                Log.d("Profile", "Intentando cargar imagen del usuario: $userImagePath")
+                isLoadingImage = true
+
+                val result = ImageStorageManager.getProfileImageUrl(userImagePath)
+                result.fold(
+                    onSuccess = { url ->
+                        profileImageUrl = url
+                        Log.d("Profile", "Imagen cargada exitosamente: $url")
+                    },
+                    onFailure = { error ->
+                        Log.d("Profile", "No hay imagen de perfil para el usuario: ${error.message}")
+                    }
+                )
+                isLoadingImage = false
+            } else {
+                Log.e("Profile", "Usuario no autenticado")
             }
         }
     }
@@ -144,13 +183,38 @@ fun Profile(
                 Spacer(Modifier.height(10.dp))
 
                 // Avatar
-                Image(
-                    painter = painterResource(id = R.drawable.user_icon),
-                    contentDescription = "Avatar",
+                Box(
                     modifier = Modifier
                         .size(100.dp)
-                        .clip(RoundedCornerShape(50))
-                )
+                        .clip(CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when {
+                        isLoadingImage -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(40.dp),
+                                color = Color(0xFF008D96)
+                            )
+                        }
+                        profileImageUrl != null -> {
+                            AsyncImage(
+                                model = profileImageUrl,
+                                contentDescription = "Foto de perfil",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(CircleShape)
+                            )
+                        }
+                        else -> {
+                            Image(
+                                painter = painterResource(id = R.drawable.user_icon),
+                                contentDescription = "Avatar",
+                                modifier = Modifier.size(90.dp)
+                            )
+                        }
+                    }
+                }
 
                 Spacer(Modifier.height(16.dp))
 
@@ -188,7 +252,7 @@ fun Profile(
                     icon = Icons.Outlined.PersonOutline,
                     title = "Editar Perfil",
                     subtitle = "Actualiza tu información personal",
-                    onClick = { /* nav.navigate(...) */ }
+                    onClick = { nav.navigate(Screens.EditProfile.route) }
                 )
                 ProfileItemCard(
                     icon = Icons.Outlined.MonitorHeart,
@@ -295,6 +359,7 @@ private fun ProfileItemCard(
         }
     }
 }
+
 
 /* --- Preview con nav falso --- */
 @Preview(showBackground = true, showSystemUi = true)
