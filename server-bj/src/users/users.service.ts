@@ -12,9 +12,9 @@ export class UsersService {
     private usersRepository: Repository<User>
   ) {}
   
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: CreateUserDto): Promise<User> {
     const user = this.usersRepository.create(createUserDto)
-    return this.usersRepository.insert(user)
+    return this.usersRepository.save(user)
   }
 
   async findAll(): Promise<User[]> {

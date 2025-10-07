@@ -5,7 +5,7 @@ import { UserState } from "../enums/user-state.enum";
 export class CreateUserDto {
     @IsString()
     @IsNotEmpty()
-    firstName: string;
+    name: string;
 
     @IsString()
     @IsNotEmpty()
