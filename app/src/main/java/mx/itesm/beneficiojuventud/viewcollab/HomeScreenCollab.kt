@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.viewcollab
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -29,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBarCollab
 import mx.itesm.beneficiojuventud.components.BJTabCollab
 import mx.itesm.beneficiojuventud.components.GradientDivider
@@ -61,9 +64,16 @@ fun HomeScreenCollab(nav: NavHostController) {
                 .background(Color.White)
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(50.dp))
+            Spacer(Modifier.height(16.dp))
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "Logo de la App",
+                modifier = Modifier.size(width = 45.dp, height = 33.dp)
+            )
+            Spacer(Modifier.height(24.dp))
             HeaderSectionCollab()
             Spacer(Modifier.height(24.dp))
             CtaSectionCollab()
@@ -112,7 +122,11 @@ private fun HeaderSectionCollab() {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Hola, María",
-                    style = TextStyle(brush = TextGradient, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                    style = TextStyle(
+                        brush = TextGradient,
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.Black
+                    )
                 )
                 Text(
                     text = "La Bella Italia",
@@ -135,29 +149,22 @@ private fun HeaderSectionCollab() {
 
 @Composable
 private fun CtaSectionCollab() {
-    Surface(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White,
-        border = BorderStroke(1.dp, Color(0xFFF0F0F0))
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier.padding(vertical = 16.dp, horizontal = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "¿Listo para atraer más clientes?",
-                fontWeight = FontWeight.Black,
-                fontSize = 18.sp,
-                color = TextGrey
-            )
-            Text(
-                text = "Genera una nueva promoción",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextGrey
-            )
-        }
+        Text(
+            text = "¿Listo para atraer más clientes?",
+            fontWeight = FontWeight.Black,
+            fontSize = 18.sp,
+            color = TextGrey
+        )
+        Text(
+            text = "Genera una nueva promoción",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextGrey
+        )
     }
 }
 
