@@ -1,4 +1,4 @@
-package mx.itesm.beneficiojuventud.components
+package mx.itesm.beneficiojuventud.viewcollab
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

@@ -1,4 +1,4 @@
-package mx.itesm.beneficiojuventud.components
+package mx.itesm.beneficiojuventud.viewcollab
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
