@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, OneToMany } from "typeorm";
 import { UserState } from "../enums/user-state.enum";
+import { Booking } from "src/bookings/entities/booking.entity";
 
 @Entity({name: "usuario"})
 export class User {
@@ -36,4 +37,8 @@ export class User {
         name: "estado_cuenta"
     })
     accountState: UserState;
+
+    @OneToMany(() => Booking, booking => booking.user)
+    bookings: Booking[];
+
 }

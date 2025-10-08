@@ -6,7 +6,6 @@ import {
   CreateDateColumn, 
   UpdateDateColumn, 
   ManyToMany,
-  OneToMany
 } from 'typeorm';
 import { Category } from '../../categories/entities/category.entity';
 import { CollaboratorState } from '../enums/collaborator-state.enum';
