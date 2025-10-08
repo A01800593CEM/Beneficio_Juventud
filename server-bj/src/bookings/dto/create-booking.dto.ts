@@ -4,17 +4,17 @@ import { BookStatus } from '../enums/book-status.enum';
 
 export class CreateBookingDto {
   @IsInt()
-  booking_id: number;
+  bookingId: number;
 
   @IsInt()
-  promotion_id: number;
+  promotionId: number;
 
   @IsDate() @Type(() => Date)
-  limit_use_date?: Date;
+  limitUseDate?: Date;
 
   @IsEnum(BookStatus)
-  BookStatus: BookStatus;
+  bookStatus: BookStatus;
 
   @IsOptional() @IsInt()
-  booked_promotion?: number;
+  bookedPromotion?: number;
 }

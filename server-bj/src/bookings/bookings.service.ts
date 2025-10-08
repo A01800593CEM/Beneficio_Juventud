@@ -12,23 +12,23 @@ export class BookingsService {
     private bookingsRepository: Repository<Booking>,
   ) {}
 
-  async create(createBookingDto: CreateBookingDto) {
+  async create(createBookingDto: CreateBookingDto): Promise<Booking> {
     const booking = this.bookingsRepository.create(createBookingDto);
     return this.bookingsRepository.save(booking);
   }
 
-  async findAll() {
+  async findAll(): Promise<Booking[]> {
     return this.bookingsRepository.find({ relations: ['user', 'promotion'] });
   }
 
-  async findOne(id: number) {
+  async findOne(id: number): Promise<Booking | null> {
     return this.bookingsRepository.findOne({
       where: { bookingId: id },
       relations: ['user', 'promotion'],
     });
   }
 
-  async update(id: number, updateBookingDto: UpdateBookingDto) {
+  async update(id: number, updateBookingDto: UpdateBookingDto): Promise<Booking | null> {
     const booking = await this.bookingsRepository.preload({
       bookingId: id,
       ...updateBookingDto,
@@ -41,7 +41,15 @@ export class BookingsService {
     return this.bookingsRepository.save(booking);
   }
 
-  remove(id: number) {
-    return this.bookingsRepository.delete(id);
+  async remove(id: number): Promise<void> {
+    await this.bookingsRepository.delete(id);
+  }
+
+  // Service method to find bookings by userId
+  async findByUserId(userId: number): Promise<Booking[]> {
+    return this.bookingsRepository.find({
+      where: { user: { id: userId } },
+      relations: ['user', 'promotion'],
+    });
   }
 }

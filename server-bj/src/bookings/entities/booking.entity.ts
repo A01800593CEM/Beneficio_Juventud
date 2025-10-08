@@ -4,7 +4,6 @@ import {
   Column,
   CreateDateColumn,
   ManyToOne,
-  JoinColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Promotion } from '../../promotions/entities/promotion.entity';
@@ -16,12 +15,10 @@ export class Booking {
   bookingId: number;
 
   @ManyToOne(() => User, user => user.bookings)
-  @JoinColumn({ name: 'usuario_id' })
-  user: User;
+  user: User[];
 
   @ManyToOne(() => Promotion, promotion => promotion.bookings)
-  @JoinColumn({ name: 'promocion_id' })
-  promotion: Promotion;
+  promotion: Promotion[];
 
   @CreateDateColumn({ name: 'fecha_reserva' })
   bookingDate: Date;
