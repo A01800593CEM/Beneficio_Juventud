@@ -14,11 +14,7 @@ export class Booking {
   @PrimaryGeneratedColumn({ name: 'reserva_id' })
   bookingId: number;
 
-  @ManyToOne(() => User, user => user.bookings)
-  user: User[];
-
-  @ManyToOne(() => Promotion, promotion => promotion.bookings)
-  promotion: Promotion[];
+  
 
   @CreateDateColumn({ name: 'fecha_reserva' })
   bookingDate: Date;
@@ -36,4 +32,11 @@ export class Booking {
 
   @Column({ name: 'promocion_reservada', type: 'int', nullable: true })
   bookedPromotion: number | null;
+
+  //Relations
+  @ManyToOne(() => User, user => user.bookings)
+  user: User[];
+
+  @ManyToOne(() => Promotion, promotion => promotion.bookings)
+  promotion: Promotion[];
 }
