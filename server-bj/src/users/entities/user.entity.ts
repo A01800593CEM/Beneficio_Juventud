@@ -1,5 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, OneToMany } from "typeorm";
+import type { Relation } from 'typeorm';
 import { UserState } from "../enums/user-state.enum";
+import { Favorite } from "src/favorites/entities/favorite.entity";
 
 @Entity({name: "usuario"})
 export class User {
@@ -36,4 +38,9 @@ export class User {
         name: "estado_cuenta"
     })
     accountState: UserState;
+    
+    @OneToMany(() => Favorite, favorite => favorite.user)
+    favorites: Relation<Favorite[]>;
+
+
 }

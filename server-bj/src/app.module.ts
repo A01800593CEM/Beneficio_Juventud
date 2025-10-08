@@ -7,6 +7,7 @@ import { UsersModule } from './users/users.module';
 import { CollaboratorsModule } from './collaborators/collaborators.module';
 import { CategoriesModule } from './categories/categories.module';
 import { PromotionsModule } from './promotions/promotions.module';
+import { FavoritesModule } from './favorites/favorites.module';
 
 
 @Module({
@@ -34,7 +35,8 @@ import { PromotionsModule } from './promotions/promotions.module';
     UsersModule,
     CollaboratorsModule,
     CategoriesModule,
-    PromotionsModule
+    PromotionsModule,
+    FavoritesModule
   ],
   controllers: [AppController],
   providers: [AppService],
