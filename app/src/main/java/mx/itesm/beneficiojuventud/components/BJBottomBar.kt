@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /** Tabs del proyecto */
-enum class BJTab { Menu, Cupones, Favoritos, Perfil }
+enum class BJTab { Home, Coupons, Favorites, Profile }
 
 /** Icono con gradiente */
 @Composable
@@ -125,37 +125,37 @@ fun BJBottomBar(
 
         // Ítems del menú
         NavigationBarItem(
-            selected = selected == BJTab.Menu,
-            onClick = { onSelect(BJTab.Menu) },
-            icon = { iconContent(Icons.Outlined.Home, selected == BJTab.Menu) },
-            label = { label("Menú", selected == BJTab.Menu) },
+            selected = selected == BJTab.Home,
+            onClick = { onSelect(BJTab.Home) },
+            icon = { iconContent(Icons.Outlined.Home, selected == BJTab.Home) },
+            label = { label("Menú", selected == BJTab.Home) },
             alwaysShowLabel = true,
             colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
         )
 
         NavigationBarItem(
-            selected = selected == BJTab.Cupones,
-            onClick = { onSelect(BJTab.Cupones) },
-            icon = { iconContent(Icons.Outlined.QrCode, selected == BJTab.Cupones) },
-            label = { label("Cupones", selected == BJTab.Cupones) },
+            selected = selected == BJTab.Coupons,
+            onClick = { onSelect(BJTab.Coupons) },
+            icon = { iconContent(Icons.Outlined.QrCode, selected == BJTab.Coupons) },
+            label = { label("Cupones", selected == BJTab.Coupons) },
             alwaysShowLabel = true,
             colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
         )
 
         NavigationBarItem(
-            selected = selected == BJTab.Favoritos,
-            onClick = { onSelect(BJTab.Favoritos) },
-            icon = { iconContent(Icons.Outlined.FavoriteBorder, selected == BJTab.Favoritos) },
-            label = { label("Favoritos", selected == BJTab.Favoritos) },
+            selected = selected == BJTab.Favorites,
+            onClick = { onSelect(BJTab.Favorites) },
+            icon = { iconContent(Icons.Outlined.FavoriteBorder, selected == BJTab.Favorites) },
+            label = { label("Favoritos", selected == BJTab.Favorites) },
             alwaysShowLabel = true,
             colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
         )
 
         NavigationBarItem(
-            selected = selected == BJTab.Perfil,
-            onClick = { onSelect(BJTab.Perfil) },
-            icon = { iconContent(Icons.Outlined.Person, selected == BJTab.Perfil) },
-            label = { label("Perfil", selected == BJTab.Perfil) },
+            selected = selected == BJTab.Profile,
+            onClick = { onSelect(BJTab.Profile) },
+            icon = { iconContent(Icons.Outlined.Person, selected == BJTab.Profile) },
+            label = { label("Perfil", selected == BJTab.Profile) },
             alwaysShowLabel = true,
             colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
         )
@@ -166,6 +166,6 @@ fun BJBottomBar(
 @Composable
 private fun BJBottomBarPreview() {
     MaterialTheme {
-        BJBottomBar(selected = BJTab.Menu, onSelect = {})
+        BJBottomBar(selected = BJTab.Home, onSelect = {})
     }
 }

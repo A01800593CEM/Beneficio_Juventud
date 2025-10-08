@@ -78,7 +78,7 @@ private val newOffers = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
-    var selectedTab by remember { mutableStateOf(BJTab.Menu) }
+    var selectedTab by remember { mutableStateOf(BJTab.Home) }
     var search by rememberSaveable { mutableStateOf("") }
 
     Scaffold(
@@ -161,10 +161,10 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Menu      -> Unit
-                        BJTab.Cupones   -> { /* nav.navigate(...) */ }
-                        BJTab.Favoritos -> { /*nav.navigate(Screens.Favorites.route) */}
-                        BJTab.Perfil    -> { nav.navigate(Screens.Profile.route) }
+                        BJTab.Home      -> Unit
+                        BJTab.Coupons   -> { /* nav.navigate(...) */ }
+                        BJTab.Favorites  -> { /*nav.navigate(Screens.Favorites.route) */}
+                        BJTab.Profile    -> { nav.navigate(Screens.Profile.route) }
                     }
                 }
             )

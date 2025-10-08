@@ -60,7 +60,7 @@ fun Profile(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedTab by remember { mutableStateOf(BJTab.Perfil) }
+    var selectedTab by remember { mutableStateOf(BJTab.Profile) }
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var isLoadingImage by remember { mutableStateOf(false) }
 
@@ -132,10 +132,10 @@ fun Profile(
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Menu      -> nav.navigate(Screens.Home.route)
-                        BJTab.Cupones   -> { /* nav.navigate(...) */ }
-                        BJTab.Favoritos -> { /* nav.navigate(...) */ }
-                        BJTab.Perfil    -> Unit
+                        BJTab.Home      -> nav.navigate(Screens.Home.route)
+                        BJTab.Coupons  -> { /* nav.navigate(...) */ }
+                        BJTab.Favorites -> { /* nav.navigate(...) */ }
+                        BJTab.Profile    -> Unit
                     }
                 }
             )

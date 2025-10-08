@@ -34,7 +34,7 @@ data class FaqItem(val question: String, val answer: String)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
-    var selectedTab by remember { mutableStateOf(BJTab.Perfil) }
+    var selectedTab by remember { mutableStateOf(BJTab.Profile) }
     val appVersion = "1.0.01"
 
     val faqs = remember {
@@ -122,10 +122,10 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Menu      -> nav.navigate(Screens.Home.route)
-                        BJTab.Cupones   -> { /* nav.navigate(...) */ }
-                        BJTab.Favoritos -> { /* nav.navigate(...) */ }
-                        BJTab.Perfil    -> Unit
+                        BJTab.Home      -> nav.navigate(Screens.Home.route)
+                        BJTab.Coupons   -> { /* nav.navigate(...) */ }
+                        BJTab.Favorites -> { /* nav.navigate(...) */ }
+                        BJTab.Profile    -> Unit
                     }
                 }
             )
