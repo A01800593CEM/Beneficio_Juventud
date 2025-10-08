@@ -18,6 +18,8 @@ foundation = "1.9.2"
 uiUnit = "1.9.2"
 amplify = "2.30.1"
 foundationLayout = "1.9.2"
+uiGeometry = "1.9.2"
+runtimeSaveable = "1.9.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -52,6 +54,8 @@ amplify-datastore = { group = "com.amplifyframework", name = "aws-datastore", ve
 amplify-api = { group = "com.amplifyframework", name = "aws-api", version.ref = "amplify" }
 amplify-storage = { group = "com.amplifyframework", name = "aws-storage-s3", version.ref = "amplify" }
 androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
+androidx-ui-geometry = { group = "androidx.compose.ui", name = "ui-geometry", version.ref = "uiGeometry" }
+androidx-runtime-saveable = { group = "androidx.compose.runtime", name = "runtime-saveable", version.ref = "runtimeSaveable" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

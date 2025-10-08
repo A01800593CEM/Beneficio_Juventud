@@ -132,7 +132,7 @@ fun Profile(
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Menu      -> nav.navigate(Screens.MainMenu.route)
+                        BJTab.Menu      -> nav.navigate(Screens.Home.route)
                         BJTab.Cupones   -> { /* nav.navigate(...) */ }
                         BJTab.Favoritos -> { /* nav.navigate(...) */ }
                         BJTab.Perfil    -> Unit

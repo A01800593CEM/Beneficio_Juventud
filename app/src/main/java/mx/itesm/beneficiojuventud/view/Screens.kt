@@ -17,7 +17,7 @@ sealed class Screens(val route: String) {
         fun newPasswordWithEmailAndCode(email: String, code: String) = "new_password/${java.net.URLEncoder.encode(email, "UTF-8")}/$code"
     }
     data object OnboardingCategories : Screens("onboarding_categories")
-    data object MainMenu : Screens("main_menu")
+    data object Home : Screens("home")
     data object Profile : Screens("profile")
     data object EditProfile : Screens ("edit_profile")
     data object History : Screens ("history")

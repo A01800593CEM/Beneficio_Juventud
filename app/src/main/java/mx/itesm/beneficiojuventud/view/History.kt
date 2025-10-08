@@ -126,7 +126,7 @@ fun History(nav: NavHostController, modifier: Modifier = Modifier) {
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Menu      -> nav.navigate(Screens.MainMenu.route)
+                        BJTab.Menu      -> nav.navigate(Screens.Home.route)
                         BJTab.Cupones   -> { /* nav.navigate(...) */ }
                         BJTab.Favoritos -> { /* nav.navigate(...) */ }
                         BJTab.Perfil    -> Unit
@@ -189,7 +189,7 @@ private fun HistoryCard(
         shadowElevation = 0.dp,
         border = ButtonDefaults.outlinedButtonBorder.copy(
             width = 1.dp,
-            brush = SolidColor(Color(0xFFE6E6E6))
+            brush = SolidColor(Color(0xFFD3D3D3))
         ),
         modifier = Modifier
             .fillMaxWidth()

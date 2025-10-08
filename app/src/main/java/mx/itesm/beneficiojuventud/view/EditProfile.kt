@@ -41,8 +41,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.amplifyframework.core.Amplify
-import com.amplifyframework.storage.StorageAccessLevel
-import com.amplifyframework.storage.StorageException
 import com.amplifyframework.storage.StoragePath
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
@@ -190,7 +188,7 @@ fun EditProfile(
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Menu      -> nav.navigate(Screens.MainMenu.route)
+                        BJTab.Menu      -> nav.navigate(Screens.Home.route)
                         BJTab.Cupones   -> { /* nav.navigate(...) */ }
                         BJTab.Favoritos -> { /* nav.navigate(...) */ }
                         BJTab.Perfil    -> Unit
