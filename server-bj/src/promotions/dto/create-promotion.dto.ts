@@ -1,48 +1,48 @@
-import { IsDate, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Min, MinLength, IsUrl } from 'class-validator';
+import { IsDate, IsEnum, IsInt, IsOptional, IsString, IsUrl } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PromotionType } from '../enums/promotion-type.enums';
 import { PromotionState } from '../enums/promotion-state.enums';
 
 export class CreatePromotionDto {
   @IsInt()
-  colaborador_id: number;
+  collaboratorId: number;
 
   @IsString()
-  titulo: string;
+  title: string;
 
   @IsString()
-  descripcion: string;
+  description: string;
 
   @IsOptional() @IsUrl()
-  imagen_url?: string;
+  imageUrl?: string;
 
   @IsDate() @Type(() => Date)
-  fecha_inicio: Date;
+  initialDate: Date;
 
   @IsDate() @Type(() => Date)
-  fecha_fin: Date;
+  endDate: Date;
 
   @IsOptional() @IsInt()
-  categoria_id?: number;
+  categoryId?: number;
 
   @IsEnum(PromotionType)
-  tipo_promocion: PromotionType;
+  promotionType: PromotionType;
 
   @IsOptional() @IsString()
-  promocion_string?: string;
+  promotionString?: string;
 
   @IsOptional() @IsInt()
-  stock_total?: number;
+  totalStock?: number;
 
   @IsOptional() @IsInt()
-  stock_disponible?: number;
+  aviableStock?: number;
 
   @IsOptional() @IsInt()
-  limite_por_usuario?: number;
+  limitPerUser?: number;
 
   @IsOptional() @IsInt()
-  limite_diario_por_usuario?: number;
+  dairyLimitPerUser?: number;
 
   @IsEnum(PromotionState)
-  estado: PromotionState;
+  promotionState: PromotionState;
 }

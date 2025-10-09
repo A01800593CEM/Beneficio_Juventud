@@ -3,6 +3,7 @@ import type { Relation } from 'typeorm';
 import { UserState } from "../enums/user-state.enum";
 import { Booking } from "src/bookings/entities/booking.entity";
 import { Favorite } from "src/favorites/entities/favorite.entity";
+import { Redeemedcoupon } from "src/redeemedcoupon/entities/redeemedcoupon.entity";
 
 @Entity({name: "usuario"})
 export class User {
@@ -40,6 +41,7 @@ export class User {
     })
     accountState: UserState;
 
+    // Relation with Booking Entity
     @OneToMany(() => Booking, booking => booking.user)
     bookings: Booking[];
     @Column({name: "token_notificacion"})
@@ -49,7 +51,6 @@ export class User {
     @OneToMany(() => Favorite, favorite => favorite.user)
     favorites: Relation<Favorite[]>;
 
-    
-
-
+    @OneToMany(() => Redeemedcoupon, redeemedcoupons => redeemedcoupons.user)
+    redeemedcoupon: Relation<Redeemedcoupon>;
 }

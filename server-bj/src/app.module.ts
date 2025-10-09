@@ -9,6 +9,9 @@ import { CategoriesModule } from './categories/categories.module';
 import { PromotionsModule } from './promotions/promotions.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { FavoritesModule } from './favorites/favorites.module';
+import { RedeemedcouponModule } from './redeemedcoupon/redeemedcoupon.module';
+import { SucursalModule } from './sucursal/sucursal.module';
+import { BranchModule } from './branch/branch.module';
 
 
 @Module({
@@ -38,7 +41,10 @@ import { FavoritesModule } from './favorites/favorites.module';
     CategoriesModule,
     PromotionsModule,
     BookingsModule,
-    FavoritesModule
+    FavoritesModule,
+    RedeemedcouponModule,
+    SucursalModule,
+    BranchModule
   ],
   controllers: [AppController],
   providers: [AppService],

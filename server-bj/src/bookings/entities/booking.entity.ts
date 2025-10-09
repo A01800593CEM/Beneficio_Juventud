@@ -16,6 +16,12 @@ export class Booking {
   @PrimaryGeneratedColumn({ name: 'reserva_id' })
   bookingId: number;
 
+  @Column({name: 'usuario_id'})
+  userId: number
+
+  @Column({name: 'promotion_id'})
+  promotionId: number
+
   @CreateDateColumn({ name: 'fecha_reserva' })
   bookingDate: Date;
 

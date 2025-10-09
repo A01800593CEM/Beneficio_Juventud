@@ -12,6 +12,8 @@ import type { Relation } from 'typeorm'
 import { Category } from '../../categories/entities/category.entity';
 import { CollaboratorState } from '../enums/collaborator-state.enum';
 import { Favorite } from 'src/favorites/entities/favorite.entity';
+import { Redeemedcoupon } from 'src/redeemedcoupon/entities/redeemedcoupon.entity';
+import { Branch } from 'src/branch/entities/branch.entity';
 
 @Entity({ name: 'colaborador' })
 export class Collaborator {
@@ -68,10 +70,15 @@ export class Collaborator {
     })
       categories: Category[];
     
+    //Relations
     @OneToMany(() => Favorite, favorite => favorite.user)
     favorites: Relation<Favorite[]>;
 
+    @OneToMany(() => Redeemedcoupon, redeemedcoupons => redeemedcoupons.collaborator)
+    redeemedcoupon: Relation<Redeemedcoupon>
 
+    @OneToMany(() => Branch, branches => branches.collaborators)
+    branch: Relation<Branch>
     
 
 }
