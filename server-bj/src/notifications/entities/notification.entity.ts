@@ -1,11 +1,11 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { NotificationType } from '../enums/notification-type.enum';
-import { RecipientType } from '../enums/recipient-type.enum';
-import { NotificationState } from '../enums/notification-state.enum';
-import { promocion } from './promocion.entity';
+import { NotificationType } from '../enums/notification-type.enums';
+import { NotificationStatus } from '../enums/notification-status.enum';
+import { Promotion } from '../../promotions/entities/promotion.entity';
+import { RecipientType } from '../enums/recipient-type.enums';
 
 @Entity({ name: 'notificacion' })
-export class Notificacion {
+export class Notification {
   @PrimaryGeneratedColumn({ name: 'notificacion_id' })
   notificacion_id: number;
 
@@ -28,7 +28,7 @@ export class Notificacion {
 
   @Column({
     type: 'enum',
-    enum: RecipientType,
+    enum: NotificationStatus,
     enumName: 'destinatario_tipo',
     name: 'destinatario_tipo',
   })
@@ -39,16 +39,16 @@ export class Notificacion {
 
   @Column({
     type: 'enum',
-    enum: NotificationState,
+    enum: NotificationStatus,
     enumName: 'estado_notificacion',
     name: 'estado',
   })
-  estado: NotificationState;
+  estado: NotificationStatus;
 
   @Column({ name: 'criterios_segmento', type: 'json', nullable: true })
   criterios_segmento: any | null;
 
-  @ManyToOne(() => promocion, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => Promotion, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'promocion_id' })
-  promocion: promocion | null;
+  promocion: Promotion | null;
 }

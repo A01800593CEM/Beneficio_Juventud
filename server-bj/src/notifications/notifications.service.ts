@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { CreateNotificacionDto } from './dto/create-notificacion.dto';
-import { UpdateNotificacionDto } from './dto/update-notificacion.dto';
+import { CreateNotificationDto } from './dto/create-notification.dto';
+import { UpdateNotificationDto } from './dto/update-notification.dto';
 
 @Injectable()
-export class NotificacionService {
-  create(createNotificacionDto: CreateNotificacionDto) {
+export class NotificationsService {
+  create(createNotificacionDto: CreateNotificationDto) {
     return 'This action adds a new notificacion';
   }
 
@@ -16,7 +16,7 @@ export class NotificacionService {
     return `This action returns a #${id} notificacion`;
   }
 
-  update(id: number, updateNotificacionDto: UpdateNotificacionDto) {
+  update(id: number, updateNotificacionDto: UpdateNotificationDto) {
     return `This action updates a #${id} notificacion`;
   }
 
