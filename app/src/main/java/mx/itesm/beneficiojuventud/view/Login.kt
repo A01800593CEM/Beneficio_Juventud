@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -229,13 +228,13 @@ fun Login(
                             Checkbox(checked = rememberMe, onCheckedChange = { rememberMe = it })
                             Text(
                                 "Recuérdame",
-                                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                                style = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
                             )
                         }
                         TextButton(onClick = { nav.navigate(Screens.ForgotPassword.route) }) {
                             Text(
                                 "¿Olvidaste tu contraseña?",
-                                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                                style = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
                             )
                         }
                     }
