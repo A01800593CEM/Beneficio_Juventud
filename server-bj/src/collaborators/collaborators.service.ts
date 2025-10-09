@@ -18,19 +18,19 @@ export class CollaboratorsService {
   
   async create(createCollaboratorDto: CreateCollaboratorDto) {
     const collaborator = this.collaboratorsRepository.create(createCollaboratorDto)
-    return this.collaboratorsRepository.insert(collaborator);
+    return this.collaboratorsRepository.save(collaborator);
   }
 
   async findAll() {
     return this.collaboratorsRepository.find({ 
       relations: ['categories'] });
   }
-
+ 
   async findOne(id: number) {
     return this.collaboratorsRepository.findOne({ 
       where: { id },
-      relations: ['favoritedBy',
-         'favoritedBy.user',
+      relations: ['favorites',
+         'favorites.user',
          'categories'] });
   }
 

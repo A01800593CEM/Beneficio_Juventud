@@ -7,8 +7,10 @@ import {
   UpdateDateColumn, 
   ManyToMany,
 } from 'typeorm';
+import type { Relation } from 'typeorm'
 import { Category } from '../../categories/entities/category.entity';
 import { CollaboratorState } from '../enums/collaborator-state.enum';
+import { Favorite } from 'src/favorites/entities/favorite.entity';
 
 @Entity({ name: 'colaborador' })
 export class Collaborator {
@@ -30,7 +32,7 @@ export class Collaborator {
     @Column({ name: 'correo', length: 255 })
     email: string;
 
-    @Column({ length: 255 })
+    @Column({name: 'direccion', length: 255 })
     address: string;
 
     @Column({ name: 'codigo_postal', length: 10 })
@@ -39,7 +41,7 @@ export class Collaborator {
     @Column({ name: 'logo_url', length: 255, nullable: true })
     logoUrl: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ name: 'descripcion', type: 'text', nullable: true })
     description: string;
 
     @CreateDateColumn({ name: 'fecha_registro' })
@@ -48,7 +50,7 @@ export class Collaborator {
     @UpdateDateColumn({ name: 'updated_at' })
     updatedAt: Date;
 
-    @Column({ type: 'enum', enum: CollaboratorState })
+    @Column({name: 'estado',  type: 'enum', enum: CollaboratorState })
     state: CollaboratorState;
 
     @ManyToMany(() => Category, category => category.collaborators)
@@ -63,6 +65,12 @@ export class Collaborator {
       referencedColumnName: 'id'
     },
     })
-      categories: Category[]
+      categories: Category[];
+    
+    @OneToMany(() => Favorite, favorite => favorite.user)
+    favorites: Relation<Favorite[]>;
+
+
+    
 
 }

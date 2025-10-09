@@ -6,6 +6,7 @@ import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { BookingsService } from 'src/bookings/bookings.service';
 
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -43,4 +44,5 @@ export class UsersService {
   async remove(id: number): Promise<void>{
     await this.usersRepository.delete(id);
   }
+
 }
