@@ -171,7 +171,17 @@ fun Register(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Box { Image(painter = painterResource(R.drawable.logo_beneficio_joven), contentDescription = null, modifier = Modifier.size(50.dp)) }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 24.dp),
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.logo_beneficio_joven),
+                        contentDescription = null,
+                        modifier = Modifier.size(50.dp)
+                    )
+                }
             }
             item {
                 Text(
