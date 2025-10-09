@@ -6,6 +6,7 @@ import {
   CreateDateColumn, 
   UpdateDateColumn, 
   ManyToMany,
+  OneToMany
 } from 'typeorm';
 import type { Relation } from 'typeorm'
 import { Category } from '../../categories/entities/category.entity';
