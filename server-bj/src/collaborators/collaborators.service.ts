@@ -29,13 +29,18 @@ export class CollaboratorsService {
  
   // Only finds the active collaborators
   async findOne(id: number): Promise<Collaborator | null> {
-    return this.collaboratorsRepository.findOne({ 
+    const collaborator = this.collaboratorsRepository.findOne({ 
       where: { id,
                state: CollaboratorState.ACTIVE
        },
       relations: ['favorites',
          'favorites.user',
          'categories'] });
+        
+    if (!collaborator) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    return collaborator
   }
 
   // Finds in all the database

@@ -30,7 +30,11 @@ export class UsersService {
   }
 
   async findOne(id: number): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { id, accountState: UserState.ACTIVE }});
+    const user = await this.usersRepository.findOne({ where: { id, accountState: UserState.ACTIVE }});
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    return user
   }
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User | null>  {
