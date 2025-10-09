@@ -12,6 +12,7 @@ import { FavoritesModule } from './favorites/favorites.module';
 import { RedeemedcouponModule } from './redeemedcoupon/redeemedcoupon.module';
 import { SucursalModule } from './sucursal/sucursal.module';
 import { BranchModule } from './branch/branch.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 
 @Module({
@@ -44,7 +45,8 @@ import { BranchModule } from './branch/branch.module';
     FavoritesModule,
     RedeemedcouponModule,
     SucursalModule,
-    BranchModule
+    BranchModule,
+    NotificationsModule
   ],
   controllers: [AppController],
   providers: [AppService],
