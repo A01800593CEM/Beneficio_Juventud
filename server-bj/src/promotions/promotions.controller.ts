@@ -31,4 +31,10 @@ export class PromotionsController {
   remove(@Param('id') id: string) {
     return this.promotionsService.remove(+id);
   }
+
+  //Promotions per Category
+  @Get('category/:category')
+  promotionPerCategory(@Param('category') category: string) {
+    return this.promotionsService.promotionPerCategory(category);
+  }
 }

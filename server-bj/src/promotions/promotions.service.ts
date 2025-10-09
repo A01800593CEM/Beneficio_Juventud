@@ -17,17 +17,17 @@ export class PromotionsService {
   }
 
   async findAll(): Promise<Promotion[]> {
-    return this.promotionsRepository.find({relations: ['booking', 'redemeedcoupon']});
+    return this.promotionsRepository.find({relations: ['bookings', 'redeemedcoupon']});
   }
 
   async findOne(id: number):Promise<Promotion | null> {
     return this.promotionsRepository.findOne({
       where: {promotionId: id},
-      relations: ['booking', 'redemeedcoupon'],
+      relations: ['bookings', 'redeemedcoupon'],
     });
   }
 
-  async update(id: number, updatePromotionDto: UpdatePromotionDto): Promise<Promotion | null> {
+  async update(id: number, UpdatePromotionDto: UpdatePromotionDto): Promise<Promotion | null> {
     const promotion = await this.promotionsRepository.preload({
       promotionId: id,
       ...UpdatePromotionDto
@@ -40,5 +40,12 @@ export class PromotionsService {
 
   async remove(id: number): Promise<void> {
     await this.promotionsRepository.delete(id);
+  }
+
+  async promotionPerCategory(category: string): Promise<Promotion[]> {
+    return this.promotionsRepository
+      .createQueryBuilder('promotion')
+      .where('promotion.category = :category', { category })
+      .getMany();
   }
 }

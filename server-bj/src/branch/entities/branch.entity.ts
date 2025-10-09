@@ -58,7 +58,7 @@ export class Branch {
 
     @ManyToOne(() => Collaborator, collaborator => collaborator.branch)
     @JoinColumn({ name: 'colaborador_id' })
-    collaborator: Relation<Collaborator>;
+    collaborators: Relation<Collaborator>;
 
     @OneToMany(() => Redeemedcoupon, redeemedcoupons => redeemedcoupons.branch)
     redeemedcoupon: Relation<Redeemedcoupon>
