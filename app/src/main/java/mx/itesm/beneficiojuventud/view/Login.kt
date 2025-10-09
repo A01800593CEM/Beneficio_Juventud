@@ -64,7 +64,12 @@ fun Login(
         }
     }
 
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+    // ✅ Deja que el Scaffold maneje status/nav bars sin duplicar paddings
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets.safeDrawing
+    ) { innerPadding ->
+
         // --- Medimos contenedor y contenido para decidir si hay overflow ---
         var containerHeight by remember { mutableStateOf(0) }
         var contentHeight by remember { mutableStateOf(0) }
@@ -100,19 +105,22 @@ fun Login(
 
         Box(
             modifier = modifier
-                .padding(innerPadding)
+                .padding(innerPadding)          // ✅ usa los insets del Scaffold
                 .fillMaxSize()
                 .dismissKeyboardOnTap()
-                .imePadding() // evita que el teclado tape el contenido
+                // ❌ evita imePadding aquí (duplica con bringIntoView / bottom bar)
                 .onSizeChanged { containerHeight = it.height } // alto visible
         ) {
             // Contenido principal; medimos su altura real
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    // ✅ Solo activamos scroll si de verdad se desborda
                     .then(if (needsScroll) Modifier.verticalScroll(scrollState) else Modifier)
                     .padding(horizontal = 24.dp, vertical = 24.dp)
-                    .onSizeChanged { contentHeight = it.height },
+                    .onSizeChanged { contentHeight = it.height }
+                    // ✅ imePadding SOLO cuando NO hay scroll (sin bringIntoView)
+                    .then(if (!needsScroll) Modifier.imePadding() else Modifier),
                 horizontalAlignment = Alignment.Start
             ) {
                 // Logo
@@ -325,8 +333,8 @@ fun Login(
                     }
                 }
 
-                // Espaciador inferior para barra de gestos
-                Spacer(Modifier.navigationBarsPadding())
+                // ❌ Ya no añadimos Spacer(navigationBarsPadding())
+                // El Scaffold + safeDrawing y la bottom bar cubrirán ese espacio.
             }
         }
     }
