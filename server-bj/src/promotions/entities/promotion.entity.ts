@@ -4,6 +4,7 @@ import { PromotionState } from '../enums/promotion-state.enums';
 import { Booking } from '../../bookings/entities/booking.entity';
 import type { Relation } from 'typeorm';
 import { Redeemedcoupon } from 'src/redeemedcoupon/entities/redeemedcoupon.entity';
+import { Notification } from 'src/notifications/entities/notification.entity';
 
 @Entity({ name: 'promocion' })
 export class Promotion {
@@ -71,4 +72,7 @@ export class Promotion {
 
   @OneToMany(() => Redeemedcoupon, redeemedcoupons => redeemedcoupons.promotion)
     redeemedcoupon: Relation<Redeemedcoupon>
+
+  @OneToMany(() => Notification, notifications => notifications.promotions)
+    notifications: Relation<Notification>
 }
