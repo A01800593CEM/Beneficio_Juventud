@@ -19,7 +19,7 @@ export class Booking {
   @Column({name: 'usuario_id'})
   userId: number
 
-  @Column({name: 'promotion_id'})
+  @Column({name: 'promocion_id'})
   promotionId: number
 
   @CreateDateColumn({ name: 'fecha_reserva' })

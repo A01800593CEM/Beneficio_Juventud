@@ -1,4 +1,5 @@
 import { Collaborator } from 'src/collaborators/entities/collaborator.entity';
+import { Promotion } from 'src/promotions/entities/promotion.entity';
 import { 
   Entity, 
   PrimaryGeneratedColumn, 
@@ -17,5 +18,8 @@ export class Category {
 
     @ManyToMany(() => Collaborator, collaborator => collaborator.categories)
     collaborators: Collaborator[]
+
+    @ManyToMany(() => Promotion, promotions => promotions.categories)
+    promotions: Promotion[]
     
 }

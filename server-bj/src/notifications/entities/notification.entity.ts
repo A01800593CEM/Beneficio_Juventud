@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { NotificationType } from '../enums/notification-type.enums';
 import { NotificationStatus } from '../enums/notification-status.enum';
 import { Promotion } from '../../promotions/entities/promotion.entity';
@@ -7,13 +8,13 @@ import { RecipientType } from '../enums/recipient-type.enums';
 @Entity({ name: 'notificacion' })
 export class Notification {
   @PrimaryGeneratedColumn({ name: 'notificacion_id' })
-  notificacion_id: number;
+  notificationId: number;
 
   @Column({ name: 'titulo' })
-  titulo: string;
+  title: string;
 
   @Column({ name: 'mensaje', type: 'text' })
-  mensaje: string;
+  message: string;
 
   @Column({
     type: 'enum',
@@ -21,21 +22,21 @@ export class Notification {
     enumName: 'tipo_notificacion',
     name: 'tipo',
   })
-  tipo: NotificationType;
+  type: NotificationType;
 
   @CreateDateColumn({ name: 'fecha_envio' })
-  fecha_envio: Date;
+  shipmentDate: Date;
 
   @Column({
     type: 'enum',
-    enum: NotificationStatus,
+    enum: RecipientType,
     enumName: 'destinatario_tipo',
     name: 'destinatario_tipo',
   })
-  destinatario_tipo: RecipientType;
+  recipientType: RecipientType;
 
   @Column({ name: 'destinatario_id', type: 'int', nullable: true })
-  destinatario_id: number | null;
+  recipientId: number | null;
 
   @Column({
     type: 'enum',
@@ -43,12 +44,12 @@ export class Notification {
     enumName: 'estado_notificacion',
     name: 'estado',
   })
-  estado: NotificationStatus;
+  status: NotificationStatus;
 
   @Column({ name: 'criterios_segmento', type: 'json', nullable: true })
-  criterios_segmento: any | null;
+  segmentCriteria: any | null;
 
-  @ManyToOne(() => Promotion, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => Promotion, promotions => promotions.notifications)
   @JoinColumn({ name: 'promocion_id' })
-  promocion: Promotion | null;
+  promotions: Relation<Promotion>;
 }
