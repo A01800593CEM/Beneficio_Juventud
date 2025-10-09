@@ -3,16 +3,14 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { Favorite } from 'src/favorites/entities/favorite.entity';
 import { Repository } from 'typeorm';
-import { FavoritesService } from 'src/favorites/favorites.service';
+
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-    private readonly favoritesService: FavoritesService,
   ) {}
   
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -45,7 +43,4 @@ export class UsersService {
     await this.usersRepository.delete(id);
   }
 
-  async getFavorites(id: number): Promise<Favorite[]> {
-    return await this.favoritesService.findByUser(id)
-  }
 }

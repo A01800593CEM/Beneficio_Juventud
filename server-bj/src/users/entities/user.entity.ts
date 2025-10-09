@@ -38,9 +38,15 @@ export class User {
         name: "estado_cuenta"
     })
     accountState: UserState;
+
+    @Column({name: "token_notificacion"})
+    notificationToken: string;
     
+    // Relation with Favorite Entity
     @OneToMany(() => Favorite, favorite => favorite.user)
     favorites: Relation<Favorite[]>;
+
+    
 
 
 }

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Favorite } from './entities/favorite.entity';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
 import { UpdateFavoriteDto } from './dto/update-favorite.dto';
+import { Collaborator } from 'src/collaborators/entities/collaborator.entity';
 
 @Injectable()
 export class FavoritesService {
@@ -69,10 +70,11 @@ export class FavoritesService {
   }
 
   // Optional convenience method: get all favorites by user
-  async findByUser(userId: number): Promise<Favorite[]> {
-    return this.favoritesRepository.find({
+  async findByUser(userId: number): Promise<Collaborator[]> {
+    const favorites = await this.favoritesRepository.find({
       where: { userId },
       relations: ['collaborator'],
     });
+    return favorites.map(favorite => favorite.collaborator)
   }
 }

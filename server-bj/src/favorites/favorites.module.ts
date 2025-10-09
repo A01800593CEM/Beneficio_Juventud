@@ -13,6 +13,6 @@ import { CollaboratorsModule } from 'src/collaborators/collaborators.module';
     TypeOrmModule.forFeature([Favorite]),
     forwardRef(() => UsersModule),
     forwardRef(() => CollaboratorsModule)],
-  exports: [TypeOrmModule]
+  exports: [TypeOrmModule, FavoritesService]
 })
 export class FavoritesModule {}
