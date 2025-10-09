@@ -1,26 +1,44 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Promotion } from './entities/promotion.entity';
 
 @Injectable()
 export class PromotionsService {
-  create(createPromotionDto: CreatePromotionDto) {
-    return 'This action adds a new promotion';
+  constructor(
+    @InjectRepository(Promotion)
+    private promotionsRepository: Repository<Promotion>,
+  ) {}
+  async create(createPromotionDto: CreatePromotionDto): Promise<Promotion> {
+    const promotion = this.promotionsRepository.create(createPromotionDto);
+    return this.promotionsRepository.save(promotion);
   }
 
-  findAll() {
-    return `This action returns all promotions`;
+  async findAll(): Promise<Promotion[]> {
+    return this.promotionsRepository.find({relations: ['booking', 'redemeedcoupon']});
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} promotion`;
+  async findOne(id: number):Promise<Promotion | null> {
+    return this.promotionsRepository.findOne({
+      where: {promotionId: id},
+      relations: ['booking', 'redemeedcoupon'],
+    });
   }
 
-  update(id: number, updatePromotionDto: UpdatePromotionDto) {
-    return `This action updates a #${id} promotion`;
+  async update(id: number, updatePromotionDto: UpdatePromotionDto): Promise<Promotion | null> {
+    const promotion = await this.promotionsRepository.preload({
+      promotionId: id,
+      ...UpdatePromotionDto
+    })
+    if (!promotion){
+      throw new NotFoundException(`Promotion with id ${id} not found`)
+    }
+    return this.promotionsRepository.save(promotion);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} promotion`;
+  async remove(id: number): Promise<void> {
+    await this.promotionsRepository.delete(id);
   }
 }

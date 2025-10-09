@@ -3,11 +3,16 @@ import { PromotionType } from '../enums/promotion-type.enums';
 import { PromotionState } from '../enums/promotion-state.enums';
 import { Booking } from '../../bookings/entities/booking.entity';
 import type { Relation } from 'typeorm';
+import { Redeemedcoupon } from 'src/redeemedcoupon/entities/redeemedcoupon.entity';
 
 @Entity({ name: 'promocion' })
 export class Promotion {
   @PrimaryGeneratedColumn({ name: 'promocion_id' })
   promotionId: number;
+
+  @Column({name: 'colaborador_id'})
+  collaboratorId: number
+
   @Column({ name: 'titulo' })
   title: string;
 
@@ -26,6 +31,7 @@ export class Promotion {
   @Column({
     type: 'enum',
     enum: PromotionType,
+    enumName: 'tipo_promocion',
     name: 'tipo_promocion',
   })
   promotionType: PromotionType;
@@ -40,7 +46,7 @@ export class Promotion {
   aviableStock: number;
 
   @Column({ name: 'limite_por_usuario'})
-  limitPerUserx: number;
+  limitPerUser: number;
 
   @Column({ name: 'limite_diario_por_usuario'})
   dairyLimitPerUser: number;
@@ -48,6 +54,7 @@ export class Promotion {
   @Column({
     type: 'enum',
     enum: PromotionState,
+    enumName: 'estado_promocion',
     name: 'estado',
   })
   promotionState: PromotionState;
@@ -59,6 +66,9 @@ export class Promotion {
   updated_at: Date;
   
   //Relations
-  @OneToMany(() => Booking, bookings => bookings.user)
-      bookings: Relation<Booking>;
+  @OneToMany(() => Booking, bookings => bookings.promotion)
+    bookings: Relation<Booking>;
+
+  @OneToMany(() => Redeemedcoupon, redeemedcoupons => redeemedcoupons.promotion)
+    redeemedcoupon: Relation<Redeemedcoupon>
 }

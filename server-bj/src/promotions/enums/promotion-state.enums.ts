@@ -1,5 +1,5 @@
 export enum PromotionState{
-    ACTIVA = 'activa', 
-    INACTIVA = 'inactiva', 
-    FINALIZADA = 'finalizada'
+    ACTIVE = 'activa', 
+    INACTIVE = 'inactiva', 
+    FINISHED = 'finalizada'
 }

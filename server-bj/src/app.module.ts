@@ -11,6 +11,9 @@ import { BookingsModule } from './bookings/bookings.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { AdministratorsModule } from './administrators/administrators.module';
 //import { ReportsModule } from './reports/reports.module';
+import { RedeemedcouponModule } from './redeemedcoupon/redeemedcoupon.module';
+import { BranchModule } from './branch/branch.module';
+import { NotificacionsModule } from './notifications/notifications.module';
 
 
 @Module({
@@ -43,6 +46,10 @@ import { AdministratorsModule } from './administrators/administrators.module';
     FavoritesModule,
     AdministratorsModule,
     //ReportsModule
+    RedeemedcouponModule,
+    BranchModule,
+    BranchModule,
+    NotificacionsModule
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -8,9 +8,11 @@ import { BookingsModule } from 'src/bookings/bookings.module';
 @Module({
   controllers: [PromotionsController],
   providers: [PromotionsService],
-  exports: [PromotionsService],
-  imports: [TypeOrmModule.forFeature([Promotion]),
-  forwardRef(() => PromotionsModule),
-  forwardRef(() => BookingsModule)],
+  imports: [
+    TypeOrmModule.forFeature([Promotion]),
+    forwardRef(() => PromotionsModule),
+    forwardRef(() => BookingsModule)
+],
+exports: [PromotionsService],
 })
 export class PromotionsModule {}

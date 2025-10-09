@@ -1,6 +1,6 @@
 export enum PromotionType { 
-    DESCUENTO = 'descuento', 
-    MULTICOMPRA = 'multicompra', 
-    REGALO = 'regalo', 
-    OTRO = 'otro' 
+    DISCOUNT = 'descuento', 
+    MULTYBUY = 'multicompra', 
+    GIFT = 'regalo', 
+    OTHER = 'otro' 
 }
