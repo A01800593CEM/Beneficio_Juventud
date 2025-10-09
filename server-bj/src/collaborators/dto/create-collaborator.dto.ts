@@ -5,7 +5,10 @@ import {
   IsNotEmpty, 
   IsNumber, 
   IsEnum,  
-  MaxLength 
+  MaxLength, 
+  IsArray,
+  ArrayNotEmpty,
+  IsInt
 } from 'class-validator';
 import { CollaboratorState } from '../enums/collaborator-state.enum';
 
@@ -45,9 +48,11 @@ export class CreateCollaboratorDto {
   @MaxLength(10)
   postalCode: string;
 
-  @IsNumber()
-  @IsNotEmpty()
-  categoryId: number;
+  // 👇 Multiple category IDs
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsInt({ each: true })s
+  categoryIds: number[];
 
   @IsOptional()
   @IsString()

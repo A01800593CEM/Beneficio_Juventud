@@ -77,7 +77,7 @@ export class Collaborator {
     @OneToMany(() => Redeemedcoupon, redeemedcoupons => redeemedcoupons.collaborator)
     redeemedcoupon: Relation<Redeemedcoupon>
 
-    @OneToMany(() => Branch, branches => branches.collaborators)
+    @OneToMany(() => Branch, branches => branches.collaborator)
     branch: Relation<Branch>
     
 

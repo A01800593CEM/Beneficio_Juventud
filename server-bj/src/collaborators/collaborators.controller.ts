@@ -22,6 +22,11 @@ export class CollaboratorsController {
     return this.collaboratorsService.findOne(+id);
   }
 
+  @Get('category/:id')
+  findByCategory(@Param('id') id: string) {
+    return this.collaboratorsService.findByCategory(+id)
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateCollaboratorDto: UpdateCollaboratorDto) {
     return this.collaboratorsService.update(+id, updateCollaboratorDto);

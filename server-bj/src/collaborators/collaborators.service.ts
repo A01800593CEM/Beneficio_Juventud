@@ -18,9 +18,20 @@ export class CollaboratorsService {
   ) {}
   
   async create(createCollaboratorDto: CreateCollaboratorDto): Promise<Collaborator> {
-    const collaborator = this.collaboratorsRepository.create(createCollaboratorDto)
+    const { categoryIds, ...data } = createCollaboratorDto;
+
+    const categories = await this.categoriesRepository.findBy({
+      id: In(categoryIds),
+    });
+
+    const collaborator = this.collaboratorsRepository.create({
+      ...data,
+      categories,
+    });
+
     return this.collaboratorsRepository.save(collaborator);
   }
+
 
   async findAll(): Promise<Collaborator[]> {
     return this.collaboratorsRepository.find({ 
@@ -54,15 +65,27 @@ export class CollaboratorsService {
          'categories'] });
   }
 
-  async update(id: number, updateCollaboratorDto: UpdateCollaboratorDto): Promise<Collaborator | null> {
-    const collaborator = await this.collaboratorsRepository.preload({
-      id,
-      ...updateCollaboratorDto
+  async update(id: number, updateCollaboratorDto: UpdateCollaboratorDto): Promise<Collaborator> {
+    const collaborator = await this.collaboratorsRepository.findOne({
+      where: { id },
+      relations: ['categories'],
     });
 
     if (!collaborator) {
-      throw new Error(`Collaborator with id ${id} not found`);
+      throw new NotFoundException(`Collaborator with ID ${id} not found`);
     }
+
+    const { categoryIds, ...updateData } = updateCollaboratorDto;
+
+    
+    Object.assign(collaborator, updateData);
+
+    
+    if (categoryIds && categoryIds.length > 0) {
+      const categories = await this.categoriesRepository.findBy({ id: In(categoryIds) });
+      collaborator.categories = categories;
+    }
+
     return this.collaboratorsRepository.save(collaborator);
   }
 
@@ -99,5 +122,14 @@ export class CollaboratorsService {
 
     return this.collaboratorsRepository.save(collaborator);
   }
+
+  async findByCategory(categoryId: number): Promise<Collaborator[]> {
+  return this.collaboratorsRepository
+    .createQueryBuilder('collaborator')
+    .innerJoin('collaborator.categories', 'category')
+    .where('category.id = :categoryId', { categoryId })
+    .getMany();
+}
+
 
 }
