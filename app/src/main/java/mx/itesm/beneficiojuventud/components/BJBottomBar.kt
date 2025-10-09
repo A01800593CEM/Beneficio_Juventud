@@ -1,7 +1,6 @@
 package mx.itesm.beneficiojuventud.components
 
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
@@ -10,74 +9,23 @@ import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import mx.itesm.beneficiojuventud.view.GradientIcon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 
-/** Tabs del proyecto */
 enum class BJTab { Home, Coupons, Favorites, Profile }
 
-/** Icono con gradiente */
-@Composable
-fun GradientIcon(
-    imageVector: ImageVector,
-    brush: Brush,
-    modifier: Modifier = Modifier
-) {
-    Icon(
-        imageVector = imageVector,
-        contentDescription = null,
-        tint = Color.Unspecified,
-        modifier = modifier.drawWithCache {
-            onDrawWithContent {
-                drawIntoCanvas { canvas ->
-                    val bounds = Rect(0f, 0f, size.width, size.height)
-                    canvas.saveLayer(bounds, Paint())
-                    drawContent()
-                    drawRect(brush = brush, blendMode = BlendMode.SrcIn)
-                    canvas.restore()
-                }
-            }
-        }
-    )
-}
-
-/** Texto con gradiente */
-@Composable
-fun GradientText(
-    text: String,
-    brush: Brush,
-    modifier: Modifier = Modifier,
-) {
-    val base = MaterialTheme.typography.labelSmall
-    Text(
-        text = text,
-        style = base.copy(
-            fontWeight = FontWeight.Bold,
-            fontSize = 10.sp,
-            color = Color.White
-        ),
-        modifier = modifier.drawWithCache {
-            onDrawWithContent {
-                drawIntoCanvas { canvas ->
-                    val bounds = Rect(0f, 0f, size.width, size.height)
-                    canvas.saveLayer(bounds, Paint())
-                    drawContent()
-                    drawRect(brush = brush, blendMode = BlendMode.SrcIn)
-                    canvas.restore()
-                }
-            }
-        }
-    )
-}
-
-/** Menú inferior */
 @Composable
 fun BJBottomBar(
     selected: BJTab,
@@ -90,77 +38,83 @@ fun BJBottomBar(
 ) {
     val labelBase = MaterialTheme.typography.labelSmall
 
-    NavigationBar(containerColor = containerColor) {
-
+    NavigationBar(
+        containerColor = containerColor,
+        tonalElevation = 0.dp,
+        windowInsets = WindowInsets(0),
+        modifier = Modifier.height(56.dp)
+    ) {
         @Composable
-        fun label(text: String, isSelected: Boolean) =
-            if (isSelected)
-                GradientText(
-                    text,
-                    activeBrush,
-                    modifier = Modifier.offset(y = (-6).dp) // 👈 sube el texto
-                )
-            else
+        fun Label(text: String, isSelected: Boolean) {
+            val mod = Modifier.offset(y = (-4).dp)
+            if (isSelected) {
+                GradientText(text, activeBrush, modifier = mod)
+            } else {
                 Text(
                     text = text,
-                    style = labelBase.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp
-                    ),
+                    style = labelBase.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
                     color = inactiveTextColor,
-                    modifier = Modifier.offset(y = (-6).dp) // 👈 sube el texto también
+                    modifier = mod
                 )
-
-        @Composable
-        fun iconContent(
-            icon: ImageVector,
-            isSelected: Boolean
-        ) {
-            val mod = Modifier.size(iconSize)
-            if (isSelected)
-                GradientIcon(icon, activeBrush, modifier = mod)
-            else
-                Icon(icon, null, tint = inactiveIconColor, modifier = mod)
+            }
         }
 
-        // Ítems del menú
-        NavigationBarItem(
-            selected = selected == BJTab.Home,
-            onClick = { onSelect(BJTab.Home) },
-            icon = { iconContent(Icons.Outlined.Home, selected == BJTab.Home) },
-            label = { label("Menú", selected == BJTab.Home) },
-            alwaysShowLabel = true,
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
-        )
+        @Composable
+        fun IconC(icon: ImageVector, isSelected: Boolean) {
+            val mod = Modifier
+                .size(iconSize)          // ← mismo tamaño
+                .offset(y = 2.dp)        // ↓ baja un poco el icono para cerrar el gap
+            if (isSelected) GradientIcon(icon, activeBrush, modifier = mod)
+            else Icon(icon, null, tint = inactiveIconColor, modifier = mod)
+        }
 
-        NavigationBarItem(
-            selected = selected == BJTab.Coupons,
-            onClick = { onSelect(BJTab.Coupons) },
-            icon = { iconContent(Icons.Outlined.QrCode, selected == BJTab.Coupons) },
-            label = { label("Cupones", selected == BJTab.Coupons) },
-            alwaysShowLabel = true,
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
-        )
+        @Composable
+        fun Item(tab: BJTab, icon: ImageVector, labelText: String) {
+            NavigationBarItem(
+                selected = selected == tab,
+                onClick = { onSelect(tab) },
+                icon = { IconC(icon, selected == tab) },
+                label = { Label(labelText, selected == tab) },
+                alwaysShowLabel = true,
+                colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
+                modifier = Modifier.padding(vertical = 0.dp)
+            )
+        }
 
-        NavigationBarItem(
-            selected = selected == BJTab.Favorites,
-            onClick = { onSelect(BJTab.Favorites) },
-            icon = { iconContent(Icons.Outlined.FavoriteBorder, selected == BJTab.Favorites) },
-            label = { label("Favoritos", selected == BJTab.Favorites) },
-            alwaysShowLabel = true,
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
-        )
-
-        NavigationBarItem(
-            selected = selected == BJTab.Profile,
-            onClick = { onSelect(BJTab.Profile) },
-            icon = { iconContent(Icons.Outlined.Person, selected == BJTab.Profile) },
-            label = { label("Perfil", selected == BJTab.Profile) },
-            alwaysShowLabel = true,
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
-        )
+        Item(BJTab.Home, Icons.Outlined.Home, "Menú")
+        Item(BJTab.Coupons, Icons.Outlined.QrCode, "Cupones")
+        Item(BJTab.Favorites, Icons.Outlined.FavoriteBorder, "Favoritos")
+        Item(BJTab.Profile, Icons.Outlined.Person, "Perfil")
     }
 }
+
+
+@Composable
+fun GradientText(
+    text: String,
+    brush: Brush,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.labelSmall.copy(
+        fontWeight = FontWeight.Bold,
+        fontSize = 10.sp
+    )
+) {
+    val annotated = buildAnnotatedString {
+        withStyle(
+            SpanStyle(
+                brush = brush,
+                fontSize = style.fontSize,
+                fontWeight = style.fontWeight,
+                fontFamily = style.fontFamily,
+                letterSpacing = style.letterSpacing
+            )
+        ) {
+            append(text)
+        }
+    }
+    Text(text = annotated, modifier = modifier, style = style.copy(color = androidx.compose.ui.graphics.Color.Unspecified))
+}
+
 
 @Preview(showBackground = true, backgroundColor = 0xFFFFFFFF)
 @Composable

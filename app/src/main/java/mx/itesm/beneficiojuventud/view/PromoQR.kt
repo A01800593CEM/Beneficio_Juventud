@@ -3,12 +3,10 @@ package mx.itesm.beneficiojuventud.view
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.*
@@ -18,9 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -29,11 +31,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.flow.collectLatest
 import mx.itesm.beneficiojuventud.R
-import mx.itesm.beneficiojuventud.components.*
+import mx.itesm.beneficiojuventud.components.BJBottomBar
+import mx.itesm.beneficiojuventud.components.BackButton
+import mx.itesm.beneficiojuventud.components.GradientDivider
+import mx.itesm.beneficiojuventud.components.BJTab
+import mx.itesm.beneficiojuventud.components.MainButton
+import mx.itesm.beneficiojuventud.model.PromoTheme
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
 data class PromoDetail(
@@ -45,7 +52,10 @@ data class PromoDetail(
     val description: String,
     val terms: String,
     val qrBitmap: ImageBitmap? = null,
-    val qrRes: Int? = null
+    val qrRes: Int? = null,
+    val uses: Int = 2,
+    val maxUses: Int = 5,
+    val theme: PromoTheme = PromoTheme.LIGHT // <- theme seleccionable (desde API)
 )
 
 @Composable
@@ -55,124 +65,260 @@ fun PromoQR(
 ) {
     val detail = PromoDetail(
         bannerRes = R.drawable.el_fuego_sagrado,
-        title = "Martes 2x1",
-        merchant = "Cine Stelar",
+        title = "2do Café al 50%",
+        merchant = "Café Origo",
         discountLabel = "50% OFF",
         validUntil = "12/30/2024",
         description = "Compra un boleto y obtén el segundo gratis para la misma función.",
         terms = "Válido solo los martes. No aplica en estrenos ni funciones 3D. Presentar cupón en taquilla.",
-        qrRes = R.drawable.qr_demo
+        qrRes = R.drawable.qr_demo,
+        theme = PromoTheme.LIGHT // prueba rápida; cambia a DARK o llega por API
     )
 
     var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
-    var isRedeemed by rememberSaveable { mutableStateOf(false) }
+    var isRedeemed by rememberSaveable { mutableStateOf(false) }     // canjeado
+    var showQrDialog by rememberSaveable { mutableStateOf(false) }   // overlay visible
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = { PromoQRTopBar(nav) },
-        bottomBar = {
-            BJBottomBar(
-                selected = selectedTab,
-                onSelect = { tab ->
-                    selectedTab = tab
-                    when (tab) {
-                        BJTab.Home      -> nav.navigate(Screens.Home.route)
-                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
-                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
-                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
+    // Paletas de texto y degradado según el theme (idéntico criterio a tu carrusel)
+    val theme = detail.theme
+    val titleColor = if (theme == PromoTheme.LIGHT) Color(0xFFFFFFFF) else Color(0xFF505050)
+    val subtitleColor = if (theme == PromoTheme.LIGHT) Color(0xFFD3D3D3) else Color(0xFF616161)
+    val gradientBrush = when (theme) {
+        PromoTheme.LIGHT -> Brush.horizontalGradient(
+            0.00f to Color(0xFF2B2B2B).copy(alpha = 1f),
+            0.15f to Color(0xFF2B2B2B).copy(alpha = .95f),
+            0.30f to Color(0xFF2B2B2B).copy(alpha = .70f),
+            0.45f to Color(0xFF2B2B2B).copy(alpha = .40f),
+            0.60f to Color(0xFF2B2B2B).copy(alpha = .25f),
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+        PromoTheme.DARK -> Brush.horizontalGradient(
+            0.00f to Color.White.copy(alpha = 1f),
+            0.15f to Color.White.copy(alpha = .95f),
+            0.30f to Color.White.copy(alpha = .70f),
+            0.45f to Color.White.copy(alpha = .40f),
+            0.60f to Color.White.copy(alpha = .25f),
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+
+    // Envolvemos todo en un Box para poder pintar el overlay por encima con zIndex
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            topBar = { PromoQRTopBar(nav) },
+            bottomBar = {
+                BJBottomBar(
+                    selected = selectedTab,
+                    onSelect = { tab -> selectedTab = tab }
+                )
+            }
+        ) { padding ->
+
+            LazyColumn(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(bottom = 96.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // ---------- BANNER ----------
+                item {
+                    Card(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .fillMaxWidth()
+                            .height(210.dp),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Box(Modifier.fillMaxSize()) {
+
+                            // 1) Imagen al fondo
+                            Image(
+                                painter = painterResource(id = detail.bannerRes),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer(alpha = 0.85f) // coherente con carrusel
+                            )
+
+                            // 2) Degradado encima de la imagen, debajo del texto
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .drawWithCache {
+                                        onDrawWithContent {
+                                            drawContent()
+                                            drawRect(brush = gradientBrush)
+                                        }
+                                    }
+                            )
+
+                            // 3) Badge arriba a la derecha
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(12.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(0xFF008D96))
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = detail.discountLabel,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+
+                            // 4) Texto arriba del degradado
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(16.dp)
+                            ) {
+                                Text(
+                                    text = detail.merchant,
+                                    color = subtitleColor.copy(alpha = 0.95f),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = detail.title,
+                                    color = titleColor,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 28.sp,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
                     }
                 }
-            )
-        }
-    ) { padding ->
 
-        // 👇 LazyColumn respeta el top/bottom padding del Scaffold (no se enciman)
-        LazyColumn(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(padding), // <- Desplaza por top y bottom del Scaffold
-            contentPadding = PaddingValues(
-                bottom = 96.dp // <- Solo tu extra para la BottomBar (o lo que necesites)
-            ),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // ---------- BANNER ----------
-            item {
-                Card(
+                // ---------- INFO CARD ----------
+                item { InfoCard(detail) }
+
+                // ---------- USOS ----------
+                item {
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = "Usos ${detail.uses} / ${detail.maxUses}",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF3C3C3C),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+
+                // ---------- BOTÓN “Ver QR” (abre overlay) ----------
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    MainButton(
+                        text = "Ver QR",
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        onClick = { showQrDialog = true }
+                    )
+                }
+
+                // ---------- VERSIÓN ----------
+                item {
+                    Spacer(Modifier.height(20.dp))
+                    Text(
+                        "Versión 1.0.12",
+                        color = Color.Gray,
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+            }
+        }
+
+        // ---------- POP-UP CUSTOM (overlay propio) ----------
+        if (showQrDialog) {
+            // Scrim + tarjeta centrada
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(1f)
+                    .background(Color.Black.copy(alpha = 0.50f))
+                    .pointerInput(Unit) { detectTapGestures(onTap = { showQrDialog = false }) },
+                contentAlignment = Alignment.Center
+            ) {
+                // Contenedor del pop-up
+                Box(
                     modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .fillMaxWidth()
-                        .height(150.dp),
-                    shape = RoundedCornerShape(16.dp)
+                        .padding(horizontal = 24.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .pointerInput(Unit) { detectTapGestures(onTap = { /* consume */ }) }
                 ) {
-                    Box(Modifier.fillMaxSize()) {
-                        Image(
-                            painter = painterResource(id = detail.bannerRes),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
+                    Column(
+                        modifier = Modifier
+                            .widthIn(min = 300.dp, max = 420.dp)
+                            .padding(horizontal = 24.dp, vertical = 28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Top
+                    ) {
+                        Text(
+                            text = "Código de Canje",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            textAlign = TextAlign.Center
                         )
-                        Column(
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(16.dp)
+
+                        Spacer(Modifier.height(16.dp))
+
+                        // Contenedor para centrar estrictamente el QR/contenido
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = detail.title,
-                                color = Color.White,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 22.sp,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = detail.merchant,
-                                color = Color.White.copy(alpha = 0.9f),
-                                fontSize = 14.sp
+                            Crossfade(
+                                targetState = isRedeemed,
+                                label = "redeem_overlay_xfade"
+                            ) { redeemed ->
+                                if (redeemed) {
+                                    RedeemedCardInner()
+                                } else {
+                                    QRCardInner(detail)
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(20.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = { isRedeemed = true },
+                                modifier = Modifier.weight(1f)
+                            ) { Text("Simular escaneo") }
+
+                            MainButton(
+                                text = "Cerrar",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(52.dp),
+                                onClick = { showQrDialog = false }
                             )
                         }
                     }
                 }
             }
-
-            // ---------- INFO CARD ----------
-            item { InfoCard(detail) }
-
-            item { Spacer(Modifier.height(20.dp)) }
-
-            // ---------- QR / CANJEADO ----------
-            item {
-                Crossfade(targetState = isRedeemed, label = "redeem_xfade") { redeemed ->
-                    if (redeemed) RedeemedCard() else QRCard(detail)
-                }
-            }
-
-            // ---------- BOTÓN SIMULAR ESCANEO ----------
-            item {
-                Spacer(Modifier.height(16.dp))
-                Button(
-                    onClick = { isRedeemed = true },
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Simular escaneo de QR")
-                }
-            }
-
-            // ---------- NOTA + VERSIÓN ----------
-            item {
-                Spacer(Modifier.height(20.dp))
-                Text(
-                    "Versión 1.0.01",
-                    color = Color.Gray,
-                    fontSize = 10.sp,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
         }
     }
 }
+
+/* -------------------- Tarjeta de información -------------------- */
 
 @Composable
 private fun InfoCard(detail: PromoDetail) {
@@ -184,36 +330,12 @@ private fun InfoCard(detail: PromoDetail) {
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F7F7))
     ) {
         Column(Modifier.padding(16.dp)) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFF008D96))
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = detail.discountLabel,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
-                }
-                Text(
-                    text = "Válido hasta ${detail.validUntil}",
-                    color = Color.Gray,
-                    fontSize = 12.sp
-                )
-            }
 
-            Spacer(Modifier.height(16.dp))
+            // Descripción
             Text(
                 text = "Descripción",
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF454545),
                 fontSize = 14.sp
             )
             Text(
@@ -225,11 +347,19 @@ private fun InfoCard(detail: PromoDetail) {
             )
 
             Spacer(Modifier.height(16.dp))
+
+            // Términos (con vigencia al inicio)
             Text(
                 text = "Términos y condiciones",
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF454545),
                 fontSize = 14.sp
+            )
+            Text(
+                text = "Vigencia: ${detail.validUntil}",
+                color = Color(0xFF6B7280),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 4.dp)
             )
             Text(
                 text = detail.terms,
@@ -242,25 +372,24 @@ private fun InfoCard(detail: PromoDetail) {
     }
 }
 
+/* -------------------- Contenido del QR dentro del pop-up -------------------- */
+
 @Composable
-private fun QRCard(detail: PromoDetail) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = "Código de Canje",
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Spacer(Modifier.height(12.dp))
+private fun QRCardInner(detail: PromoDetail) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
+    ) {
         Card(
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
         ) {
+            // tamaño fijo y cómodo para que nada empuje al texto
             Box(
                 modifier = Modifier
-                    .size(180.dp)
-                    .padding(14.dp),
+                    .size(220.dp)          // ligeramente más grande
+                    .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -270,25 +399,29 @@ private fun QRCard(detail: PromoDetail) {
                 )
             }
         }
-        Spacer(Modifier.height(10.dp))
+
+        // texto SIEMPRE debajo, con buen padding
+        Spacer(Modifier.height(12.dp))
         Text(
             text = "Presenta este código QR en ${detail.merchant} para canjear tu descuento",
-            color = Color.Gray,
-            fontSize = 11.sp,
-            lineHeight = 14.sp,
+            color = Color(0xFF6B7280),
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp)
+            modifier = Modifier
+                .widthIn(max = 340.dp)
+                .padding(horizontal = 8.dp),
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
 
 @Composable
-private fun RedeemedCard() {
-    // Borde punteado como en el mockup
+private fun RedeemedCardInner() {
     val dash = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
     Column(
-        Modifier
-            .padding(horizontal = 16.dp)
+        modifier = Modifier
             .fillMaxWidth()
             .drawBehind {
                 val strokeWidth = 2.dp.toPx()
@@ -301,18 +434,11 @@ private fun RedeemedCard() {
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
                 )
             }
-            .padding(vertical = 24.dp),
+            .padding(vertical = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Código de Canje",
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Spacer(Modifier.height(16.dp))
         Icon(
-            painter = painterResource(id = R.drawable.ic_check_circle), // pon un check verde
+            painter = painterResource(id = R.drawable.ic_check_circle),
             contentDescription = null,
             tint = Color(0xFF22C55E),
             modifier = Modifier.size(56.dp)
@@ -332,6 +458,8 @@ private fun RedeemedCard() {
         )
     }
 }
+
+/* -------------------- TopBar -------------------- */
 
 @Composable
 private fun PromoQRTopBar(nav: NavHostController) {

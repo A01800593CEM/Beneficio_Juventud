@@ -3,7 +3,8 @@ package mx.itesm.beneficiojuventud.view
 import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,12 +21,13 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.android.awaitFrame
 import kotlinx.coroutines.launch
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.ui.focus.onFocusEvent
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.layout.onSizeChanged
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.*
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
@@ -47,13 +49,6 @@ fun Login(
     var errorMessage by remember { mutableStateOf("") }
     val authState by viewModel.authState.collectAsState()
 
-    // ---------- Auto-scroll al enfocar ----------
-    val scope = rememberCoroutineScope()
-    val bringEmail = remember { BringIntoViewRequester() }
-    val bringPass  = remember { BringIntoViewRequester() }
-
-    val topPadding = rememberResponsiveTopPadding()
-
     LaunchedEffect(authState.isSuccess) {
         if (authState.isSuccess) {
             nav.navigate(Screens.Onboarding.route) {
@@ -62,7 +57,6 @@ fun Login(
             viewModel.clearState()
         }
     }
-
     LaunchedEffect(authState.error) {
         authState.error?.let { error ->
             errorMessage = error
@@ -71,29 +65,66 @@ fun Login(
     }
 
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-        LazyColumn(
+        // --- Medimos contenedor y contenido para decidir si hay overflow ---
+        var containerHeight by remember { mutableStateOf(0) }
+        var contentHeight by remember { mutableStateOf(0) }
+        val needsScroll by derivedStateOf { contentHeight > containerHeight }
+
+        val scrollState = rememberScrollState()
+
+        // Helper: solo trae al campo a la vista si hay scroll; si no, es no-op.
+        @Composable
+        fun FocusBringIntoView(
+            delayMs: Long = 140,
+            content: @Composable (Modifier) -> Unit
+        ) {
+            if (!needsScroll) {
+                content(Modifier) // sin scroll, no hace falta requester
+                return
+            }
+            val requester = remember { BringIntoViewRequester() }
+            val scope = rememberCoroutineScope()
+            val mod = Modifier
+                .bringIntoViewRequester(requester)
+                .onFocusEvent { state ->
+                    if (state.isFocused) {
+                        scope.launch {
+                            awaitFrame()     // espera medición con IME
+                            delay(delayMs)   // amortigua "saltos"
+                            requester.bringIntoView()
+                        }
+                    }
+                }
+            content(mod)
+        }
+
+        Box(
             modifier = modifier
                 .padding(innerPadding)
                 .fillMaxSize()
                 .dismissKeyboardOnTap()
-                .imePadding(),
-            contentPadding = PaddingValues(
-                start = 24.dp, end = 24.dp,
-                top = topPadding,
-                bottom = 32.dp
-            ),
+                .imePadding() // evita que el teclado tape el contenido
+                .onSizeChanged { containerHeight = it.height } // alto visible
         ) {
-            item {
-                Box(modifier = modifier.padding(horizontal = 30.dp)) {
+            // Contenido principal; medimos su altura real
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(if (needsScroll) Modifier.verticalScroll(scrollState) else Modifier)
+                    .padding(horizontal = 24.dp, vertical = 24.dp)
+                    .onSizeChanged { contentHeight = it.height },
+                horizontalAlignment = Alignment.Start
+            ) {
+                // Logo
+                Box(modifier = Modifier.padding(horizontal = 6.dp)) {
                     Image(
                         painter = painterResource(id = R.drawable.logo_beneficio_joven),
                         contentDescription = "",
                         modifier = Modifier.size(50.dp)
                     )
                 }
-            }
 
-            item {
+                // Título
                 Text(
                     "Inicia Sesión",
                     style = TextStyle(
@@ -103,11 +134,10 @@ fun Login(
                         fontSize = 30.sp,
                         fontWeight = FontWeight.Black
                     ),
-                    modifier = modifier.padding(24.dp, 18.dp, 20.dp, 14.dp)
+                    modifier = Modifier.padding(top = 18.dp, start = 6.dp, end = 6.dp, bottom = 14.dp)
                 )
-            }
 
-            item {
+                // Subtítulo
                 Text(
                     "Por favor, inicie sesión en su cuenta",
                     style = TextStyle(
@@ -116,12 +146,10 @@ fun Login(
                         color = Color(0xFF616161)
                     ),
                     textAlign = TextAlign.Start,
-                    modifier = modifier.padding(horizontal = 24.dp)
+                    modifier = Modifier.padding(horizontal = 6.dp)
                 )
-            }
 
-            // Label correo
-            item {
+                // Label correo
                 Text(
                     "Correo Electrónico",
                     style = TextStyle(
@@ -129,28 +157,21 @@ fun Login(
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF7D7A7A)
                     ),
-                    modifier = modifier.padding(24.dp, 32.dp, 24.dp, 8.dp)
+                    modifier = Modifier.padding(start = 6.dp, top = 32.dp, end = 6.dp, bottom = 8.dp)
                 )
-            }
 
-            // Campo correo con auto-scroll al enfocar
-            item {
-                EmailTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .bringIntoViewRequester(bringEmail)
-                        .onFocusEvent {
-                            if (it.isFocused) {
-                                scope.launch { bringEmail.bringIntoView() }
-                            }
-                        }
-                )
-            }
+                // Campo correo (bringIntoView solo si hay scroll)
+                FocusBringIntoView {
+                    EmailTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        modifier = it
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp)
+                    )
+                }
 
-            // Label contraseña
-            item {
+                // Label contraseña
                 Text(
                     "Contraseña",
                     style = TextStyle(
@@ -158,32 +179,25 @@ fun Login(
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF7D7A7A)
                     ),
-                    modifier = modifier.padding(24.dp, 20.dp, 24.dp, 8.dp)
+                    modifier = Modifier.padding(start = 6.dp, top = 20.dp, end = 6.dp, bottom = 8.dp)
                 )
-            }
 
-            // Campo contraseña con auto-scroll al enfocar
-            item {
-                PasswordTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .bringIntoViewRequester(bringPass)
-                        .onFocusEvent {
-                            if (it.isFocused) {
-                                scope.launch { bringPass.bringIntoView() }
-                            }
-                        }
-                )
-            }
+                // Campo contraseña (bringIntoView solo si hay scroll)
+                FocusBringIntoView {
+                    PasswordTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        modifier = it
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp)
+                    )
+                }
 
-            // Recuérdame / ¿Olvidaste tu contraseña?
-            item {
+                // Recuérdame / ¿Olvidaste tu contraseña?
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 0.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
@@ -214,15 +228,13 @@ fun Login(
                         )
                     }
                 }
-            }
 
-            // Mostrar error si existe
-            if (showError && errorMessage.isNotEmpty()) {
-                item {
+                // Error
+                if (showError && errorMessage.isNotEmpty()) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                            .padding(vertical = 8.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
                     ) {
                         Row(
@@ -249,49 +261,43 @@ fun Login(
                         }
                     }
                 }
-            }
 
-            // Botón primario
-            item {
+                // Botón primario
                 MainButton(
                     text = if (authState.isLoading) "Iniciando sesión..." else "Inicia Sesión",
                     enabled = !authState.isLoading && email.isNotEmpty() && password.isNotEmpty(),
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
                 ) {
                     showError = false
                     viewModel.signIn(email, password)
                 }
-            }
 
-            item {
                 GradientDivider_OR(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+                    modifier = Modifier.padding(vertical = 16.dp)
                 )
-            }
 
-            // Social buttons
-            item {
+                // Social buttons
                 AltLoginButton(
                     text = "Continuar con Google",
                     icon = painterResource(id = R.drawable.logo_google),
                     contentDescription = "Continuar con Google",
                     onClick = { /* TODO: login Google */ },
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp)
                 )
-            }
 
-            item {
                 AltLoginButton(
                     text = "Continuar con Facebook",
                     icon = painterResource(id = R.drawable.logo_facebook),
                     contentDescription = "Continuar con Facebook",
                     onClick = { /* TODO: login Facebook */ },
-                    modifier = Modifier.padding(horizontal = 24.dp)
+                    modifier = Modifier.fillMaxWidth()
                 )
-            }
 
-            // ¿No tienes cuenta? Regístrate
-            item {
+                // ¿No tienes cuenta? Regístrate
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -318,23 +324,12 @@ fun Login(
                         )
                     }
                 }
-            }
 
-            // Espaciador inferior para no chocar con la barra de gestos
-            item {
+                // Espaciador inferior para barra de gestos
                 Spacer(Modifier.navigationBarsPadding())
             }
         }
     }
-}
-
-
-@Composable
-fun rememberResponsiveTopPadding(): Dp {
-    val configuration = LocalConfiguration.current
-    val screenHeight = configuration.screenHeightDp
-    val proportionalPadding = (screenHeight * 0.8f).dp
-    return proportionalPadding.coerceIn(24.dp, 75.dp)
 }
 
 @SuppressLint("ViewModelConstructorInComposable")

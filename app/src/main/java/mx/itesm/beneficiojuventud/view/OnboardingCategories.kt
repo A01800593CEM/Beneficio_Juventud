@@ -99,9 +99,7 @@ fun OnboardingCategories(
                 .fillMaxWidth()
                 .padding(top = 4.dp)
         ) {
-            // TODO: Implementar navegación al menú principal cuando esté listo
-            // Por ahora navegar de vuelta al login
-            nav.navigate(Screens.Profile.route) {
+            nav.navigate(Screens.Home.route) {
                 popUpTo(0) { inclusive = true }
             }
         }

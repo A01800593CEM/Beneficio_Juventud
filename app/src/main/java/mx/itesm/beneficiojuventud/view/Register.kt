@@ -3,10 +3,9 @@ package mx.itesm.beneficiojuventud.view
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material.icons.Icons
@@ -35,12 +34,19 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.android.awaitFrame
+import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.windowInsetsPadding
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.PasswordTextField
 import mx.itesm.beneficiojuventud.model.UserProfile
-import mx.itesm.beneficiojuventud.model.RegistrationData
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.AppViewModel
@@ -71,19 +77,17 @@ fun Register(
     var errorMessage by remember { mutableStateOf("") }
 
     val authState by authViewModel.authState.collectAsState()
-    val scroll = rememberScrollState()
 
-    // Manejar navegación después del registro exitoso
+    // Navegación post-registro
     LaunchedEffect(authState.needsConfirmation) {
         if (authState.needsConfirmation) {
-            // Navegar a la pantalla de confirmación de registro (no recovery)
             nav.navigate(Screens.confirmSignUpWithEmail(email)) {
                 popUpTo(Screens.Register.route) { inclusive = true }
             }
         }
     }
 
-    // Manejar errores de registro
+    // Errores de registro
     LaunchedEffect(authState.error) {
         authState.error?.let { error ->
             errorMessage = error
@@ -91,247 +95,305 @@ fun Register(
         }
     }
 
-    // Validar campos
+    // Validación
     val isFormValid = nombre.isNotBlank() &&
-                     apPaterno.isNotBlank() &&
-                     apMaterno.isNotBlank() &&
-                     fechaNacDb.isNotBlank() &&
-                     email.isNotBlank() &&
-                     phone.isNotBlank() &&
-                     password.isNotBlank() &&
-                     acceptTerms
+            apPaterno.isNotBlank() &&
+            apMaterno.isNotBlank() &&
+            fechaNacDb.isNotBlank() &&
+            email.isNotBlank() &&
+            phone.isNotBlank() &&
+            password.isNotBlank() &&
+            acceptTerms
 
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-        Column(
-            modifier = modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .dismissKeyboardOnTap()
-                .imePadding()
-                .verticalScroll(scroll)
-                .padding(top = 85.dp, bottom = 24.dp) // bottom para que no tape el botón
-        ) {
-            // Logo
-            Box(modifier = Modifier.padding(horizontal = 30.dp)) {
-                Image(
-                    painter = painterResource(id = R.drawable.logo_beneficio_joven),
-                    contentDescription = "",
-                    modifier = Modifier.size(50.dp)
-                )
-            }
-
-            // Título
-            Text(
-                "Regístrate",
-                style = TextStyle(
-                    brush = Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96))),
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Black
-                ),
-                modifier = Modifier.padding(24.dp, 18.dp, 20.dp, 14.dp)
-            )
-
-            // Nombre
-            Label("Nombre")
-            OutlinedTextField(
-                value = nombre,
-                onValueChange = { nombre = it },
-                singleLine = true,
+    Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        // Footer en bottomBar: se eleva con IME sin empujar el contenido
+        bottomBar = {
+            Column(
                 modifier = Modifier
-                    .padding(horizontal = 24.dp)
                     .fillMaxWidth()
-                    .heightIn(min = TextFieldDefaults.MinHeight),
-                shape = RoundedCornerShape(18.dp),
-                leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
-                placeholder = { Text("Nombre", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-                textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                colors = textFieldColors()
-            )
-
-            Label("Apellido Paterno", top = 20.dp)
-            OutlinedTextField(
-                value = apPaterno,
-                onValueChange = { apPaterno = it },
-                singleLine = true,
-                modifier = Modifier
-                    .padding(horizontal = 24.dp)
-                    .fillMaxWidth()
-                    .heightIn(min = TextFieldDefaults.MinHeight),
-                shape = RoundedCornerShape(18.dp),
-                placeholder = { Text("Apellido Paterno", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-                textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                colors = textFieldColors()
-            )
-
-            Label("Apellido Materno", top = 20.dp)
-            OutlinedTextField(
-                value = apMaterno,
-                onValueChange = { apMaterno = it },
-                singleLine = true,
-                modifier = Modifier
-                    .padding(horizontal = 24.dp)
-                    .fillMaxWidth()
-                    .heightIn(min = TextFieldDefaults.MinHeight),
-                shape = RoundedCornerShape(18.dp),
-                placeholder = { Text("Apellido Materno", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-                textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                colors = textFieldColors()
-            )
-
-            // Fecha de Nacimiento (UI + DB)
-            Label("Fecha de Nacimiento", top = 20.dp)
-            BirthDateField(
-                value = fechaNacDisplay,
-                onDateSelected = { localDate ->
-                    fechaNacDisplay = localDate.format(displayFormatterEs)   // bonito para UI
-                    fechaNacDb = localDate.format(storageFormatter)          // ISO para PostgreSQL
-                },
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-
-            // Número Telefónico
-            Label("Número Telefónico", top = 20.dp)
-            OutlinedTextField(
-                value = phone,
-                onValueChange = { phone = it },
-                singleLine = true,
-                modifier = Modifier
-                    .padding(horizontal = 24.dp)
-                    .fillMaxWidth()
-                    .heightIn(min = TextFieldDefaults.MinHeight),
-                shape = RoundedCornerShape(18.dp),
-                leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = null) },
-                placeholder = { Text("55 1234 5678", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-                textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
-                colors = textFieldColors()
-            )
-
-            // Correo
-            Label("Correo Electrónico", top = 20.dp)
-            EmailTextField(
-                value = email,
-                onValueChange = { email = it },
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-
-            // Contraseña
-            Label("Contraseña", top = 20.dp)
-            PasswordTextField(
-                value = password,
-                onValueChange = { password = it },
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-
-            // Términos y condiciones
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .windowInsetsPadding(WindowInsets.ime) // pega al teclado
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
             ) {
-                Checkbox(checked = acceptTerms, onCheckedChange = { acceptTerms = it })
-                Text(
-                    buildAnnotatedString {
-                        append("Estoy de acuerdo con los ")
-                        pushStyle(
-                            SpanStyle(
-                                color = Color(0xFF008D96),
-                                fontWeight = FontWeight.SemiBold,
-                                textDecoration = TextDecoration.Underline
-                            )
-                        )
-                        append("términos y condiciones")
-                        pop()
-                    },
-                    style = TextStyle(fontSize = 14.sp, color = Color(0xFF7D7A7A))
-                )
-            }
+                MainButton(
+                    text = if (authState.isLoading) "Registrando..." else "Continuar",
+                    enabled = !authState.isLoading && isFormValid,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    showError = false
+                    val userProfile = UserProfile(
+                        nombre = nombre,
+                        apellidoPaterno = apPaterno,
+                        apellidoMaterno = apMaterno,
+                        fechaNacimiento = fechaNacDb,
+                        telefono = phone,
+                        email = email
+                    )
+                    appViewModel?.savePendingUserProfile(userProfile)
+                    authViewModel.signUp(email, password, phone)
+                }
 
-            // Mostrar error si existe
-            if (showError && errorMessage.isNotEmpty()) {
-                Card(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                        .padding(top = 6.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Text(
+                        "¿Ya tienes cuenta?  ",
+                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                    )
+                    TextButton(onClick = { nav.navigate(Screens.Login.route) }) {
                         Text(
-                            text = errorMessage,
-                            color = Color(0xFFD32F2F),
-                            fontSize = 14.sp,
-                            modifier = Modifier.weight(1f)
+                            "Inicia Sesión",
+                            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF008D96))
                         )
-                        IconButton(
-                            onClick = {
-                                showError = false
-                                errorMessage = ""
-                                authViewModel.clearState()
-                            }
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
+
+        // Contenido scrollable
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .dismissKeyboardOnTap(),
+            contentPadding = PaddingValues(
+                start = 24.dp, end = 24.dp,
+                top = 24.dp,
+                bottom = 24.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Box { Image(painter = painterResource(R.drawable.logo_beneficio_joven), contentDescription = null, modifier = Modifier.size(50.dp)) }
+            }
+            item {
+                Text(
+                    "Regístrate",
+                    style = TextStyle(
+                        brush = Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96))),
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.Black
+                    ),
+                    modifier = Modifier.padding(top = 4.dp, bottom = 6.dp)
+                )
+            }
+
+            // Nombre
+            item { Label("Nombre", top = 4.dp) }
+            item {
+                FocusBringIntoView {
+                    OutlinedTextField(
+                        value = nombre,
+                        onValueChange = { nombre = it },
+                        singleLine = true,
+                        modifier = it
+                            .fillMaxWidth()
+                            .heightIn(min = TextFieldDefaults.MinHeight),
+                        shape = RoundedCornerShape(18.dp),
+                        leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
+                        placeholder = { Text("Nombre", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
+                        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        colors = textFieldColors()
+                    )
+                }
+            }
+
+            // Apellido paterno
+            item { Label("Apellido Paterno") }
+            item {
+                FocusBringIntoView {
+                    OutlinedTextField(
+                        value = apPaterno,
+                        onValueChange = { apPaterno = it },
+                        singleLine = true,
+                        modifier = it
+                            .fillMaxWidth()
+                            .heightIn(min = TextFieldDefaults.MinHeight),
+                        shape = RoundedCornerShape(18.dp),
+                        placeholder = { Text("Apellido Paterno", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
+                        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        colors = textFieldColors()
+                    )
+                }
+            }
+
+            // Apellido materno
+            item { Label("Apellido Materno") }
+            item {
+                FocusBringIntoView {
+                    OutlinedTextField(
+                        value = apMaterno,
+                        onValueChange = { apMaterno = it },
+                        singleLine = true,
+                        modifier = it
+                            .fillMaxWidth()
+                            .heightIn(min = TextFieldDefaults.MinHeight),
+                        shape = RoundedCornerShape(18.dp),
+                        placeholder = { Text("Apellido Materno", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
+                        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        colors = textFieldColors()
+                    )
+                }
+            }
+
+            // Fecha de nacimiento (readOnly)
+            item { Label("Fecha de Nacimiento") }
+            item {
+                BirthDateField(
+                    value = fechaNacDisplay,
+                    onDateSelected = { localDate ->
+                        fechaNacDisplay = localDate.format(displayFormatterEs)   // bonito para UI
+                        fechaNacDb = localDate.format(storageFormatter)          // ISO para PostgreSQL
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // Teléfono
+            item { Label("Número Telefónico") }
+            item {
+                FocusBringIntoView {
+                    OutlinedTextField(
+                        value = phone,
+                        onValueChange = { phone = it },
+                        singleLine = true,
+                        modifier = it
+                            .fillMaxWidth()
+                            .heightIn(min = TextFieldDefaults.MinHeight),
+                        shape = RoundedCornerShape(18.dp),
+                        leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = null) },
+                        placeholder = { Text("55 1234 5678", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
+                        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+                        colors = textFieldColors()
+                    )
+                }
+            }
+
+            // Correo
+            item { Label("Correo Electrónico") }
+            item {
+                FocusBringIntoView {
+                    EmailTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        modifier = it.fillMaxWidth()
+                    )
+                }
+            }
+
+            // Contraseña
+            item { Label("Contraseña") }
+            item {
+                FocusBringIntoView {
+                    PasswordTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        modifier = it.fillMaxWidth()
+                    )
+                }
+            }
+
+            // Términos
+            item {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Checkbox(checked = acceptTerms, onCheckedChange = { acceptTerms = it })
+                    Text(
+                        buildAnnotatedString {
+                            append("Estoy de acuerdo con los ")
+                            pushStyle(
+                                SpanStyle(
+                                    color = Color(0xFF008D96),
+                                    fontWeight = FontWeight.SemiBold,
+                                    textDecoration = TextDecoration.Underline
+                                )
+                            )
+                            append("términos y condiciones")
+                            pop()
+                        },
+                        style = TextStyle(fontSize = 14.sp, color = Color(0xFF7D7A7A))
+                    )
+                }
+            }
+
+            // Error
+            if (showError && errorMessage.isNotEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("✕", color = Color(0xFFD32F2F))
+                            Text(
+                                text = errorMessage,
+                                color = Color(0xFFD32F2F),
+                                fontSize = 14.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                onClick = {
+                                    showError = false
+                                    errorMessage = ""
+                                    authViewModel.clearState()
+                                }
+                            ) { Text("✕", color = Color(0xFFD32F2F)) }
                         }
                     }
                 }
             }
 
-            // Botón Continuar
-            MainButton(
-                text = if (authState.isLoading) "Registrando..." else "Continuar",
-                enabled = !authState.isLoading && isFormValid,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-            ) {
-                showError = false
-
-                // Crear el perfil de usuario para guardar después en BD
-                val userProfile = UserProfile(
-                    nombre = nombre,
-                    apellidoPaterno = apPaterno,
-                    apellidoMaterno = apMaterno,
-                    fechaNacimiento = fechaNacDb,
-                    telefono = phone,
-                    email = email
-                )
-
-                // Guardar datos del usuario temporalmente en AppViewModel
-                appViewModel?.savePendingUserProfile(userProfile)
-
-                // Solo enviar email, password y teléfono a Amplify
-                authViewModel.signUp(email, password, phone)
-            }
-
-            // ¿Ya tienes cuenta?
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "¿Ya tienes cuenta?  ",
-                    style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
-                )
-                TextButton(onClick = { nav.navigate(Screens.Login.route) }) {
-                    Text(
-                        "Inicia Sesión",
-                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF008D96))
-                    )
-                }
-            }
+            item { Spacer(Modifier.height(8.dp)) }
         }
     }
 }
 
+/* ---------- Focus helper: hace scroll estable hasta el campo enfocado ---------- */
+@Composable
+private fun FocusBringIntoView(
+    delayMs: Long = 140,
+    content: @Composable (Modifier) -> Unit
+) {
+    val requester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+
+    // Solo usamos el requester y esperamos un frame + pequeño delay
+    val mod = Modifier
+        .bringIntoViewRequester(requester)
+        .onFocusEvent { state ->
+            if (state.isFocused) {
+                scope.launch {
+                    // Espera a que Compose mida con el IME abierto
+                    awaitFrame()
+                    delay(delayMs) // amortigua "saltos" en distintos OEM/teclados
+                    requester.bringIntoView()
+                }
+            }
+        }
+
+    content(mod)
+}
+
+/* ------------------------------ DATE PICKER FIELD ------------------------------ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BirthDateField(
@@ -374,7 +436,7 @@ private fun BirthDateField(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = TextFieldDefaults.MinHeight)
-            .clickable { showDialog.value = true } // tap en todo el campo abre el date picker
+            .clickable { showDialog.value = true }
     )
 
     if (showDialog.value) {
@@ -401,7 +463,7 @@ private fun BirthDateField(
     }
 }
 
-/* ---------- utils para formateo/parsing ---------- */
+/* ------------------------------ FORMATOS FECHA ------------------------------ */
 
 // Locale recomendado (sin deprecated)
 private val localeEsMx: Locale = Locale.Builder()
@@ -409,9 +471,9 @@ private val localeEsMx: Locale = Locale.Builder()
     .setRegion("MX")
     .build()
 
-// Formato para mostrar en UI: "01/febrero/2003"
+// Formato para mostrar en UI: "01/02/2003"
 private val displayFormatterEs: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("dd/MM/yyyy", localeEsMx) // p. ej. 01/02/2003
+    DateTimeFormatter.ofPattern("dd/MM/yyyy", localeEsMx)
 // Formato para BD (PostgreSQL DATE): "2003-02-01"
 private val storageFormatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
@@ -422,14 +484,14 @@ private fun String.toMillisFromDisplayOrNull(zone: ZoneId): Long? = runCatching 
     parsed.atStartOfDay(zone).toInstant().toEpochMilli()
 }.getOrNull()
 
-/* ---------- helpers de estilo ---------- */
+/* ------------------------------ ESTILO ------------------------------ */
 
 @Composable
 private fun Label(text: String, top: Dp = 0.dp) {
     Text(
         text,
         style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A)),
-        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = top, bottom = 8.dp)
+        modifier = Modifier.padding(top = top, bottom = 8.dp)
     )
 }
 
@@ -438,8 +500,8 @@ private fun textFieldColors() = TextFieldDefaults.colors(
     focusedContainerColor = Color.White,
     unfocusedContainerColor = Color.White,
 
-    focusedIndicatorColor = Color(0xFFD3D3D3),     // borde activo gris claro
-    unfocusedIndicatorColor = Color(0xFFD3D3D3),   // borde sin seleccionar gris claro
+    focusedIndicatorColor = Color(0xFFD3D3D3),
+    unfocusedIndicatorColor = Color(0xFFD3D3D3),
 
     cursorColor = Color(0xFF008D96),
 
@@ -449,6 +511,6 @@ private fun textFieldColors() = TextFieldDefaults.colors(
     focusedTrailingIconColor = Color(0xFF7D7A7A),
     unfocusedTrailingIconColor = Color(0xFF7D7A7A),
 
-    focusedPlaceholderColor = Color(0xFF616161),   // placeholder texto gris más oscuro
-    unfocusedPlaceholderColor = Color(0xFF616161), // placeholder texto gris más oscuro
+    focusedPlaceholderColor = Color(0xFF616161),
+    unfocusedPlaceholderColor = Color(0xFF616161),
 )

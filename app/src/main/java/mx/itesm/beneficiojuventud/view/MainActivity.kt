@@ -61,7 +61,7 @@ private fun AppContent(appViewModel: AppViewModel = viewModel()) {
 @Composable
 private fun AppNav(startDestination: String, appViewModel: AppViewModel) {
     val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = startDestination) {
+    NavHost(navController = nav, startDestination = Screens.PromoQR.route) {
         composable(Screens.LoginRegister.route) { LoginRegister(nav) }
         composable(Screens.Login.route) { Login(nav, appViewModel) }
         composable(Screens.Register.route) { Register(nav, appViewModel = appViewModel) }

@@ -29,17 +29,18 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        contentWindowInsets = WindowInsets.systemBars // respeta status/nav bars
+        contentWindowInsets = WindowInsets.systemBars
     ) { innerPadding ->
         Column(
             modifier = modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
                 .imePadding()
                 .navigationBarsPadding()
-                .padding(top = 85.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 16.dp, vertical = 16.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             // Logo
             Image(
@@ -50,7 +51,9 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
 
             // Títulos
             Column(
-                modifier = Modifier.fillMaxWidth(0.75f),
+                modifier = Modifier
+                    .fillMaxWidth(0.75f)
+                    .padding(top = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -60,17 +63,19 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
                         fontSize = 30.sp,
                         fontWeight = FontWeight.Black
                     ),
-                    modifier = Modifier.padding(20.dp)
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
                     "Crea una cuenta o inicia sesión para explorar nuestra app",
-                    style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A)),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 24.dp)
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF7D7A7A)
+                    ),
+                    textAlign = TextAlign.Center
                 )
             }
 
-            // Deja que el bloque superior use espacio, pero si no cabe, el scroll funciona:
             Spacer(Modifier.height(24.dp))
 
             // Botones principales
@@ -84,7 +89,6 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
 
                 GradientDivider_OR(modifier = Modifier.padding(vertical = 32.dp))
 
-                // Botones de redes (se mantienen dentro del scroll)
                 AltLoginButton(
                     "Continuar con Google",
                     painterResource(id = R.drawable.logo_google),
@@ -100,8 +104,7 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
                 )
             }
 
-            // Empuja el bloque inferior si hay espacio; si no, el usuario puede hacer scroll
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(32.dp))
 
             // Footer
             Row(
@@ -109,23 +112,30 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp, bottom = 8.dp) // margen final extra
+                    .padding(top = 10.dp, bottom = 8.dp)
             ) {
                 Text(
                     "¿Quieres ser colaborador?",
-                    style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF7D7A7A)
+                    )
                 )
                 TextButton(onClick = { /* nav.navigate("colabora") */ }) {
                     Text(
                         "Ver más",
-                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF008D96))
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF008D96)
+                        )
                     )
                 }
             }
         }
     }
 }
-
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
