@@ -26,6 +26,7 @@ import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
+import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
@@ -66,6 +67,7 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                     .fillMaxWidth()
                     .padding(start = 16.dp, end = 16.dp, top = 16.dp)
             ) {
+                // Logo centrado arriba
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -78,21 +80,17 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                         modifier = Modifier.size(28.dp)
                     )
                 }
+
                 Spacer(Modifier.height(8.dp))
+
+                // Fila con back, título y campana
                 Row(
                     Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { nav.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.Outlined.ChevronLeft,
-                                contentDescription = "Volver",
-                                tint = Color(0xFF616161),
-                                modifier = Modifier.size(40.dp)
-                            )
-                        }
+                        BackButton(nav = nav)
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = "Ayuda y Soporte",
@@ -101,6 +99,7 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                             color = Color(0xFF616161)
                         )
                     }
+
                     Icon(
                         imageVector = Icons.Outlined.NotificationsNone,
                         contentDescription = "Notificaciones",
@@ -108,6 +107,8 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                         modifier = Modifier.size(26.dp)
                     )
                 }
+
+                // Línea divisora con gradiente
                 GradientDivider(
                     thickness = 2.dp,
                     modifier = Modifier
@@ -116,6 +117,7 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                 )
             }
         },
+
         bottomBar = {
             BJBottomBar(
                 selected = selectedTab,
@@ -123,9 +125,9 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                     selectedTab = tab
                     when (tab) {
                         BJTab.Home      -> nav.navigate(Screens.Home.route)
-                        BJTab.Coupons   -> { /* nav.navigate(...) */ }
-                        BJTab.Favorites -> { /* nav.navigate(...) */ }
-                        BJTab.Profile    -> Unit
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
                     }
                 }
             )

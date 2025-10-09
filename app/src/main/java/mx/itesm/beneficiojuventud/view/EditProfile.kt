@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Person
@@ -46,6 +47,7 @@ import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
+import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
@@ -124,63 +126,10 @@ fun EditProfile(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-            ) {
-                // Logo centrado arriba
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_beneficio_joven),
-                        contentDescription = "Logo",
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // Fila con back, título y campana
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { nav.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Volver"
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = "Editar Perfil",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                            fontSize = 20.sp,
-                            color = Color(0xFF616161)
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Outlined.NotificationsNone,
-                        contentDescription = "Notificaciones",
-                        tint = Color(0xFF008D96)
-                    )
-                }
-
-                // Divisor con gradiente debajo del encabezado
-                GradientDivider(
-                    thickness = 2.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
-            }
+            EditProfileTopBar(
+                title = "Editar Perfil",
+                nav = nav
+            )
         },
         bottomBar = {
             BJBottomBar(
@@ -189,9 +138,9 @@ fun EditProfile(
                     selectedTab = tab
                     when (tab) {
                         BJTab.Home      -> nav.navigate(Screens.Home.route)
-                        BJTab.Coupons   -> { /* nav.navigate(...) */ }
-                        BJTab.Favorites -> { /* nav.navigate(...) */ }
-                        BJTab.Profile    -> Unit
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
                     }
                 }
             )
@@ -214,14 +163,7 @@ fun EditProfile(
                 Box(
                     modifier = Modifier
                         .size(100.dp)
-                        .clip(CircleShape)
-                        .clickable {
-                            if (!isUploading) {
-                                pickImage.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                )
-                            }
-                        },
+                        .clip(CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     when {
@@ -262,8 +204,14 @@ fun EditProfile(
                     text = "Cambiar Foto",
                     color = Color(0xFF008D96),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                    fontSize = 16.sp,
+                    modifier = Modifier.clickable {
+                    if (!isUploading) {
+                        pickImage.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    }
+                })
 
                 Spacer(Modifier.height(20.dp))
 
@@ -327,6 +275,63 @@ fun EditProfile(
         }
     }
 }
+
+@Composable
+private fun EditProfileTopBar(
+    title: String,
+    nav: NavHostController
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+    ) {
+        // Logo centrado
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Image(
+                painter = painterResource(id = R.drawable.logo_beneficio_joven),
+                contentDescription = "Logo",
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Usa tu BackButton reutilizable (sin padding interno)
+                BackButton(
+                    nav = nav,
+                    modifier = Modifier.size(40.dp) // para alinear con otras barras
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 20.sp,
+                    color = Color(0xFF616161)
+                )
+            }
+            Icon(
+                imageVector = Icons.Outlined.NotificationsNone,
+                contentDescription = "Notificaciones",
+                tint = Color(0xFF008D96),
+                modifier = Modifier.size(26.dp)
+            )
+        }
+
+        GradientDivider(
+            thickness = 2.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        )
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

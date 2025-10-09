@@ -25,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
+import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
@@ -87,14 +88,7 @@ fun History(nav: NavHostController, modifier: Modifier = Modifier) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { nav.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.Outlined.ChevronLeft,
-                                contentDescription = "Volver",
-                                modifier = Modifier.size(40.dp),
-                                tint = Color(0xFF616161)
-                            )
-                        }
+                        BackButton(nav = nav)
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = "Historial",
@@ -127,9 +121,9 @@ fun History(nav: NavHostController, modifier: Modifier = Modifier) {
                     selectedTab = tab
                     when (tab) {
                         BJTab.Home      -> nav.navigate(Screens.Home.route)
-                        BJTab.Coupons   -> { /* nav.navigate(...) */ }
-                        BJTab.Favorites -> { /* nav.navigate(...) */ }
-                        BJTab.Profile    -> Unit
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
                     }
                 }
             )

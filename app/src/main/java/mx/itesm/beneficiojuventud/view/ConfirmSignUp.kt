@@ -88,7 +88,8 @@ fun ConfirmSignUp(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = {}, navigationIcon = { BackButton(nav = nav) })
+            TopAppBar(title = {}, navigationIcon = { BackButton(nav = nav) },
+                modifier = Modifier.padding(10.dp, 16.dp ,0.dp, 0.dp) )
         },
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->

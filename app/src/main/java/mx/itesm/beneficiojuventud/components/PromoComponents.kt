@@ -2,6 +2,7 @@ package mx.itesm.beneficiojuventud.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,6 +49,7 @@ val DarkTextTheme = PromoTextColors(
 fun PromoCarousel(
     promos: List<Promo>,
     modifier: Modifier = Modifier,
+    onItemClick: (Promo) -> Unit = {} // <- NUEVO
 ) {
     LazyRow(
         modifier = modifier,
@@ -59,7 +61,8 @@ fun PromoCarousel(
                 promo = promos[i],
                 modifier = Modifier
                     .fillParentMaxWidth()
-                    .height(150.dp)
+                    .height(150.dp),
+                onClick = { onItemClick(promos[i]) } // <- PASA EL CLICK
             )
         }
     }
@@ -68,7 +71,8 @@ fun PromoCarousel(
 @Composable
 fun PromoImageBanner(
     promo: Promo,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {} // <- NUEVO
 ) {
     val radius = 16.dp
 
@@ -110,6 +114,7 @@ fun PromoImageBanner(
         shadowElevation = 0.dp,
         border = BorderStroke(1.dp, Color(0xFFD3D3D3)),
         modifier = modifier
+            .clickable { onClick() } // <- CLICK AQUÍ
     ) {
         Box(Modifier.clip(RoundedCornerShape(radius))) {
 
@@ -221,14 +226,16 @@ private fun PromoImageBannerPreview() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(150.dp)
-                    .padding(vertical = 6.dp)
+                    .padding(vertical = 6.dp),
+                onClick = {}
             )
             PromoImageBanner(
                 promo = sampleDark,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(150.dp)
-                    .padding(vertical = 6.dp)
+                    .padding(vertical = 6.dp),
+                onClick = {}
             )
         }
     }

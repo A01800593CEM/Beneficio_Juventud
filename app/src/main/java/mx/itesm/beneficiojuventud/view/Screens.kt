@@ -23,5 +23,8 @@ sealed class Screens(val route: String) {
     data object History : Screens("history")
     data object Settings : Screens("settings")
     data object Help : Screens("help")
-    data object Favorite : Screens("favorite")
+    data object Favorites : Screens("favorites")
+    data object Coupons : Screens("coupons")
+    data object Business : Screens("business")
+    data object PromoQR : Screens("promo_qr")
 }

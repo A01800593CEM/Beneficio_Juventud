@@ -30,6 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
+import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.components.PromoImageBanner
 import mx.itesm.beneficiojuventud.components.SectionTitle
@@ -84,7 +85,7 @@ private val samplePromos = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Favorite(
+fun Favorites(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     favorites: List<FavoriteMerchant> = sampleFavorites,
@@ -117,14 +118,9 @@ fun Favorite(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { nav.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.Outlined.ChevronLeft,
-                                contentDescription = "Volver",
-                                modifier = Modifier.size(40.dp),
-                                tint = Color(0xFF616161)
-                            )
-                        }
+                        BackButton(
+                            nav = nav,
+                        )
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = "Favoritos",
@@ -133,6 +129,7 @@ fun Favorite(
                             color = Color(0xFF616161)
                         )
                     }
+
                     Icon(
                         imageVector = Icons.Outlined.NotificationsNone,
                         contentDescription = "Notificaciones",
@@ -167,10 +164,10 @@ fun Favorite(
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Home -> { nav.popBackStack() }
-                        BJTab.Coupons -> { /* nav.navigate(Screens.Coupons.route) */ }
-                        BJTab.Favorites -> Unit
-                        BJTab.Profile -> { nav.navigate(Screens.Profile.route) }
+                        BJTab.Home      -> nav.navigate(Screens.Home.route)
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
                     }
                 }
             )
@@ -357,19 +354,20 @@ private fun FavoriteCard(
                 Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
 
-
-                    Text(
-                        text = String.format("%.1f", merchant.rating),
-                        color = Color(0xFF616161),
-                        fontSize = 12.sp
-                    )
-                    Spacer(Modifier.width(4.dp))
                     Icon(
                         imageVector = Icons.Outlined.Star,
                         contentDescription = null,
                         tint = Color(0xFFFFD900),
                         modifier = Modifier.size(16.dp)
                     )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = String.format("%.1f", merchant.rating),
+                        color = Color(0xFF616161),
+                        fontSize = 12.sp
+                    )
+
+
                 }
             }
 
@@ -389,6 +387,6 @@ private fun FavoriteCard(
 private fun FavoritePreview() {
     BeneficioJuventudTheme {
         val nav = rememberNavController()
-        Favorite(nav = nav)
+        Favorites(nav = nav)
     }
 }

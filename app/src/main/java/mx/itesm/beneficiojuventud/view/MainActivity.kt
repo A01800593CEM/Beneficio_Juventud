@@ -21,8 +21,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
 
-// De León working on this
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,7 +39,6 @@ private fun AppContent(appViewModel: AppViewModel = viewModel()) {
 
     when {
         appState.isLoading -> {
-            // Mostrar loading mientras verificamos la autenticación
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -50,9 +47,8 @@ private fun AppContent(appViewModel: AppViewModel = viewModel()) {
             }
         }
         appState.hasCheckedAuth -> {
-            // Determinar la pantalla inicial basada en el estado de autenticación
             val startDestination = if (appState.isAuthenticated) {
-                Screens.Onboarding.route
+                Screens.Home.route
             } else {
                 Screens.LoginRegister.route
             }
@@ -65,7 +61,7 @@ private fun AppContent(appViewModel: AppViewModel = viewModel()) {
 @Composable
 private fun AppNav(startDestination: String, appViewModel: AppViewModel) {
     val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = Screens.Register.route) {
+    NavHost(navController = nav, startDestination = startDestination) {
         composable(Screens.LoginRegister.route) { LoginRegister(nav) }
         composable(Screens.Login.route) { Login(nav, appViewModel) }
         composable(Screens.Register.route) { Register(nav, appViewModel = appViewModel) }
@@ -97,7 +93,10 @@ private fun AppNav(startDestination: String, appViewModel: AppViewModel) {
         composable(Screens.History.route){ History(nav) }
         composable(Screens.Settings.route){ Settings(nav) }
         composable(Screens.Help.route){ Help(nav) }
-        composable(Screens.Favorite.route) { Favorite(nav) }
+        composable(Screens.Favorites.route) { Favorites(nav) }
+        composable(Screens.Coupons.route){ Coupons(nav) }
+        composable(Screens.Business.route){ Business(nav) }
+        composable(Screens.PromoQR.route){ PromoQR(nav) }
 
     }
 }

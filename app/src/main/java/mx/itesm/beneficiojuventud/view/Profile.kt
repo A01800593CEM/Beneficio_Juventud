@@ -133,9 +133,9 @@ fun Profile(
                     selectedTab = tab
                     when (tab) {
                         BJTab.Home      -> nav.navigate(Screens.Home.route)
-                        BJTab.Coupons  -> { /* nav.navigate(...) */ }
-                        BJTab.Favorites -> { /* nav.navigate(...) */ }
-                        BJTab.Profile    -> Unit
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
                     }
                 }
             )

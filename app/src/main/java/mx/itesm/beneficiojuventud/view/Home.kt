@@ -8,7 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -16,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -29,37 +29,26 @@ import mx.itesm.beneficiojuventud.components.*
 import mx.itesm.beneficiojuventud.model.MerchantCardData
 import mx.itesm.beneficiojuventud.model.Promo
 import mx.itesm.beneficiojuventud.model.PromoTheme
+import mx.itesm.beneficiojuventud.model.popularCategories
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
-private data class Category(val icon: ImageVector, val label: String)
-
-private val popularCategories = listOf(
-    Category(Icons.Outlined.Fastfood, "Alimentos"),
-    Category(Icons.Outlined.MusicNote, "Música"),
-    Category(Icons.Outlined.SportsEsports, "Deportes"),
-    Category(Icons.Outlined.Movie, "Cine y Ocio"),
-    Category(Icons.Outlined.Storefront, "Moda"),
-    Category(Icons.Outlined.Edit, "Papelería")
-)
-
-// 🔹 Cada promo ahora puede definir su propio theme
+// 🔹 Demo data
 private val promos = listOf(
     Promo(
         R.drawable.el_fuego_sagrado,
         "Jueves Pozolero",
         "El Sazón de Iván",
         "2×1 en todos nuestros pozoles.",
-        theme = PromoTheme.LIGHT // 🌕 letras blancas + fondo gris oscuro
+        theme = PromoTheme.LIGHT
     ),
     Promo(
         R.drawable.carne,
         "Lunes sin Carne",
         "Bocado Rápido",
         "20% en bowls vegetarianos.",
-        theme = PromoTheme.DARK  // 🌑 letras negras + fondo blanco
+        theme = PromoTheme.DARK
     )
 )
-
 
 private val specialOffers = listOf(
     MerchantCardData("Fuego Lento & Brasa", "Asador • Parrilla", 4.7),
@@ -161,10 +150,10 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Home      -> Unit
-                        BJTab.Coupons   -> { /* nav.navigate(...) */ }
-                        BJTab.Favorites  -> { /*nav.navigate(Screens.Favorites.route) */}
-                        BJTab.Profile    -> { nav.navigate(Screens.Profile.route) }
+                        BJTab.Home      -> nav.navigate(Screens.Home.route)
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
                     }
                 }
             )
@@ -173,7 +162,7 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
         LazyColumn(
             modifier = modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding), // evita que se encime con top/bottom del Scaffold
             contentPadding = PaddingValues(bottom = 96.dp)
         ) {
             // Categorías
@@ -193,7 +182,7 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
                 Spacer(Modifier.height(8.dp))
             }
 
-            // Recomendado
+            // Recomendado → PromoQR
             item {
                 SectionTitle(
                     "Recomendado para ti",
@@ -201,26 +190,39 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
                 )
                 PromoCarousel(
                     promos = promos,
-                    modifier = Modifier.height(130.dp)
+                    modifier = Modifier.height(130.dp),
+                    onItemClick = { _ ->
+                        nav.navigate(Screens.PromoQR.route)
+                    }
                 )
             }
 
-            // Ofertas
+            // Ofertas Especiales → Business
             item {
                 SectionTitle(
                     "Ofertas Especiales",
                     Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp, bottom = 6.dp)
                 )
-                MerchantRow(data = specialOffers)
+                MerchantRow(
+                    data = specialOffers,
+                    onItemClick = { _ ->
+                        nav.navigate(Screens.Business.route)
+                    }
+                )
             }
 
-            // Lo nuevo
+            // Lo nuevo → Business (opcional)
             item {
                 SectionTitle(
                     "Lo Nuevo",
                     Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 6.dp)
                 )
-                MerchantRow(data = newOffers)
+                MerchantRow(
+                    data = newOffers,
+                    onItemClick = { _ ->
+                        nav.navigate(Screens.Business.route)
+                    }
+                )
             }
 
             // Pie
