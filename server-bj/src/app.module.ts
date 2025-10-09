@@ -9,6 +9,8 @@ import { CategoriesModule } from './categories/categories.module';
 import { PromotionsModule } from './promotions/promotions.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { FavoritesModule } from './favorites/favorites.module';
+import { AdministratorsModule } from './administrators/administrators.module';
+//import { ReportsModule } from './reports/reports.module';
 
 
 @Module({
@@ -38,7 +40,9 @@ import { FavoritesModule } from './favorites/favorites.module';
     CategoriesModule,
     PromotionsModule,
     BookingsModule,
-    FavoritesModule
+    FavoritesModule,
+    AdministratorsModule,
+    //ReportsModule
   ],
   controllers: [AppController],
   providers: [AppService],

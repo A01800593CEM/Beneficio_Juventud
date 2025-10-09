@@ -14,6 +14,6 @@ import { FavoritesModule } from 'src/favorites/favorites.module';
 ],
   controllers: [CollaboratorsController],
   providers: [CollaboratorsService],
-  exports: [TypeOrmModule]
+  exports: [TypeOrmModule, CollaboratorsService]
 })
 export class CollaboratorsModule {}

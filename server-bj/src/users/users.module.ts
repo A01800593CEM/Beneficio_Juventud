@@ -14,6 +14,6 @@ import { FavoritesModule } from 'src/favorites/favorites.module';
   forwardRef(() => FavoritesModule)], 
   controllers: [UsersController],
   providers: [UsersService],
-  exports:[TypeOrmModule]
+  exports:[TypeOrmModule, UsersService]
 })
 export class UsersModule {}

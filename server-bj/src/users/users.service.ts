@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { BookingsService } from 'src/bookings/bookings.service';
+import { UserState } from './enums/user-state.enum';
 
 
 @Injectable()
@@ -24,8 +25,12 @@ export class UsersService {
     return this.usersRepository.find();
   }
 
-  async findOne(id: number): Promise<User | null> {
+  async trueFindOne(id: number): Promise<User | null> {
     return this.usersRepository.findOne({ where: { id }});
+  }
+
+  async findOne(id: number): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { id, accountState: UserState.ACTIVE }});
   }
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User | null>  {
@@ -42,7 +47,20 @@ export class UsersService {
   }
 
   async remove(id: number): Promise<void>{
-    await this.usersRepository.delete(id);
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    await this.usersRepository.update(id, { accountState: UserState.INACTIVE });
+  }
+
+  async reActivate(id: number): Promise<User> {
+    const user = await this.trueFindOne(id);
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    await this.usersRepository.update(id, { accountState: UserState.ACTIVE })
+    return user;
   }
 
 }

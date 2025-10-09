@@ -1,4 +1,4 @@
-export enum UserState {
+export enum AdminState {
     ACTIVE = "activo",
     INACTIVE = "inactivo",
     SUSPENDED = "suspendido"
