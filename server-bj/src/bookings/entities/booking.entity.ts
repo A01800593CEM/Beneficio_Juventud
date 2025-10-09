@@ -4,7 +4,9 @@ import {
   Column,
   CreateDateColumn,
   ManyToOne,
+  JoinColumn
 } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Promotion } from '../../promotions/entities/promotion.entity';
 import { BookStatus } from '../enums/book-status.enum';
@@ -13,8 +15,6 @@ import { BookStatus } from '../enums/book-status.enum';
 export class Booking {
   @PrimaryGeneratedColumn({ name: 'reserva_id' })
   bookingId: number;
-
-  
 
   @CreateDateColumn({ name: 'fecha_reserva' })
   bookingDate: Date;
@@ -34,9 +34,11 @@ export class Booking {
   bookedPromotion: number | null;
 
   //Relations
-  @ManyToOne(() => User, user => user.bookings)
-  user: User[];
+  @ManyToOne(() => User, users => users.bookings)
+  @JoinColumn({ name: 'usuario_id' })
+  user: Relation<User>;
 
-  @ManyToOne(() => Promotion, promotion => promotion.bookings)
-  promotion: Promotion[];
+  @ManyToOne(() => Promotion, promotions => promotions.bookings)
+  @JoinColumn({ name: 'promocion_id' })
+  promotion: Relation<Promotion>;
 }

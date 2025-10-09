@@ -3,7 +3,7 @@ import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 
-@Controller('bookings')
+@Controller('users/bookings')
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
@@ -30,5 +30,10 @@ export class BookingsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.bookingsService.remove(+id);
+  }
+
+  @Get('user_bookings/:id')
+  getUserBookings(@Param('id') id: string){
+    return this.bookingsService.findByUserId(+id)
   }
 }

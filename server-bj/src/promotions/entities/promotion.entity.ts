@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { PromotionType } from '../enums/promotion-type.enums';
 import { PromotionState } from '../enums/promotion-state.enums';
 import { Booking } from '../../bookings/entities/booking.entity';
+import type { Relation } from 'typeorm';
 
 @Entity({ name: 'promocion' })
 export class Promotion {
@@ -56,7 +57,8 @@ export class Promotion {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
-
-  @OneToMany(() => Booking, booking => booking.user)
-      bookings: Booking[];
+  
+  //Relations
+  @OneToMany(() => Booking, bookings => bookings.user)
+      bookings: Relation<Booking>;
 }

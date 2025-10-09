@@ -43,8 +43,4 @@ export class UsersService {
   async remove(id: number): Promise<void>{
     await this.usersRepository.delete(id);
   }
-  //Userservice to get bookings by userId
-  async getBookings(userId: number) {
-    return this.bookingsService.findByUserId(userId);
-  }
 }
