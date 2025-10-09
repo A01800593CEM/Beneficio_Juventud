@@ -3,6 +3,8 @@ package mx.itesm.beneficiojuventud.view
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -21,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -35,12 +38,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.PasswordTextField
 import mx.itesm.beneficiojuventud.model.UserProfile
-import mx.itesm.beneficiojuventud.model.RegistrationData
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.AppViewModel
@@ -72,6 +75,14 @@ fun Register(
 
     val authState by authViewModel.authState.collectAsState()
     val scroll = rememberScrollState()
+
+    val scope = rememberCoroutineScope()
+    val bringNombre   = remember { BringIntoViewRequester() }
+    val bringApPat    = remember { BringIntoViewRequester() }
+    val bringApMat    = remember { BringIntoViewRequester() }
+    val bringPhone    = remember { BringIntoViewRequester() }
+    val bringEmail    = remember { BringIntoViewRequester() }
+    val bringPassword = remember { BringIntoViewRequester() }
 
     // Manejar navegación después del registro exitoso
     LaunchedEffect(authState.needsConfirmation) {
@@ -107,6 +118,7 @@ fun Register(
                 .padding(innerPadding)
                 .fillMaxSize()
                 .dismissKeyboardOnTap()
+                .imePadding()
                 .verticalScroll(scroll)
                 .padding(top = 85.dp, bottom = 24.dp) // bottom para que no tape el botón
         ) {
@@ -139,7 +151,9 @@ fun Register(
                 modifier = Modifier
                     .padding(horizontal = 24.dp)
                     .fillMaxWidth()
-                    .heightIn(min = TextFieldDefaults.MinHeight),
+                    .heightIn(min = TextFieldDefaults.MinHeight)
+                    .bringIntoViewRequester(bringNombre)
+                    .onFocusEvent { if (it.isFocused) scope.launch { bringNombre.bringIntoView() } },
                 shape = RoundedCornerShape(18.dp),
                 leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
                 placeholder = { Text("Nombre", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
@@ -156,7 +170,9 @@ fun Register(
                 modifier = Modifier
                     .padding(horizontal = 24.dp)
                     .fillMaxWidth()
-                    .heightIn(min = TextFieldDefaults.MinHeight),
+                    .heightIn(min = TextFieldDefaults.MinHeight)
+                    .bringIntoViewRequester(bringApPat)
+                    .onFocusEvent { if (it.isFocused) scope.launch { bringApPat.bringIntoView() } },
                 shape = RoundedCornerShape(18.dp),
                 placeholder = { Text("Apellido Paterno", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
                 textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
@@ -172,7 +188,9 @@ fun Register(
                 modifier = Modifier
                     .padding(horizontal = 24.dp)
                     .fillMaxWidth()
-                    .heightIn(min = TextFieldDefaults.MinHeight),
+                    .heightIn(min = TextFieldDefaults.MinHeight)
+                    .bringIntoViewRequester(bringApMat)
+                    .onFocusEvent { if (it.isFocused) scope.launch { bringApMat.bringIntoView() } },
                 shape = RoundedCornerShape(18.dp),
                 placeholder = { Text("Apellido Materno", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
                 textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
@@ -200,7 +218,9 @@ fun Register(
                 modifier = Modifier
                     .padding(horizontal = 24.dp)
                     .fillMaxWidth()
-                    .heightIn(min = TextFieldDefaults.MinHeight),
+                    .heightIn(min = TextFieldDefaults.MinHeight)
+                    .bringIntoViewRequester(bringPhone)
+                    .onFocusEvent { if (it.isFocused) scope.launch { bringPhone.bringIntoView() } },
                 shape = RoundedCornerShape(18.dp),
                 leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = null) },
                 placeholder = { Text("55 1234 5678", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
@@ -215,6 +235,8 @@ fun Register(
                 value = email,
                 onValueChange = { email = it },
                 modifier = Modifier.padding(horizontal = 24.dp)
+                .bringIntoViewRequester(bringEmail)
+                .onFocusEvent { if (it.isFocused) scope.launch { bringEmail.bringIntoView() } }
             )
 
             // Contraseña
@@ -223,6 +245,8 @@ fun Register(
                 value = password,
                 onValueChange = { password = it },
                 modifier = Modifier.padding(horizontal = 24.dp)
+                .bringIntoViewRequester(bringPassword)
+                .onFocusEvent { if (it.isFocused) scope.launch { bringPassword.bringIntoView() } }
             )
 
             // Términos y condiciones
