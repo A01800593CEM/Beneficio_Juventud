@@ -45,13 +45,13 @@ export class Promotion {
   totalStock: number;
 
   @Column({ name: 'stock_disponible'})
-  aviableStock: number;
+  availableStock: number;
 
   @Column({ name: 'limite_por_usuario'})
   limitPerUser: number;
 
   @Column({ name: 'limite_diario_por_usuario'})
-  dairyLimitPerUser: number;
+  ddailyLimitPerUser: number;
 
   @Column({
     type: 'enum',
