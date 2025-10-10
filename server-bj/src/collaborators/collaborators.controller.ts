@@ -22,9 +22,9 @@ export class CollaboratorsController {
     return this.collaboratorsService.findOne(+id);
   }
 
-  @Get('category/:id')
-  findByCategory(@Param('id') id: string) {
-    return this.collaboratorsService.findByCategory(+id)
+  @Get('category/:categoryName')
+  findByCategory(@Param('categoryName') categoryName: string) {
+    return this.collaboratorsService.findByCategory(categoryName)
   }
 
   @Patch(':id')

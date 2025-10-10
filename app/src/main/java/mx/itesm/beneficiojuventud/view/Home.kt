@@ -3,6 +3,7 @@ package mx.itesm.beneficiojuventud.view
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -47,6 +48,20 @@ private val promos = listOf(
         "Bocado Rápido",
         "20% en bowls vegetarianos.",
         theme = PromoTheme.DARK
+    ),
+    Promo(
+        R.drawable.bolos,
+        "Tarde de Café",
+        "Café Norte",
+        "2×1 en capuchinos de 4 a 6 pm.",
+        theme = PromoTheme.LIGHT
+    ),
+    Promo(
+        R.drawable.el_fuego_sagrado,
+        "Martes 2×1",
+        "Cine Stelar",
+        "Compra un boleto y obtén el segundo gratis para la misma función.",
+        theme = PromoTheme.DARK
     )
 )
 
@@ -69,6 +84,15 @@ private val newOffers = listOf(
 fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
     var selectedTab by remember { mutableStateOf(BJTab.Home) }
     var search by rememberSaveable { mutableStateOf("") }
+
+    // 🔸 NUEVO: categoría seleccionada para filtrar (null = sin filtro)
+    var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // 🔸 NUEVO: filtra los promos según la categoría elegida
+    val filteredPromos = remember(selectedCategory) {
+        if (selectedCategory.isNullOrBlank()) promos
+        else promos.filter { matchesCategory(it, selectedCategory!!) }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -132,7 +156,9 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
                 BJSearchBar(
                     query = search,
                     onQueryChange = { search = it },
-                    onSearch = { /* TODO: ejecutar búsqueda */ },
+                    onSearch = {
+                        // TODO: búsqueda global
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -162,7 +188,7 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
         LazyColumn(
             modifier = modifier
                 .fillMaxSize()
-                .padding(padding), // evita que se encime con top/bottom del Scaffold
+                .padding(padding),
             contentPadding = PaddingValues(bottom = 96.dp)
         ) {
             // Categorías
@@ -177,24 +203,77 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    popularCategories.forEach { CategoryPill(icon = it.icon, label = it.label) }
+                    // 🔸 NUEVO: click para filtrar; click de nuevo para quitar filtro
+                    popularCategories.forEach { cat ->
+                        Box(
+                            modifier = Modifier
+                                .wrapContentWidth()
+                                .clickable {
+                                    selectedCategory =
+                                        if (selectedCategory == cat.label) null else cat.label
+                                }
+                        ) {
+                            CategoryPill(icon = cat.icon, label = cat.label)
+                        }
+                    }
                 }
+
+                // 🔸 NUEVO: chip para limpiar filtro + subtítulo de filtro activo
+                if (!selectedCategory.isNullOrBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        Modifier.padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AssistChip(
+                            onClick = { selectedCategory = null },
+                            label = { Text("Quitar filtro") }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Filtrando por: ${selectedCategory}",
+                            color = Color(0xFF8C8C8C),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
                 Spacer(Modifier.height(8.dp))
             }
 
-            // Recomendado → PromoQR
+            // Recomendado → ahora se filtra según la categoría seleccionada
             item {
                 SectionTitle(
-                    "Recomendado para ti",
+                    if (selectedCategory.isNullOrBlank())
+                        "Recomendado para ti"
+                    else
+                        "Cupones (${selectedCategory})",
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-                PromoCarousel(
-                    promos = promos,
-                    modifier = Modifier.height(130.dp),
-                    onItemClick = { _ ->
-                        nav.navigate(Screens.PromoQR.route)
+
+                if (filteredPromos.isEmpty()) {
+                    // Estado vacío cuando no hay coincidencias
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No hay cupones para esta categoría.",
+                            color = Color(0xFF8C8C8C),
+                            fontSize = 13.sp
+                        )
                     }
-                )
+                } else {
+                    PromoCarousel(
+                        promos = filteredPromos,
+                        modifier = Modifier.height(130.dp),
+                        onItemClick = { _ ->
+                            nav.navigate(Screens.PromoQR.route)
+                        }
+                    )
+                }
             }
 
             // Ofertas Especiales → Business
@@ -243,4 +322,25 @@ private fun HomePreview() {
         val nav = rememberNavController()
         Home(nav = nav)
     }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Utilidad de mapeo de categorías → ajusta a tu taxonomía real
+   Idealmente tus Promos deberían tener un campo `category` o `tags`.
+   Aquí hago un mapeo demo por `subtitle` y texto.
+   ──────────────────────────────────────────────────────────────────────────── */
+private fun matchesCategory(promo: Promo, category: String): Boolean {
+    val c = category.lowercase()
+
+    val tags: Set<String> = when (promo.subtitle.lowercase()) {
+        "cine stelar"      -> setOf("cine", "entretenimiento")
+        "el sazón de iván" -> setOf("mexicana", "pozole", "restaurante")
+        "bocado rápido"    -> setOf("saludable", "comida rápida", "veg", "bowls")
+        "café norte"       -> setOf("cafetería", "café", "postres")
+        else               -> emptySet()
+    }
+
+    val text = "${promo.title} ${promo.subtitle} ${promo.body}".lowercase()
+
+    return c in tags || text.contains(c)
 }

@@ -5,15 +5,18 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 
 interface ApiService {
-    @GET("usuarios")
+
+
+    @GET("users")
     fun obtenerUsuarios(): Call<List<Usuario>>
 
-    @GET("promociones")
+    @GET("users/{id}")
+    fun obtenerUsuarioPorId(@Path("id") id: Int): Call<Usuario>
+
+    @GET("promotions")
     fun obtenerPromociones(): Call<List<Promocion>>
 
-    @GET("colaboradores")
+    @GET("collaborators")
     fun obtenerColaboradores(): Call<List<Colaborador>>
 
-    @GET("usuarios/{id}")
-    fun obtenerUsuarioPorId(@Path("id") id: Int): Call<Usuario>
 }
