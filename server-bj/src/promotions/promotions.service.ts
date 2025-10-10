@@ -85,11 +85,12 @@ export class PromotionsService {
     await this.promotionsRepository.delete(id);
   }
 
+  //Promotions per Category
   async promotionPerCategory(category: string): Promise<Promotion[]> {
   const qb = this.promotionsRepository
     .createQueryBuilder('promotion')
     .leftJoin('promotion.categories', 'category')
-    .addSelect(['category.id', 'category.name']); // opcional, para devolverlas
+    .addSelect(['category.id', 'category.name']);
 
   const asNumber = Number(category);
   if (!Number.isNaN(asNumber)) {
