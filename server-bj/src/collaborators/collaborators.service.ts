@@ -122,14 +122,17 @@ export class CollaboratorsService {
 
     return this.collaboratorsRepository.save(collaborator);
   }
-
-  async findByCategory(categoryId: number): Promise<Collaborator[]> {
+  async findByCategory(categoryName: string): Promise<Collaborator[]> {
   return this.collaboratorsRepository
     .createQueryBuilder('collaborator')
     .innerJoin('collaborator.categories', 'category')
-    .where('category.id = :categoryId', { categoryId })
+    .where('category.name = :categoryName', { categoryName })
     .getMany();
 }
+
+ 
+
+
 
 
 }
