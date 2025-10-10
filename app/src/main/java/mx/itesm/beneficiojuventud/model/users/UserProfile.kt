@@ -1,17 +1,28 @@
 package mx.itesm.beneficiojuventud.model.users
 
+import com.google.gson.annotations.SerializedName
+
 data class UserProfile(
-    val nombre: String,
-    val apellidoPaterno: String,
-    val apellidoMaterno: String,
-    val fechaNacimiento: String, // Formato ISO (YYYY-MM-DD) para base de datos
-    val telefono: String,
-    val email: String,
-    val categorias: List<String> = emptyList(), // Para guardar las categorías seleccionadas del onboarding
+
+    val id: Int? = null,
+    val cognitoId: String? = null,
+    val name: String? = null,
+    val lastNamePaternal: String? = null,
+    val lastNameMaternal: String? = null,
+    val birthDate: String? = null, // Formato ISO (YYYY-MM-DD) para base de datos
+    val phoneNumber: String? = null,
+    val email: String? = null,
+    val accountState: AccountState = AccountState.inactivo,
+    val registrationDate: String? = null,
+    val updatedAt: String? = null,
+    val notificationToken: String? = null,
+    val favorites: List<String> = emptyList(), // COGNITO ID
+    val categories: List<String> = emptyList(), // Para guardar las categorías seleccionadas del onboarding
     val profileImageKey: String? = null // Key de la imagen en S3
 )
 
-data class RegistrationData(
-    val userProfile: UserProfile,
-    val password: String
-)
+enum class AccountState {
+    @SerializedName("activo") activo,
+    @SerializedName("inactivo") inactivo,
+    @SerializedName("suspendido") suspendido
+}

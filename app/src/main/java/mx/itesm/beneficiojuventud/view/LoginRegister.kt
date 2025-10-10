@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
+import mx.itesm.beneficiojuventud.model.TestRemote
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
 @Composable
@@ -81,6 +82,8 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
             // Botones principales
             Column(modifier = Modifier.fillMaxWidth(0.94f)) {
                 MainButton("Inicia Sesión", modifier = Modifier.padding(top = 26.dp)) {
+                    TestRemote.probarLlamada()
+                    TestRemote.probarPromoService()
                     nav.navigate(Screens.Login.route)
                 }
                 MainButton("Regístrate", modifier = Modifier.padding(top = 16.dp)) {
