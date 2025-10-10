@@ -49,7 +49,7 @@ import mx.itesm.beneficiojuventud.components.PasswordTextField
 import mx.itesm.beneficiojuventud.model.UserProfile
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
-import mx.itesm.beneficiojuventud.viewmodel.AppViewModel
+
 import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -58,7 +58,6 @@ import java.util.Locale
 fun Register(
     nav: NavHostController,
     modifier: Modifier = Modifier,
-    appViewModel: AppViewModel? = null,
     authViewModel: AuthViewModel = viewModel()
 ) {
     var nombre by remember { mutableStateOf("") }
@@ -130,7 +129,7 @@ fun Register(
                         telefono = phone,
                         email = email
                     )
-                    appViewModel?.savePendingUserProfile(userProfile)
+                    authViewModel.savePendingUserProfile(userProfile)
                     authViewModel.signUp(email, password, phone)
                 }
 

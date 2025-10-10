@@ -4,12 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -26,39 +22,14 @@ import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
-import mx.itesm.beneficiojuventud.viewmodel.AppViewModel
-import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
 @Composable
 fun Onboarding(
     nav: NavHostController,
-    appViewModel: AppViewModel? = null,
     modifier: Modifier = Modifier,
-    authViewModel: AuthViewModel = viewModel(),
     imageRes: Int = R.drawable.onboarding_one,
     onStart: () -> Unit = { nav.navigate(Screens.OnboardingCategories.route) }
 ) {
-    var currentUser by remember { mutableStateOf<String?>(null) }
-    val authState by authViewModel.authState.collectAsState()
-
-    // Obtener información del usuario actual
-    LaunchedEffect(Unit) {
-        authViewModel.getCurrentUser()
-    }
-
-    // Variable para trackear si se presionó logout
-    var logoutPressed by remember { mutableStateOf(false) }
-
-    // Manejar el logout exitoso solo cuando se presiona el botón
-    LaunchedEffect(authState, logoutPressed) {
-        if (logoutPressed && !authState.isLoading && !authState.isSuccess && authState.error == null) {
-            // Logout completado exitosamente
-            appViewModel?.refreshAuthState()
-            nav.navigate(Screens.LoginRegister.route) {
-                popUpTo(0) { inclusive = true }
-            }
-        }
-    }
     Scaffold(
         modifier = Modifier.fillMaxSize()
     ) { inner ->
@@ -83,8 +54,6 @@ fun Onboarding(
                     .padding(horizontal = sidePad, vertical = 100.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-
-
                 Spacer(Modifier.height(if (isCompact) 8.dp else 16.dp))
 
                 // Título
@@ -112,7 +81,7 @@ fun Onboarding(
                 Text(
                     "Encuentra cupones hechos para ti",
                     style = TextStyle(
-                        fontSize = 14.sp,
+                        fontSize = subtitleSize,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF7D7A7A)
                     ),
