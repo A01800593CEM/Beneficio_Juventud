@@ -21,34 +21,34 @@ export class AdministratorsService {
     return this.administratorsRepository.find();
   }
 
-  async findOne(id: number): Promise<Administrator | null> {
-    const administrator = await this.administratorsRepository.findOne({ where: { id } });
+  async findOne(cognitoId: string): Promise<Administrator | null> {
+    const administrator = await this.administratorsRepository.findOne({ where: { cognitoId } });
 
     if (!administrator) {
-      throw new NotFoundException(`Administrator with id ${id} not found`);
+      throw new NotFoundException(`Administrator with cognitoId ${cognitoId} not found`);
     }
 
     return administrator;
   }
 
-  async update(id: number, updateAdministratorDto: UpdateAdministratorDto): Promise<Administrator> {
+  async update(cognitoId: string, updateAdministratorDto: UpdateAdministratorDto): Promise<Administrator> {
     const administrator = await this.administratorsRepository.preload({
-      id,
+      cognitoId,
       ...updateAdministratorDto,
     });
 
     if (!administrator) {
-      throw new NotFoundException(`Administrator with id ${id} not found`);
+      throw new NotFoundException(`Administrator with cognitoId ${cognitoId} not found`);
     }
 
     return this.administratorsRepository.save(administrator);
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.administratorsRepository.delete(id);
+  async remove(cognitoId: string): Promise<void> {
+    const result = await this.administratorsRepository.delete(cognitoId);
 
     if (result.affected === 0) {
-      throw new NotFoundException(`Administrator with id ${id} not found`);
+      throw new NotFoundException(`Administrator with cognitoId ${cognitoId} not found`);
     }
   }
 
