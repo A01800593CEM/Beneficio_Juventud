@@ -25,45 +25,45 @@ export class UsersService {
     return this.usersRepository.find();
   }
 
-  async trueFindOne(id: number): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { id }});
+  async trueFindOne(cognitoId: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { cognitoId }});
   }
 
-  async findOne(id: number): Promise<User | null> {
-    const user = await this.usersRepository.findOne({ where: { id, accountState: UserState.ACTIVE }});
+  async findOne(cognitoId: string): Promise<User | null> {
+    const user = await this.usersRepository.findOne({ where: { cognitoId, accountState: UserState.ACTIVE }});
     if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
     return user
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto): Promise<User | null>  {
+  async update(cognitoId: string, updateUserDto: UpdateUserDto): Promise<User | null>  {
     const user = await this.usersRepository.preload({
-      id,
+      cognitoId,
       ...updateUserDto
     });
 
     if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
     
     return this.usersRepository.save(user)
   }
 
-  async remove(id: number): Promise<void>{
-    const user = await this.findOne(id);
+  async remove(cognitoId: string): Promise<void>{
+    const user = await this.findOne(cognitoId);
     if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
-    await this.usersRepository.update(id, { accountState: UserState.INACTIVE });
+    await this.usersRepository.update(cognitoId, { accountState: UserState.INACTIVE });
   }
 
-  async reActivate(id: number): Promise<User> {
-    const user = await this.trueFindOne(id);
+  async reActivate(cognitoId: string): Promise<User> {
+    const user = await this.trueFindOne(cognitoId);
     if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
-    await this.usersRepository.update(id, { accountState: UserState.ACTIVE })
+    await this.usersRepository.update(cognitoId, { accountState: UserState.ACTIVE })
     return user;
   }
 
