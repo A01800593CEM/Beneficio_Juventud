@@ -1,4 +1,4 @@
-package mx.itesm.beneficiojuventud.model
+package mx.itesm.beneficiojuventud.utils
 
 data class MerchantCardData(
     val name: String,

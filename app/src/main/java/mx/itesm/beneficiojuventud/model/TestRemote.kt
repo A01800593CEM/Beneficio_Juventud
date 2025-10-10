@@ -4,6 +4,8 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
+import mx.itesm.beneficiojuventud.model.users.RemoteServiceUser
 
 object TestRemote {
 

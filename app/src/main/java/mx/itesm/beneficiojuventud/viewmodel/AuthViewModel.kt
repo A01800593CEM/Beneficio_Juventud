@@ -7,9 +7,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import mx.itesm.beneficiojuventud.model.AuthRepository
-import mx.itesm.beneficiojuventud.model.AuthState
-import mx.itesm.beneficiojuventud.model.UserProfile
+import mx.itesm.beneficiojuventud.model.auth.AuthRepository
+import mx.itesm.beneficiojuventud.model.auth.AuthState
+import mx.itesm.beneficiojuventud.model.users.UserProfile
 
 // Estado global de la app
 data class AppState(

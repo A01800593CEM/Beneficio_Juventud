@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import mx.itesm.beneficiojuventud.model.Collaborator
-import mx.itesm.beneficiojuventud.model.RemoteServiceCollab
+import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
+import mx.itesm.beneficiojuventud.model.collaborators.RemoteServiceCollab
 
 // ---------------------------
 // Estados de UI (mismo patrón)

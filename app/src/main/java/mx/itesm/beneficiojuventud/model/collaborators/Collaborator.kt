@@ -1,4 +1,4 @@
-package mx.itesm.beneficiojuventud.model
+package mx.itesm.beneficiojuventud.model.collaborators
 
 import com.google.gson.annotations.SerializedName
 

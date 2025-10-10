@@ -1,4 +1,4 @@
-package mx.itesm.beneficiojuventud.model
+package mx.itesm.beneficiojuventud.model.users
 
 data class UserProfile(
     val nombre: String,

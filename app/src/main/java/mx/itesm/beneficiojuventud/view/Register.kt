@@ -46,7 +46,7 @@ import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.PasswordTextField
-import mx.itesm.beneficiojuventud.model.UserProfile
+import mx.itesm.beneficiojuventud.model.users.UserProfile
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 

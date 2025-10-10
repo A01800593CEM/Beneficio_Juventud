@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import mx.itesm.beneficiojuventud.model.Promotions
-import mx.itesm.beneficiojuventud.model.RemoteServicePromos
+import mx.itesm.beneficiojuventud.model.promos.Promotions
+import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
 
 // ---------------------------
 // Estados de UI (mismo patrón)
