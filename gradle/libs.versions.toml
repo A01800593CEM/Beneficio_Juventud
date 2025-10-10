@@ -20,6 +20,7 @@ amplify = "2.30.1"
 foundationLayout = "1.9.2"
 uiGeometry = "1.9.2"
 runtimeSaveable = "1.9.2"
+firebaseAppdistributionGradle = "5.1.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -56,6 +57,7 @@ amplify-storage = { group = "com.amplifyframework", name = "aws-storage-s3", ver
 androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
 androidx-ui-geometry = { group = "androidx.compose.ui", name = "ui-geometry", version.ref = "uiGeometry" }
 androidx-runtime-saveable = { group = "androidx.compose.runtime", name = "runtime-saveable", version.ref = "runtimeSaveable" }
+firebase-appdistribution-gradle = { group = "com.google.firebase", name = "firebase-appdistribution-gradle", version.ref = "firebaseAppdistributionGradle" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -44,6 +44,7 @@ dependencies {
     implementation(libs.androidx.foundation.layout)
     implementation(libs.androidx.ui.geometry)
     implementation(libs.androidx.runtime.saveable)
+    implementation(libs.firebase.appdistribution.gradle)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     implementation(libs.androidx.core.ktx)
