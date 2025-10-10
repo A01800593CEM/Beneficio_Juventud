@@ -35,13 +35,13 @@ export class CreatePromotionDto {
   totalStock?: number;
 
   @IsOptional() @IsInt()
-  aviableStock?: number;
+  availableStock?: number;
 
   @IsOptional() @IsInt()
   limitPerUser?: number;
 
   @IsOptional() @IsInt()
-  dairyLimitPerUser?: number;
+  dailyLimitPerUser?: number;
 
   @IsEnum(PromotionState)
   promotionState: PromotionState;
