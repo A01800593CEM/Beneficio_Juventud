@@ -28,7 +28,7 @@ export class Branch {
   phone: string;
 
   @Column({ name: 'direccion' })
-  direction: string;
+  adress: string;
 
   @Column({ name: 'codigo_postal' })
   zipCode: string;
