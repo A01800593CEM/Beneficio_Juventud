@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget // Add this import
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -51,8 +53,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    // Correctly structured kotlin compiler options
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
     }
     buildFeatures {
         compose = true
@@ -92,6 +97,7 @@ dependencies {
     implementation(libs.androidx.ui.unit)
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("androidx.compose.material:material:1.6.8")
+    implementation ("io.github.ehsannarmani:compose-charts:+")
 
 
     testImplementation(libs.junit)
