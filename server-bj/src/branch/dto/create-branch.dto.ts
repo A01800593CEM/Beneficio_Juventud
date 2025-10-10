@@ -10,7 +10,7 @@ export class CreateBranchDto {
     phone: string;
 
     @IsString() @IsNotEmpty()
-    direction: string;
+    address: string;
 
     @IsString() @IsNotEmpty()
     zipCode: string;
