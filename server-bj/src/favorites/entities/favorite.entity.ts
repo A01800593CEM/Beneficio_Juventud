@@ -1,0 +1,34 @@
+import {
+  Entity,
+  ManyToOne,
+  JoinColumn,
+  PrimaryColumn,
+  CreateDateColumn
+} from 'typeorm';
+import type { Relation } from 'typeorm';
+import { User } from 'src/users/entities/user.entity';
+import { Collaborator } from 'src/collaborators/entities/collaborator.entity';
+
+@Entity({ name: 'favorito' })
+export class Favorite {
+  @PrimaryColumn({ name: 'usuario_id', type: 'int' })
+  userId: number;
+
+  @PrimaryColumn({ name: 'colaborador_id', type: 'int' })
+  collaboratorId: number;
+
+  @ManyToOne(() => User, (user) => user.favorites, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'usuario_id' })
+  user: Relation<User>;
+
+  @ManyToOne(() => Collaborator, (collaborator) => collaborator.favorites, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'colaborador_id' })
+  collaborator: Relation<Collaborator>;
+
+  @CreateDateColumn({
+    name: 'fecha_agregado',
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  addedAt: Date;
+}
