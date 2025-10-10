@@ -97,7 +97,6 @@ private fun AppNav(startDestination: String, appViewModel: AppViewModel) {
         composable(Screens.Coupons.route){ Coupons(nav) }
         composable(Screens.Business.route){ Business(nav) }
         composable(Screens.PromoQR.route){ PromoQR(nav) }
-
     }
 }
 
