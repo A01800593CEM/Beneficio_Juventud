@@ -1,4 +1,4 @@
-import { IsDate, IsEnum, IsInt, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsDate, IsEnum, IsInt, IsOptional, IsString, IsUrl, IsArray, ArrayNotEmpty} from 'class-validator';
 import { Type } from 'class-transformer';
 import { PromotionType } from '../enums/promotion-type.enums';
 import { PromotionState } from '../enums/promotion-state.enums';
@@ -45,4 +45,9 @@ export class CreatePromotionDto {
 
   @IsEnum(PromotionState)
   promotionState: PromotionState;
+
+  @IsOptional() @IsArray() @ArrayNotEmpty()
+  @IsInt({ each: true })
+  categoryIds?: number[];
+
 }

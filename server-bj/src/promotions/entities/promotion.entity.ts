@@ -51,7 +51,7 @@ export class Promotion {
   limitPerUser: number;
 
   @Column({ name: 'limite_diario_por_usuario'})
-  ddailyLimitPerUser: number;
+  dailyLimitPerUser: number;
 
   @Column({
     type: 'enum',

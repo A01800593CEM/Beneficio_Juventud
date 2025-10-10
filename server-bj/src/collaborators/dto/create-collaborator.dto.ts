@@ -56,7 +56,7 @@ export class CreateCollaboratorDto {
   // 👇 Multiple category IDs
   @IsArray()
   @ArrayNotEmpty()
-  @IsInt({ each: true })s
+  @IsInt({ each: true })
   categoryIds: number[];
 
   @IsOptional()
