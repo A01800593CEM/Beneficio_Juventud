@@ -9,7 +9,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 
-interface CollaboratorApiService {
+interface CollabApiService {
 
     @GET("collaborators/{id}")
     suspend fun getCollaboratorById(@Path("id") id: Int): Response<Collaborator>
