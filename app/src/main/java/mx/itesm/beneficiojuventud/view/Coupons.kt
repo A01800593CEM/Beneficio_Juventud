@@ -1,19 +1,18 @@
 package mx.itesm.beneficiojuventud.view
 
-
+import android.net.Uri
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.ui.graphics.Color
-import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -26,9 +25,9 @@ import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
 import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
-import mx.itesm.beneficiojuventud.components.PromoImageBanner
 import mx.itesm.beneficiojuventud.components.SectionTitle
 import mx.itesm.beneficiojuventud.components.CategoryPill
+import mx.itesm.beneficiojuventud.components.PromoImageBanner
 import mx.itesm.beneficiojuventud.model.Promo
 import mx.itesm.beneficiojuventud.model.PromoTheme
 import mx.itesm.beneficiojuventud.model.popularCategories
@@ -41,14 +40,14 @@ private val coupons = listOf(
         title = "Martes 2×1",
         subtitle = "Cine Stelar",
         body = "Compra un boleto y obtén el segundo gratis para la misma función.",
-        theme = PromoTheme.DARK  // texto oscuro + degradado blanco → como tu mockup
+        theme = PromoTheme.DARK
     ),
     Promo(
         bg = R.drawable.el_fuego_sagrado,
         title = "Jueves Pozolero",
         subtitle = "El Sazón de Iván",
         body = "2×1 en todos nuestros pozoles.",
-        theme = PromoTheme.LIGHT // texto claro + degradado oscuro
+        theme = PromoTheme.LIGHT
     ),
     Promo(
         bg = R.drawable.carne,
@@ -118,14 +117,22 @@ fun Coupons(nav: NavHostController, modifier: Modifier = Modifier) {
                 )
             }
 
-            // Lista de cupones usando tu PromoImageBanner
+            // Lista de cupones usando tu PromoImageBanner (click -> navega a PromoQR)
             items(count = coupons.size, key = { it }) { i ->
+                val titleArg = Uri.encode(coupons[i].title)
                 PromoImageBanner(
                     promo = coupons[i],
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp)
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    onClick = {
+                        // Navegación simple:
+                        // nav.navigate(Screens.PromoQR.route)
+
+                        // Navegación con argumentos opcionales:
+                        nav.navigate(Screens.PromoQR.route + "?idx=$i&title=$titleArg")
+                    }
                 )
             }
 
@@ -193,8 +200,6 @@ private fun CouponsTopBar(
         )
     }
 }
-
-
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
