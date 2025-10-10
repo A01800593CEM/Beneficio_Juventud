@@ -14,6 +14,12 @@ navigationCompose = "2.9.5"
 uiText = "1.9.2"
 retrofitVersion = "3.0.0"
 gsonVersion = "3.0.0"
+foundation = "1.9.2"
+uiUnit = "1.9.2"
+amplify = "2.30.1"
+foundationLayout = "1.9.2"
+uiGeometry = "1.9.2"
+runtimeSaveable = "1.9.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -35,8 +41,21 @@ material3 = { group = "androidx.compose.material3", name = "material3", version.
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 androidx-ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiText" }
 
+androidx-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }
+androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+
 retrofit-lib = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofitVersion" }
 converter-lib = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "gsonVersion" }
+androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
+androidx-ui-unit = { group = "androidx.compose.ui", name = "ui-unit", version.ref = "uiUnit" }
+amplify-core = { group = "com.amplifyframework", name = "core", version.ref = "amplify" }
+amplify-auth = { group = "com.amplifyframework", name = "aws-auth-cognito", version.ref = "amplify" }
+amplify-datastore = { group = "com.amplifyframework", name = "aws-datastore", version.ref = "amplify" }
+amplify-api = { group = "com.amplifyframework", name = "aws-api", version.ref = "amplify" }
+amplify-storage = { group = "com.amplifyframework", name = "aws-storage-s3", version.ref = "amplify" }
+androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
+androidx-ui-geometry = { group = "androidx.compose.ui", name = "ui-geometry", version.ref = "uiGeometry" }
+androidx-runtime-saveable = { group = "androidx.compose.runtime", name = "runtime-saveable", version.ref = "runtimeSaveable" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

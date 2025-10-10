@@ -1,19 +1,11 @@
 package mx.itesm.beneficiojuventud.view
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -22,84 +14,299 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.android.awaitFrame
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.tooling.preview.Preview
 import mx.itesm.beneficiojuventud.R
-import mx.itesm.beneficiojuventud.components.EmailTextField
+import mx.itesm.beneficiojuventud.components.*
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+import mx.itesm.beneficiojuventud.viewmodel.AppViewModel
+import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
 @Composable
-fun Login(nav: NavHostController, modifier: Modifier = Modifier) {
+fun Login(
+    nav: NavHostController,
+    appViewModel: AppViewModel? = null,
+    modifier: Modifier = Modifier,
+    viewModel: AuthViewModel = viewModel()
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-        Column(
-            modifier = modifier
-                .padding(innerPadding)
-                .fillMaxWidth()
-                .padding(top = 85.dp),
-        ) {
-            Box(modifier = modifier.padding(horizontal = 30.dp)) {
-                Image(
-                    painter = painterResource(id = R.drawable.logo_beneficio_joven),
-                    contentDescription = "",
-                    modifier = Modifier
-                        .size(50.dp)
-                )
+    var rememberMe by remember { mutableStateOf(false) }
+    var showError by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+    val authState by viewModel.authState.collectAsState()
+
+    LaunchedEffect(authState.isSuccess) {
+        if (authState.isSuccess) {
+            nav.navigate(Screens.Onboarding.route) {
+                popUpTo(Screens.LoginRegister.route) { inclusive = true }
             }
-            Text(
-                "Inicia Sesión",
-                style = TextStyle(
-                    brush = Brush.linearGradient(
-                        listOf(
-                            Color(0xFF4B4C7E),
-                            Color(0xFF008D96)
+            viewModel.clearState()
+        }
+    }
+    LaunchedEffect(authState.error) {
+        authState.error?.let { error ->
+            errorMessage = error
+            showError = true
+        }
+    }
+
+    // ---------- Helper: bring into view estable (scroll solo automático) ----------
+    @Composable
+    fun FocusBringIntoView(
+        delayMs: Long = 140,
+        content: @Composable (Modifier) -> Unit
+    ) {
+        val requester = remember { BringIntoViewRequester() }
+        val scope = rememberCoroutineScope()
+        val mod = Modifier
+            .bringIntoViewRequester(requester)
+            .onFocusEvent { st ->
+                if (st.isFocused) {
+                    scope.launch {
+                        awaitFrame()   // espera a que Compose mida con IME
+                        delay(delayMs) // amortigua saltos entre OEM/teclados
+                        requester.bringIntoView()
+                    }
+                }
+            }
+        content(mod)
+    }
+
+    // ✅ Control total de insets, y bottom bar que se eleva con el IME
+    Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .windowInsetsPadding(WindowInsets.ime)
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+            ) {
+                MainButton(
+                    text = if (authState.isLoading) "Iniciando sesión..." else "Inicia Sesión",
+                    enabled = !authState.isLoading && email.isNotEmpty() && password.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    showError = false
+                    viewModel.signIn(email, password)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "¿No tienes cuenta?  ",
+                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                    )
+                    TextButton(onClick = { nav.navigate(Screens.Register.route) }) {
+                        Text(
+                            "Regístrate",
+                            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF008D96))
                         )
-                    ),
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Black
-                ),
-                modifier = modifier.padding(24.dp, 18.dp, 20.dp, 14.dp)
-            )
-            Text(
-                "Por favor, inicie sesión en su cuenta",
-                style = TextStyle(
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF616161)
-                ),
-                textAlign = TextAlign.Center,
-                modifier = modifier.padding(horizontal = 24.dp)
-            )
-            Text(
-                "Correo Electrónico",
-                style = TextStyle(
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF7D7A7A)
-                ),
-                textAlign = TextAlign.Center,
-                modifier = modifier.padding(24.dp)
-            )
-            EmailTextField(
-                value = email,
-                onValueChange = { email = it }
-            )
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
+
+        // Raíz: aplicamos insets del Scaffold, y bloqueamos scroll manual
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .dismissKeyboardOnTap()
+        ) {
+            LazyColumn(
+                // 🔒 Bloquea gestos del usuario, pero permite desplazamiento programático
+                userScrollEnabled = false,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
+                contentPadding = PaddingValues(0.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                item {
+                    Box(modifier = Modifier.padding(horizontal = 6.dp)) {
+                        Image(
+                            painter = painterResource(id = R.drawable.logo_beneficio_joven),
+                            contentDescription = null,
+                            modifier = Modifier.size(50.dp)
+                        )
+                    }
+                }
+
+                item {
+                    Text(
+                        "Inicia Sesión",
+                        style = TextStyle(
+                            brush = Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96))),
+                            fontSize = 30.sp,
+                            fontWeight = FontWeight.Black
+                        ),
+                        modifier = Modifier.padding(top = 18.dp, start = 6.dp, end = 6.dp, bottom = 14.dp)
+                    )
+                }
+
+                item {
+                    Text(
+                        "Por favor, inicie sesión en su cuenta",
+                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161)),
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.padding(horizontal = 6.dp)
+                    )
+                }
+
+                item {
+                    Text(
+                        "Correo Electrónico",
+                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A)),
+                        modifier = Modifier.padding(start = 6.dp, top = 32.dp, end = 6.dp, bottom = 8.dp)
+                    )
+                }
+
+                item {
+                    FocusBringIntoView {
+                        EmailTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            modifier = it
+                                .fillMaxWidth()
+                                .padding(horizontal = 6.dp)
+                        )
+                    }
+                }
+
+                item {
+                    Text(
+                        "Contraseña",
+                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A)),
+                        modifier = Modifier.padding(start = 6.dp, top = 20.dp, end = 6.dp, bottom = 8.dp)
+                    )
+                }
+
+                item {
+                    FocusBringIntoView {
+                        PasswordTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            modifier = it
+                                .fillMaxWidth()
+                                .padding(horizontal = 6.dp)
+                        )
+                    }
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 0.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(checked = rememberMe, onCheckedChange = { rememberMe = it })
+                            Text(
+                                "Recuérdame",
+                                style = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                            )
+                        }
+                        TextButton(onClick = { nav.navigate(Screens.ForgotPassword.route) }) {
+                            Text(
+                                "¿Olvidaste tu contraseña?",
+                                style = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                            )
+                        }
+                    }
+                }
+
+                if (showError && errorMessage.isNotEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = errorMessage,
+                                    color = Color(0xFFD32F2F),
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(onClick = {
+                                    showError = false
+                                    errorMessage = ""
+                                    viewModel.clearState()
+                                }) { Text("✕", color = Color(0xFFD32F2F)) }
+                            }
+                        }
+                    }
+                }
+
+                item { GradientDivider_OR(modifier = Modifier.padding(vertical = 16.dp)) }
+
+                item {
+                    AltLoginButton(
+                        text = "Continuar con Google",
+                        icon = painterResource(id = R.drawable.logo_google),
+                        contentDescription = "Continuar con Google",
+                        onClick = { /* TODO */ },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp)
+                    )
+                }
+
+                item {
+                    AltLoginButton(
+                        text = "Continuar con Facebook",
+                        icon = painterResource(id = R.drawable.logo_facebook),
+                        contentDescription = "Continuar con Facebook",
+                        onClick = { /* TODO */ },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                // No agregamos “¿No tienes cuenta?” aquí: ya está en bottomBar.
+            }
         }
     }
 }
 
-
-
-
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun LoginPreview() {
+fun PreviewLogin() {
     BeneficioJuventudTheme {
         val navController = rememberNavController()
-        Login(nav = navController)
+        val fakeAppViewModel = AppViewModel()
+        Login(nav = navController, appViewModel = fakeAppViewModel)
     }
 }

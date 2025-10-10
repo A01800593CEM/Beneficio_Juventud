@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "mx.itesm.beneficiojuventud"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -30,6 +30,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "11"
@@ -40,6 +41,10 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.foundation.layout)
+    implementation(libs.androidx.ui.geometry)
+    implementation(libs.androidx.runtime.saveable)
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -53,9 +58,21 @@ dependencies {
     implementation(libs.material3)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.ui.text)
+    implementation(libs.amplify.core)
+    implementation(libs.amplify.auth)
+    implementation(libs.amplify.datastore)
+    implementation(libs.amplify.api)
+    implementation(libs.amplify.storage)
 
     implementation(libs.retrofit.lib)
     implementation(libs.converter.lib)
+    implementation(libs.androidx.material.icons.core)
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.foundation)
+    implementation(libs.androidx.ui.unit)
+    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("androidx.compose.material:material:1.6.8")
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
