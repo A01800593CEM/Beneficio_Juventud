@@ -44,20 +44,20 @@ export class AdministratorsController {
   }
 
   @Get('administrators/:id')
-  findOneAdministrator(@Param('id', ParseIntPipe) id: number) {
+  findOneAdministrator(@Param('id', ParseIntPipe) id: string) {
     return this.administratorsService.findOne(id);
   }
 
   @Patch('administrators/:id')
   updateAdministrator(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIntPipe) id: string,
     @Body() dto: UpdateAdministratorDto,
   ) {
     return this.administratorsService.update(id, dto);
   }
 
   @Delete('administrators/:id')
-  removeAdministrator(@Param('id', ParseIntPipe) id: number) {
+  removeAdministrator(@Param('id', ParseIntPipe) id: string) {
     return this.administratorsService.remove(id);
   }
 

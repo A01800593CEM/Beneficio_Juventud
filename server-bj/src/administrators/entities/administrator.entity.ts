@@ -18,6 +18,9 @@ export class Administrator {
   @PrimaryGeneratedColumn({ name: 'admin_id' })
   id: number;
 
+  @Column({name: 'cognito_id'})
+  cognitoId: string;
+
   @Column({ name: 'nombre', type: 'varchar', length: 255 })
   firstName: string;
 
