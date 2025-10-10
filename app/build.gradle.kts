@@ -18,6 +18,24 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    packaging {
+        resources {
+            excludes += setOf(
+                // Los que ya causaban el error
+                "META-INF/INDEX.LIST",
+                // El nuevo que reportaste de Netty
+                "META-INF/io.netty.versions.properties",
+                // Opcionales comunes para evitar más choques
+                "META-INF/DEPENDENCIES",
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1",
+                "META-INF/*.SF",
+                "META-INF/*.DSA",
+                "META-INF/*.RSA"
+            )
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
