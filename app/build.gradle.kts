@@ -76,8 +76,8 @@ dependencies {
     implementation(libs.androidx.ui.unit)
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("androidx.compose.material:material:1.6.8")
+    implementation(libs.vico.core)
     implementation(libs.vico.compose)
-
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

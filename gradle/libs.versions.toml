@@ -1,5 +1,6 @@
 [versions]
 agp = "8.12.3"
+compose = "2.0.0"
 kotlin = "2.2.20"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -18,7 +19,7 @@ foundation = "1.9.2"
 uiUnit = "1.9.2"
 amplify = "2.30.1"
 foundationLayout = "1.9.2"
-vico = "2.2.0"
+vico = "1.14.0"
 foundationVersion = "1.9.3"
 
 [libraries]
@@ -54,9 +55,10 @@ amplify-datastore = { group = "com.amplifyframework", name = "aws-datastore", ve
 amplify-api = { group = "com.amplifyframework", name = "aws-api", version.ref = "amplify" }
 amplify-storage = { group = "com.amplifyframework", name = "aws-storage-s3", version.ref = "amplify" }
 androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
-
+vico-core = { group = "com.patrykandpatrick.vico", name = "core", version.ref = "vico" }
 vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundationVersion" }
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
