@@ -122,11 +122,11 @@ fun Register(
                 ) {
                     showError = false
                     val userProfile = UserProfile(
-                        nombre = nombre,
-                        apellidoPaterno = apPaterno,
-                        apellidoMaterno = apMaterno,
-                        fechaNacimiento = fechaNacDb,
-                        telefono = phone,
+                        name = nombre,
+                        lastNamePaternal = apPaterno,
+                        lastNameMaternal = apMaterno,
+                        birthDate = fechaNacDb,
+                        phoneNumber = phone,
                         email = email
                     )
                     authViewModel.savePendingUserProfile(userProfile)

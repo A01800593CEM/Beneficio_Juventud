@@ -10,8 +10,11 @@ export class User {
     @PrimaryGeneratedColumn({name: "usuario_id"})
     id: number;
 
+    @Column({name: "cognito_id"})
+    cognitoId: string;
+
     @Column({name : "nombre"})
-    name: String;
+    name: string;
 
     @Column({name: "apellido_paterno"})
     lastNamePaternal: string;
@@ -23,10 +26,10 @@ export class User {
     birthDate: Date;
 
     @Column({name: "telefono"})
-    phoneNumber: String;
+    phoneNumber: string;
 
     @Column({name: "correo_electronico"})
-    email: String;
+    email: string;
 
     @CreateDateColumn({name: "fecha_registro"})
     registrationDate: Date;

@@ -20,6 +20,11 @@ export class CreateCollaboratorDto {
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(50)
+  cognitoId: string;
+
+  @IsString()
+  @IsNotEmpty()
   @MaxLength(20)
   rfc: string;
 
@@ -51,7 +56,7 @@ export class CreateCollaboratorDto {
   // 👇 Multiple category IDs
   @IsArray()
   @ArrayNotEmpty()
-  @IsInt({ each: true })s
+  @IsInt({ each: true })
   categoryIds: number[];
 
   @IsOptional()

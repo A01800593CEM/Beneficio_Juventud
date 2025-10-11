@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget // Add this import
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,23 +10,6 @@ android {
     namespace = "mx.itesm.beneficiojuventud"
     compileSdk = 36
 
-    packaging {
-        resources {
-            excludes += setOf(
-                // Los que ya causaban el error
-                "META-INF/INDEX.LIST",
-                // El nuevo que reportaste de Netty
-                "META-INF/io.netty.versions.properties",
-                // Opcionales comunes para evitar más choques
-                "META-INF/DEPENDENCIES",
-                "META-INF/AL2.0",
-                "META-INF/LGPL2.1",
-                "META-INF/*.SF",
-                "META-INF/*.DSA",
-                "META-INF/*.RSA"
-            )
-        }
-    }
 
     defaultConfig {
         applicationId = "mx.itesm.beneficiojuventud"
@@ -68,8 +53,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    // Correctly structured kotlin compiler options
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
     }
     buildFeatures {
         compose = true
@@ -81,7 +69,6 @@ dependencies {
     implementation(libs.androidx.ui.geometry)
     implementation(libs.androidx.runtime.saveable)
     implementation(libs.firebase.appdistribution.gradle)
-    implementation(libs.firebase.firestore.ktx)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     implementation(libs.androidx.core.ktx)
@@ -110,6 +97,7 @@ dependencies {
     implementation(libs.androidx.ui.unit)
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("androidx.compose.material:material:1.6.8")
+    implementation ("io.github.ehsannarmani:compose-charts:+")
 
 
     testImplementation(libs.junit)

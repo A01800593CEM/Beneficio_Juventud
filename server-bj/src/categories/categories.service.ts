@@ -43,4 +43,12 @@ export class CategoriesService {
   remove(id: number) {
     return this.categoriesRepository.delete(id);
   }
+
+  async findByNames(names: string[]): Promise<Category[]> {
+  return this.categoriesRepository
+    .createQueryBuilder('category')
+    .where('category.name IN (:...names)', { names })
+    .getMany();
+}
+
 }

@@ -44,20 +44,20 @@ export class AdministratorsController {
   }
 
   @Get('administrators/:id')
-  findOneAdministrator(@Param('id', ParseIntPipe) id: number) {
+  findOneAdministrator(@Param('id', ParseIntPipe) id: string) {
     return this.administratorsService.findOne(id);
   }
 
   @Patch('administrators/:id')
   updateAdministrator(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIntPipe) id: string,
     @Body() dto: UpdateAdministratorDto,
   ) {
     return this.administratorsService.update(id, dto);
   }
 
   @Delete('administrators/:id')
-  removeAdministrator(@Param('id', ParseIntPipe) id: number) {
+  removeAdministrator(@Param('id', ParseIntPipe) id: string) {
     return this.administratorsService.remove(id);
   }
 
@@ -75,22 +75,22 @@ export class AdministratorsController {
   }
 
   @Get('users/:id')
-  findOneUser(@Param('id', ParseIntPipe) id: number) {
+  findOneUser(@Param('id', ParseIntPipe) id: string) {
     return this.usersService.trueFindOne(id);
   }
 
   @Patch('users/:id')
-  updateUser(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
+  updateUser(@Param('id', ParseIntPipe) id: string, @Body() dto: UpdateUserDto) {
     return this.usersService.update(id, dto);
   }
 
   @Patch('users/reactivate/:id')
-  reactivateUser(@Param('id', ParseIntPipe) id: number) {
+  reactivateUser(@Param('id', ParseIntPipe) id: string) {
     return this.usersService.reActivate(id);
   }
 
   @Delete('users/:id')
-  removeUser(@Param('id', ParseIntPipe) id: number) {
+  removeUser(@Param('id', ParseIntPipe) id: string) {
     return this.usersService.remove(id);
   }
 
@@ -142,25 +142,25 @@ export class AdministratorsController {
   }
 
   @Get('collaborators/:id')
-  findOneCollaborator(@Param('id', ParseIntPipe) id: number) {
+  findOneCollaborator(@Param('id', ParseIntPipe) id: string) {
     return this.collaboratorsService.trueFindOne(id);
   }
 
   @Patch('collaborators/:id')
   updateCollaborator(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIntPipe) id: string,
     @Body() dto: UpdateCollaboratorDto,
   ) {
     return this.collaboratorsService.update(id, dto);
   }
 
   @Patch('collaborators/reactivate/:id')
-  reactivateCollaborator(@Param('id', ParseIntPipe) id: number) {
+  reactivateCollaborator(@Param('id', ParseIntPipe) id: string) {
     return this.collaboratorsService.reActivate(id)
   }
 
   @Delete('collaborators/:id')
-  removeCollaborator(@Param('id', ParseIntPipe) id: number) {
+  removeCollaborator(@Param('id', ParseIntPipe) id: string) {
     return this.collaboratorsService.remove(id);
   }
 }

@@ -25,7 +25,7 @@ object TestRemote {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val promo = RemoteServicePromos.getPromotionById(1)
-                Log.d("TEST_PROMO", "Promoción obtenida: ${promo.totalStock}")
+                Log.d("TEST_PROMO", "Promoción obtenida: $promo")
             } catch (e: Exception) {
                 Log.e("TEST_PROMO", "Error: ${e.message}")
             }

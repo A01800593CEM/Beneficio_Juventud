@@ -20,6 +20,9 @@ export class Collaborator {
     @PrimaryGeneratedColumn({ name: 'colaborador_id' })
     id: number;
 
+    @Column({name: 'cognito_id'})
+    cognitoId: string;
+
     @Column({ name: 'nombre_negocio', length: 255 })
     businessName: string;
 

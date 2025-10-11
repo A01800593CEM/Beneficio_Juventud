@@ -39,4 +39,9 @@ export class CreateAdministratorDto {
 
   @IsEnum(AdminState)
   status: AdminState;
+
+  @IsString()
+  @MaxLength(50)
+  @IsNotEmpty()
+  cognitoId: string;
 }
