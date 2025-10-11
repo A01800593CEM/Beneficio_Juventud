@@ -93,6 +93,8 @@ private fun AppNav(startDestination: String, authViewModel: AuthViewModel) {
         composable(Screens.Coupons.route) { Coupons(nav) }
         composable(Screens.Business.route) { Business(nav) }
         composable(Screens.PromoQR.route) { PromoQR(nav) }
+        composable(Screens.GenerarPromocion.route) { GenerarPromocion(nav) }
+        composable(Screens.GenerarPromocionIA.route) { GenerarPromocionIA(nav) }
     }
 }
 

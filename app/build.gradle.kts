@@ -95,7 +95,7 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.ui.unit)
-    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("androidx.compose.material:material:1.6.8")
     implementation ("io.github.ehsannarmani:compose-charts:+")
 
