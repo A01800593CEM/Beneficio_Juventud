@@ -1,6 +1,6 @@
 package mx.itesm.beneficiojuventud.viewcollab
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -9,7 +9,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -29,9 +28,15 @@ private val RedNegative = Color(0xFFE53935)
 @Composable
 fun StatsSummaryCard(summary: StatsSummary) {
     Card(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = Color.LightGray,
+                shape = RoundedCornerShape(16.dp)
+            ),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
@@ -52,7 +57,6 @@ fun StatsSummaryCard(summary: StatsSummary) {
                 Spacer(Modifier.height(14.dp))
             }
             Spacer(Modifier.width(8.dp))
-            // Tasa de Conversión
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(text = summary.conversionRate, color = RedNegative, fontSize = 22.sp, fontWeight = FontWeight.Black)
                 Text(text = "Tasa de Conversión", fontSize = 12.sp, color = TextGrey, textAlign = TextAlign.Center)
