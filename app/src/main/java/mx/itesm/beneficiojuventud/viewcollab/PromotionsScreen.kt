@@ -27,11 +27,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
-import mx.itesm.beneficiojuventud.viewcollab.BJBottomBarCollab
-import mx.itesm.beneficiojuventud.viewcollab.BJTabCollab
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.viewcollab.PromotionCard
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewcollab.PromotionsViewModel
 
 private val TextGrey = Color(0xFF616161)
 private val DarkBlue = Color(0xFF4B4C7E)
@@ -67,14 +66,16 @@ fun PromotionsScreen(
             Spacer(Modifier.height(24.dp))
             PromotionsScreenHeader(nav = nav)
 
-            Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF0F0F0))) {
+            Column(modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)) {
                 if (uiState.isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 } else {
                     LazyColumn(
-                        modifier = Modifier.weight(1f), // Ocupa el espacio disponible
+                        modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -86,7 +87,9 @@ fun PromotionsScreen(
                         }
                     }
                     CreatePromotionButton(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
                         onClick = { /* TODO: Navegar a crear promocion */ }
                     )
                 }
@@ -113,7 +116,9 @@ private fun CreatePromotionButton(modifier: Modifier = Modifier, onClick: () -> 
 @Composable
 private fun PromotionsScreenHeader(nav: NavHostController) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { nav.popBackStack() }) { Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Regresar", tint = TextGrey) }
