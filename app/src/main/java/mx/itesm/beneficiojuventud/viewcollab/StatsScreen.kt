@@ -19,13 +19,19 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.runBlocking
 import mx.itesm.beneficiojuventud.R
-import mx.itesm.beneficiojuventud.viewcollab.BJBottomBarCollab
-import mx.itesm.beneficiojuventud.viewcollab.BJTabCollab
 import mx.itesm.beneficiojuventud.components.GradientDivider
-import mx.itesm.beneficiojuventud.viewcollab.StatsSummaryCard
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
-import mx.itesm.beneficiojuventud.viewcollab.StatsViewModel
+import mx.itesm.beneficiojuventud.viewcollab.*
+
+import com.patrykandpatrick.vico.compose.cartesian.CartesianChart
+import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStartAxis
+import com.patrykandpatrick.vico.compose.cartesian.line.lineSeries
+import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 
 private val TextGrey = Color(0xFF616161)
 
@@ -48,16 +54,36 @@ fun StatsScreen(
         }
     ) { paddingValues ->
         Column(
-            modifier = Modifier.fillMaxSize().background(Color.White).padding(paddingValues),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+                .padding(paddingValues),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(16.dp))
-            Image(painter = painterResource(id = R.drawable.logo), contentDescription = "Logo de la App", modifier = Modifier.size(width = 45.dp, height = 33.dp))
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "Logo de la App",
+                modifier = Modifier.size(width = 45.dp, height = 33.dp)
+            )
             Spacer(Modifier.height(24.dp))
             StatsScreenHeader(nav = nav)
 
+            Spacer(Modifier.height(16.dp))
+            val modelProducer = remember { CartesianChartModelProducer() }
+            runBlocking {
+                modelProducer.runTransaction {
+                    lineSeries { series(y = listOf(13, 8, 7, 12, 0, 1, 15, 14, 0, 11, 6, 12, 0, 11, 12, 11)) }
+                }
+            }
+
+            PreviewBox { JetpackComposeBasicLineChart(modelProducer) }
+
             Column(
-                modifier = Modifier.fillMaxSize().background(Color(0xFFF0F0F0)).padding(horizontal = 24.dp, vertical = 16.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF0F0F0))
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
             ) {
                 if (uiState.isLoading) {
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -72,6 +98,7 @@ fun StatsScreen(
         }
     }
 }
+
 @Composable
 private fun StatsScreenHeader(nav: NavHostController) {
     Column(
@@ -84,18 +111,48 @@ private fun StatsScreenHeader(nav: NavHostController) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { nav.popBackStack() }) {
-                Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Regresar", tint = TextGrey)
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Regresar",
+                    tint = TextGrey
+                )
             }
             Spacer(Modifier.width(16.dp))
-            Text(text = "Estadísticas", fontWeight = FontWeight.Black, fontSize = 20.sp, color = TextGrey)
+            Text(
+                text = "Estadísticas",
+                fontWeight = FontWeight.Black,
+                fontSize = 20.sp,
+                color = TextGrey
+            )
             Spacer(Modifier.weight(1f))
             IconButton(onClick = { /* TODO */ }) {
-                Icon(imageVector = Icons.Outlined.Settings, contentDescription = "Ajustes", tint = TextGrey)
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = "Ajustes",
+                    tint = TextGrey
+                )
             }
         }
         Spacer(Modifier.height(16.dp))
         GradientDivider(modifier = Modifier.fillMaxWidth(), thickness = 1.dp)
     }
+}
+
+@Composable
+fun JetpackComposeBasicLineChart(modelProducer: CartesianChartModelProducer) {
+    CartesianChartHost(
+        chart = rememberCartesianChart(
+            rememberLineCartesianLayer(
+                lines = listOf(lineSeries())
+            ),
+            startAxis = rememberStartAxis(),
+            bottomAxis = rememberBottomAxis()
+        ),
+        modelProducer = modelProducer,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(120.dp)
+    )
 }
 
 @Preview(showBackground = true, widthDp = 411, heightDp = 891)
