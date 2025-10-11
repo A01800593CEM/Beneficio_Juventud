@@ -29,4 +29,5 @@ sealed class Screens(val route: String) {
     data object PromoQR : Screens("promo_qr")
     data object GenerarPromocion : Screens("generar_promocion")
     data object GenerarPromocionIA : Screens("generar_promocion_ia")
+    data object EditPromotion : Screens("edit_promotion")
 }

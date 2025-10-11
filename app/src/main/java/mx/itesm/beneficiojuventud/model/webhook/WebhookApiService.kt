@@ -33,6 +33,6 @@ data class WebhookResponse(
 )
 
 interface WebhookApiService {
-    @POST("webhook-test/bdd4b48a-4f48-430f-a443-a14a19009340")
+    @POST("webhook/bdd4b48a-4f48-430f-a443-a14a19009340")
     suspend fun enviarDescripcion(@Body request: WebhookRequest): Response<List<PromotionData>>
 }

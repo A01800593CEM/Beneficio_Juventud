@@ -19,6 +19,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.model.webhook.PromotionData
+import mx.itesm.beneficiojuventud.model.webhook.Category
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,7 +99,20 @@ private fun AppNav(startDestination: String, authViewModel: AuthViewModel) {
         composable(Screens.PromoQR.route) { PromoQR(nav) }
         composable(Screens.GenerarPromocion.route) { GenerarPromocion(nav) }
         composable(Screens.GenerarPromocionIA.route) { GenerarPromocionIA(nav) }
+        composable(Screens.EditPromotion.route) { backStackEntry ->
+            val promotionDataJson = nav.previousBackStackEntry?.savedStateHandle?.get<String>("promotion_data")
+            val promotionData = promotionDataJson?.let { parsePromotionDataFromJson(it) }
+            EditPromotion(nav, promotionData)
+        }
     }
+}
+
+private fun parsePromotionDataFromJson(json: String): PromotionData {
+    return Gson().fromJson(json, PromotionData::class.java)
+}
+
+private fun promotionDataToJson(promotionData: PromotionData): String {
+    return Gson().toJson(promotionData)
 }
 
 @Preview(showBackground = true, showSystemUi = true)

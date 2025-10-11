@@ -127,7 +127,9 @@ fun GenerarPromocion(
                 icon = Icons.Default.Add,
                 backgroundColor = Color(0xFF008D96),
                 onClick = {
-                    // Navegar a pantalla de creación manual
+                    // Navegar a EditPromotion con datos vacíos para creación manual
+                    nav.currentBackStackEntry?.savedStateHandle?.set("promotion_data", null)
+                    nav.navigate(Screens.EditPromotion.route)
                 }
             )
 
