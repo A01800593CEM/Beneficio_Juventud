@@ -152,6 +152,16 @@ fun Settings(nav: NavHostController, modifier: Modifier = Modifier) {
                         onClick = { /* nav.navigate(Screens.ChangePassword.route) */ }
                     )
                 }
+
+                item {
+                    SettingItemNavigable(
+                        icon = Icons.Outlined.AllInclusive,
+                        title = "Prueba de IA (esto se moverá)",
+                        subtitle = "Test",
+                        onClick = { nav.navigate(Screens.GenerarPromocion.route)}
+                    )
+                }
+
                 item {
                     DangerItem(
                         icon = Icons.Outlined.DeleteOutline,
