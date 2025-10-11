@@ -30,8 +30,19 @@ import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
+/**
+ * Representa una pregunta frecuente con su respuesta correspondiente.
+ * @param question Pregunta planteada por el usuario.
+ * @param answer Respuesta explicativa mostrada en la interfaz.
+ */
 data class FaqItem(val question: String, val answer: String)
 
+/**
+ * Pantalla de ayuda y soporte que muestra contacto, línea de ayuda y preguntas frecuentes.
+ * Incluye barra de navegación inferior y divisor superior con gradiente.
+ * @param nav Controlador de navegación para cambiar de pantalla.
+ * @param modifier Modificador opcional para ajustar el contenedor.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
@@ -40,22 +51,10 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
 
     val faqs = remember {
         listOf(
-            FaqItem(
-                "¿Cómo uso mis cupones?",
-                "Ve a la sección de cupones y selecciona el que quieras usar. Muestra el código al comerciante."
-            ),
-            FaqItem(
-                "¿Los cupones tienen fecha de vencimiento?",
-                "Sí, cada cupón tiene una fecha límite que aparece en los detalles del mismo."
-            ),
-            FaqItem(
-                "¿Cómo actualizo mi información personal?",
-                "Ve a Perfil > Editar Perfil para actualizar tus datos personales."
-            ),
-            FaqItem(
-                "¿Puedo compartir mis cupones?",
-                "Los cupones son personales e intransferibles, vinculados a tu cuenta."
-            ),
+            FaqItem("¿Cómo uso mis cupones?", "Ve a la sección de cupones y selecciona el que quieras usar. Muestra el código al comerciante."),
+            FaqItem("¿Los cupones tienen fecha de vencimiento?", "Sí, cada cupón tiene una fecha límite que aparece en los detalles del mismo."),
+            FaqItem("¿Cómo actualizo mi información personal?", "Ve a Perfil > Editar Perfil para actualizar tus datos personales."),
+            FaqItem("¿Puedo compartir mis cupones?", "Los cupones son personales e intransferibles, vinculados a tu cuenta.")
         )
     }
 
@@ -108,7 +107,6 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                     )
                 }
 
-                // Línea divisora con gradiente
                 GradientDivider(
                     thickness = 2.dp,
                     modifier = Modifier
@@ -117,7 +115,6 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                 )
             }
         },
-
         bottomBar = {
             BJBottomBar(
                 selected = selectedTab,
@@ -154,6 +151,7 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                         onClick = { /* TODO: abrir Intent.ACTION_SENDTO mailto: */ }
                     )
                 }
+
                 // Línea de ayuda
                 item {
                     HelpActionItem(
@@ -176,10 +174,9 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                 }
 
                 // Lista de FAQs
-                items(faqs) { item ->
-                    FaqCard(item)
-                }
+                items(faqs) { item -> FaqCard(item) }
 
+                // Versión al final
                 item {
                     Spacer(Modifier.height(8.dp))
                     Box(
@@ -187,7 +184,7 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Versión 1.0.01",
+                            text = "Versión $appVersion",
                             color = Color(0xFFAEAEAE),
                             fontSize = 10.sp,
                             textAlign = TextAlign.Center,
@@ -201,7 +198,13 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
     }
 }
 
-/** Ítem con icono con gradiente y chevron (correo / teléfono) */
+/**
+ * Ítem de acción para contacto o soporte con ícono, texto y chevron lateral.
+ * @param icon Icono representativo de la acción.
+ * @param title Título principal del ítem.
+ * @param subtitle Subtítulo con información de contacto.
+ * @param onClick Acción ejecutada al presionar el ítem.
+ */
 @Composable
 private fun HelpActionItem(
     icon: ImageVector,
@@ -256,7 +259,13 @@ private fun HelpActionItem(
     }
 }
 
-/** Ícono con gradiente */
+/**
+ * Ícono con gradiente aplicado mediante mezcla de color.
+ * @param imageVector Ícono base a renderizar.
+ * @param brush Degradado aplicado al ícono.
+ * @param modifier Modificador opcional para ajustar tamaño o posición.
+ * @param contentDescription Descripción accesible del ícono.
+ */
 @Composable
 fun GradientIcon(
     imageVector: ImageVector,
@@ -279,7 +288,10 @@ fun GradientIcon(
     )
 }
 
-/** Tarjeta de FAQ */
+/**
+ * Tarjeta que muestra una pregunta frecuente con su respuesta.
+ * @param item Elemento FAQ con pregunta y respuesta.
+ */
 @Composable
 private fun FaqCard(item: FaqItem) {
     Surface(
@@ -311,6 +323,9 @@ private fun FaqCard(item: FaqItem) {
     }
 }
 
+/**
+ * Vista previa de la pantalla de ayuda y soporte.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun HelpPreview() {

@@ -48,56 +48,57 @@ private val TextPrimary   = Color(0xFF616161)
 private val TextSecondary = Color(0xFFAEAEAE)
 private val Danger        = Color(0xFFDC3A2C)
 
+/**
+ * Pantalla de perfil del usuario.
+ * Muestra avatar (descargado de S3 vía Amplify), nombre, correo, opciones de menú y control de cierre de sesión con estados y diálogos.
+ * @param nav Controlador de navegación para moverse entre pantallas y limpiar el back stack al cerrar sesión.
+ * @param authViewModel ViewModel de autenticación que expone el estado actual y acciones como sign-out y carga del usuario.
+ * @return Unit
+ */
 @Composable
 fun Profile(
     nav: NavHostController,
     authViewModel: AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
-    // Datos temporales (mientras no conectas user real)
     val name = authViewModel.getCurrentUserName() ?: "Iván"
     val email = "ivandl@beneficio.com"
     val appVersion = "1.0.01"
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableStateOf(BJTab.Profile) }
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var isLoadingImage by remember { mutableStateOf(false) }
 
-    // Load user info when screen opens
-    LaunchedEffect(Unit) {
-        authViewModel.getCurrentUser()
-    }
+    LaunchedEffect(Unit) { authViewModel.getCurrentUser() }
 
     val currentUserId by authViewModel.currentUserId.collectAsState()
     val actualUserId = currentUserId ?: "anonymous"
     Log.d("Profile", "Current User ID: $actualUserId")
 
-    // Load profile image on startup
     LaunchedEffect(actualUserId) {
         try {
-            downloadProfileImageForDisplay(context, actualUserId,
+            downloadProfileImageForDisplay(
+                context = context,
+                userId = actualUserId,
                 onSuccess = { url -> profileImageUrl = url },
                 onError = { Log.d("Profile", "Storage not configured yet: $it") },
                 onLoading = { loading -> isLoadingImage = loading }
             )
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Log.d("Profile", "Storage not configured yet, skipping image download")
         }
     }
 
-    // Estado de auth
     val authState by authViewModel.authState.collectAsState()
     var signOutRequested by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
 
-    // Navegar cuando el signOut termina OK
     LaunchedEffect(authState.isLoading, authState.error, signOutRequested) {
         if (signOutRequested && !authState.isLoading) {
             if (authState.error == null) {
                 authViewModel.clearState()
                 nav.navigate(Screens.LoginRegister.route) {
-                    popUpTo(0) { inclusive = true }   // limpia back stack
+                    popUpTo(0) { inclusive = true }
                     launchSingleTop = true
                 }
             } else {
@@ -107,18 +108,14 @@ fun Profile(
         }
     }
 
-    // Overlay de carga
     if (authState.isLoading) {
         LoadingDialog()
     }
 
-    // Snackbar/alerta simple (usa tu propio SnackbarHost si ya tienes uno)
     if (errorMsg != null) {
         AlertDialog(
             onDismissRequest = { errorMsg = null },
-            confirmButton = {
-                TextButton(onClick = { errorMsg = null }) { Text("OK") }
-            },
+            confirmButton = { TextButton(onClick = { errorMsg = null }) { Text("OK") } },
             title = { Text("Error") },
             text = { Text(errorMsg!!) }
         )
@@ -156,7 +153,6 @@ fun Profile(
             ) {
                 Spacer(Modifier.height(12.dp))
 
-                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -178,7 +174,6 @@ fun Profile(
 
                 Spacer(Modifier.height(10.dp))
 
-                // Avatar
                 Box(
                     modifier = Modifier
                         .size(100.dp)
@@ -212,7 +207,6 @@ fun Profile(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Nombre y correo
                 Text(
                     text = name,
                     color = TextPrimary,
@@ -241,7 +235,6 @@ fun Profile(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Opciones
                 ProfileItemCard(
                     icon = Icons.Outlined.PersonOutline,
                     title = "Editar Perfil",
@@ -271,7 +264,6 @@ fun Profile(
                     title = "Cerrar Sesión",
                     subtitle = "Hasta la próxima :)",
                     onClick = {
-                        // Dispara logout real
                         signOutRequested = true
                         authViewModel.signOut(globalSignOut = true)
                     },
@@ -292,6 +284,11 @@ fun Profile(
     }
 }
 
+/**
+ * Diálogo modal de carga mostrado durante el proceso de cierre de sesión.
+ * Bloquea la interacción hasta que finaliza la operación.
+ * @return Unit
+ */
 @Composable
 private fun LoadingDialog() {
     AlertDialog(
@@ -310,7 +307,16 @@ private fun LoadingDialog() {
     )
 }
 
-
+/**
+ * Ítem de la lista de opciones del perfil con icono, título y subtítulo.
+ * Ajusta estilos y color de acento cuando representa la acción de cerrar sesión.
+ * @param icon Ícono a mostrar en el inicio del ítem.
+ * @param title Título descriptivo de la acción.
+ * @param subtitle Descripción breve o contexto de la acción.
+ * @param onClick Acción a ejecutar al presionar el ítem.
+ * @param isLogout Si es true, aplica estilos de énfasis de salida (rojo).
+ * @return Unit
+ */
 @Composable
 private fun ProfileItemCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -354,7 +360,16 @@ private fun ProfileItemCard(
     }
 }
 
-// Download profile image for display in Profile screen
+/**
+ * Descarga la imagen de perfil desde S3 (ruta public/profile-images/{userId}.jpg) y la guarda en caché local para mostrarla.
+ * Gestiona callbacks de éxito, error y estado de carga.
+ * @param context Contexto para resolver el directorio de caché donde se guarda el archivo temporal.
+ * @param userId Identificador del usuario cuyo avatar se desea descargar.
+ * @param onSuccess Callback con la ruta local del archivo descargado.
+ * @param onError Callback con el mensaje de error en caso de falla.
+ * @param onLoading Callback que indica true al iniciar y false al terminar la operación.
+ * @return Unit
+ */
 fun downloadProfileImageForDisplay(
     context: Context,
     userId: String,
@@ -391,7 +406,10 @@ fun downloadProfileImageForDisplay(
     }
 }
 
-/* --- Preview con nav falso --- */
+/**
+ * Previsualiza la pantalla de perfil con un NavController de prueba.
+ * @return Unit
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun ProfilePreview() {

@@ -31,6 +31,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.components.MainButton
 
+/**
+ * Pantalla de selección de categorías durante el onboarding de Beneficio Joven.
+ * Permite al usuario elegir al menos tres intereses para personalizar sus promociones.
+ * @param nav Controlador de navegación para gestionar la transición hacia la pantalla principal.
+ * @param modifier Modificador opcional para ajustar el layout exterior.
+ * @return Unit
+ */
 @Composable
 fun OnboardingCategories(
     nav: NavHostController,
@@ -53,7 +60,7 @@ fun OnboardingCategories(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp, 75.dp,24.dp,0.dp)
+            .padding(24.dp, 75.dp, 24.dp, 0.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -77,6 +84,7 @@ fun OnboardingCategories(
 
         Spacer(Modifier.height(24.dp))
 
+        // Lista de categorías seleccionables
         categories.forEach { c ->
             val isSel = selected.contains(c)
             CategoryItem(
@@ -92,6 +100,7 @@ fun OnboardingCategories(
 
         Spacer(Modifier.height(20.dp))
 
+        // Botón de continuación
         MainButton(
             text = "Continuar",
             enabled = selected.size >= 3,
@@ -106,6 +115,15 @@ fun OnboardingCategories(
     }
 }
 
+/**
+ * Elemento visual para mostrar una categoría seleccionable.
+ * Cambia su borde, color y muestra un ícono de check cuando está seleccionada.
+ * @param text Nombre de la categoría.
+ * @param selected Indica si la categoría está seleccionada.
+ * @param gradient Gradiente aplicado al borde e ícono cuando está activa.
+ * @param onClick Acción al presionar el elemento.
+ * @return Unit
+ */
 @Composable
 private fun CategoryItem(
     text: String,
@@ -118,7 +136,6 @@ private fun CategoryItem(
     val textColor = if (selected) Color(0xFF008D96) else Color(0xFF616161)
     val weight = if (selected) FontWeight.Bold else FontWeight.Bold
 
-    // Card + borde con Brush para replicar el estilo
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -137,7 +154,7 @@ private fun CategoryItem(
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Indicador circular a la izquierda (vacío o con check y borde en gradiente)
+            // Indicador circular con check o borde gris
             if (selected) {
                 Box(
                     modifier = Modifier
@@ -174,6 +191,10 @@ private fun CategoryItem(
     }
 }
 
+/**
+ * Previsualiza la pantalla de selección de categorías con el tema por defecto.
+ * @return Unit
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun OnboardingCategoriesPreview() {

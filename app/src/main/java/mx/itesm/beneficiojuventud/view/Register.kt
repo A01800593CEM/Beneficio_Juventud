@@ -49,11 +49,17 @@ import mx.itesm.beneficiojuventud.components.PasswordTextField
 import mx.itesm.beneficiojuventud.model.users.UserProfile
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
-
 import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/**
+ * Pantalla de registro de usuario con campos personales, fecha de nacimiento, contacto y credenciales.
+ * Valida el formulario, persiste un perfil preliminar y dispara el sign-up; al requerir confirmación navega al OTP.
+ * @param nav Controlador de navegación para continuar el flujo o ir a Login.
+ * @param modifier Modificador externo para composición/pruebas.
+ * @param authViewModel ViewModel de autenticación que gestiona estado y acciones de registro.
+ */
 @Composable
 fun Register(
     nav: NavHostController,
@@ -376,7 +382,12 @@ fun Register(
     }
 }
 
-/* ---------- Focus helper: hace scroll estable hasta el campo enfocado ---------- */
+/**
+ * Helper que desplaza el campo enfocado dentro de la vista visible cuando aparece el IME.
+ * Espera un frame y un pequeño retardo para evitar saltos y luego solicita bringIntoView.
+ * @param delayMs Retardo adicional tras el primer frame para estabilizar el scroll.
+ * @param content Contenido que recibe un Modifier con bringIntoView configurado.
+ */
 @Composable
 private fun FocusBringIntoView(
     delayMs: Long = 140,
@@ -402,12 +413,18 @@ private fun FocusBringIntoView(
     content(mod)
 }
 
-/* ------------------------------ DATE PICKER FIELD ------------------------------ */
+/**
+ * Campo de fecha de nacimiento con TextField de solo lectura y diálogo DatePicker.
+ * Restringe la selección entre 1900 y la fecha actual y devuelve la fecha elegida como LocalDate.
+ * @param value Texto mostrado en el campo (formato de UI).
+ * @param onDateSelected Callback con la fecha seleccionada.
+ * @param modifier Modificador para tamaño/espaciado.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BirthDateField(
-    value: String,                       // lo que se muestra en el TextField
-    onDateSelected: (LocalDate) -> Unit, // devuelve la fecha elegida
+    value: String,
+    onDateSelected: (LocalDate) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val showDialog = remember { mutableStateOf(false) }
@@ -472,29 +489,42 @@ private fun BirthDateField(
     }
 }
 
-/* ------------------------------ FORMATOS FECHA ------------------------------ */
-
-// Locale recomendado (sin deprecated)
+/**
+ * Locale ES-MX recomendado para formateo sin APIs en desuso.
+ */
 private val localeEsMx: Locale = Locale.Builder()
     .setLanguage("es")
     .setRegion("MX")
     .build()
 
-// Formato para mostrar en UI: "01/02/2003"
+/**
+ * Formato de fecha para UI con patrón dd/MM/yyyy.
+ */
 private val displayFormatterEs: DateTimeFormatter =
     DateTimeFormatter.ofPattern("dd/MM/yyyy", localeEsMx)
-// Formato para BD (PostgreSQL DATE): "2003-02-01"
+
+/**
+ * Formato ISO para almacenamiento en BD (yyyy-MM-dd).
+ */
 private val storageFormatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
-// Convierte el string de display (si no está vacío) a millis para preseleccionar el DatePicker
+/**
+ * Convierte un string de display dd/MM/yyyy a epoch millis para preseleccionar el DatePicker.
+ * @receiver Cadena en formato de UI o vacía.
+ * @param zone Zona horaria usada para calcular el inicio del día.
+ * @return Epoch millis si se pudo convertir, o null si está vacío o hay error.
+ */
 private fun String.toMillisFromDisplayOrNull(zone: ZoneId): Long? = runCatching {
     if (this.isBlank()) return null
     val parsed = LocalDate.parse(this, displayFormatterEs)
     parsed.atStartOfDay(zone).toInstant().toEpochMilli()
 }.getOrNull()
 
-/* ------------------------------ ESTILO ------------------------------ */
-
+/**
+ * Etiqueta secundaria para campos de formulario.
+ * @param text Texto a mostrar.
+ * @param top Margen superior opcional.
+ */
 @Composable
 private fun Label(text: String, top: Dp = 0.dp) {
     Text(
@@ -504,22 +534,21 @@ private fun Label(text: String, top: Dp = 0.dp) {
     )
 }
 
+/**
+ * Colores de TextField consistentes con la línea visual de la app.
+ * @return Colors para TextFieldDefaults.colors.
+ */
 @Composable
 private fun textFieldColors() = TextFieldDefaults.colors(
     focusedContainerColor = Color.White,
     unfocusedContainerColor = Color.White,
-
     focusedIndicatorColor = Color(0xFFD3D3D3),
     unfocusedIndicatorColor = Color(0xFFD3D3D3),
-
     cursorColor = Color(0xFF008D96),
-
     focusedLeadingIconColor = Color(0xFF7D7A7A),
     unfocusedLeadingIconColor = Color(0xFF7D7A7A),
-
     focusedTrailingIconColor = Color(0xFF7D7A7A),
     unfocusedTrailingIconColor = Color(0xFF7D7A7A),
-
     focusedPlaceholderColor = Color(0xFF616161),
     unfocusedPlaceholderColor = Color(0xFF616161),
 )

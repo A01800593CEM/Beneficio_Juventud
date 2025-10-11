@@ -28,6 +28,14 @@ import mx.itesm.beneficiojuventud.components.CodeTextField
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
+/**
+ * Pantalla para confirmar el registro ingresando un código de 6 dígitos.
+ * Maneja temporizador para reenviar código, errores del estado y navegación tras éxito.
+ * @param nav Controlador de navegación para volver o continuar al flujo de login.
+ * @param email Correo al que se envió el código de confirmación.
+ * @param modifier Modificador opcional del contenedor.
+ * @param authViewModel ViewModel de autenticación utilizado para confirmar y reenviar código.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfirmSignUp(
@@ -74,7 +82,6 @@ fun ConfirmSignUp(
             }
         }
     }
-
 
     // Mostrar error del estado
     LaunchedEffect(authState.error) {
@@ -230,13 +237,21 @@ fun ConfirmSignUp(
     }
 }
 
-// Igual que en RecoveryCode: click sin ripple para el "Reenviar"
+/**
+ * Extensión de Modifier para capturar taps sin efecto ripple.
+ * Útil para textos de acción como "Reenviar código".
+ * @param onClick Acción a ejecutar al tocar el elemento.
+ * @return Modifier con detector de tap aplicado.
+ */
 @Composable
 private fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier =
     this.then(Modifier.pointerInput(Unit) {
         detectTapGestures(onTap = { onClick() })
     })
 
+/**
+ * Vista previa de la pantalla de confirmación de registro.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun ConfirmSignUpPreview() {

@@ -33,7 +33,10 @@ import mx.itesm.beneficiojuventud.model.PromoTheme
 import mx.itesm.beneficiojuventud.model.popularCategories
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
-// --- Fuente de datos para los cupones, usando tu modelo Promo/PromoTheme ---
+/**
+ * Fuente de datos temporal para renderizar cupones en la lista de la pantalla.
+ * Reemplazar por datos remotos cuando se integre el backend.
+ */
 private val coupons = listOf(
     Promo(
         bg = R.drawable.el_fuego_sagrado,
@@ -59,6 +62,12 @@ private val coupons = listOf(
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Pantalla de "Cupones" con barra superior, navegación inferior y lista desplazable.
+ * Muestra categorías populares y un listado de cupones; al tocar un cupón navega a PromoQR.
+ * @param nav Controlador de navegación para cambiar entre pantallas y abrir detalles.
+ * @param modifier Modificador externo para ajustar tamaño, padding o comportamiento del contenedor.
+ */
 @Composable
 fun Coupons(nav: NavHostController, modifier: Modifier = Modifier) {
     var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
@@ -147,6 +156,11 @@ fun Coupons(nav: NavHostController, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Barra superior de la pantalla de cupones con logo, título, botón de regreso y acceso a notificaciones.
+ * @param title Título a mostrar junto al botón de regreso.
+ * @param nav Controlador de navegación usado por el botón de regreso.
+ */
 @Composable
 private fun CouponsTopBar(
     title: String,
@@ -201,6 +215,10 @@ private fun CouponsTopBar(
     }
 }
 
+/**
+ * Vista previa de la pantalla de cupones con tema de la app y sistema.
+ * Útil para validar diseño sin ejecutar en dispositivo.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun CouponsPreview() {

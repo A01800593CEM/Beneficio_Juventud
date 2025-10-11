@@ -43,6 +43,22 @@ import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.model.PromoTheme
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
+/**
+ * Modelo de datos para el detalle de una promoción con QR.
+ * Incluye recursos visuales, metadatos de vigencia, descripción, términos y tema visual.
+ * @param bannerRes Recurso drawable del banner.
+ * @param title Título de la promoción.
+ * @param merchant Nombre del comercio.
+ * @param discountLabel Etiqueta del descuento mostrada como badge.
+ * @param validUntil Fecha de vigencia en texto.
+ * @param description Descripción de la promoción.
+ * @param terms Términos y condiciones.
+ * @param qrBitmap Imagen del QR generada en runtime (opcional).
+ * @param qrRes Recurso drawable del QR estático (fallback).
+ * @param uses Usos consumidos por el usuario.
+ * @param maxUses Límite de usos disponibles.
+ * @param theme Tema visual para contrastes (LIGHT/DARK).
+ */
 data class PromoDetail(
     val bannerRes: Int,
     val title: String,
@@ -55,9 +71,16 @@ data class PromoDetail(
     val qrRes: Int? = null,
     val uses: Int = 2,
     val maxUses: Int = 5,
-    val theme: PromoTheme = PromoTheme.LIGHT // <- theme seleccionable (desde API)
+    val theme: PromoTheme = PromoTheme.LIGHT
 )
 
+/**
+ * Pantalla de detalle de promoción con visual del banner, info, usos y un pop-up que muestra el QR para canje.
+ * Ofrece simulación de escaneo para UI y navegación mediante barra inferior.
+ * @param nav Controlador de navegación para moverse entre pantallas.
+ * @param modifier Modificador externo del contenedor raíz.
+ * @return Unit
+ */
 @Composable
 fun PromoQR(
     nav: NavHostController,
@@ -72,14 +95,13 @@ fun PromoQR(
         description = "Compra un boleto y obtén el segundo gratis para la misma función.",
         terms = "Válido solo los martes. No aplica en estrenos ni funciones 3D. Presentar cupón en taquilla.",
         qrRes = R.drawable.qr_demo,
-        theme = PromoTheme.LIGHT // prueba rápida; cambia a DARK o llega por API
+        theme = PromoTheme.LIGHT
     )
 
     var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
-    var isRedeemed by rememberSaveable { mutableStateOf(false) }     // canjeado
-    var showQrDialog by rememberSaveable { mutableStateOf(false) }   // overlay visible
+    var isRedeemed by rememberSaveable { mutableStateOf(false) }
+    var showQrDialog by rememberSaveable { mutableStateOf(false) }
 
-    // Paletas de texto y degradado según el theme (idéntico criterio a tu carrusel)
     val theme = detail.theme
     val titleColor = if (theme == PromoTheme.LIGHT) Color(0xFFFFFFFF) else Color(0xFF505050)
     val subtitleColor = if (theme == PromoTheme.LIGHT) Color(0xFFD3D3D3) else Color(0xFF616161)
@@ -104,7 +126,6 @@ fun PromoQR(
         )
     }
 
-    // Envolvemos todo en un Box para poder pintar el overlay por encima con zIndex
     Box(modifier = Modifier.fillMaxSize()) {
 
         Scaffold(
@@ -133,7 +154,6 @@ fun PromoQR(
                 contentPadding = PaddingValues(bottom = 96.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // ---------- BANNER ----------
                 item {
                     Card(
                         modifier = Modifier
@@ -143,18 +163,14 @@ fun PromoQR(
                         shape = RoundedCornerShape(20.dp)
                     ) {
                         Box(Modifier.fillMaxSize()) {
-
-                            // 1) Imagen al fondo
                             Image(
                                 painter = painterResource(id = detail.bannerRes),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .graphicsLayer(alpha = 0.85f) // coherente con carrusel
+                                    .graphicsLayer(alpha = 0.85f)
                             )
-
-                            // 2) Degradado encima de la imagen, debajo del texto
                             Box(
                                 modifier = Modifier
                                     .matchParentSize()
@@ -165,8 +181,6 @@ fun PromoQR(
                                         }
                                     }
                             )
-
-                            // 3) Badge arriba a la derecha
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
@@ -182,8 +196,6 @@ fun PromoQR(
                                     fontSize = 12.sp
                                 )
                             }
-
-                            // 4) Texto arriba del degradado
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)
@@ -209,10 +221,8 @@ fun PromoQR(
                     }
                 }
 
-                // ---------- INFO CARD ----------
                 item { InfoCard(detail) }
 
-                // ---------- USOS ----------
                 item {
                     Spacer(Modifier.height(16.dp))
                     Text(
@@ -224,7 +234,6 @@ fun PromoQR(
                     )
                 }
 
-                // ---------- BOTÓN “Ver QR” (abre overlay) ----------
                 item {
                     Spacer(Modifier.height(8.dp))
                     MainButton(
@@ -234,7 +243,6 @@ fun PromoQR(
                     )
                 }
 
-                // ---------- VERSIÓN ----------
                 item {
                     Spacer(Modifier.height(20.dp))
                     Text(
@@ -247,9 +255,7 @@ fun PromoQR(
             }
         }
 
-        // ---------- POP-UP CUSTOM (overlay propio) ----------
         if (showQrDialog) {
-            // Scrim + tarjeta centrada
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -258,7 +264,6 @@ fun PromoQR(
                     .pointerInput(Unit) { detectTapGestures(onTap = { showQrDialog = false }) },
                 contentAlignment = Alignment.Center
             ) {
-                // Contenedor del pop-up
                 Box(
                     modifier = Modifier
                         .padding(horizontal = 24.dp)
@@ -282,7 +287,6 @@ fun PromoQR(
 
                         Spacer(Modifier.height(16.dp))
 
-                        // Contenedor para centrar estrictamente el QR/contenido
                         Box(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center
@@ -326,8 +330,11 @@ fun PromoQR(
     }
 }
 
-/* -------------------- Tarjeta de información -------------------- */
-
+/**
+ * Tarjeta de información con descripción, vigencia y términos de la promoción.
+ * @param detail Detalle de la promoción a mostrar.
+ * @return Unit
+ */
 @Composable
 private fun InfoCard(detail: PromoDetail) {
     Card(
@@ -338,8 +345,6 @@ private fun InfoCard(detail: PromoDetail) {
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F7F7))
     ) {
         Column(Modifier.padding(16.dp)) {
-
-            // Descripción
             Text(
                 text = "Descripción",
                 fontWeight = FontWeight.Bold,
@@ -356,7 +361,6 @@ private fun InfoCard(detail: PromoDetail) {
 
             Spacer(Modifier.height(16.dp))
 
-            // Términos (con vigencia al inicio)
             Text(
                 text = "Términos y condiciones",
                 fontWeight = FontWeight.Bold,
@@ -380,8 +384,11 @@ private fun InfoCard(detail: PromoDetail) {
     }
 }
 
-/* -------------------- Contenido del QR dentro del pop-up -------------------- */
-
+/**
+ * Contenido del QR dentro del pop-up: tarjeta con imagen QR y texto instructivo.
+ * @param detail Detalle de la promoción para contextualizar el mensaje.
+ * @return Unit
+ */
 @Composable
 private fun QRCardInner(detail: PromoDetail) {
     Column(
@@ -393,10 +400,9 @@ private fun QRCardInner(detail: PromoDetail) {
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
         ) {
-            // tamaño fijo y cómodo para que nada empuje al texto
             Box(
                 modifier = Modifier
-                    .size(220.dp)          // ligeramente más grande
+                    .size(220.dp)
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -408,7 +414,6 @@ private fun QRCardInner(detail: PromoDetail) {
             }
         }
 
-        // texto SIEMPRE debajo, con buen padding
         Spacer(Modifier.height(12.dp))
         Text(
             text = "Presenta este código QR en ${detail.merchant} para canjear tu descuento",
@@ -425,6 +430,11 @@ private fun QRCardInner(detail: PromoDetail) {
     }
 }
 
+/**
+ * Vista alternativa para mostrar el estado de canje exitoso dentro del pop-up.
+ * Dibuja un borde punteado y mensajes de confirmación.
+ * @return Unit
+ */
 @Composable
 private fun RedeemedCardInner() {
     val dash = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
@@ -467,8 +477,11 @@ private fun RedeemedCardInner() {
     }
 }
 
-/* -------------------- TopBar -------------------- */
-
+/**
+ * Barra superior con botón de regreso, logo y atajo a notificaciones.
+ * @param nav Controlador de navegación para manejar el back.
+ * @return Unit
+ */
 @Composable
 private fun PromoQRTopBar(nav: NavHostController) {
     Column(
@@ -515,6 +528,10 @@ private fun PromoQRTopBar(nav: NavHostController) {
     }
 }
 
+/**
+ * Previsualiza la pantalla de detalle de promoción con QR.
+ * @return Unit
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun PromoQRPreview() {

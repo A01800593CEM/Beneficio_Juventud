@@ -32,6 +32,16 @@ import mx.itesm.beneficiojuventud.model.PromoTheme
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
 // --------- Mock data ----------
+
+/**
+ * Información básica del negocio mostrada en la pantalla de detalle.
+ * @param imageRes Recurso drawable de la imagen del negocio.
+ * @param name Nombre comercial del negocio.
+ * @param category Categoría a la que pertenece.
+ * @param location Ubicación breve o sucursal.
+ * @param rating Calificación promedio mostrada al usuario.
+ * @param isFavorite Indica si el negocio está marcado como favorito.
+ */
 data class BusinessInfo(
     val imageRes: Int,
     val name: String,
@@ -55,7 +65,7 @@ private val businessCoupons = listOf(
         title = "Martes 2×1",
         subtitle = "Cine Stelar",
         body = "Compra un boleto y obtén el segundo gratis para la misma función.",
-        theme = PromoTheme.DARK     // texto oscuro + degradado blanco (como tu mock)
+        theme = PromoTheme.DARK
     ),
     Promo(
         bg = R.drawable.el_fuego_sagrado,
@@ -67,6 +77,14 @@ private val businessCoupons = listOf(
 )
 
 // --------- Pantalla ----------
+
+/**
+ * Pantalla de detalle de un negocio con hero, datos básicos y cupones disponibles.
+ * @param nav Controlador de navegación para manejar back y tabs.
+ * @param modifier Modificador externo del contenedor.
+ * @param business Datos del negocio a mostrar; por defecto usa mock.
+ * @param coupons Lista de cupones asociados al negocio.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Business(
@@ -85,7 +103,6 @@ fun Business(
                     .fillMaxWidth()
                     .padding(start = 16.dp, end = 16.dp, top = 16.dp)
             ) {
-                // Logo centrado
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Image(
                         painter = painterResource(id = R.drawable.logo_beneficio_joven),
@@ -110,7 +127,7 @@ fun Business(
                             color = Color(0xFF616161),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f) // <- ocupa el espacio disponible y permite el ellipsis
+                            modifier = Modifier.weight(1f)
                         )
                     }
                     Icon(
@@ -120,7 +137,6 @@ fun Business(
                         modifier = Modifier.size(26.dp)
                     )
                 }
-
 
                 GradientDivider(
                     thickness = 2.dp,
@@ -152,12 +168,8 @@ fun Business(
             contentPadding = PaddingValues(bottom = 96.dp, start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Hero de la empresa
-            item {
-                BusinessHeroCard(business = business)
-            }
+            item { BusinessHeroCard(business = business) }
 
-            // Título con conteo de cupones
             item {
                 SectionTitle(
                     text = "${coupons.size} Cupones Disponibles",
@@ -165,7 +177,6 @@ fun Business(
                 )
             }
 
-            // Lista de cupones del negocio
             items(coupons.size) { i ->
                 PromoImageBanner(
                     promo = coupons[i],
@@ -175,7 +186,6 @@ fun Business(
                 )
             }
 
-            // Footer
             item {
                 Spacer(Modifier.height(8.dp))
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -187,6 +197,12 @@ fun Business(
 }
 
 // --------- UI helpers ----------
+
+/**
+ * Tarjeta de cabecera con imagen, gradiente y datos clave del negocio.
+ * @param business Información del negocio a renderizar.
+ * @param modifier Modificador opcional del contenedor.
+ */
 @Composable
 private fun BusinessHeroCard(
     business: BusinessInfo,
@@ -207,7 +223,6 @@ private fun BusinessHeroCard(
             modifier = Modifier.matchParentSize()
         )
 
-        // Gradiente oscuro de izquierda → derecha
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -227,7 +242,6 @@ private fun BusinessHeroCard(
                 }
         )
 
-        // Contenido
         Column(
             Modifier
                 .fillMaxSize()
@@ -256,7 +270,6 @@ private fun BusinessHeroCard(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // rating
                 Icon(
                     imageVector = Icons.Outlined.Star,
                     contentDescription = null,
@@ -271,7 +284,6 @@ private fun BusinessHeroCard(
                     fontSize = 12.sp
                 )
                 Spacer(Modifier.weight(1f))
-                // favorito (outline)
                 Surface(
                     shape = RoundedCornerShape(24.dp),
                     color = Color.White.copy(alpha = 0.25f)
@@ -288,6 +300,9 @@ private fun BusinessHeroCard(
     }
 }
 
+/**
+ * Vista previa de la pantalla de negocio con datos mock.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun BusinessPreview() {

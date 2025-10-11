@@ -26,6 +26,11 @@ import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.model.TestRemote
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
+/**
+ * Pantalla inicial con opciones para iniciar sesión o registrarse.
+ * @param nav Controlador de navegación usado para cambiar de pantalla.
+ * @param modifier Modificador opcional para personalizar el diseño.
+ */
 @Composable
 fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
     Scaffold(
@@ -140,6 +145,9 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Vista previa de [LoginRegister] en el editor de Android Studio.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun LoginRegisterPreview() {

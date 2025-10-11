@@ -35,6 +35,13 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Pantalla de edición/creación de promociones generadas por IA.
+ * Permite ajustar campos básicos y fechas antes de guardar.
+ * @param nav Controlador de navegación.
+ * @param promotionData Datos iniciales de la promoción; si es null se asume nueva.
+ * @param modifier Modificador externo para layout.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditPromotion(
@@ -44,7 +51,6 @@ fun EditPromotion(
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Home) }
 
-    // Estados editables con valores por defecto
     var title by remember { mutableStateOf(promotionData?.title ?: "") }
     var description by remember { mutableStateOf(promotionData?.description ?: "") }
     var initialDate by remember { mutableStateOf(promotionData?.initialDate ?: getDefaultInitialDate()) }
@@ -55,7 +61,6 @@ fun EditPromotion(
     var dailyLimitPerUser by remember { mutableStateOf(promotionData?.dailyLimitPerUser?.toString() ?: "1") }
     var promotionState by remember { mutableStateOf(promotionData?.promotionState ?: "activa") }
 
-    // DatePicker states
     var showInitialDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     val datePickerStateInitial = rememberDatePickerState()
@@ -114,7 +119,6 @@ fun EditPromotion(
 
                     Divider(color = Color(0xFFE0E0E0), thickness = 1.dp)
 
-                    // Título
                     EditableField(
                         label = "Título de la promoción",
                         value = title,
@@ -122,7 +126,6 @@ fun EditPromotion(
                         placeholder = "Ingresa el título de la promoción"
                     )
 
-                    // Descripción
                     EditableField(
                         label = "Descripción",
                         value = description,
@@ -131,12 +134,10 @@ fun EditPromotion(
                         maxLines = 4
                     )
 
-                    // Fechas
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Fecha inicial
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Fecha de inicio",
@@ -166,7 +167,6 @@ fun EditPromotion(
                             )
                         }
 
-                        // Fecha final
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Fecha de fin",
@@ -197,7 +197,6 @@ fun EditPromotion(
                         }
                     }
 
-                    // Tipo y Estado
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -219,7 +218,6 @@ fun EditPromotion(
                         )
                     }
 
-                    // Límites
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -246,7 +244,6 @@ fun EditPromotion(
                         )
                     }
 
-                    // Categorías (por ahora solo mostrar, después se puede hacer editable)
                     if (promotionData?.categories?.isNotEmpty() == true) {
                         Column {
                             Text(
@@ -268,7 +265,6 @@ fun EditPromotion(
 
                     Spacer(Modifier.height(8.dp))
 
-                    // Botón guardar
                     Button(
                         onClick = {
                             // TODO: Implementar guardado
@@ -308,7 +304,6 @@ fun EditPromotion(
         }
     }
 
-    // DatePicker para fecha inicial
     if (showInitialDatePicker) {
         DatePickerDialog(
             onDateSelected = { date ->
@@ -319,7 +314,6 @@ fun EditPromotion(
         )
     }
 
-    // DatePicker para fecha final
     if (showEndDatePicker) {
         DatePickerDialog(
             onDateSelected = { date ->
@@ -331,6 +325,10 @@ fun EditPromotion(
     }
 }
 
+/**
+ * Barra superior con logo, botón de regreso y acceso a notificaciones.
+ * @param nav Controlador de navegación para volver a la pantalla previa.
+ */
 @Composable
 private fun TopBarSection(nav: NavHostController) {
     Column(
@@ -380,6 +378,10 @@ private fun TopBarSection(nav: NavHostController) {
     }
 }
 
+/**
+ * Encabezado visual que comunica el modo de creación o edición.
+ * @param isCreatingNew Indica si se está creando una promoción nueva.
+ */
 @Composable
 private fun HeaderSection(isCreatingNew: Boolean = false) {
     Column(
@@ -416,6 +418,14 @@ private fun HeaderSection(isCreatingNew: Boolean = false) {
     }
 }
 
+/**
+ * Campo de texto genérico con etiqueta y placeholder.
+ * @param label Etiqueta del campo.
+ * @param value Valor actual.
+ * @param onValueChange Callback al cambiar el valor.
+ * @param placeholder Texto guía cuando está vacío.
+ * @param maxLines Máximo de líneas permitidas.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditableField(
@@ -447,6 +457,14 @@ private fun EditableField(
     }
 }
 
+/**
+ * Selector desplegable para opciones predefinidas.
+ * @param label Etiqueta del campo.
+ * @param value Opción seleccionada.
+ * @param options Lista de opciones disponibles.
+ * @param onValueChange Callback al seleccionar una opción.
+ * @param modifier Modificador para layout.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DropdownField(
@@ -501,6 +519,13 @@ private fun DropdownField(
     }
 }
 
+/**
+ * Campo numérico restringido a dígitos.
+ * @param label Etiqueta del campo.
+ * @param value Valor actual como texto.
+ * @param onValueChange Callback al cambiar si el valor es válido.
+ * @param modifier Modificador para layout.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NumberField(
@@ -534,6 +559,11 @@ private fun NumberField(
     }
 }
 
+/**
+ * Diálogo de selección de fecha con confirmación y cancelación.
+ * @param onDateSelected Devuelve el tiempo seleccionado en milisegundos UTC.
+ * @param onDismiss Acción al cerrar el diálogo sin seleccionar.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DatePickerDialog(
@@ -561,6 +591,11 @@ private fun DatePickerDialog(
     }
 }
 
+/**
+ * Formatea fecha ISO a presentación dd/MM/yyyy.
+ * @param isoDate Cadena ISO-8601 con sufijo Z.
+ * @return Fecha formateada o el valor original si falla el parseo.
+ */
 private fun formatDisplayDate(isoDate: String): String {
     return try {
         val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
@@ -572,6 +607,11 @@ private fun formatDisplayDate(isoDate: String): String {
     }
 }
 
+/**
+ * Formatea milisegundos a ISO-8601 UTC con milisegundos y sufijo Z.
+ * @param timeInMillis Tiempo en milisegundos.
+ * @return Cadena ISO-8601 en UTC.
+ */
 private fun formatApiDate(timeInMillis: Long): String {
     val date = Date(timeInMillis)
     val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
@@ -579,6 +619,10 @@ private fun formatApiDate(timeInMillis: Long): String {
     return format.format(date)
 }
 
+/**
+ * Obtiene la fecha actual en formato ISO-8601 UTC.
+ * @return Fecha actual ISO-8601 en UTC.
+ */
 private fun getDefaultInitialDate(): String {
     val today = Date()
     val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
@@ -586,14 +630,21 @@ private fun getDefaultInitialDate(): String {
     return format.format(today)
 }
 
+/**
+ * Obtiene una fecha 30 días posterior a la actual en ISO-8601 UTC.
+ * @return Fecha a +30 días en ISO-8601 UTC.
+ */
 private fun getDefaultEndDate(): String {
     val calendar = Calendar.getInstance()
-    calendar.add(Calendar.DAY_OF_MONTH, 30) // 30 días después
+    calendar.add(Calendar.DAY_OF_MONTH, 30)
     val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
     format.timeZone = TimeZone.getTimeZone("UTC")
     return format.format(calendar.time)
 }
 
+/**
+ * Vista previa con datos de ejemplo para validar el diseño en el IDE.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun EditPromotionPreview() {

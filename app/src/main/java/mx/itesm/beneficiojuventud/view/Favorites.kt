@@ -39,6 +39,16 @@ import mx.itesm.beneficiojuventud.model.PromoTheme
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
 /// ---- Mock data ----
+
+/**
+ * Modelo de negocio favorito mostrado en la lista.
+ * @param imageRes Recurso drawable de la imagen del negocio.
+ * @param name Nombre comercial del negocio.
+ * @param category Categoría a la que pertenece.
+ * @param location Ubicación resumida para mostrar en tarjeta.
+ * @param rating Calificación promedio mostrada con estrella.
+ * @param isFavorite Indica si está marcado como favorito.
+ */
 data class FavoriteMerchant(
     val imageRes: Int,
     val name: String,
@@ -48,16 +58,23 @@ data class FavoriteMerchant(
     val isFavorite: Boolean = true
 )
 
+/**
+ * Datos de ejemplo para la sección de negocios favoritos.
+ */
 private val sampleFavorites = listOf(
     FavoriteMerchant(R.drawable.el_fuego_sagrado, "Fuego Lento & Brasa", "Alimentos", "Zona Rosa, Local 45", 4.7),
     FavoriteMerchant(R.drawable.el_fuego_sagrado, "Fuego Lento & Brasa", "Alimentos", "Zona Rosa, Local 45", 4.7),
     FavoriteMerchant(R.drawable.el_fuego_sagrado, "Fuego Lento & Brasa", "Alimentos", "Zona Rosa, Local 45", 4.7),
 )
 
-// 🟩 Agrega aquí:
+/**
+ * Modo de visualización de la pantalla de favoritos.
+ */
 private enum class FavoriteMode { Coupons, Businesses }
 
-// Mock de cupones
+/**
+ * Datos de ejemplo para la sección de cupones favoritos.
+ */
 private val samplePromos = listOf(
     Promo(
         bg = R.drawable.bolos,
@@ -82,8 +99,15 @@ private val samplePromos = listOf(
     )
 )
 
-
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Pantalla de Favoritos con pestaña inferior, barra superior y contenido en lista.
+ * Permite alternar entre cupones guardados y negocios favoritos mediante una píldora de selección.
+ * @param nav Controlador de navegación para cambio de pantallas.
+ * @param modifier Modificador externo para el contenedor de la pantalla.
+ * @param favorites Lista de negocios favoritos a renderizar en modo Businesses.
+ * @param promos Lista de cupones favoritos a renderizar en modo Coupons.
+ */
 @Composable
 fun Favorites(
     nav: NavHostController,
@@ -227,7 +251,16 @@ fun Favorites(
     }
 }
 
-
+/**
+ * Control con forma de píldora para alternar entre dos opciones exclusivas.
+ * Usa inversión de color para indicar la opción activa.
+ * @param left Etiqueta de la opción izquierda.
+ * @param right Etiqueta de la opción derecha.
+ * @param selectedLeft Indica si la opción izquierda está activa.
+ * @param onSelectLeft Acción al seleccionar la opción izquierda.
+ * @param onSelectRight Acción al seleccionar la opción derecha.
+ * @param modifier Modificador externo del componente.
+ */
 @Composable
 private fun TogglePill(
     left: String,
@@ -293,8 +326,13 @@ private fun TogglePill(
     }
 }
 
-
-
+/**
+ * Tarjeta para mostrar un negocio favorito con imagen, datos básicos, rating y acción de favorito.
+ * @param merchant Modelo con la información del negocio.
+ * @param onClick Acción al pulsar la tarjeta completa.
+ * @param onToggleFavorite Acción al pulsar el ícono de favorito.
+ * @param modifier Modificador externo de la tarjeta.
+ */
 @Composable
 private fun FavoriteCard(
     merchant: FavoriteMerchant,
@@ -353,7 +391,6 @@ private fun FavoriteCard(
                 )
                 Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-
                     Icon(
                         imageVector = Icons.Outlined.Star,
                         contentDescription = null,
@@ -366,8 +403,6 @@ private fun FavoriteCard(
                         color = Color(0xFF616161),
                         fontSize = 12.sp
                     )
-
-
                 }
             }
 
@@ -382,6 +417,9 @@ private fun FavoriteCard(
     }
 }
 
+/**
+ * Vista previa de la pantalla de favoritos con el tema de la app.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun FavoritePreview() {

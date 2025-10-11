@@ -33,7 +33,7 @@ import mx.itesm.beneficiojuventud.model.PromoTheme
 import mx.itesm.beneficiojuventud.model.popularCategories
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
-// 🔹 Demo data
+/** Datos demo para el carrusel de promociones. */
 private val promos = listOf(
     Promo(
         R.drawable.el_fuego_sagrado,
@@ -65,6 +65,7 @@ private val promos = listOf(
     )
 )
 
+/** Datos demo de comercios para secciones “Especiales” y “Lo Nuevo”. */
 private val specialOffers = listOf(
     MerchantCardData("Fuego Lento & Brasa", "Asador • Parrilla", 4.7),
     MerchantCardData("Bocado Rápido", "Comida rápida", 4.6),
@@ -79,16 +80,18 @@ private val newOffers = listOf(
     MerchantCardData("VeggieGo", "Saludable", 4.4)
 )
 
+/**
+ * Pantalla Home con saludo, búsqueda, categorías y listados de promos.
+ * @param nav Controlador de navegación para mover entre pantallas.
+ * @param modifier Modificador opcional para el layout.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
     var selectedTab by remember { mutableStateOf(BJTab.Home) }
     var search by rememberSaveable { mutableStateOf("") }
-
-    // 🔸 NUEVO: categoría seleccionada para filtrar (null = sin filtro)
     var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
 
-    // 🔸 NUEVO: filtra los promos según la categoría elegida
     val filteredPromos = remember(selectedCategory) {
         if (selectedCategory.isNullOrBlank()) promos
         else promos.filter { matchesCategory(it, selectedCategory!!) }
@@ -156,9 +159,7 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
                 BJSearchBar(
                     query = search,
                     onQueryChange = { search = it },
-                    onSearch = {
-                        // TODO: búsqueda global
-                    },
+                    onSearch = { /* TODO: búsqueda global */ },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -203,7 +204,6 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // 🔸 NUEVO: click para filtrar; click de nuevo para quitar filtro
                     popularCategories.forEach { cat ->
                         Box(
                             modifier = Modifier
@@ -218,90 +218,54 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
                     }
                 }
 
-                // 🔸 NUEVO: chip para limpiar filtro + subtítulo de filtro activo
                 if (!selectedCategory.isNullOrBlank()) {
                     Spacer(Modifier.height(8.dp))
                     Row(
                         Modifier.padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        AssistChip(
-                            onClick = { selectedCategory = null },
-                            label = { Text("Quitar filtro") }
-                        )
+                        AssistChip(onClick = { selectedCategory = null }, label = { Text("Quitar filtro") })
                         Spacer(Modifier.width(8.dp))
-                        Text(
-                            "Filtrando por: ${selectedCategory}",
-                            color = Color(0xFF8C8C8C),
-                            fontSize = 12.sp
-                        )
+                        Text("Filtrando por: ${selectedCategory}", color = Color(0xFF8C8C8C), fontSize = 12.sp)
                     }
                 }
 
                 Spacer(Modifier.height(8.dp))
             }
 
-            // Recomendado → ahora se filtra según la categoría seleccionada
+            // Recomendado / Filtrado
             item {
                 SectionTitle(
-                    if (selectedCategory.isNullOrBlank())
-                        "Recomendado para ti"
-                    else
-                        "Cupones (${selectedCategory})",
+                    if (selectedCategory.isNullOrBlank()) "Recomendado para ti" else "Cupones (${selectedCategory})",
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
                 if (filteredPromos.isEmpty()) {
-                    // Estado vacío cuando no hay coincidencias
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp),
+                        modifier = Modifier.fillMaxWidth().height(120.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            "No hay cupones para esta categoría.",
-                            color = Color(0xFF8C8C8C),
-                            fontSize = 13.sp
-                        )
+                        Text("No hay cupones para esta categoría.", color = Color(0xFF8C8C8C), fontSize = 13.sp)
                     }
                 } else {
                     PromoCarousel(
                         promos = filteredPromos,
                         modifier = Modifier.height(130.dp),
-                        onItemClick = { _ ->
-                            nav.navigate(Screens.PromoQR.route)
-                        }
+                        onItemClick = { _ -> nav.navigate(Screens.PromoQR.route) }
                     )
                 }
             }
 
-            // Ofertas Especiales → Business
+            // Ofertas Especiales
             item {
-                SectionTitle(
-                    "Ofertas Especiales",
-                    Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp, bottom = 6.dp)
-                )
-                MerchantRow(
-                    data = specialOffers,
-                    onItemClick = { _ ->
-                        nav.navigate(Screens.Business.route)
-                    }
-                )
+                SectionTitle("Ofertas Especiales", Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp, bottom = 6.dp))
+                MerchantRow(data = specialOffers) { _ -> nav.navigate(Screens.Business.route) }
             }
 
-            // Lo nuevo → Business (opcional)
+            // Lo nuevo
             item {
-                SectionTitle(
-                    "Lo Nuevo",
-                    Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 6.dp)
-                )
-                MerchantRow(
-                    data = newOffers,
-                    onItemClick = { _ ->
-                        nav.navigate(Screens.Business.route)
-                    }
-                )
+                SectionTitle("Lo Nuevo", Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 6.dp))
+                MerchantRow(data = newOffers) { _ -> nav.navigate(Screens.Business.route) }
             }
 
             // Pie
@@ -315,6 +279,7 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
     }
 }
 
+/** Vista previa de [Home] con datos demo. */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun HomePreview() {
@@ -324,11 +289,12 @@ private fun HomePreview() {
     }
 }
 
-/* ────────────────────────────────────────────────────────────────────────────
-   Utilidad de mapeo de categorías → ajusta a tu taxonomía real
-   Idealmente tus Promos deberían tener un campo `category` o `tags`.
-   Aquí hago un mapeo demo por `subtitle` y texto.
-   ──────────────────────────────────────────────────────────────────────────── */
+/**
+ * Verifica si un [Promo] coincide con una categoría textual.
+ * @param promo Promoción a evaluar.
+ * @param category Categoría a comparar (texto).
+ * @return `true` si hay coincidencia en tags o texto; `false` en caso contrario.
+ */
 private fun matchesCategory(promo: Promo, category: String): Boolean {
     val c = category.lowercase()
 
@@ -341,6 +307,5 @@ private fun matchesCategory(promo: Promo, category: String): Boolean {
     }
 
     val text = "${promo.title} ${promo.subtitle} ${promo.body}".lowercase()
-
     return c in tags || text.contains(c)
 }

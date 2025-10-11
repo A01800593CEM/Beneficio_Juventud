@@ -34,6 +34,12 @@ import mx.itesm.beneficiojuventud.model.webhook.WebhookRepository
 import mx.itesm.beneficiojuventud.model.webhook.PromotionData
 import com.google.gson.Gson
 
+/**
+ * Pantalla para describir una promoción y solicitar a un servicio de IA su generación automática.
+ * Envía la descripción al webhook, recibe un [PromotionData] y navega a la pantalla de edición.
+ * @param nav Controlador de navegación para manejar el flujo entre pantallas.
+ * @param modifier Modificador externo para ajustar el layout desde el llamador.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GenerarPromocionIA(
@@ -100,16 +106,14 @@ fun GenerarPromocionIA(
 
                         if (result.isSuccess) {
                             promotionData = result.getOrNull()
-                            // Navegar directamente a EditPromotion con los datos
+                            // Navega a edición con los datos serializados
                             promotionData?.let { data ->
                                 val promotionJson = Gson().toJson(data)
                                 nav.currentBackStackEntry?.savedStateHandle?.set("promotion_data", promotionJson)
                                 nav.navigate(Screens.EditPromotion.route)
                             }
                         } else {
-                            errorMessage = result.exceptionOrNull()?.message
-                                ?: "Error desconocido"
-
+                            errorMessage = result.exceptionOrNull()?.message ?: "Error desconocido"
                         }
 
                         isLoading = false
@@ -117,7 +121,10 @@ fun GenerarPromocionIA(
                 }
             )
 
-
+            // Muestra error en caso de fallo del webhook
+            if (errorMessage.isNotEmpty()) {
+                ErrorCard(errorMessage = errorMessage)
+            }
 
             Spacer(Modifier.weight(1f))
 
@@ -128,6 +135,10 @@ fun GenerarPromocionIA(
     }
 }
 
+/**
+ * Cabecera con logo, botón de regreso, título y acceso a notificaciones.
+ * @param nav Controlador de navegación para manejar el botón de regreso.
+ */
 @Composable
 private fun TopBarSection(nav: NavHostController) {
     Column(
@@ -177,6 +188,9 @@ private fun TopBarSection(nav: NavHostController) {
     }
 }
 
+/**
+ * Sección introductoria con ícono y texto guía para que el usuario describa su promoción.
+ */
 @Composable
 private fun HeaderSection() {
     Column(
@@ -210,6 +224,11 @@ private fun HeaderSection() {
     }
 }
 
+/**
+ * Tarjeta de entrada de texto para capturar la descripción de la promoción.
+ * @param descripcionText Texto actual escrito por el usuario.
+ * @param onTextChange Callback invocado al actualizar el contenido.
+ */
 @Composable
 private fun DescriptionInputCard(
     descripcionText: String,
@@ -252,6 +271,12 @@ private fun DescriptionInputCard(
     }
 }
 
+/**
+ * Botón de acción que envía la descripción al webhook y muestra progreso de carga.
+ * @param enabled Indica si el botón está habilitado en función del estado del formulario.
+ * @param isLoading Muestra un indicador de progreso cuando la solicitud está en curso.
+ * @param onClick Acción a ejecutar al presionar el botón.
+ */
 @Composable
 private fun GenerateButton(
     enabled: Boolean,
@@ -298,7 +323,10 @@ private fun GenerateButton(
     }
 }
 
-
+/**
+ * Tarjeta de error para mostrar mensajes de fallo al invocar el webhook.
+ * @param errorMessage Mensaje descriptivo del error ocurrido.
+ */
 @Composable
 private fun ErrorCard(errorMessage: String) {
     Card(
@@ -327,6 +355,9 @@ private fun ErrorCard(errorMessage: String) {
     }
 }
 
+/**
+ * Pie de página con la etiqueta de versión de la aplicación.
+ */
 @Composable
 private fun FooterText() {
     Box(
@@ -341,6 +372,9 @@ private fun FooterText() {
     }
 }
 
+/**
+ * Preview de la pantalla de generación de promoción para validación visual en el IDE.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun GenerarPromocionIAPreview() {

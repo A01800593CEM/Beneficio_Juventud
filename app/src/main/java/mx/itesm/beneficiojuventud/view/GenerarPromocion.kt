@@ -29,6 +29,12 @@ import mx.itesm.beneficiojuventud.components.*
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Pantalla para seleccionar el método de creación de una promoción.
+ * Presenta dos caminos: creación manual o generación asistida por IA, manteniendo navegación inferior.
+ * @param nav Controlador de navegación para ir a EditPromotion o GenerarPromocionIA.
+ * @param modifier Modificador externo para ajustar el contenedor.
+ */
 @Composable
 fun GenerarPromocion(
     nav: NavHostController,
@@ -127,7 +133,7 @@ fun GenerarPromocion(
                 icon = Icons.Default.Add,
                 backgroundColor = Color(0xFF008D96),
                 onClick = {
-                    // Navegar a EditPromotion con datos vacíos para creación manual
+                    // Navega a edición con datos nulos para flujo de creación
                     nav.currentBackStackEntry?.savedStateHandle?.set("promotion_data", null)
                     nav.navigate(Screens.EditPromotion.route)
                 }
@@ -139,9 +145,7 @@ fun GenerarPromocion(
                 description = "Deja que la inteligencia artificial cree una promoción personalizada para tu negocio",
                 icon = Icons.Default.Psychology,
                 backgroundColor = Color(0xFF7B68EE),
-                onClick = {
-                    nav.navigate(Screens.GenerarPromocionIA.route)
-                }
+                onClick = { nav.navigate(Screens.GenerarPromocionIA.route) }
             )
 
             Spacer(Modifier.weight(1f))
@@ -156,6 +160,16 @@ fun GenerarPromocion(
     }
 }
 
+/**
+ * Tarjeta de selección para un modo de creación de promoción.
+ * Muestra ícono circular, título y descripción; al pulsar, ejecuta la acción provista.
+ * @param title Título de la opción mostrada en la tarjeta.
+ * @param description Descripción corta del flujo que seguirá el usuario.
+ * @param icon Ícono representativo que se muestra dentro del contenedor circular.
+ * @param backgroundColor Color de fondo del contenedor circular del ícono.
+ * @param onClick Acción a ejecutar al pulsar la tarjeta completa.
+ * @param modifier Modificador externo de la tarjeta.
+ */
 @Composable
 private fun PromoOptionCard(
     title: String,
@@ -218,6 +232,9 @@ private fun PromoOptionCard(
     }
 }
 
+/**
+ * Vista previa de GenerarPromocion con el tema de la app.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun GenerarPromocionPreview() {
