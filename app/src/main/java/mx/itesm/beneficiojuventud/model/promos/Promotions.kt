@@ -4,20 +4,20 @@ import com.google.gson.annotations.SerializedName
 import java.util.Date
 
 data class Promotions(
-    val collaboratorId: Int,
-    val title: String,
-    val description: String,
+    val collaboratorId: Int? = null,
+    val title: String? = null,
+    val description: String? = null,
     val imageUrl: String? = null,
-    val initialDate: Date,
-    val endDate: Date,
+    val initialDate: Date? = null,
+    val endDate: Date? = null,
     val categoryId: Int? = null,
-    val promotionType: PromotionType,
+    val promotionType: PromotionType? = null,
     val promotionString: String? = null,
     val totalStock: Int? = null,
     val availableStock: Int? = null,
     val limitPerUser: Int? = null,
-    val dairyLimitPerUser: Int? = null,
-    val promotionState: PromotionState
+    val dailyLimitPerUser: Int? = null,
+    val promotionState: PromotionState? = null
 )
 enum class PromotionType {
     @SerializedName("descuento") descuento,

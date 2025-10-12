@@ -3,17 +3,17 @@ package mx.itesm.beneficiojuventud.model.collaborators
 import com.google.gson.annotations.SerializedName
 
 data class Collaborator(
-    val businessName: String,
-    val rfc: String,
-    val representativeName: String,
-    val phone: String,
-    val email: String,
-    val address: String,
-    val postalCode: String,
-    val categoryIds: Int,
-    val logoUrl: String?,
-    val description: String?,
-    val state: CollaboratorsState
+    val businessName: String? = null,
+    val rfc: String? = null,
+    val representativeName: String? = null,
+    val phone: String? = null,
+    val email: String? = null,
+    val address: String? = null,
+    val postalCode: String? = null,
+    val categoryIds: Int? = null,
+    val logoUrl: String? = null,
+    val description: String? = null,
+    val state: CollaboratorsState? = null,
 )
 
 enum class CollaboratorsState{
