@@ -87,8 +87,8 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
             // Botones principales
             Column(modifier = Modifier.fillMaxWidth(0.94f)) {
                 MainButton("Inicia Sesión", modifier = Modifier.padding(top = 26.dp)) {
-                    TestRemote.probarLlamada()
-                    TestRemote.probarPromoService()
+                    //TestRemote.probarLlamada()
+                    //TestRemote.probarPromoService()
                     nav.navigate(Screens.Login.route)
                 }
                 MainButton("Regístrate", modifier = Modifier.padding(top = 16.dp)) {

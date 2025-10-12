@@ -1,15 +1,24 @@
 package mx.itesm.beneficiojuventud.view
 
+import CategoryViewModel
 import android.net.Uri
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NotificationsNone
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -18,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
@@ -30,11 +40,10 @@ import mx.itesm.beneficiojuventud.components.CategoryPill
 import mx.itesm.beneficiojuventud.components.PromoImageBanner
 import mx.itesm.beneficiojuventud.model.Promo
 import mx.itesm.beneficiojuventud.model.PromoTheme
-import mx.itesm.beneficiojuventud.model.popularCategories
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
 /**
- * Fuente de datos temporal para renderizar cupones en la lista de la pantalla.
+ * Fuente de datos temporal para renderizar cupones en la lista.
  * Reemplazar por datos remotos cuando se integre el backend.
  */
 private val coupons = listOf(
@@ -62,15 +71,26 @@ private val coupons = listOf(
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
-/**
- * Pantalla de "Cupones" con barra superior, navegación inferior y lista desplazable.
- * Muestra categorías populares y un listado de cupones; al tocar un cupón navega a PromoQR.
- * @param nav Controlador de navegación para cambiar entre pantallas y abrir detalles.
- * @param modifier Modificador externo para ajustar tamaño, padding o comportamiento del contenedor.
- */
 @Composable
-fun Coupons(nav: NavHostController, modifier: Modifier = Modifier) {
+fun Coupons(
+    nav: NavHostController,
+    modifier: Modifier = Modifier,
+    vm: CategoryViewModel = viewModel() // Usa el MISMO VM de categorías
+) {
     var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
+
+    // Estados del VM
+    val categories by vm.categories.collectAsState()
+    val isLoading by vm.loading.collectAsState(initial = false)
+    val error by vm.error.collectAsState(initial = null)
+
+    // Filtro por categoría (id)
+    var selectedCategoryId by rememberSaveable { mutableStateOf<Int?>(null) }
+
+    // Carga categorías si están vacías
+    LaunchedEffect(Unit) {
+        if (categories.isEmpty()) vm.loadCategories()
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -101,20 +121,71 @@ fun Coupons(nav: NavHostController, modifier: Modifier = Modifier) {
                 .padding(padding),
             contentPadding = PaddingValues(bottom = 96.dp)
         ) {
-            // Categorías Populares
+            // Categorías Populares (desde API)
             item {
                 SectionTitle(
                     "Categorías Populares",
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-                Row(
-                    Modifier
-                        .padding(horizontal = 16.dp)
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    popularCategories.forEach { CategoryPill(icon = it.icon, label = it.label) }
+
+                when {
+                    isLoading -> {
+                        Row(
+                            Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text("Cargando categorías…")
+                        }
+                    }
+
+                    error != null -> {
+                        Row(
+                            Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Error al cargar categorías",
+                                color = Color(0xFFB00020),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            TextButton(onClick = { vm.loadCategories() }) { Text("Reintentar") }
+                        }
+                    }
+
+                    else -> {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            items(
+                                items = categories,
+                                key = { it.id ?: (it.name ?: it.hashCode()).hashCode() }
+                            ) { c ->
+                                val id = c.id ?: return@items
+                                val name = c.name ?: "Categoría"
+
+                                CategoryPill(
+                                    icon = Icons.Outlined.NotificationsNone, // Ajusta si tu API trae iconos
+                                    label = name,
+                                    selected = selectedCategoryId == id,
+                                    onClick = {
+                                        selectedCategoryId =
+                                            if (selectedCategoryId == id) null else id
+                                        // Si tienes endpoint por categoría, dispara aquí:
+                                        // vm.loadCouponsByCategory(selectedCategoryId)
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
+
                 Spacer(Modifier.height(8.dp))
             }
 
@@ -126,8 +197,11 @@ fun Coupons(nav: NavHostController, modifier: Modifier = Modifier) {
                 )
             }
 
-            // Lista de cupones usando tu PromoImageBanner (click -> navega a PromoQR)
-            items(count = coupons.size, key = { it }) { i ->
+            // Lista de cupones usando PromoImageBanner (click -> navega a PromoQR)
+            items(
+                count = coupons.size,
+                key = { it }
+            ) { i ->
                 val titleArg = Uri.encode(coupons[i].title)
                 PromoImageBanner(
                     promo = coupons[i],
@@ -136,10 +210,6 @@ fun Coupons(nav: NavHostController, modifier: Modifier = Modifier) {
                         .height(150.dp)
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     onClick = {
-                        // Navegación simple:
-                        // nav.navigate(Screens.PromoQR.route)
-
-                        // Navegación con argumentos opcionales:
                         nav.navigate(Screens.PromoQR.route + "?idx=$i&title=$titleArg")
                     }
                 )
@@ -149,7 +219,11 @@ fun Coupons(nav: NavHostController, modifier: Modifier = Modifier) {
             item {
                 Spacer(Modifier.height(8.dp))
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("Versión 1.0.01", color = MaterialTheme.colorScheme.outline, fontSize = 10.sp)
+                    Text(
+                        "Versión 1.0.01",
+                        color = MaterialTheme.colorScheme.outline,
+                        fontSize = 10.sp
+                    )
                 }
             }
         }
@@ -157,9 +231,7 @@ fun Coupons(nav: NavHostController, modifier: Modifier = Modifier) {
 }
 
 /**
- * Barra superior de la pantalla de cupones con logo, título, botón de regreso y acceso a notificaciones.
- * @param title Título a mostrar junto al botón de regreso.
- * @param nav Controlador de navegación usado por el botón de regreso.
+ * Barra superior de la pantalla de cupones.
  */
 @Composable
 private fun CouponsTopBar(
@@ -215,10 +287,6 @@ private fun CouponsTopBar(
     }
 }
 
-/**
- * Vista previa de la pantalla de cupones con tema de la app y sistema.
- * Útil para validar diseño sin ejecutar en dispositivo.
- */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun CouponsPreview() {

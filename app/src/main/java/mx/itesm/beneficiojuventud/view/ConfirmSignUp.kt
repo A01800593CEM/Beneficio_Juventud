@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,20 +22,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.CodeTextField
+import mx.itesm.beneficiojuventud.model.users.AccountState
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 
 /**
- * Pantalla para confirmar el registro ingresando un código de 6 dígitos.
- * Maneja temporizador para reenviar código, errores del estado y navegación tras éxito.
- * @param nav Controlador de navegación para volver o continuar al flujo de login.
- * @param email Correo al que se envió el código de confirmación.
- * @param modifier Modificador opcional del contenedor.
- * @param authViewModel ViewModel de autenticación utilizado para confirmar y reenviar código.
+ * Confirmación de registro: valida código, crea el usuario en BD usando el perfil pendiente y sub de Cognito, y navega a Home.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,12 +42,18 @@ fun ConfirmSignUp(
     email: String,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel()
 ) {
     var code by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
     val authState by authViewModel.authState.collectAsState()
+    val currentSub by authViewModel.currentUserId.collectAsState()
+
+    // Parche 1: one-shot latch para evitar doble creación
+    var didCreate by rememberSaveable { mutableStateOf(false) }
 
     // ----- Temporizador Reenviar -----
     var seconds by remember { mutableIntStateOf(60) }
@@ -72,18 +77,62 @@ fun ConfirmSignUp(
         errorMessage = ""
     }
 
-    // Navegar al onboarding cuando se confirme con éxito
-    LaunchedEffect(authState.isSuccess) {
-        if (authState.isSuccess) {
-            authViewModel.clearState()
-            nav.navigate(Screens.Login.route) {
-                popUpTo(Screens.LoginRegister.route) { inclusive = true }
-                launchSingleTop = true
+    // Cuando confirmación sea exitosa, crea en BD con el perfil pendiente y navega a Home
+    LaunchedEffect(authState.isSuccess, authState.error, authState.isLoading, authState.cognitoSub, currentSub) {
+        if (didCreate) return@LaunchedEffect
+
+        if (authState.error != null) {
+            errorMessage = authState.error ?: "Error desconocido"
+            showError = true
+            return@LaunchedEffect
+        }
+        if (!authState.isLoading && authState.isSuccess) {
+            val pending = authViewModel.consumePendingUserProfile()
+            val sub = currentSub ?: authState.cognitoSub
+
+            if (pending == null) {
+                // Si esto se dispara por segunda vez, evitamos ruido
+                return@LaunchedEffect
+            }
+            if (sub.isNullOrBlank()) {
+                showError = true
+                errorMessage = "No se pudo obtener el ID de Cognito."
+                return@LaunchedEffect
+            }
+
+            didCreate = true
+
+            scope.launch {
+                try {
+                    userViewModel.createUser(
+                        pending.copy(
+                            cognitoId = sub,
+                            email = email.trim(),
+                            accountState = AccountState.activo
+                        )
+                    )
+                    // Parche 4: safety cleanup por si quedó algo
+                    authViewModel.clearPendingCredentials()
+
+                    // Limpia estados de auth y navega a Home
+                    nav.navigate(Screens.Onboarding.route) {
+                        // Limpia del back stack el flujo de auth, no toda la gráfica ni a 0.
+                        popUpTo(Screens.LoginRegister.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+
+                    authViewModel.clearState()
+
+                } catch (e: Exception) {
+                    didCreate = false // permitir reintento si quieres
+                    showError = true
+                    errorMessage = e.message ?: "No se pudo crear el perfil en la BD."
+                }
             }
         }
     }
 
-    // Mostrar error del estado
+    // Mostrar error del estado (si llega un error externo)
     LaunchedEffect(authState.error) {
         authState.error?.let { error ->
             errorMessage = error
@@ -93,8 +142,12 @@ fun ConfirmSignUp(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = {}, navigationIcon = { BackButton(nav = nav) },
-                modifier = Modifier.padding(10.dp, 16.dp ,0.dp, 0.dp) )
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    BackButton(nav = nav)
+                }
+            )
         },
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
@@ -152,7 +205,7 @@ fun ConfirmSignUp(
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
-            // Campo de código (CodeTextField con casillas)
+            // Campo de código
             CodeTextField(
                 value = code,
                 onValueChange = {
@@ -175,7 +228,7 @@ fun ConfirmSignUp(
 
             Spacer(Modifier.height(24.dp))
 
-            // Mostrar error si existe
+            // Error
             if (showError && errorMessage.isNotEmpty()) {
                 Card(
                     modifier = Modifier
@@ -222,7 +275,7 @@ fun ConfirmSignUp(
 
             Spacer(Modifier.height(12.dp))
 
-            // ----- Reenviar (mismo estilo que RecoveryCode) -----
+            // ----- Reenviar -----
             Text(
                 text = if (canResend) "Reenviar código" else "Reenviar código  (00:${
                     seconds.toString().padStart(2, '0')
@@ -237,21 +290,13 @@ fun ConfirmSignUp(
     }
 }
 
-/**
- * Extensión de Modifier para capturar taps sin efecto ripple.
- * Útil para textos de acción como "Reenviar código".
- * @param onClick Acción a ejecutar al tocar el elemento.
- * @return Modifier con detector de tap aplicado.
- */
+/** Captura taps sin ripple, útil para "Reenviar código". */
 @Composable
 private fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier =
     this.then(Modifier.pointerInput(Unit) {
         detectTapGestures(onTap = { onClick() })
     })
 
-/**
- * Vista previa de la pantalla de confirmación de registro.
- */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun ConfirmSignUpPreview() {

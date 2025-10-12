@@ -86,9 +86,6 @@ fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier, viewMo
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
 
-        // Nota: este BackButton adicional repite el de TopAppBar; mantenido sin cambios.
-        BackButton(nav)
-
         Column(
             modifier = modifier
                 .padding(innerPadding)

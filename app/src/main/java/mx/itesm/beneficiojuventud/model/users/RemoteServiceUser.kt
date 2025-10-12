@@ -1,35 +1,54 @@
 package mx.itesm.beneficiojuventud.model.users
 
-import com.amplifyframework.analytics.UserProfile
+import com.google.gson.GsonBuilder
 import mx.itesm.beneficiojuventud.utils.Constants
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.create
-import kotlin.getValue
 
 
 object RemoteServiceUser {
+
+    private val gson = GsonBuilder()
+        .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+        .create()
+
     private val retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(Constants.BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
     }
-    private val userApiService by lazy { retrofit.create(RemoteServiceUser::class.java) }
 
+    private val userApiService by lazy { retrofit.create(UserApiService::class.java) }
 
-    suspend fun getUserById(id: String): UserProfile {
-        return userApiService.getUserById(id)
+    suspend fun getUserById(cognitoId: String): UserProfile {
+        val response = userApiService.getUserById(cognitoId)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        return response.body() ?: throw Exception("Respuesta vacía al obtener el usuario $cognitoId")
     }
 
     suspend fun createUser(user: UserProfile): UserProfile {
-        return userApiService.createUser(user)
-    }
-    suspend fun updateUser(id: String, update: UserProfile): UserProfile {
-        return userApiService.updateUser(id, update)
+        val response = userApiService.createUser(user)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        return response.body() ?: throw Exception("Respuesta vacía al crear el usuario")
     }
 
-    suspend fun deleteUser(id: String) {
-        userApiService.deleteUser(id)
+    suspend fun updateUser(cognitoId: String, update: UserProfile): UserProfile {
+        val response = userApiService.updateUser(cognitoId, update)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        return response.body() ?: throw Exception("Respuesta vacía al actualizar el usuario $cognitoId")
+    }
+
+    suspend fun deleteUser(cognitoId: String) {
+        val response = userApiService.deleteUser(cognitoId)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
     }
 }

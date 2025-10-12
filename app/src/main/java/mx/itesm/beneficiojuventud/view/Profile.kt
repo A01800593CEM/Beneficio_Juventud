@@ -13,7 +13,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.MonitorHeart
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
@@ -41,6 +46,7 @@ import mx.itesm.beneficiojuventud.components.BJTab
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import java.io.File
 
 private val CardWhite     = Color(0xFFFFFFFF)
@@ -50,18 +56,20 @@ private val Danger        = Color(0xFFDC3A2C)
 
 /**
  * Pantalla de perfil del usuario.
- * Muestra avatar (descargado de S3 vía Amplify), nombre, correo, opciones de menú y control de cierre de sesión con estados y diálogos.
- * @param nav Controlador de navegación para moverse entre pantallas y limpiar el back stack al cerrar sesión.
- * @param authViewModel ViewModel de autenticación que expone el estado actual y acciones como sign-out y carga del usuario.
- * @return Unit
+ * Lee name y email desde userViewModel.userState (perfil del backend),
+ * descarga avatar de S3 usando el cognitoId actual y permite cerrar sesión.
  */
 @Composable
 fun Profile(
     nav: NavHostController,
-    authViewModel: AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    userViewModel: UserViewModel            // ← se recibe desde el NavGraph
 ) {
-    val name = authViewModel.getCurrentUserName() ?: "Iván"
-    val email = "ivandl@beneficio.com"
+    // --- Estado de usuario (backend) ---
+    val user by userViewModel.userState.collectAsState()
+    val name = user.name?.takeIf { it.isNotBlank() } ?: "Usuario"
+    val email = user.email?.takeIf { it.isNotBlank() } ?: (authViewModel.getCurrentUserName() ?: "—")
+
     val appVersion = "1.0.01"
     val context = LocalContext.current
 
@@ -69,12 +77,12 @@ fun Profile(
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var isLoadingImage by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { authViewModel.getCurrentUser() }
 
     val currentUserId by authViewModel.currentUserId.collectAsState()
     val actualUserId = currentUserId ?: "anonymous"
     Log.d("Profile", "Current User ID: $actualUserId")
 
+    // Descarga avatar usando el sub como nombre de archivo
     LaunchedEffect(actualUserId) {
         try {
             downloadProfileImageForDisplay(
@@ -89,6 +97,7 @@ fun Profile(
         }
     }
 
+    // --- Estado de auth para manejar sign-out y errores ---
     val authState by authViewModel.authState.collectAsState()
     var signOutRequested by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
@@ -192,7 +201,9 @@ fun Profile(
                                 model = profileImageUrl,
                                 contentDescription = "Foto de perfil",
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.matchParentSize().clip(CircleShape)
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(CircleShape)
                             )
                         }
                         else -> {
@@ -251,7 +262,7 @@ fun Profile(
                     icon = Icons.Outlined.Settings,
                     title = "Configuración",
                     subtitle = "Preferencias y notificaciones",
-                    onClick = { nav.navigate(Screens.Settings.route)}
+                    onClick = { nav.navigate(Screens.Settings.route) }
                 )
                 ProfileItemCard(
                     icon = Icons.AutoMirrored.Outlined.HelpOutline,
@@ -287,7 +298,6 @@ fun Profile(
 /**
  * Diálogo modal de carga mostrado durante el proceso de cierre de sesión.
  * Bloquea la interacción hasta que finaliza la operación.
- * @return Unit
  */
 @Composable
 private fun LoadingDialog() {
@@ -310,12 +320,6 @@ private fun LoadingDialog() {
 /**
  * Ítem de la lista de opciones del perfil con icono, título y subtítulo.
  * Ajusta estilos y color de acento cuando representa la acción de cerrar sesión.
- * @param icon Ícono a mostrar en el inicio del ítem.
- * @param title Título descriptivo de la acción.
- * @param subtitle Descripción breve o contexto de la acción.
- * @param onClick Acción a ejecutar al presionar el ítem.
- * @param isLogout Si es true, aplica estilos de énfasis de salida (rojo).
- * @return Unit
  */
 @Composable
 private fun ProfileItemCard(
@@ -351,7 +355,13 @@ private fun ProfileItemCard(
                 Column {
                     Text(text = title, color = textColor, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                     if (subtitle.isNotEmpty()) {
-                        Text(text = subtitle, color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            text = subtitle,
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
@@ -363,12 +373,6 @@ private fun ProfileItemCard(
 /**
  * Descarga la imagen de perfil desde S3 (ruta public/profile-images/{userId}.jpg) y la guarda en caché local para mostrarla.
  * Gestiona callbacks de éxito, error y estado de carga.
- * @param context Contexto para resolver el directorio de caché donde se guarda el archivo temporal.
- * @param userId Identificador del usuario cuyo avatar se desea descargar.
- * @param onSuccess Callback con la ruta local del archivo descargado.
- * @param onError Callback con el mensaje de error en caso de falla.
- * @param onLoading Callback que indica true al iniciar y false al terminar la operación.
- * @return Unit
  */
 fun downloadProfileImageForDisplay(
     context: Context,
@@ -408,13 +412,17 @@ fun downloadProfileImageForDisplay(
 
 /**
  * Previsualiza la pantalla de perfil con un NavController de prueba.
- * @return Unit
+ * (Para la preview no hay userViewModel real; se usa un fake básico).
  */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun ProfilePreview() {
     BeneficioJuventudTheme(darkTheme = false) {
         val nav = rememberNavController()
-        Profile(nav = nav)
+        // Para preview únicamente, creamos un VM local con viewModel(),
+        // en la app real pásalo desde AppContent/AppNav.
+        val authVm: AuthViewModel = viewModel()
+        val userVm: UserViewModel = viewModel()
+        Profile(nav = nav, authViewModel = authVm, userViewModel = userVm)
     }
 }

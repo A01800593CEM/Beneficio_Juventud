@@ -12,12 +12,12 @@ data class UserProfile(
     val birthDate: String? = null, // Formato ISO (YYYY-MM-DD) para base de datos
     val phoneNumber: String? = null,
     val email: String? = null,
-    val accountState: AccountState = AccountState.inactivo,
+    val accountState: AccountState? = null,
     val registrationDate: String? = null,
     val updatedAt: String? = null,
     val notificationToken: String? = null,
-    val favorites: List<String> = emptyList(), // COGNITO ID
-    val categories: List<String> = emptyList(), // Para guardar las categorías seleccionadas del onboarding
+    val favorites: List<String>? = null, // COGNITO ID
+    val categories: List<String>? = null, // Para guardar las categorías seleccionadas del onboarding
     val profileImageKey: String? = null // Key de la imagen en S3
 )
 
