@@ -32,12 +32,6 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
-/**
- * Pantalla de inicio de sesión con email y contraseña.
- * @param nav Controlador de navegación.
- * @param modifier Modificador de diseño opcional.
- * @param authViewModel ViewModel que gestiona el proceso de autenticación.
- */
 @Composable
 fun Login(
     nav: NavHostController,
@@ -66,7 +60,7 @@ fun Login(
         }
     }
 
-    /** Envuelve un campo y lo desplaza al recibir foco para evitar ocultarlo con el teclado. */
+    // Desplaza el campo enfocado para que no lo tape el teclado
     @Composable
     fun FocusBringIntoView(
         delayMs: Long = 140,
@@ -89,93 +83,37 @@ fun Login(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .windowInsetsPadding(WindowInsets.ime)
-                    .padding(horizontal = 24.dp, vertical = 8.dp)
-            ) {
-                MainButton(
-                    text = if (authState.isLoading) "Iniciando sesión..." else "Inicia Sesión",
-                    enabled = !authState.isLoading && email.isNotEmpty() && password.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    showError = false
-                    authViewModel.signIn(email, password)
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp, bottom = 4.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "¿No tienes cuenta?  ",
-                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
-                    )
-                    TextButton(onClick = { nav.navigate(Screens.Register.route) }) {
-                        Text(
-                            "Regístrate",
-                            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF008D96))
-                        )
-                    }
-                }
-            }
-        }
+        contentWindowInsets = WindowInsets(0, 0, 0, 0), // control total de insets
+        topBar = { LoginHeader() } // Header fijo (logo + títulos)
     ) { innerPadding ->
         Box(
             modifier = modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .consumeWindowInsets(innerPadding)
                 .dismissKeyboardOnTap()
+                // Ajusta el contenido cuando aparece el teclado y respeta barras del sistema
+                .windowInsetsPadding(WindowInsets.ime)
+                .windowInsetsPadding(WindowInsets.navigationBars)
         ) {
             LazyColumn(
-                userScrollEnabled = false,
+                userScrollEnabled = true,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 24.dp, vertical = 24.dp),
-                contentPadding = PaddingValues(0.dp),
+                contentPadding = PaddingValues(bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
                 horizontalAlignment = Alignment.Start
             ) {
-                item {
-                    Box(modifier = Modifier.padding(horizontal = 6.dp)) {
-                        Image(
-                            painter = painterResource(id = R.drawable.logo_beneficio_joven),
-                            contentDescription = null,
-                            modifier = Modifier.size(50.dp)
-                        )
-                    }
-                }
-                item {
-                    Text(
-                        "Inicia Sesión",
-                        style = TextStyle(
-                            brush = Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96))),
-                            fontSize = 30.sp,
-                            fontWeight = FontWeight.Black
-                        ),
-                        modifier = Modifier.padding(top = 18.dp, start = 6.dp, end = 6.dp, bottom = 14.dp)
-                    )
-                }
-                item {
-                    Text(
-                        "Por favor, inicie sesión en su cuenta",
-                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161)),
-                        textAlign = TextAlign.Start,
-                        modifier = Modifier.padding(horizontal = 6.dp)
-                    )
-                }
+                // -------- Formulario ----------
                 item {
                     Text(
                         "Correo Electrónico",
-                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A)),
-                        modifier = Modifier.padding(start = 6.dp, top = 32.dp, end = 6.dp, bottom = 8.dp)
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF7D7A7A)
+                        ),
+                        modifier = Modifier.padding(start = 6.dp, top = 8.dp, end = 6.dp, bottom = 8.dp)
                     )
                 }
                 item {
@@ -190,7 +128,11 @@ fun Login(
                 item {
                     Text(
                         "Contraseña",
-                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A)),
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF7D7A7A)
+                        ),
                         modifier = Modifier.padding(start = 6.dp, top = 20.dp, end = 6.dp, bottom = 8.dp)
                     )
                 }
@@ -205,32 +147,64 @@ fun Login(
                 }
                 item {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 0.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 0.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Checkbox(checked = rememberMe, onCheckedChange = { rememberMe = it })
                             Text(
                                 "Recuérdame",
-                                style = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                                style = TextStyle(
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF7D7A7A)
+                                )
                             )
                         }
                         TextButton(onClick = { nav.navigate(Screens.ForgotPassword.route) }) {
                             Text(
                                 "¿Olvidaste tu contraseña?",
-                                style = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                                style = TextStyle(
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF7D7A7A)
+                                )
                             )
                         }
                     }
                 }
+
+                // --------- Botón principal en la posición del diseño (no en bottomBar) ----------
+                item {
+                    MainButton(
+                        text = if (authState.isLoading) "Iniciando sesión..." else "Inicia Sesión",
+                        enabled = !authState.isLoading && email.isNotEmpty() && password.isNotEmpty(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp, bottom = 8.dp)
+                    ) {
+                        showError = false
+                        authViewModel.signIn(email, password)
+                    }
+                }
+
                 if (showError && errorMessage.isNotEmpty()) {
                     item {
                         Card(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -248,14 +222,19 @@ fun Login(
                         }
                     }
                 }
+
                 item { GradientDivider_OR(modifier = Modifier.padding(vertical = 16.dp)) }
+
+                // --------- Social logins ----------
                 item {
                     AltLoginButton(
                         text = "Continuar con Google",
                         icon = painterResource(id = R.drawable.logo_google),
                         contentDescription = "Continuar con Google",
                         onClick = { /* TODO */ },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp)
                     )
                 }
                 item {
@@ -267,12 +246,72 @@ fun Login(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+
+                // --------- Registro (al final del scroll) ----------
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp, bottom = 4.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "¿No tienes cuenta?  ",
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF7D7A7A)
+                            )
+                        )
+                        TextButton(onClick = { nav.navigate(Screens.Register.route) }) {
+                            Text(
+                                "Regístrate",
+                                style = TextStyle(
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF008D96)
+                                )
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-/** Vista previa de [Login] en el editor de Android Studio. */
+@Composable
+private fun LoginHeader() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.Start
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.logo_beneficio_joven),
+            contentDescription = null,
+            modifier = Modifier.size(50.dp).padding(horizontal = 6.dp)
+        )
+        Text(
+            "Inicia Sesión",
+            style = TextStyle(
+                brush = Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96))),
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Black
+            ),
+            modifier = Modifier.padding(top = 18.dp, start = 6.dp, end = 6.dp, bottom = 14.dp)
+        )
+        Text(
+            "Por favor, inicie sesión en su cuenta",
+            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161)),
+            textAlign = TextAlign.Start,
+            modifier = Modifier.padding(horizontal = 6.dp)
+        )
+    }
+}
+
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, showSystemUi = true)
 @Composable

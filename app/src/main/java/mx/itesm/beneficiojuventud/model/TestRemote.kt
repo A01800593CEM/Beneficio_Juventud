@@ -12,7 +12,7 @@ object TestRemote {
     fun probarLlamada() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val user = RemoteServiceUser.getUserById("913b5500-e0e1-70e4-7872-7ab95a68e802")
+                val user = RemoteServiceUser.getUserById("813bc520-5071-70c6-02f6-e73ca6e4beb6")
                 Log.d("RetrofitTest", "✅ Usuario obtenido: $user")
             } catch (e: Exception) {
                 Log.e("RetrofitTest", "❌ Error: ${e.message}")
