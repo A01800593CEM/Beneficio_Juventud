@@ -3,21 +3,33 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { BookingsService } from 'src/bookings/bookings.service';
 import { UserState } from './enums/user-state.enum';
-
+import { Category } from 'src/categories/entities/category.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Category)
+    private categoriesRepository: Repository<Category>,
     private bookingsService: BookingsService,
   ) {}
   
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const user = this.usersRepository.create(createUserDto)
+    const { categories: userPrefCategories, ...data } = createUserDto;
+
+    const categoriesEntities = await this.categoriesRepository.findBy({
+      name: In(userPrefCategories),
+    });
+
+    const user = this.usersRepository.create({
+      ...data,
+      categories: categoriesEntities,
+    });
+    
     return this.usersRepository.save(user)
   }
 
@@ -26,21 +38,42 @@ export class UsersService {
   }
 
   async trueFindOne(cognitoId: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { cognitoId }});
+    return this.usersRepository.findOne({ 
+      where: { cognitoId },
+      relations: ['bookings',
+                  'bookings.promotion',
+                  'favorites',
+                  'favorites.collaborator',
+                  'favorites.collaborator.categories',
+                  'redeemedcoupon',
+                  'redeemedcoupon.coupon',
+                  'userPrefCategories'
+                ] });
   }
 
   async findOne(cognitoId: string): Promise<User | null> {
-    const user = await this.usersRepository.findOne({ where: { cognitoId, accountState: UserState.ACTIVE }});
+    const user = await this.usersRepository.findOne({ 
+      where: { 
+        cognitoId, 
+        accountState: UserState.ACTIVE },
+      relations: ['bookings',
+                  'favorites',
+                  'favorites.collaborator',
+                  'favorites.collaborator.categories',
+                  'redeemedcoupon',
+                  'redeemedcoupon.promotion',
+                  'categories'
+                ] });
     if (!user) {
       throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
     return user
   }
 
-  async update(cognitoId: string, updateUserDto: UpdateUserDto): Promise<User | null>  {
-    const user = await this.usersRepository.preload({
-      cognitoId,
-      ...updateUserDto
+  async update(cognitoId: string, updateUserDto: UpdateUserDto): Promise<User>  {
+    const user = await this.usersRepository.findOne({
+      where: { cognitoId }, 
+      relations: ['userPrefCategories', 'favorites', 'bookings', 'redeemedcoupon']
     });
 
     if (!user) {

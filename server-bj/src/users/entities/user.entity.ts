@@ -4,6 +4,7 @@ import { UserState } from "../enums/user-state.enum";
 import { Booking } from "src/bookings/entities/booking.entity";
 import { Favorite } from "src/favorites/entities/favorite.entity";
 import { Redeemedcoupon } from "src/redeemedcoupon/entities/redeemedcoupon.entity";
+import { Category } from "src/categories/entities/category.entity";
 
 @Entity({name: "usuario"})
 export class User {
@@ -56,4 +57,20 @@ export class User {
 
     @OneToMany(() => Redeemedcoupon, redeemedcoupons => redeemedcoupons.user)
     redeemedcoupon: Relation<Redeemedcoupon>;
+
+    @ManyToMany(() => Category, category => category.users)
+    @JoinTable({
+        name: 'usuario_categoria',
+    joinColumn: {
+        name: 'usuario_id',
+        referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+        name: 'categoria_id',
+        referencedColumnName: 'id'
+    },
+    })
+        categories: Category[];
+
+
 }

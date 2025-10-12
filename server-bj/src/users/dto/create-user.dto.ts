@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsEnum, MinLength, IsNotEmpty, IsDate, IsPhoneNumber, MaxLength } from 'class-validator';
+import { IsString, IsEmail, IsEnum, MinLength, IsNotEmpty, IsDate, IsPhoneNumber, MaxLength, ArrayNotEmpty, IsArray } from 'class-validator';
 import { Type } from "class-transformer";
 import { UserState } from "../enums/user-state.enum";
 
@@ -32,4 +32,9 @@ export class CreateUserDto {
 
     @IsEnum(UserState)
     accountState: UserState
+
+    @IsArray()
+    @ArrayNotEmpty()
+    @IsString({ each: true})
+    categories: string[]
 }
