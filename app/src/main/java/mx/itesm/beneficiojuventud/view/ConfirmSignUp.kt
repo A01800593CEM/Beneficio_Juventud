@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +52,9 @@ fun ConfirmSignUp(
     val authState by authViewModel.authState.collectAsState()
     val currentSub by authViewModel.currentUserId.collectAsState()
 
+    // Parche 1: one-shot latch para evitar doble creación
+    var didCreate by rememberSaveable { mutableStateOf(false) }
+
     // ----- Temporizador Reenviar -----
     var seconds by remember { mutableIntStateOf(60) }
     var canResend by remember { mutableStateOf(false) }
@@ -75,6 +79,8 @@ fun ConfirmSignUp(
 
     // Cuando confirmación sea exitosa, crea en BD con el perfil pendiente y navega a Home
     LaunchedEffect(authState.isSuccess, authState.error, authState.isLoading, authState.cognitoSub, currentSub) {
+        if (didCreate) return@LaunchedEffect
+
         if (authState.error != null) {
             errorMessage = authState.error ?: "Error desconocido"
             showError = true
@@ -85,8 +91,7 @@ fun ConfirmSignUp(
             val sub = currentSub ?: authState.cognitoSub
 
             if (pending == null) {
-                showError = true
-                errorMessage = "No se encontró información pendiente de perfil."
+                // Si esto se dispara por segunda vez, evitamos ruido
                 return@LaunchedEffect
             }
             if (sub.isNullOrBlank()) {
@@ -95,7 +100,8 @@ fun ConfirmSignUp(
                 return@LaunchedEffect
             }
 
-            // Crea el usuario en tu BD
+            didCreate = true
+
             scope.launch {
                 try {
                     userViewModel.createUser(
@@ -105,13 +111,20 @@ fun ConfirmSignUp(
                             accountState = AccountState.activo
                         )
                     )
+                    // Parche 4: safety cleanup por si quedó algo
+                    authViewModel.clearPendingCredentials()
+
                     // Limpia estados de auth y navega a Home
-                    authViewModel.clearState()
                     nav.navigate(Screens.Onboarding.route) {
+                        // Limpia del back stack el flujo de auth, no toda la gráfica ni a 0.
                         popUpTo(Screens.LoginRegister.route) { inclusive = true }
                         launchSingleTop = true
                     }
+
+                    authViewModel.clearState()
+
                 } catch (e: Exception) {
+                    didCreate = false // permitir reintento si quieres
                     showError = true
                     errorMessage = e.message ?: "No se pudo crear el perfil en la BD."
                 }
@@ -192,7 +205,7 @@ fun ConfirmSignUp(
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
-            // Campo de código (CodeTextField con casillas)
+            // Campo de código
             CodeTextField(
                 value = code,
                 onValueChange = {
@@ -215,7 +228,7 @@ fun ConfirmSignUp(
 
             Spacer(Modifier.height(24.dp))
 
-            // Mostrar error si existe
+            // Error
             if (showError && errorMessage.isNotEmpty()) {
                 Card(
                     modifier = Modifier

@@ -7,21 +7,21 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.google.gson.Gson
+import mx.itesm.beneficiojuventud.model.webhook.PromotionData
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
-import mx.itesm.beneficiojuventud.model.webhook.PromotionData
-
 
 /**
  * **MainActivity**
@@ -43,29 +43,48 @@ class MainActivity : ComponentActivity() {
  */
 @Composable
 private fun AppContent(authViewModel: AuthViewModel = viewModel()) {
-    val appState by authViewModel.appState.collectAsState()
-
-    when {
-        appState.isLoading -> {
-            Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
-        }
-        appState.hasCheckedAuth -> {
-            val startDestination = if (appState.isAuthenticated)
-                Screens.Home.route else Screens.LoginRegister.route
-            AppNav(startDestination, authViewModel)
-        }
-    }
+    val nav = rememberNavController() // <-- NavController estable
+    AppNav(nav = nav, authViewModel = authViewModel)
 }
 
+
+
 /**
- * Controla la navegación principal de la aplicación.
- * @param startDestination Ruta inicial (Home o LoginRegister).
- * @param authViewModel ViewModel de autenticación compartido.
+ * Controla la navegación principal de la aplicación usando una ruta neutral "launcher"
+ * que decide imperativamente a qué pantalla ir y limpia el back stack.
  */
 @Composable
-private fun AppNav(startDestination: String, authViewModel: AuthViewModel) {
-    val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = startDestination) {
+private fun AppNav(nav: NavHostController, authViewModel: AuthViewModel) {
+    val appState by authViewModel.appState.collectAsState()
+
+    NavHost(
+        navController = nav,
+        startDestination = "launcher"
+    ) {
+        composable("launcher") {
+            // ➊ Evita decidir más de una vez por arranque
+            var decided by rememberSaveable { mutableStateOf(false) }
+
+            LaunchedEffect(appState.hasCheckedAuth, appState.isAuthenticated) {
+                if (decided || !appState.hasCheckedAuth) return@LaunchedEffect
+                decided = true
+
+                if (appState.isAuthenticated) {
+                    nav.navigate(Screens.Home.route) {
+                        popUpTo(nav.graph.findStartDestination().id) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                } else {
+                    nav.navigate(Screens.LoginRegister.route) {
+                        popUpTo(nav.graph.findStartDestination().id) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
+
+            // ➋ Loader mientras aún no sabemos el estado:
+            Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
+        }
 
         // --- Autenticación ---
         composable(Screens.LoginRegister.route) { LoginRegister(nav) }
@@ -127,16 +146,12 @@ private fun AppNav(startDestination: String, authViewModel: AuthViewModel) {
 
 /**
  * Convierte una cadena JSON a un objeto [PromotionData].
- * @param json Cadena en formato JSON.
- * @return Objeto [PromotionData] parseado.
  */
 private fun parsePromotionDataFromJson(json: String): PromotionData =
     Gson().fromJson(json, PromotionData::class.java)
 
 /**
  * Convierte un objeto [PromotionData] a una cadena JSON.
- * @param promotionData Objeto de datos de promoción.
- * @return Cadena JSON generada.
  */
 private fun promotionDataToJson(promotionData: PromotionData): String =
     Gson().toJson(promotionData)

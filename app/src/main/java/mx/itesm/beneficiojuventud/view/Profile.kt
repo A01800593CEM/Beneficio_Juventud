@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
@@ -58,9 +59,9 @@ private val Danger        = Color(0xFFDC3A2C)
 @Composable
 fun Profile(
     nav: NavHostController,
-    authViewModel: AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    authViewModel: AuthViewModel = viewModel()
 ) {
-    val name = authViewModel.getCurrentUserName() ?: "Iván"
+    val name = authViewModel.getCurrentUserName() ?: "User"
     val email = "ivandl@beneficio.com"
     val appVersion = "1.0.01"
     val context = LocalContext.current

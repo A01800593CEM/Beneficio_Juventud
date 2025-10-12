@@ -40,6 +40,19 @@ class AuthViewModel : ViewModel() {
     private var _pendingUserProfile: UserProfile? = null
     val pendingUserProfile: UserProfile? get() = _pendingUserProfile
 
+    // Credenciales temporales SOLO en memoria (no BD)
+    private var _pendingEmail: String? = null
+    private var _pendingPlainPassword: String? = null
+
+    fun setPendingCredentials(email: String, password: String) {
+        _pendingEmail = email
+        _pendingPlainPassword = password
+    }
+    fun clearPendingCredentials() {
+        _pendingEmail = null
+        _pendingPlainPassword = null
+    }
+
     init {
         refreshAuthState()
     }
@@ -51,11 +64,7 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             _appState.value = _appState.value.copy(isLoading = true)
             val isSignedIn = authRepository.isUserSignedIn()
-            _authState.value = if (isSignedIn) {
-                AuthState(isSuccess = true)
-            } else {
-                AuthState()
-            }
+
             _appState.value = AppState(
                 isLoading = false,
                 isAuthenticated = isSignedIn,
@@ -93,7 +102,11 @@ class AuthViewModel : ViewModel() {
                 result.fold(
                     onSuccess = { r ->
                         Log.d("AuthViewModel", "SignUp exitoso: needsConfirmation=${!r.isSignUpComplete}")
-                        val sub = r.userId // <- sub de Cognito disponible desde signUp
+                        val sub = r.userId // <- sub de Cognito (cognitoId)
+
+                        // 👇 NUEVO: recuerda en memoria el cognitoId desde YA
+                        _currentUserId.value = sub
+
                         _authState.value = AuthState(
                             isSuccess = r.isSignUpComplete,
                             needsConfirmation = !r.isSignUpComplete,
@@ -112,28 +125,55 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+
     fun confirmSignUp(email: String, code: String) {
         viewModelScope.launch {
-            // 1) GUARDA el sub previo ANTES de tocar _authState
+            // Mantén el sub previo
             val priorSub = _authState.value.cognitoSub
 
-            // 2) En lugar de AuthState(isLoading = true), preserva el sub
+            // no pises el estado entero; solo marca loading y limpia error
             _authState.value = _authState.value.copy(isLoading = true, error = null)
 
             val result = authRepository.confirmSignUp(email, code)
             result.fold(
                 onSuccess = { isComplete ->
-                    // 3) NO dependas de getCurrentUser() (estás signed out tras confirmar)
-                    //    Si quieres, puedes llamarlo, pero no lo uses para el sub.
-                    // getCurrentUser()
-
+                    // confirmación lista
                     _authState.value = _authState.value.copy(
                         isLoading = false,
                         isSuccess = isComplete,
                         needsConfirmation = false,
-                        // 4) Usa el sub que obtuviste en signUp (priorSub)
                         cognitoSub = priorSub
                     )
+
+                    // AUTO SIGN-IN si tenemos credenciales en memoria
+                    val pendingEmail = _pendingEmail
+                    val pendingPw = _pendingPlainPassword
+                    if (isComplete && !pendingEmail.isNullOrBlank() && !pendingPw.isNullOrBlank()) {
+                        viewModelScope.launch {
+                            val signInResult = authRepository.signIn(pendingEmail, pendingPw)
+                            signInResult.fold(
+                                onSuccess = { r ->
+                                    if (r.isSignedIn) {
+                                        refreshAuthState()
+                                    } else {
+                                        _authState.value = _authState.value.copy(
+                                            isSuccess = false,
+                                            needsConfirmation = true
+                                        )
+                                    }
+                                    // Limpia credenciales temporales pase lo que pase
+                                    clearPendingCredentials()
+                                },
+                                onFailure = { e ->
+                                    _authState.value = _authState.value.copy(
+                                        isSuccess = false,
+                                        error = e.message ?: "No se pudo iniciar sesión automáticamente"
+                                    )
+                                    clearPendingCredentials()
+                                }
+                            )
+                        }
+                    }
                 },
                 onFailure = { e ->
                     _authState.value = _authState.value.copy(
@@ -145,7 +185,6 @@ class AuthViewModel : ViewModel() {
             )
         }
     }
-
 
     fun resendSignUpCode(email: String) {
         viewModelScope.launch {
@@ -173,6 +212,8 @@ class AuthViewModel : ViewModel() {
                     onSuccess = { r ->
                         Log.d("AuthViewModel", "SignIn exitoso: isSignedIn=${r.isSignedIn}")
                         if (r.isSignedIn) {
+
+                            _authState.value = AuthState(isSuccess = true)
                             refreshAuthState()
                         } else {
                             _authState.value = AuthState(needsConfirmation = true)
@@ -200,6 +241,7 @@ class AuthViewModel : ViewModel() {
                     _currentUser.value = null
                     _currentUserId.value = null
                     _pendingUserProfile = null
+                    clearPendingCredentials() // limpieza extra (Parche 4)
                     refreshAuthState()
                 },
                 onFailure = { e ->

@@ -53,12 +53,14 @@ fun Login(
 
     LaunchedEffect(authState.isSuccess) {
         if (authState.isSuccess) {
-            nav.navigate(Screens.Onboarding.route) {
+            nav.navigate(Screens.Home.route) {
                 popUpTo(Screens.LoginRegister.route) { inclusive = true }
+                launchSingleTop = true
             }
             authViewModel.clearState()
         }
     }
+
     LaunchedEffect(authState.error) {
         authState.error?.let { error ->
             errorMessage = error
