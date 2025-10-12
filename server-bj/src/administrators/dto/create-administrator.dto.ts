@@ -10,6 +10,10 @@ import {
 import { AdminRole } from '../enums/admin-role.enums';
 import { AdminState } from '../enums/admin-state.enum';
 
+/**
+ * Data Transfer Object (DTO) for creating a new administrator.
+ * Contains all necessary information for administrator registration with validation rules.
+ */
 export class CreateAdministratorDto {
   @IsString()
   @IsNotEmpty()
