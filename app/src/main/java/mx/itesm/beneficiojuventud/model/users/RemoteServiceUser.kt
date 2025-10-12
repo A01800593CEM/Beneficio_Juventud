@@ -1,8 +1,12 @@
 package mx.itesm.beneficiojuventud.model.users
 
+import com.amplifyframework.analytics.UserProfile
 import mx.itesm.beneficiojuventud.utils.Constants
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.create
+import kotlin.getValue
+
 
 object RemoteServiceUser {
     private val retrofit by lazy {
@@ -11,24 +15,21 @@ object RemoteServiceUser {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
-    private val userApiService by lazy { retrofit.create(UserApiService::class.java) }
+    private val userApiService by lazy { retrofit.create(RemoteServiceUser::class.java) }
 
 
-    suspend fun getUserById(id: Int): UserProfile {
-        val response = userApiService.getUserById(id)
-        return response.body() ?: throw Exception("No se pudo obtener el usuario")
+    suspend fun getUserById(id: String): UserProfile {
+        return userApiService.getUserById(id)
     }
 
     suspend fun createUser(user: UserProfile): UserProfile {
-        val response = userApiService.createUser(user)
-        return response.body() ?: throw Exception("No se pudo crear el usuario")
+        return userApiService.createUser(user)
     }
-    suspend fun updateUser(id: Int, update: UserProfile): UserProfile {
-        val response = userApiService.updateUser(id, update)
-        return response.body() ?: throw Exception("No se pudo actualizar el usuario")
+    suspend fun updateUser(id: String, update: UserProfile): UserProfile {
+        return userApiService.updateUser(id, update)
     }
 
-    suspend fun deleteUser(id: Int) {
+    suspend fun deleteUser(id: String) {
         userApiService.deleteUser(id)
     }
 }
