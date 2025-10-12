@@ -64,7 +64,7 @@ export class Collaborator {
       name: 'colaborador_categoria',
     joinColumn: {
       name: 'colaborador_id',
-      referencedColumnName: 'id',
+      referencedColumnName: 'cognitoId',
     },
     inverseJoinColumn: {
       name: 'categoria_id',

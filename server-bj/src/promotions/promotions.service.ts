@@ -43,7 +43,7 @@ export class PromotionsService {
         relations: ['categories'] });
           
       if (!promotion) {
-        throw new NotFoundException(`User with id ${id} not found`);
+        throw new NotFoundException(`Promotion with id ${id} not found`);
       }
       return promotion
     }

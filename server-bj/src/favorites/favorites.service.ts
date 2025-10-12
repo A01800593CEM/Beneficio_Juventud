@@ -24,7 +24,7 @@ export class FavoritesService {
     });
   }
 
-  async findOne(userId: number, collaboratorId: number): Promise<Favorite | null> {
+  async findOne(userId: string, collaboratorId: string): Promise<Favorite | null> {
     const favorite = await this.favoritesRepository.findOne({
       where: { userId, collaboratorId },
       relations: ['user', 'collaborator'],
@@ -40,8 +40,8 @@ export class FavoritesService {
   }
 
   async update(
-    userId: number,
-    collaboratorId: number,
+    userId: string,
+    collaboratorId: string,
     updateFavoriteDto: UpdateFavoriteDto,
   ): Promise<Favorite> {
     const favorite = await this.favoritesRepository.preload({
@@ -59,7 +59,7 @@ export class FavoritesService {
     return this.favoritesRepository.save(favorite);
   }
 
-  async remove(userId: number, collaboratorId: number): Promise<void> {
+  async remove(userId: string, collaboratorId: string): Promise<void> {
     const result = await this.favoritesRepository.delete({ userId, collaboratorId });
 
     if (result.affected === 0) {
@@ -70,7 +70,7 @@ export class FavoritesService {
   }
 
   // Optional convenience method: get all favorites by user
-  async findByUser(userId: number): Promise<Collaborator[]> {
+  async findByUser(userId: string): Promise<Collaborator[]> {
     const favorites = await this.favoritesRepository.find({
       where: { userId },
       relations: ['collaborator'],

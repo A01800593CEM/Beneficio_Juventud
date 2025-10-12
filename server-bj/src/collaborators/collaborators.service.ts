@@ -43,10 +43,7 @@ export class CollaboratorsService {
     const collaborator = this.collaboratorsRepository.findOne({ 
       where: { cognitoId,
                state: CollaboratorState.ACTIVE
-       },
-      relations: ['favorites',
-         'favorites.user',
-         'categories'] });
+       }});
         
     if (!collaborator) {
       throw new NotFoundException(`User with id ${cognitoId} not found`);

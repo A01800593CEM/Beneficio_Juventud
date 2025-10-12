@@ -7,8 +7,12 @@ import { UpdateFavoriteDto } from './dto/update-favorite.dto';
 export class FavoritesController {
   constructor(private readonly favoritesService: FavoritesService) {}
 
-  @Post()
-  async create(@Body() createFavoriteDto: CreateFavoriteDto) {
+  @Post(':userId/:collaboratorId')
+  async create(@Param('userId') userId: string,
+    @Param('collaboratorId') collaboratorId: string,) {
+    let createFavoriteDto = new CreateFavoriteDto();
+    createFavoriteDto.userId = userId;
+    createFavoriteDto.collaboratorId = collaboratorId;
     return this.favoritesService.create(createFavoriteDto);
   }
 
@@ -19,16 +23,16 @@ export class FavoritesController {
 
   @Get(':userId/:collaboratorId')
   async findOne(
-    @Param('userId') userId: number,
-    @Param('collaboratorId') collaboratorId: number,
+    @Param('userId') userId: string,
+    @Param('collaboratorId') collaboratorId: string,
   ) {
     return this.favoritesService.findOne(userId, collaboratorId);
   }
 
   @Patch(':userId/:collaboratorId')
   async update(
-    @Param('userId') userId: number,
-    @Param('collaboratorId') collaboratorId: number,
+    @Param('userId') userId: string,
+    @Param('collaboratorId') collaboratorId: string,
     @Body() updateFavoriteDto: UpdateFavoriteDto,
   ) {
     return this.favoritesService.update(userId, collaboratorId, updateFavoriteDto);
@@ -36,16 +40,16 @@ export class FavoritesController {
 
   @Delete(':userId/:collaboratorId')
   async remove(
-    @Param('userId') userId: number,
-    @Param('collaboratorId') collaboratorId: number,
+    @Param('userId') userId: string,
+    @Param('collaboratorId') collaboratorId: string,
   ) {
     return this.favoritesService.remove(userId, collaboratorId);
   }
 
     // Favorite Collaborators 
-  @Get('user_favorites/:id')
+  @Get(':id')
   async getFavoriteCollaborators(@Param('id') id: string) {
-    return this.favoritesService.findByUser(+id)
+    return this.favoritesService.findByUser(id)
   }
 
 }

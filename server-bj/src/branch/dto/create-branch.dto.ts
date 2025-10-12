@@ -1,7 +1,7 @@
 import { IsInt, IsNotEmpty, IsObject, IsOptional, IsPhoneNumber, IsString, Matches} from 'class-validator';
 export class CreateBranchDto {
     @IsInt()
-    collaboratorId: number;
+    collaboratorId: string;
     
     @IsString() @IsNotEmpty()
     name: string;

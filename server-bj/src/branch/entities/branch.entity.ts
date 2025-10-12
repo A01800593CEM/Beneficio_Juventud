@@ -19,7 +19,7 @@ export class Branch {
   branchId: number;
 
   @Column({name: 'colaborador_id'})
-  collaboratorId:number
+  collaboratorId: string;
 
   @Column({ name: 'nombre' })
   name: string;
@@ -57,7 +57,7 @@ export class Branch {
   //Reltaions
 
     @ManyToOne(() => Collaborator, collaborator => collaborator.branch)
-    @JoinColumn({ name: 'colaborador_id' })
+    @JoinColumn({ name: 'colaborador_id', referencedColumnName: 'cognitoId' })
     collaborators: Relation<Collaborator>;
 
     @OneToMany(() => Redeemedcoupon, redeemedcoupons => redeemedcoupons.branch)

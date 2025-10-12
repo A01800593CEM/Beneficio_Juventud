@@ -46,9 +46,9 @@ export class BookingsService {
   }
 
   // Service method to find bookings by userId
-  async findByUserId(userId: number): Promise<Booking[]> {
+  async findByUserId(userId: string): Promise<Booking[]> {
     return this.bookingsRepository.find({
-      where: { user: { id: userId } },
+      where: { user: { cognitoId: userId } },
       relations: ['user', 'promotion'],
     });
   }

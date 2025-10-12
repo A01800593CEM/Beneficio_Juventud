@@ -40,14 +40,13 @@ export class UsersService {
   async trueFindOne(cognitoId: string): Promise<User | null> {
     return this.usersRepository.findOne({ 
       where: { cognitoId },
-      relations: ['bookings',
+      relations: ['categories',
+                  'bookings',
                   'bookings.promotion',
                   'favorites',
                   'favorites.collaborator',
-                  'favorites.collaborator.categories',
                   'redeemedcoupon',
-                  'redeemedcoupon.coupon',
-                  'userPrefCategories'
+                  'redeemedcoupon.promotion'
                 ] });
   }
 
@@ -55,15 +54,7 @@ export class UsersService {
     const user = await this.usersRepository.findOne({ 
       where: { 
         cognitoId, 
-        accountState: UserState.ACTIVE },
-      relations: ['bookings',
-                  'favorites',
-                  'favorites.collaborator',
-                  'favorites.collaborator.categories',
-                  'redeemedcoupon',
-                  'redeemedcoupon.promotion',
-                  'categories'
-                ] });
+        accountState: UserState.ACTIVE }});
     if (!user) {
       throw new NotFoundException(`User with id ${cognitoId} not found`);
     }

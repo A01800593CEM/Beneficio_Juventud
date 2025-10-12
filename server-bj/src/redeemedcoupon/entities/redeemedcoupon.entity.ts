@@ -20,10 +20,10 @@ export class Redeemedcoupon {
   usedDate: Date;
 
   @Column({name: 'usuario_id'})
-  userId: number
+  userId: string;
 
   @Column({name: 'colaborador_id'})
-  collaboratorId: number
+  collaboratorId: string;
 
   @Column({name: 'sucursal_id'})
   branchId: number
@@ -33,11 +33,11 @@ export class Redeemedcoupon {
 
   //Relations
   @ManyToOne(() => User, users => users.redeemedcoupon)
-  @JoinColumn({ name: 'usuario_id' })
+  @JoinColumn({ name: 'usuario_id', referencedColumnName: 'cognitoId' })
   user: Relation<User>;
 
   @ManyToOne(() => Collaborator, collaborators => collaborators.redeemedcoupon)
-  @JoinColumn({ name: 'colaborador_id' })
+  @JoinColumn({ name: 'colaborador_id', referencedColumnName: 'cognitoId' })
   collaborator: Relation<Collaborator>;
 
   @ManyToOne(() => Branch, branches => branches.redeemedcoupon)

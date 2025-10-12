@@ -16,8 +16,8 @@ export class Booking {
   @PrimaryGeneratedColumn({ name: 'reserva_id' })
   bookingId: number;
 
-  @Column({name: 'usuario_id'})
-  userId: number
+  @Column({name: 'usuario_id', type: 'varchar'})
+  userId: string;
 
   @Column({name: 'promocion_id'})
   promotionId: number
@@ -41,7 +41,8 @@ export class Booking {
 
   //Relations
   @ManyToOne(() => User, users => users.bookings)
-  @JoinColumn({ name: 'usuario_id' })
+  @JoinColumn({ name: 'usuario_id', 
+                referencedColumnName: 'cognitoId' })
   user: Relation<User>;
 
   @ManyToOne(() => Promotion, promotions => promotions.bookings)

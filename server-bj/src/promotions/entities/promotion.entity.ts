@@ -13,7 +13,7 @@ export class Promotion {
   promotionId: number;
 
   @Column({name: 'colaborador_id'})
-  collaboratorId: number
+  collaboratorId: string
 
   @Column({ name: 'titulo' })
   title: string;

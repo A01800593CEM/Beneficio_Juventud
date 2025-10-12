@@ -48,6 +48,7 @@ export class User {
     // Relation with Booking Entity
     @OneToMany(() => Booking, booking => booking.user)
     bookings: Booking[];
+    
     @Column({name: "token_notificacion"})
     notificationToken: string;
     
@@ -63,7 +64,7 @@ export class User {
         name: 'usuario_categoria',
     joinColumn: {
         name: 'usuario_id',
-        referencedColumnName: 'id',
+        referencedColumnName: 'cognitoId',
     },
     inverseJoinColumn: {
         name: 'categoria_id',

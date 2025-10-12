@@ -5,7 +5,7 @@ import { PromotionState } from '../enums/promotion-state.enums';
 
 export class CreatePromotionDto {
   @IsInt()
-  collaboratorId: number;
+  collaboratorId: string;
 
   @IsString()
   title: string;
