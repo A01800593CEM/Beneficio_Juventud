@@ -21,12 +21,12 @@ object RemoteServiceUser {
 
     private val userApiService by lazy { retrofit.create(UserApiService::class.java) }
 
-    suspend fun getUserById(id: String): UserProfile {
-        val response = userApiService.getUserById(id)
+    suspend fun getUserById(cognitoId: String): UserProfile {
+        val response = userApiService.getUserById(cognitoId)
         if (!response.isSuccessful) {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
         }
-        return response.body() ?: throw Exception("Respuesta vacía al obtener el usuario $id")
+        return response.body() ?: throw Exception("Respuesta vacía al obtener el usuario $cognitoId")
     }
 
     suspend fun createUser(user: UserProfile): UserProfile {
@@ -37,16 +37,16 @@ object RemoteServiceUser {
         return response.body() ?: throw Exception("Respuesta vacía al crear el usuario")
     }
 
-    suspend fun updateUser(id: String, update: UserProfile): UserProfile {
-        val response = userApiService.updateUser(id, update)
+    suspend fun updateUser(cognitoId: String, update: UserProfile): UserProfile {
+        val response = userApiService.updateUser(cognitoId, update)
         if (!response.isSuccessful) {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
         }
-        return response.body() ?: throw Exception("Respuesta vacía al actualizar el usuario $id")
+        return response.body() ?: throw Exception("Respuesta vacía al actualizar el usuario $cognitoId")
     }
 
-    suspend fun deleteUser(id: String) {
-        val response = userApiService.deleteUser(id)
+    suspend fun deleteUser(cognitoId: String) {
+        val response = userApiService.deleteUser(cognitoId)
         if (!response.isSuccessful) {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
         }

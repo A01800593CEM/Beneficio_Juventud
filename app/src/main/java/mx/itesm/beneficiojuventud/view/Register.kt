@@ -83,7 +83,7 @@ fun Register(
 
     val authState by authViewModel.authState.collectAsState()
 
-    // Navegación post-registro
+    // Navegación post-registro (Camino B -> ConfirmSignUp)
     LaunchedEffect(authState.needsConfirmation) {
         if (authState.needsConfirmation) {
             nav.navigate(Screens.confirmSignUpWithEmail(email)) {
@@ -135,6 +135,7 @@ fun Register(
                         phoneNumber = phone,
                         email = email
                     )
+                    // Camino B: guardamos perfil preliminar y solo registramos en Cognito aquí.
                     authViewModel.savePendingUserProfile(userProfile)
                     authViewModel.signUp(email, password, phone)
                 }
@@ -489,30 +490,17 @@ private fun BirthDateField(
     }
 }
 
-/**
- * Locale ES-MX recomendado para formateo sin APIs en desuso.
- */
-private val localeEsMx: Locale = Locale.Builder()
-    .setLanguage("es")
-    .setRegion("MX")
-    .build()
+/** Locale ES-MX para formateo. */
+private val localeEsMx: Locale = Locale.Builder().setLanguage("es").setRegion("MX").build()
 
-/**
- * Formato de fecha para UI con patrón dd/MM/yyyy.
- */
-private val displayFormatterEs: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("dd/MM/yyyy", localeEsMx)
+/** Formato UI dd/MM/yyyy. */
+private val displayFormatterEs: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", localeEsMx)
 
-/**
- * Formato ISO para almacenamiento en BD (yyyy-MM-dd).
- */
+/** Formato ISO yyyy-MM-dd. */
 private val storageFormatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
 /**
- * Convierte un string de display dd/MM/yyyy a epoch millis para preseleccionar el DatePicker.
- * @receiver Cadena en formato de UI o vacía.
- * @param zone Zona horaria usada para calcular el inicio del día.
- * @return Epoch millis si se pudo convertir, o null si está vacío o hay error.
+ * Convierte un string dd/MM/yyyy a epoch millis para preseleccionar el DatePicker.
  */
 private fun String.toMillisFromDisplayOrNull(zone: ZoneId): Long? = runCatching {
     if (this.isBlank()) return null
@@ -520,11 +508,7 @@ private fun String.toMillisFromDisplayOrNull(zone: ZoneId): Long? = runCatching 
     parsed.atStartOfDay(zone).toInstant().toEpochMilli()
 }.getOrNull()
 
-/**
- * Etiqueta secundaria para campos de formulario.
- * @param text Texto a mostrar.
- * @param top Margen superior opcional.
- */
+/** Etiqueta secundaria para campos de formulario. */
 @Composable
 private fun Label(text: String, top: Dp = 0.dp) {
     Text(
@@ -534,10 +518,7 @@ private fun Label(text: String, top: Dp = 0.dp) {
     )
 }
 
-/**
- * Colores de TextField consistentes con la línea visual de la app.
- * @return Colors para TextFieldDefaults.colors.
- */
+/** Colores de TextField consistentes con la app. */
 @Composable
 private fun textFieldColors() = TextFieldDefaults.colors(
     focusedContainerColor = Color.White,
