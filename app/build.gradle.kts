@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.runtime.saveable)
     implementation(libs.androidx.navigation.runtime.ktx)
+    implementation(libs.ui.text)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     implementation(libs.androidx.core.ktx)

@@ -2,6 +2,7 @@ package mx.itesm.beneficiojuventud.view
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +44,10 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
@@ -331,20 +336,29 @@ fun Register(
                 FocusBringIntoView {
                     OutlinedTextField(
                         value = phone,
-                        onValueChange = { phone = it },
+                        onValueChange = { input ->
+                            // Acepta solo dígitos y limita a 10 (55 5555 5555)
+                            val digits = input.filter { it.isDigit() }.take(10)
+                            phone = digits
+                        },
                         singleLine = true,
                         modifier = it
                             .fillMaxWidth()
                             .heightIn(min = TextFieldDefaults.MinHeight),
                         shape = RoundedCornerShape(18.dp),
                         leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = null) },
-                        placeholder = { Text("55 1234 5678", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
+                        placeholder = { Text("55 5555 5555", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
                         textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
-                        colors = textFieldColors()
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
+                        colors = textFieldColors(),
+                        visualTransformation = MxPhoneVisualTransformation()
                     )
                 }
             }
+
 
             // Correo
             item { Label("Correo Electrónico") }
@@ -433,6 +447,35 @@ fun Register(
     }
 }
 
+
+private class MxPhoneVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val raw = text.text
+        val formatted = buildString {
+            for (i in raw.indices) {
+                append(raw[i])
+                if (i == 1 && raw.length > 2) append(' ')
+                if (i == 5 && raw.length > 6) append(' ')
+            }
+        }
+
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                var o = offset
+                if (offset > 2) o += 1   // espacio después de 2 dígitos
+                if (offset > 6) o += 1   // espacio después de 6 dígitos
+                return o
+            }
+            override fun transformedToOriginal(offset: Int): Int {
+                var o = offset
+                if (offset > 2) o -= 1   // quita espacio tras 2 dígitos
+                if (offset > 7) o -= 1   // quita espacio tras 6 dígitos (considerando el primer espacio)
+                return o.coerceIn(0, 10)
+            }
+        }
+        return TransformedText(AnnotatedString(formatted), offsetMapping)
+    }
+}
 /**
  * Helper que desplaza el campo enfocado dentro de la vista visible cuando aparece el IME.
  * Espera un frame y un pequeño retardo para evitar saltos y luego solicita bringIntoView.
@@ -483,26 +526,36 @@ private fun BirthDateField(
         }
     )
 
-    OutlinedTextField(
-        value = value,
-        onValueChange = { /* readOnly */ },
-        readOnly = true,
-        singleLine = true,
-        placeholder = { Text("DD/MM/AAAA", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-        trailingIcon = {
-            IconButton(onClick = { showDialog.value = true }) {
-                Icon(Icons.Outlined.CalendarMonth, contentDescription = "Elegir fecha")
-            }
-        },
-        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-        colors = textFieldColors(),
-        shape = RoundedCornerShape(18.dp),
+    // 👇 Hacer clic en cualquier parte del campo abre el DatePicker
+    val interactionSource = remember { MutableInteractionSource() }
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = TextFieldDefaults.MinHeight)
-            .clickable { showDialog.value = true }
-    )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { showDialog.value = true }
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { /* readOnly */ },
+            readOnly = true,
+            singleLine = true,
+            placeholder = { Text("DD/MM/AAAA", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
+            trailingIcon = {
+                IconButton(onClick = { showDialog.value = true }) {
+                    Icon(Icons.Outlined.CalendarMonth, contentDescription = "Elegir fecha")
+                }
+            },
+            textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            colors = textFieldColors(),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = TextFieldDefaults.MinHeight)
+        )
+    }
 
     if (showDialog.value) {
         DatePickerDialog(
@@ -510,7 +563,8 @@ private fun BirthDateField(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val localDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                        // ✅ Usa la zona local para evitar desfaces por UTC
+                        val localDate = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
                         onDateSelected(localDate)
                     }
                     showDialog.value = false
@@ -527,6 +581,7 @@ private fun BirthDateField(
         }
     }
 }
+
 
 /** Locale ES-MX para formateo. */
 private val localeEsMx: Locale = Locale.Builder().setLanguage("es").setRegion("MX").build()
