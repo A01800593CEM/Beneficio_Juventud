@@ -2,6 +2,7 @@ package mx.itesm.beneficiojuventud.view
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,29 +43,41 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.PasswordTextField
 import mx.itesm.beneficiojuventud.model.users.UserProfile
+import mx.itesm.beneficiojuventud.model.users.AccountState
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
-
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/**
+ * Pantalla de registro de usuario con campos personales, fecha de nacimiento, contacto y credenciales.
+ * Valida el formulario, persiste un perfil preliminar y dispara el sign-up; al requerir confirmación navega al OTP.
+ * Maneja también el caso de signUp completo sin confirmación (auto sign-in, creación en BD y navegación).
+ */
 @Composable
 fun Register(
     nav: NavHostController,
     modifier: Modifier = Modifier,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel()
 ) {
     var nombre by remember { mutableStateOf("") }
     var apPaterno by remember { mutableStateOf("") }
     var apMaterno by remember { mutableStateOf("") }
 
-    // Fecha de nacimiento: display (UI) + db (ISO para PostgreSQL)
+    // Fecha de nacimiento: display (UI) + db (ISO)
     var fechaNacDisplay by remember { mutableStateOf("") }     // ej. "01/02/2003"
     var fechaNacDb by remember { mutableStateOf("") }          // ej. "2003-02-01"
 
@@ -76,12 +89,60 @@ fun Register(
     var errorMessage by remember { mutableStateOf("") }
 
     val authState by authViewModel.authState.collectAsState()
+    val scope = rememberCoroutineScope()
 
-    // Navegación post-registro
+    // Parche 2: latch para impedir doble creación si este flow se disparara de nuevo
+    var didCreateDirect by rememberSaveable { mutableStateOf(false) }
+
+    // Navegación post-registro (Camino B -> ConfirmSignUp)
     LaunchedEffect(authState.needsConfirmation) {
         if (authState.needsConfirmation) {
             nav.navigate(Screens.confirmSignUpWithEmail(email)) {
                 popUpTo(Screens.Register.route) { inclusive = true }
+            }
+        }
+    }
+
+    // Parche 2: Manejar signUp completo sin confirmación
+    LaunchedEffect(authState.isSuccess, authState.needsConfirmation) {
+        if (didCreateDirect) return@LaunchedEffect
+        if (authState.isSuccess && !authState.needsConfirmation) {
+            val pending = authViewModel.consumePendingUserProfile()
+            val sub = authState.cognitoSub
+
+            if (pending == null || sub.isNullOrBlank()) {
+                // Si falta info, simplemente no dispares este camino
+                return@LaunchedEffect
+            }
+
+            didCreateDirect = true
+
+            // Auto sign-in con los datos que aún tienes en la pantalla
+            authViewModel.signIn(email.trim(), password)
+
+            // Crea en BD y navega
+            scope.launch {
+                try {
+                    userViewModel.createUser(
+                        pending.copy(
+                            cognitoId = sub,
+                            email = email.trim(),
+                            accountState = AccountState.activo
+                        )
+                    )
+
+                    // Limpieza “por si acaso”
+                    authViewModel.clearPendingCredentials()
+
+                    nav.navigate(Screens.Onboarding.route) {
+                        popUpTo(Screens.LoginRegister.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                } catch (e: Exception) {
+                    didCreateDirect = false
+                    showError = true
+                    errorMessage = e.message ?: "No se pudo crear el perfil en la BD."
+                }
             }
         }
     }
@@ -106,13 +167,12 @@ fun Register(
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        // Footer en bottomBar: se eleva con IME sin empujar el contenido
         bottomBar = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.navigationBars)
-                    .windowInsetsPadding(WindowInsets.ime) // pega al teclado
+                    .windowInsetsPadding(WindowInsets.ime)
                     .padding(horizontal = 24.dp, vertical = 8.dp)
             ) {
                 MainButton(
@@ -122,15 +182,17 @@ fun Register(
                 ) {
                     showError = false
                     val userProfile = UserProfile(
-                        nombre = nombre,
-                        apellidoPaterno = apPaterno,
-                        apellidoMaterno = apMaterno,
-                        fechaNacimiento = fechaNacDb,
-                        telefono = phone,
+                        name = nombre,
+                        lastNamePaternal = apPaterno,
+                        lastNameMaternal = apMaterno,
+                        birthDate = fechaNacDb,
+                        phoneNumber = phone,
                         email = email
                     )
+                    // Guardamos perfil preliminar y credenciales en memoria
                     authViewModel.savePendingUserProfile(userProfile)
-                    authViewModel.signUp(email, password, phone)
+                    authViewModel.setPendingCredentials(email, password)
+                    authViewModel.signUp(email, password)
                 }
 
                 Row(
@@ -155,7 +217,7 @@ fun Register(
         }
     ) { innerPadding ->
 
-        // Contenido scrollable
+        // Contenido
         LazyColumn(
             modifier = modifier
                 .fillMaxSize()
@@ -261,8 +323,8 @@ fun Register(
                 BirthDateField(
                     value = fechaNacDisplay,
                     onDateSelected = { localDate ->
-                        fechaNacDisplay = localDate.format(displayFormatterEs)   // bonito para UI
-                        fechaNacDb = localDate.format(storageFormatter)          // ISO para PostgreSQL
+                        fechaNacDisplay = localDate.format(displayFormatterEs)   // UI
+                        fechaNacDb = localDate.format(storageFormatter)          // ISO
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -274,20 +336,29 @@ fun Register(
                 FocusBringIntoView {
                     OutlinedTextField(
                         value = phone,
-                        onValueChange = { phone = it },
+                        onValueChange = { input ->
+                            // Acepta solo dígitos y limita a 10 (55 5555 5555)
+                            val digits = input.filter { it.isDigit() }.take(10)
+                            phone = digits
+                        },
                         singleLine = true,
                         modifier = it
                             .fillMaxWidth()
                             .heightIn(min = TextFieldDefaults.MinHeight),
                         shape = RoundedCornerShape(18.dp),
                         leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = null) },
-                        placeholder = { Text("55 1234 5678", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
+                        placeholder = { Text("55 5555 5555", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
                         textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
-                        colors = textFieldColors()
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
+                        colors = textFieldColors(),
+                        visualTransformation = MxPhoneVisualTransformation()
                     )
                 }
             }
+
 
             // Correo
             item { Label("Correo Electrónico") }
@@ -376,7 +447,39 @@ fun Register(
     }
 }
 
-/* ---------- Focus helper: hace scroll estable hasta el campo enfocado ---------- */
+
+private class MxPhoneVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val raw = text.text
+        val formatted = buildString {
+            for (i in raw.indices) {
+                append(raw[i])
+                if (i == 1 && raw.length > 2) append(' ')
+                if (i == 5 && raw.length > 6) append(' ')
+            }
+        }
+
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                var o = offset
+                if (offset > 2) o += 1   // espacio después de 2 dígitos
+                if (offset > 6) o += 1   // espacio después de 6 dígitos
+                return o
+            }
+            override fun transformedToOriginal(offset: Int): Int {
+                var o = offset
+                if (offset > 2) o -= 1   // quita espacio tras 2 dígitos
+                if (offset > 7) o -= 1   // quita espacio tras 6 dígitos (considerando el primer espacio)
+                return o.coerceIn(0, 10)
+            }
+        }
+        return TransformedText(AnnotatedString(formatted), offsetMapping)
+    }
+}
+/**
+ * Helper que desplaza el campo enfocado dentro de la vista visible cuando aparece el IME.
+ * Espera un frame y un pequeño retardo para evitar saltos y luego solicita bringIntoView.
+ */
 @Composable
 private fun FocusBringIntoView(
     delayMs: Long = 140,
@@ -385,15 +488,13 @@ private fun FocusBringIntoView(
     val requester = remember { BringIntoViewRequester() }
     val scope = rememberCoroutineScope()
 
-    // Solo usamos el requester y esperamos un frame + pequeño delay
     val mod = Modifier
         .bringIntoViewRequester(requester)
         .onFocusEvent { state ->
             if (state.isFocused) {
                 scope.launch {
-                    // Espera a que Compose mida con el IME abierto
                     awaitFrame()
-                    delay(delayMs) // amortigua "saltos" en distintos OEM/teclados
+                    delay(delayMs)
                     requester.bringIntoView()
                 }
             }
@@ -402,17 +503,15 @@ private fun FocusBringIntoView(
     content(mod)
 }
 
-/* ------------------------------ DATE PICKER FIELD ------------------------------ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BirthDateField(
-    value: String,                       // lo que se muestra en el TextField
-    onDateSelected: (LocalDate) -> Unit, // devuelve la fecha elegida
+    value: String,
+    onDateSelected: (LocalDate) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val showDialog = remember { mutableStateOf(false) }
 
-    // Limitar fechas: 1900..hoy
     val today = remember { LocalDate.now() }
     val zone = remember { ZoneId.systemDefault() }
     val minMillis = remember { LocalDate.of(1900, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli() }
@@ -427,26 +526,36 @@ private fun BirthDateField(
         }
     )
 
-    OutlinedTextField(
-        value = value,
-        onValueChange = { /* readOnly */ },
-        readOnly = true,
-        singleLine = true,
-        placeholder = { Text("DD/MM/AAAA", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-        trailingIcon = {
-            IconButton(onClick = { showDialog.value = true }) {
-                Icon(Icons.Outlined.CalendarMonth, contentDescription = "Elegir fecha")
-            }
-        },
-        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-        colors = textFieldColors(),
-        shape = RoundedCornerShape(18.dp),
+    // 👇 Hacer clic en cualquier parte del campo abre el DatePicker
+    val interactionSource = remember { MutableInteractionSource() }
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = TextFieldDefaults.MinHeight)
-            .clickable { showDialog.value = true }
-    )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { showDialog.value = true }
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { /* readOnly */ },
+            readOnly = true,
+            singleLine = true,
+            placeholder = { Text("DD/MM/AAAA", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
+            trailingIcon = {
+                IconButton(onClick = { showDialog.value = true }) {
+                    Icon(Icons.Outlined.CalendarMonth, contentDescription = "Elegir fecha")
+                }
+            },
+            textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            colors = textFieldColors(),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = TextFieldDefaults.MinHeight)
+        )
+    }
 
     if (showDialog.value) {
         DatePickerDialog(
@@ -454,7 +563,8 @@ private fun BirthDateField(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val localDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                        // ✅ Usa la zona local para evitar desfaces por UTC
+                        val localDate = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
                         onDateSelected(localDate)
                     }
                     showDialog.value = false
@@ -472,28 +582,21 @@ private fun BirthDateField(
     }
 }
 
-/* ------------------------------ FORMATOS FECHA ------------------------------ */
 
-// Locale recomendado (sin deprecated)
-private val localeEsMx: Locale = Locale.Builder()
-    .setLanguage("es")
-    .setRegion("MX")
-    .build()
+/** Locale ES-MX para formateo. */
+private val localeEsMx: Locale = Locale.Builder().setLanguage("es").setRegion("MX").build()
 
-// Formato para mostrar en UI: "01/02/2003"
-private val displayFormatterEs: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("dd/MM/yyyy", localeEsMx)
-// Formato para BD (PostgreSQL DATE): "2003-02-01"
+/** Formato UI dd/MM/yyyy. */
+private val displayFormatterEs: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", localeEsMx)
+
+/** Formato ISO yyyy-MM-dd. */
 private val storageFormatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
-// Convierte el string de display (si no está vacío) a millis para preseleccionar el DatePicker
 private fun String.toMillisFromDisplayOrNull(zone: ZoneId): Long? = runCatching {
     if (this.isBlank()) return null
     val parsed = LocalDate.parse(this, displayFormatterEs)
     parsed.atStartOfDay(zone).toInstant().toEpochMilli()
 }.getOrNull()
-
-/* ------------------------------ ESTILO ------------------------------ */
 
 @Composable
 private fun Label(text: String, top: Dp = 0.dp) {
@@ -508,18 +611,13 @@ private fun Label(text: String, top: Dp = 0.dp) {
 private fun textFieldColors() = TextFieldDefaults.colors(
     focusedContainerColor = Color.White,
     unfocusedContainerColor = Color.White,
-
     focusedIndicatorColor = Color(0xFFD3D3D3),
     unfocusedIndicatorColor = Color(0xFFD3D3D3),
-
     cursorColor = Color(0xFF008D96),
-
     focusedLeadingIconColor = Color(0xFF7D7A7A),
     unfocusedLeadingIconColor = Color(0xFF7D7A7A),
-
     focusedTrailingIconColor = Color(0xFF7D7A7A),
     unfocusedTrailingIconColor = Color(0xFF7D7A7A),
-
     focusedPlaceholderColor = Color(0xFF616161),
     unfocusedPlaceholderColor = Color(0xFF616161),
 )

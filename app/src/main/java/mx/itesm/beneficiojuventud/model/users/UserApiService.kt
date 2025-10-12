@@ -10,16 +10,15 @@ import retrofit2.http.Path
 
 
 interface UserApiService {
-
-    @GET("users/{id}")
-    suspend fun getUserById(@Path("id") id: Int): Response<UserProfile>
+    @GET("users/{cognitoId}")
+    suspend fun getUserById(@Path("cognitoId") cognitoId: String): Response<UserProfile>
 
     @POST("users")
     suspend fun createUser(@Body user: UserProfile): Response<UserProfile>
 
-    @PATCH("users/{id}")
-    suspend fun updateUser(@Path("id") id: Int, @Body update: UserProfile) : Response<UserProfile>
+    @PATCH("users/{cognitoId}")
+    suspend fun updateUser(@Path("cognitoId") cognitoId: String, @Body update: UserProfile): Response<UserProfile>
 
-    @DELETE("users/{id}")
-    suspend fun deleteUser(@Path("id") id: Int): Response<Unit>
+    @DELETE("users/{cognitoId}")
+    suspend fun deleteUser(@Path("cognitoId") cognitoId: String): Response<Unit>
 }

@@ -32,6 +32,12 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
+/**
+ * Pantalla de inicio de sesión con email y contraseña.
+ * @param nav Controlador de navegación.
+ * @param modifier Modificador de diseño opcional.
+ * @param authViewModel ViewModel que gestiona el proceso de autenticación.
+ */
 @Composable
 fun Login(
     nav: NavHostController,
@@ -47,12 +53,14 @@ fun Login(
 
     LaunchedEffect(authState.isSuccess) {
         if (authState.isSuccess) {
-            nav.navigate(Screens.Onboarding.route) {
+            nav.navigate(Screens.Home.route) {
                 popUpTo(Screens.LoginRegister.route) { inclusive = true }
+                launchSingleTop = true
             }
             authViewModel.clearState()
         }
     }
+
     LaunchedEffect(authState.error) {
         authState.error?.let { error ->
             errorMessage = error
@@ -60,7 +68,7 @@ fun Login(
         }
     }
 
-    // ---------- Helper: bring into view estable (scroll solo automático) ----------
+    /** Envuelve un campo y lo desplaza al recibir foco para evitar ocultarlo con el teclado. */
     @Composable
     fun FocusBringIntoView(
         delayMs: Long = 140,
@@ -73,8 +81,8 @@ fun Login(
             .onFocusEvent { st ->
                 if (st.isFocused) {
                     scope.launch {
-                        awaitFrame()   // espera a que Compose mida con IME
-                        delay(delayMs) // amortigua saltos entre OEM/teclados
+                        awaitFrame()
+                        delay(delayMs)
                         requester.bringIntoView()
                     }
                 }
@@ -82,48 +90,31 @@ fun Login(
         content(mod)
     }
 
-    // ✅ Control total de insets, y bottom bar que se eleva con el IME
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.navigationBars)
                     .windowInsetsPadding(WindowInsets.ime)
-                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                MainButton(
-                    text = if (authState.isLoading) "Iniciando sesión..." else "Inicia Sesión",
-                    enabled = !authState.isLoading && email.isNotEmpty() && password.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    showError = false
-                    authViewModel.signIn(email, password)
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp, bottom = 4.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Text(
+                    "¿No tienes cuenta?  ",
+                    style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                )
+                TextButton(onClick = { nav.navigate(Screens.Register.route) }) {
                     Text(
-                        "¿No tienes cuenta?  ",
-                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                        "Regístrate",
+                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF008D96))
                     )
-                    TextButton(onClick = { nav.navigate(Screens.Register.route) }) {
-                        Text(
-                            "Regístrate",
-                            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF008D96))
-                        )
-                    }
                 }
             }
         }
     ) { innerPadding ->
-
-        // Raíz: aplicamos insets del Scaffold, y bloqueamos scroll manual
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -132,8 +123,7 @@ fun Login(
                 .dismissKeyboardOnTap()
         ) {
             LazyColumn(
-                // 🔒 Bloquea gestos del usuario, pero permite desplazamiento programático
-                userScrollEnabled = false,
+                userScrollEnabled = true,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 24.dp, vertical = 24.dp),
@@ -150,7 +140,6 @@ fun Login(
                         )
                     }
                 }
-
                 item {
                     Text(
                         "Inicia Sesión",
@@ -162,7 +151,6 @@ fun Login(
                         modifier = Modifier.padding(top = 18.dp, start = 6.dp, end = 6.dp, bottom = 14.dp)
                     )
                 }
-
                 item {
                     Text(
                         "Por favor, inicie sesión en su cuenta",
@@ -171,7 +159,6 @@ fun Login(
                         modifier = Modifier.padding(horizontal = 6.dp)
                     )
                 }
-
                 item {
                     Text(
                         "Correo Electrónico",
@@ -179,19 +166,15 @@ fun Login(
                         modifier = Modifier.padding(start = 6.dp, top = 32.dp, end = 6.dp, bottom = 8.dp)
                     )
                 }
-
                 item {
                     FocusBringIntoView {
                         EmailTextField(
                             value = email,
                             onValueChange = { email = it },
-                            modifier = it
-                                .fillMaxWidth()
-                                .padding(horizontal = 6.dp)
+                            modifier = it.fillMaxWidth().padding(horizontal = 6.dp)
                         )
                     }
                 }
-
                 item {
                     Text(
                         "Contraseña",
@@ -199,57 +182,58 @@ fun Login(
                         modifier = Modifier.padding(start = 6.dp, top = 20.dp, end = 6.dp, bottom = 8.dp)
                     )
                 }
-
                 item {
                     FocusBringIntoView {
                         PasswordTextField(
                             value = password,
                             onValueChange = { password = it },
-                            modifier = it
-                                .fillMaxWidth()
-                                .padding(horizontal = 6.dp)
+                            modifier = it.fillMaxWidth().padding(horizontal = 6.dp)
                         )
                     }
                 }
-
                 item {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 0.dp, vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 0.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = rememberMe, onCheckedChange = { rememberMe = it })
                             Text(
                                 "Recuérdame",
-                                style = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                                style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
                             )
                         }
                         TextButton(onClick = { nav.navigate(Screens.ForgotPassword.route) }) {
                             Text(
                                 "¿Olvidaste tu contraseña?",
-                                style = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                                style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
                             )
                         }
+                    }
+                }
+
+                // BOTÓN PRINCIPAL EN EL CONTENIDO
+                item {
+                    MainButton(
+                        text = if (authState.isLoading) "Iniciando sesión..." else "Inicia Sesión",
+                        enabled = !authState.isLoading && email.isNotEmpty() && password.isNotEmpty(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp, vertical = 12.dp)
+                    ) {
+                        showError = false
+                        authViewModel.signIn(email, password)
                     }
                 }
 
                 if (showError && errorMessage.isNotEmpty()) {
                     item {
                         Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
                         ) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -276,12 +260,9 @@ fun Login(
                         icon = painterResource(id = R.drawable.logo_google),
                         contentDescription = "Continuar con Google",
                         onClick = { /* TODO */ },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp)
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
                     )
                 }
-
                 item {
                     AltLoginButton(
                         text = "Continuar con Facebook",
@@ -291,13 +272,12 @@ fun Login(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-
-                // No agregamos “¿No tienes cuenta?” aquí: ya está en bottomBar.
             }
         }
     }
 }
 
+/** Vista previa de [Login] en el editor de Android Studio. */
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, showSystemUi = true)
 @Composable

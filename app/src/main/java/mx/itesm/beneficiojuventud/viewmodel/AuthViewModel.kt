@@ -11,16 +11,14 @@ import mx.itesm.beneficiojuventud.model.auth.AuthRepository
 import mx.itesm.beneficiojuventud.model.auth.AuthState
 import mx.itesm.beneficiojuventud.model.users.UserProfile
 
-// Estado global de la app
+/** Estado global de la app. */
 data class AppState(
     val isLoading: Boolean = true,
     val isAuthenticated: Boolean = false,
     val hasCheckedAuth: Boolean = false
 )
 
-/**
- * ViewModel unificado para autenticación y estado global de sesión.
- */
+/** ViewModel unificado para autenticación y estado global de sesión. */
 class AuthViewModel : ViewModel() {
 
     private val authRepository = AuthRepository()
@@ -42,8 +40,20 @@ class AuthViewModel : ViewModel() {
     private var _pendingUserProfile: UserProfile? = null
     val pendingUserProfile: UserProfile? get() = _pendingUserProfile
 
+    // Credenciales temporales SOLO en memoria (no BD)
+    private var _pendingEmail: String? = null
+    private var _pendingPlainPassword: String? = null
+
+    fun setPendingCredentials(email: String, password: String) {
+        _pendingEmail = email
+        _pendingPlainPassword = password
+    }
+    fun clearPendingCredentials() {
+        _pendingEmail = null
+        _pendingPlainPassword = null
+    }
+
     init {
-        // Revisa el estado de autenticación al iniciar
         refreshAuthState()
     }
 
@@ -52,26 +62,14 @@ class AuthViewModel : ViewModel() {
     // =========================================================
     fun refreshAuthState() {
         viewModelScope.launch {
-            // 1) Marca loading en la app
             _appState.value = _appState.value.copy(isLoading = true)
-
-            // 2) Pregunta si hay sesión
             val isSignedIn = authRepository.isUserSignedIn()
-
-            // 3) Actualiza estados de auth y app
-            _authState.value = if (isSignedIn) {
-                AuthState(isSuccess = true)
-            } else {
-                AuthState()
-            }
 
             _appState.value = AppState(
                 isLoading = false,
                 isAuthenticated = isSignedIn,
                 hasCheckedAuth = true
             )
-
-            // 4) Carga usuario (opcional pero útil)
             getCurrentUser()
         }
     }
@@ -104,9 +102,15 @@ class AuthViewModel : ViewModel() {
                 result.fold(
                     onSuccess = { r ->
                         Log.d("AuthViewModel", "SignUp exitoso: needsConfirmation=${!r.isSignUpComplete}")
+                        val sub = r.userId // <- sub de Cognito (cognitoId)
+
+                        // 👇 NUEVO: recuerda en memoria el cognitoId desde YA
+                        _currentUserId.value = sub
+
                         _authState.value = AuthState(
                             isSuccess = r.isSignUpComplete,
-                            needsConfirmation = !r.isSignUpComplete
+                            needsConfirmation = !r.isSignUpComplete,
+                            cognitoSub = sub
                         )
                     },
                     onFailure = { e ->
@@ -121,14 +125,62 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+
     fun confirmSignUp(email: String, code: String) {
         viewModelScope.launch {
-            _authState.value = AuthState(isLoading = true)
+            // Mantén el sub previo
+            val priorSub = _authState.value.cognitoSub
+
+            // no pises el estado entero; solo marca loading y limpia error
+            _authState.value = _authState.value.copy(isLoading = true, error = null)
+
             val result = authRepository.confirmSignUp(email, code)
             result.fold(
-                onSuccess = { _authState.value = AuthState(isSuccess = true) },
+                onSuccess = { isComplete ->
+                    // confirmación lista
+                    _authState.value = _authState.value.copy(
+                        isLoading = false,
+                        isSuccess = isComplete,
+                        needsConfirmation = false,
+                        cognitoSub = priorSub
+                    )
+
+                    // AUTO SIGN-IN si tenemos credenciales en memoria
+                    val pendingEmail = _pendingEmail
+                    val pendingPw = _pendingPlainPassword
+                    if (isComplete && !pendingEmail.isNullOrBlank() && !pendingPw.isNullOrBlank()) {
+                        viewModelScope.launch {
+                            val signInResult = authRepository.signIn(pendingEmail, pendingPw)
+                            signInResult.fold(
+                                onSuccess = { r ->
+                                    if (r.isSignedIn) {
+                                        refreshAuthState()
+                                    } else {
+                                        _authState.value = _authState.value.copy(
+                                            isSuccess = false,
+                                            needsConfirmation = true
+                                        )
+                                    }
+                                    // Limpia credenciales temporales pase lo que pase
+                                    clearPendingCredentials()
+                                },
+                                onFailure = { e ->
+                                    _authState.value = _authState.value.copy(
+                                        isSuccess = false,
+                                        error = e.message ?: "No se pudo iniciar sesión automáticamente"
+                                    )
+                                    clearPendingCredentials()
+                                }
+                            )
+                        }
+                    }
+                },
                 onFailure = { e ->
-                    _authState.value = AuthState(error = e.message ?: "Código de confirmación inválido")
+                    _authState.value = _authState.value.copy(
+                        isLoading = false,
+                        isSuccess = false,
+                        error = e.message ?: "Código de confirmación inválido"
+                    )
                 }
             )
         }
@@ -160,7 +212,8 @@ class AuthViewModel : ViewModel() {
                     onSuccess = { r ->
                         Log.d("AuthViewModel", "SignIn exitoso: isSignedIn=${r.isSignedIn}")
                         if (r.isSignedIn) {
-                            // Recalcula AppState y carga usuario
+
+                            _authState.value = AuthState(isSuccess = true)
                             refreshAuthState()
                         } else {
                             _authState.value = AuthState(needsConfirmation = true)
@@ -188,7 +241,7 @@ class AuthViewModel : ViewModel() {
                     _currentUser.value = null
                     _currentUserId.value = null
                     _pendingUserProfile = null
-                    // Recalcula AppState para mandar al Login
+                    clearPendingCredentials() // limpieza extra (Parche 4)
                     refreshAuthState()
                 },
                 onFailure = { e ->

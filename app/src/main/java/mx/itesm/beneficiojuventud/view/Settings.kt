@@ -28,13 +28,19 @@ import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
+/**
+ * Pantalla de Configuración con preferencias de notificaciones, correo, ubicación y accesos a acciones de cuenta.
+ * Incluye top bar con regreso, divider con gradiente y bottom bar con tabs de la app.
+ * @param nav Controlador de navegación para cambiar de pestañas o abrir pantallas relacionadas.
+ * @param modifier Modificador externo para composición/pruebas.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Settings(nav: NavHostController, modifier: Modifier = Modifier) {
     var selectedTab by remember { mutableStateOf(BJTab.Profile) }
     val appVersion = "1.0.01"
 
-    // Estados de switches (puedes levantar a ViewModel)
+    // Estados de switches (idealmente elevados a ViewModel si se persisten)
     var pushEnabled by remember { mutableStateOf(false) }
     var emailEnabled by remember { mutableStateOf(true) }
     var locationEnabled by remember { mutableStateOf(true) }
@@ -153,6 +159,14 @@ fun Settings(nav: NavHostController, modifier: Modifier = Modifier) {
                     )
                 }
                 item {
+                    SettingItemNavigable(
+                        icon = Icons.Outlined.AllInclusive,
+                        title = "Prueba de IA (esto se moverá)",
+                        subtitle = "Test",
+                        onClick = { nav.navigate(Screens.GenerarPromocion.route)}
+                    )
+                }
+                item {
                     DangerItem(
                         icon = Icons.Outlined.DeleteOutline,
                         title = "Eliminar Cuenta",
@@ -181,6 +195,10 @@ fun Settings(nav: NavHostController, modifier: Modifier = Modifier) {
 
 // ---------- Componentes reutilizables ----------
 
+/**
+ * Contenedor estilizado para ítems de configuración con borde sutil y padding interno.
+ * @param content Contenido en una Row que compone el ítem.
+ */
 @Composable
 private fun SettingSurface(content: @Composable RowScope.() -> Unit) {
     Surface(
@@ -202,6 +220,14 @@ private fun SettingSurface(content: @Composable RowScope.() -> Unit) {
     }
 }
 
+/**
+ * Ítem de configuración con interruptor para activar/desactivar una preferencia.
+ * @param icon Icono principal del ítem.
+ * @param title Título de la preferencia.
+ * @param subtitle Descripción corta de la preferencia.
+ * @param checked Estado actual del switch.
+ * @param onCheckedChange Callback con el nuevo estado.
+ */
 @Composable
 private fun SettingItemSwitch(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -245,10 +271,16 @@ private fun SettingItemSwitch(
                 uncheckedTrackColor = Color(0xFFE0E0E0)
             )
         )
-
     }
 }
 
+/**
+ * Ítem navegable de configuración que abre otra pantalla o flujo al tocarse.
+ * @param icon Icono principal del ítem.
+ * @param title Título de la acción.
+ * @param subtitle Descripción corta de la acción.
+ * @param onClick Acción al tocar la fila.
+ */
 @Composable
 private fun SettingItemNavigable(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -267,7 +299,7 @@ private fun SettingItemNavigable(
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick) // ✅ Toda la fila es clickeable
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
@@ -305,7 +337,12 @@ private fun SettingItemNavigable(
     }
 }
 
-
+/**
+ * Ítem de acción peligrosa (destructiva) como eliminar cuenta.
+ * @param icon Icono con color de alerta.
+ * @param title Texto de la acción.
+ * @param onClick Acción al tocar la fila.
+ */
 @Composable
 private fun DangerItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -347,6 +384,9 @@ private fun DangerItem(
     }
 }
 
+/**
+ * Vista previa de la pantalla de Configuración con tema y sistema UI visibles.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun SettingsScreenPreview() {

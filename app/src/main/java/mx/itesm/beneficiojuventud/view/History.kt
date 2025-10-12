@@ -30,8 +30,19 @@ import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
 // ---- Modelo de datos ----
+
+/**
+ * Tipos de eventos mostrados en el historial del usuario.
+ */
 enum class HistoryType { CUPON_USADO, CUPON_GUARDADO, FAVORITO_AGREGADO }
 
+/**
+ * Entrada de historial que describe un evento mostrado en la lista.
+ * @param type Tipo de evento registrado.
+ * @param title Título corto del evento.
+ * @param subtitle Descripción breve o contexto del evento.
+ * @param date Fecha legible del evento en formato corto.
+ */
 data class HistoryEntry(
     val type: HistoryType,
     val title: String,
@@ -40,6 +51,13 @@ data class HistoryEntry(
 )
 
 // ---- Pantalla ----
+
+/**
+ * Pantalla de historial con encabezado, divisor y lista de eventos.
+ * Incluye barra inferior de navegación con pestañas de la app.
+ * @param nav Controlador de navegación para cambiar de pantalla.
+ * @param modifier Modificador opcional para ajustar el contenedor de la pantalla.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun History(nav: NavHostController, modifier: Modifier = Modifier) {
@@ -171,6 +189,12 @@ fun History(nav: NavHostController, modifier: Modifier = Modifier) {
 }
 
 // ---- Item / Tarjeta ----
+
+/**
+ * Tarjeta de una entrada del historial con icono, textos y fecha.
+ * @param entry Entrada de historial a mostrar.
+ * @param onClick Acción al tocar la tarjeta.
+ */
 @Composable
 private fun HistoryCard(
     entry: HistoryEntry,
@@ -247,6 +271,9 @@ private fun HistoryCard(
     }
 }
 
+/**
+ * Vista previa del historial para herramientas de diseño.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun HistoryScreenPreview() {

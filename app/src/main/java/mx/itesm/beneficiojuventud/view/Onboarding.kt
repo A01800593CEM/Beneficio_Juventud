@@ -23,6 +23,15 @@ import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
+/**
+ * Pantalla inicial del flujo de bienvenida de Beneficio Joven.
+ * Presenta el logotipo, una breve descripción y un botón para continuar con la selección de categorías.
+ * @param nav Controlador de navegación para gestionar transiciones de pantallas.
+ * @param modifier Modificador opcional para personalizar el diseño externo.
+ * @param imageRes Recurso drawable mostrado como ilustración principal.
+ * @param onStart Acción ejecutada al presionar el botón “¡Empecemos!”, por defecto navega a [Screens.OnboardingCategories].
+ * @return Unit
+ */
 @Composable
 fun Onboarding(
     nav: NavHostController,
@@ -122,6 +131,10 @@ fun Onboarding(
     }
 }
 
+/**
+ * Previsualiza la pantalla de bienvenida en modo claro y con sistema UI visible.
+ * @return Unit
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun OnboardingPreview() {

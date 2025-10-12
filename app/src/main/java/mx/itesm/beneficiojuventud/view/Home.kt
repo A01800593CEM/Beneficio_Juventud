@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.view
 
+import CategoryViewModel
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -19,10 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
@@ -30,10 +32,9 @@ import mx.itesm.beneficiojuventud.components.*
 import mx.itesm.beneficiojuventud.utils.MerchantCardData
 import mx.itesm.beneficiojuventud.model.Promo
 import mx.itesm.beneficiojuventud.model.PromoTheme
-import mx.itesm.beneficiojuventud.model.popularCategories
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
-// 🔹 Demo data
+/** Datos demo para el carrusel de promociones. */
 private val promos = listOf(
     Promo(
         R.drawable.el_fuego_sagrado,
@@ -65,6 +66,7 @@ private val promos = listOf(
     )
 )
 
+/** Datos demo de comercios para secciones “Especiales” y “Lo Nuevo”. */
 private val specialOffers = listOf(
     MerchantCardData("Fuego Lento & Brasa", "Asador • Parrilla", 4.7),
     MerchantCardData("Bocado Rápido", "Comida rápida", 4.6),
@@ -79,19 +81,36 @@ private val newOffers = listOf(
     MerchantCardData("VeggieGo", "Saludable", 4.4)
 )
 
+/**
+ * Pantalla Home con saludo, búsqueda, categorías (desde API) y listados de promos.
+ * @param nav Controlador de navegación para mover entre pantallas.
+ * @param modifier Modificador opcional para el layout.
+ * @param vm ViewModel de categorías (mismo que Onboarding).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
+fun Home(
+    nav: NavHostController,
+    modifier: Modifier = Modifier,
+    vm: CategoryViewModel = viewModel()
+) {
     var selectedTab by remember { mutableStateOf(BJTab.Home) }
     var search by rememberSaveable { mutableStateOf("") }
+    var selectedCategoryName by rememberSaveable { mutableStateOf<String?>(null) }
 
-    // 🔸 NUEVO: categoría seleccionada para filtrar (null = sin filtro)
-    var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
+    // Estados del VM de categorías
+    val categories by vm.categories.collectAsState()
+    val isLoading by vm.loading.collectAsState(initial = false)
+    val error by vm.error.collectAsState(initial = null)
 
-    // 🔸 NUEVO: filtra los promos según la categoría elegida
-    val filteredPromos = remember(selectedCategory) {
-        if (selectedCategory.isNullOrBlank()) promos
-        else promos.filter { matchesCategory(it, selectedCategory!!) }
+    // Carga inicial de categorías
+    LaunchedEffect(Unit) {
+        if (categories.isEmpty()) vm.loadCategories()
+    }
+
+    val filteredPromos = remember(selectedCategoryName) {
+        if (selectedCategoryName.isNullOrBlank()) promos
+        else promos.filter { matchesCategory(it, selectedCategoryName!!) }
     }
 
     Scaffold(
@@ -156,9 +175,7 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
                 BJSearchBar(
                     query = search,
                     onQueryChange = { search = it },
-                    onSearch = {
-                        // TODO: búsqueda global
-                    },
+                    onSearch = { /* TODO: búsqueda global */ },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -191,47 +208,82 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
                 .padding(padding),
             contentPadding = PaddingValues(bottom = 96.dp)
         ) {
-            // Categorías
+            // Categorías (API)
             item {
                 SectionTitle(
                     "Categorías Populares",
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-                Row(
-                    Modifier
-                        .padding(horizontal = 16.dp)
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    // 🔸 NUEVO: click para filtrar; click de nuevo para quitar filtro
-                    popularCategories.forEach { cat ->
-                        Box(
-                            modifier = Modifier
-                                .wrapContentWidth()
-                                .clickable {
-                                    selectedCategory =
-                                        if (selectedCategory == cat.label) null else cat.label
-                                }
+
+                when {
+                    isLoading -> {
+                        Row(
+                            Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            CategoryPill(icon = cat.icon, label = cat.label)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text("Cargando categorías…")
+                        }
+                    }
+
+                    error != null -> {
+                        Row(
+                            Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Error al cargar categorías",
+                                color = Color(0xFFB00020),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            TextButton(onClick = { vm.loadCategories() }) { Text("Reintentar") }
+                        }
+                    }
+
+                    else -> {
+                        Row(
+                            Modifier
+                                .padding(horizontal = 16.dp)
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            categories.forEach { c ->
+                                val name = c.name ?: return@forEach
+                                // Usa un ícono por defecto; si tu API trae tipo/icono, mapéalo aquí
+                                val icon = Icons.Outlined.NotificationsNone
+
+                                CategoryPill(
+                                    icon = icon,
+                                    label = name,
+                                    selected = selectedCategoryName == name,
+                                    onClick = {
+                                        selectedCategoryName =
+                                            if (selectedCategoryName == name) null else name
+                                    }
+                                )
+                            }
                         }
                     }
                 }
 
-                // 🔸 NUEVO: chip para limpiar filtro + subtítulo de filtro activo
-                if (!selectedCategory.isNullOrBlank()) {
+                if (!selectedCategoryName.isNullOrBlank()) {
                     Spacer(Modifier.height(8.dp))
                     Row(
                         Modifier.padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         AssistChip(
-                            onClick = { selectedCategory = null },
+                            onClick = { selectedCategoryName = null },
                             label = { Text("Quitar filtro") }
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "Filtrando por: ${selectedCategory}",
+                            "Filtrando por: $selectedCategoryName",
                             color = Color(0xFF8C8C8C),
                             fontSize = 12.sp
                         )
@@ -241,18 +293,15 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
                 Spacer(Modifier.height(8.dp))
             }
 
-            // Recomendado → ahora se filtra según la categoría seleccionada
+            // Recomendado / Filtrado
             item {
                 SectionTitle(
-                    if (selectedCategory.isNullOrBlank())
-                        "Recomendado para ti"
-                    else
-                        "Cupones (${selectedCategory})",
+                    if (selectedCategoryName.isNullOrBlank()) "Recomendado para ti"
+                    else "Cupones ($selectedCategoryName)",
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
                 if (filteredPromos.isEmpty()) {
-                    // Estado vacío cuando no hay coincidencias
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -269,39 +318,27 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
                     PromoCarousel(
                         promos = filteredPromos,
                         modifier = Modifier.height(130.dp),
-                        onItemClick = { _ ->
-                            nav.navigate(Screens.PromoQR.route)
-                        }
+                        onItemClick = { _ -> nav.navigate(Screens.PromoQR.route) }
                     )
                 }
             }
 
-            // Ofertas Especiales → Business
+            // Ofertas Especiales
             item {
                 SectionTitle(
                     "Ofertas Especiales",
                     Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp, bottom = 6.dp)
                 )
-                MerchantRow(
-                    data = specialOffers,
-                    onItemClick = { _ ->
-                        nav.navigate(Screens.Business.route)
-                    }
-                )
+                MerchantRow(data = specialOffers) { _ -> nav.navigate(Screens.Business.route) }
             }
 
-            // Lo nuevo → Business (opcional)
+            // Lo nuevo
             item {
                 SectionTitle(
                     "Lo Nuevo",
                     Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 6.dp)
                 )
-                MerchantRow(
-                    data = newOffers,
-                    onItemClick = { _ ->
-                        nav.navigate(Screens.Business.route)
-                    }
-                )
+                MerchantRow(data = newOffers) { _ -> nav.navigate(Screens.Business.route) }
             }
 
             // Pie
@@ -315,6 +352,7 @@ fun Home(nav: NavHostController, modifier: Modifier = Modifier) {
     }
 }
 
+/** Vista previa de [Home] con datos demo. */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun HomePreview() {
@@ -324,11 +362,12 @@ private fun HomePreview() {
     }
 }
 
-/* ────────────────────────────────────────────────────────────────────────────
-   Utilidad de mapeo de categorías → ajusta a tu taxonomía real
-   Idealmente tus Promos deberían tener un campo `category` o `tags`.
-   Aquí hago un mapeo demo por `subtitle` y texto.
-   ──────────────────────────────────────────────────────────────────────────── */
+/**
+ * Verifica si un [Promo] coincide con una categoría textual.
+ * @param promo Promoción a evaluar.
+ * @param category Categoría a comparar (texto).
+ * @return `true` si hay coincidencia en tags o texto; `false` en caso contrario.
+ */
 private fun matchesCategory(promo: Promo, category: String): Boolean {
     val c = category.lowercase()
 
@@ -341,6 +380,5 @@ private fun matchesCategory(promo: Promo, category: String): Boolean {
     }
 
     val text = "${promo.title} ${promo.subtitle} ${promo.body}".lowercase()
-
     return c in tags || text.contains(c)
 }
