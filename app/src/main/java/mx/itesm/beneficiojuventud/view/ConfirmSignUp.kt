@@ -27,7 +27,6 @@ import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.CodeTextField
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
-import mx.itesm.beneficiojuventud.viewmodel.AppViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,7 +35,6 @@ fun ConfirmSignUp(
     email: String,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = viewModel(),
-    appViewModel: AppViewModel? = null
 ) {
     var code by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }

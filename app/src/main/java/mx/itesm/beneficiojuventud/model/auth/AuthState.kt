@@ -1,5 +1,4 @@
-package mx.itesm.beneficiojuventud.model
-
+package mx.itesm.beneficiojuventud.model.auth
 
 data class AuthState(
     val isLoading: Boolean = false,

@@ -23,11 +23,20 @@ export class User {
     id: number;
 
     /**
+     * The unique identifier from Cognito for the user.
+     * Used for authentication and linking with Cognito user.
+     * @maps cognito_id
+     * @maxLength 50
+     */
+    @Column({name: "cognito_id"})
+    cognitoId: string;
+
+    /**
    * Nombre(s) del usuario.
    * @example "Iván"
    */
     @Column({name : "nombre"})
-    name: String;
+    name: string;
 
      /**
    * Apellido paterno del usuario.
@@ -55,14 +64,14 @@ export class User {
    * @example "+52 5512345678"
    */
     @Column({name: "telefono"})
-    phoneNumber: String;
+    phoneNumber: string;
 
     /**
    * Correo electrónico del usuario.
    * @example "ivan@example.com"
    */
     @Column({name: "correo_electronico"})
-    email: String;
+    email: string;
 
     /**
    * Fecha de registro del usuario (se asigna automáticamente al crear).

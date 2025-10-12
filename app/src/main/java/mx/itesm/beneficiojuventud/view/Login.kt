@@ -30,29 +30,27 @@ import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.*
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
-import mx.itesm.beneficiojuventud.viewmodel.AppViewModel
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
 @Composable
 fun Login(
     nav: NavHostController,
-    appViewModel: AppViewModel? = null,
     modifier: Modifier = Modifier,
-    viewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel()
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
     var showError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
-    val authState by viewModel.authState.collectAsState()
+    val authState by authViewModel.authState.collectAsState()
 
     LaunchedEffect(authState.isSuccess) {
         if (authState.isSuccess) {
             nav.navigate(Screens.Onboarding.route) {
                 popUpTo(Screens.LoginRegister.route) { inclusive = true }
             }
-            viewModel.clearState()
+            authViewModel.clearState()
         }
     }
     LaunchedEffect(authState.error) {
@@ -101,7 +99,7 @@ fun Login(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     showError = false
-                    viewModel.signIn(email, password)
+                    authViewModel.signIn(email, password)
                 }
                 Row(
                     modifier = Modifier
@@ -263,7 +261,7 @@ fun Login(
                                 IconButton(onClick = {
                                     showError = false
                                     errorMessage = ""
-                                    viewModel.clearState()
+                                    authViewModel.clearState()
                                 }) { Text("✕", color = Color(0xFFD32F2F)) }
                             }
                         }
@@ -306,7 +304,7 @@ fun Login(
 fun PreviewLogin() {
     BeneficioJuventudTheme {
         val navController = rememberNavController()
-        val fakeAppViewModel = AppViewModel()
-        Login(nav = navController, appViewModel = fakeAppViewModel)
+        val fakeAppViewModel = AuthViewModel()
+        Login(nav = navController, authViewModel = fakeAppViewModel)
     }
 }

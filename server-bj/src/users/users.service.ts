@@ -68,8 +68,8 @@ export class UsersService {
    * @returns The matching {@link User} or `null` if not found.
    * @example await usersService.trueFindOne(15);
    */
-  async trueFindOne(id: number): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { id }});
+   async trueFindOne(cognitoId: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { cognitoId }});
   }
 
   /**
@@ -80,10 +80,10 @@ export class UsersService {
    * @returns The matching active {@link User}.
    * @example await usersService.findOne(8);
    */
-  async findOne(id: number): Promise<User | null> {
-    const user = await this.usersRepository.findOne({ where: { id, accountState: UserState.ACTIVE }});
+  async findOne(cognitoId: string): Promise<User | null> {
+    const user = await this.usersRepository.findOne({ where: { cognitoId, accountState: UserState.ACTIVE }});
     if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
     return user
   }
@@ -99,14 +99,14 @@ export class UsersService {
    * @example
    * await usersService.update(5, { phoneNumber: '+52 5587654321' });
    */
-  async update(id: number, updateUserDto: UpdateUserDto): Promise<User | null>  {
+  async update(cognitoId: string, updateUserDto: UpdateUserDto): Promise<User | null>  {
     const user = await this.usersRepository.preload({
-      id,
+      cognitoId,
       ...updateUserDto
     });
 
     if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
     
     return this.usersRepository.save(user)
@@ -122,12 +122,12 @@ export class UsersService {
    * @example
    * await usersService.remove(7);
    */
-  async remove(id: number): Promise<void>{
-    const user = await this.findOne(id);
+  async remove(cognitoId: string): Promise<void>{
+    const user = await this.findOne(cognitoId);
     if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
-    await this.usersRepository.update(id, { accountState: UserState.INACTIVE });
+    await this.usersRepository.update(cognitoId, { accountState: UserState.INACTIVE });
   }
 
   /**
@@ -140,12 +140,12 @@ export class UsersService {
    * @example
    * await usersService.reActivate(7);
    */
-  async reActivate(id: number): Promise<User> {
-    const user = await this.trueFindOne(id);
+  async reActivate(cognitoId: string): Promise<User> {
+    const user = await this.trueFindOne(cognitoId);
     if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
-    await this.usersRepository.update(id, { accountState: UserState.ACTIVE })
+    await this.usersRepository.update(cognitoId, { accountState: UserState.ACTIVE })
     return user;
   }
 

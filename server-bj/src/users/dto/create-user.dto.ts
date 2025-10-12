@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsEnum, MinLength, IsNotEmpty, IsDate, IsPhoneNumber } from 'class-validator';
+import { IsString, IsEmail, IsEnum, MinLength, IsNotEmpty, IsDate, IsPhoneNumber, MaxLength } from 'class-validator';
 import { Type } from "class-transformer";
 import { UserState } from "../enums/user-state.enum";
 
@@ -27,6 +27,11 @@ export class CreateUserDto {
     @IsString()
     @IsNotEmpty()
     name: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(50)
+    cognitoId: string;
 
     @IsString()
     @IsNotEmpty()

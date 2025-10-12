@@ -24,6 +24,11 @@ export class CreateCollaboratorDto {
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(50)
+  cognitoId: string;
+
+  @IsString()
+  @IsNotEmpty()
   @MaxLength(20)
   rfc: string;
 

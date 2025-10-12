@@ -2,6 +2,8 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { CollaboratorsService } from './collaborators.service';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
 import { UpdateCollaboratorDto } from './dto/update-collaborator.dto';
+import { CategoriesByNamePipe } from 'src/common/pipes/transform-to-id.pipe';
+import { Category } from 'src/categories/entities/category.entity';
 
 /**
  * Controller responsible for handling collaborator-related HTTP requests.
@@ -36,8 +38,13 @@ export class CollaboratorsController {
    * }
    */
   @Post()
-  create(@Body() createCollaboratorDto: CreateCollaboratorDto) {
-    return this.collaboratorsService.create(createCollaboratorDto);
+  create(
+    @Body('categories', CategoriesByNamePipe) categories: Category[],
+    @Body() createCollaboratorDto: CreateCollaboratorDto) {
+    return this.collaboratorsService.create({
+      ...createCollaboratorDto,
+      categoryIds: categories.map(category => category.id),
+    });
   }
 
   /**
@@ -58,7 +65,7 @@ export class CollaboratorsController {
    */
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.collaboratorsService.findOne(+id);
+    return this.collaboratorsService.findOne(id);
   }
 
   /**
@@ -88,7 +95,7 @@ export class CollaboratorsController {
    */
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateCollaboratorDto: UpdateCollaboratorDto) {
-    return this.collaboratorsService.update(+id, updateCollaboratorDto);
+    return this.collaboratorsService.update(id, updateCollaboratorDto);
   }
 
   /**
@@ -99,7 +106,7 @@ export class CollaboratorsController {
    */
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.collaboratorsService.remove(+id);
+    return this.collaboratorsService.remove(id);
   }
 
 }

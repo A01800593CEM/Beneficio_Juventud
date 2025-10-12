@@ -22,7 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import mx.itesm.beneficiojuventud.R
-import mx.itesm.beneficiojuventud.model.MerchantCardData
+import mx.itesm.beneficiojuventud.utils.MerchantCardData
 
 @Composable
 fun MerchantRow(

@@ -62,9 +62,9 @@ export class CollaboratorsService {
    * @returns Promise<Collaborator> The found collaborator with favorites and categories
    * @throws NotFoundException if collaborator is not found
    */
-  async findOne(id: number): Promise<Collaborator | null> {
+  async findOne(cognitoId: string): Promise<Collaborator | null> {
     const collaborator = this.collaboratorsRepository.findOne({ 
-      where: { id,
+      where: { cognitoId,
                state: CollaboratorState.ACTIVE
        },
       relations: ['favorites',
@@ -72,7 +72,7 @@ export class CollaboratorsService {
          'categories'] });
         
     if (!collaborator) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
     return collaborator
   }
@@ -83,9 +83,9 @@ export class CollaboratorsService {
    * @param id - The collaborator's unique identifier
    * @returns Promise<Collaborator> The found collaborator with favorites and categories
    */
-  async trueFindOne(id: number): Promise<Collaborator | null> {
+  async trueFindOne(cognitoId: string): Promise<Collaborator | null> {
     return this.collaboratorsRepository.findOne({ 
-      where: { id,
+      where: { cognitoId,
                state: CollaboratorState.ACTIVE
        },
       relations: ['favorites',
@@ -100,14 +100,14 @@ export class CollaboratorsService {
    * @returns Promise<Collaborator> The updated collaborator
    * @throws NotFoundException if collaborator is not found
    */
-  async update(id: number, updateCollaboratorDto: UpdateCollaboratorDto): Promise<Collaborator> {
+  async update(cognitoId: string, updateCollaboratorDto: UpdateCollaboratorDto): Promise<Collaborator> {
     const collaborator = await this.collaboratorsRepository.findOne({
-      where: { id },
+      where: { cognitoId },
       relations: ['categories'],
     });
 
     if (!collaborator) {
-      throw new NotFoundException(`Collaborator with ID ${id} not found`);
+      throw new NotFoundException(`Collaborator with ID ${cognitoId} not found`);
     }
 
     const { categoryIds, ...updateData } = updateCollaboratorDto;
@@ -127,12 +127,12 @@ export class CollaboratorsService {
    * @param id - The collaborator's unique identifier
    * @throws NotFoundException if collaborator is not found
    */
-  async remove(id: number): Promise<void> {
-    const collaborator = await this.findOne(id);
+  async remove(cognitoId: string): Promise<void> {
+    const collaborator = await this.findOne(cognitoId);
     if (!collaborator) {
       throw new NotFoundException('Collaborator not found');
     }
-    await this.collaboratorsRepository.update(id, { state: CollaboratorState.INACTIVE})
+    await this.collaboratorsRepository.update(cognitoId, { state: CollaboratorState.INACTIVE})
   }
 
   /**
@@ -141,8 +141,8 @@ export class CollaboratorsService {
    * @returns Promise<Collaborator> The found collaborator
    * @throws NotFoundException if collaborator is not found
    */
-  async reActivate(id: number): Promise<Collaborator> {
-    const collaborator = await this.trueFindOne(id);
+  async reActivate(cognitoId: string): Promise<Collaborator> {
+    const collaborator = await this.trueFindOne(cognitoId);
     if (!collaborator) {
       throw new NotFoundException('Collaborator not found');
     }
@@ -156,9 +156,9 @@ export class CollaboratorsService {
    * @returns Promise<Collaborator> The updated collaborator with new categories
    * @throws NotFoundException if collaborator is not found
    */
-  async addCategories(collaboratorId: number, categoryIds: number[]) {
+  async addCategories(collaboratorId: string, categoryIds: number[]) {
     const collaborator = await this.collaboratorsRepository.findOne({
-      where: { id: collaboratorId },
+      where: { cognitoId: collaboratorId },
       relations: ['categories'],
     });
 

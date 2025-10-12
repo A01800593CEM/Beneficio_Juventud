@@ -1,14 +1,14 @@
-package mx.itesm.beneficiojuventud.model
+package mx.itesm.beneficiojuventud.model.auth
 
 import android.util.Log
 import com.amplifyframework.auth.AuthUser
 import com.amplifyframework.auth.AuthUserAttribute
 import com.amplifyframework.auth.AuthUserAttributeKey
-import com.amplifyframework.auth.options.AuthSignUpOptions
+import com.amplifyframework.auth.cognito.result.AWSCognitoAuthSignOutResult
 import com.amplifyframework.auth.options.AuthSignOutOptions
+import com.amplifyframework.auth.options.AuthSignUpOptions
 import com.amplifyframework.auth.result.AuthSignInResult
 import com.amplifyframework.auth.result.AuthSignUpResult
-import com.amplifyframework.auth.cognito.result.AWSCognitoAuthSignOutResult
 import com.amplifyframework.core.Amplify
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -119,9 +119,9 @@ class AuthRepository {
 
     // en AuthRepository
     suspend fun resendSignUpCode(email: String): Result<Unit> =
-        kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+        suspendCancellableCoroutine { continuation ->
             try {
-                com.amplifyframework.core.Amplify.Auth.resendSignUpCode(
+                Amplify.Auth.resendSignUpCode(
                     email,
                     { /* onSuccess */ continuation.resume(Result.success(Unit)) },
                     { error -> continuation.resume(Result.failure(error)) }
@@ -135,48 +135,51 @@ class AuthRepository {
     /**
      * Cerrar sesión con manejo completo de resultados AWS Cognito
      */
-    suspend fun signOut(globalSignOut: Boolean = true): Result<Unit> = suspendCancellableCoroutine { continuation ->
+    suspend fun signOut(globalSignOut: Boolean = true): Result<Unit> =
+        suspendCancellableCoroutine { continuation ->
 
-        val options = AuthSignOutOptions.builder()
-            .globalSignOut(globalSignOut)
-            .build()
+            val options = AuthSignOutOptions.builder()
+                .globalSignOut(globalSignOut)
+                .build()
 
-        Amplify.Auth.signOut(options) { signOutResult ->
-            when (signOutResult) {
-                is AWSCognitoAuthSignOutResult.CompleteSignOut -> {
-                    Log.i(TAG, "✅ Sign out completado exitosamente")
-                    if (!continuation.isCancelled) {
-                        continuation.resume(Result.success(Unit))
-                    }
-                }
-                is AWSCognitoAuthSignOutResult.PartialSignOut -> {
-                    Log.w(TAG, "⚠️ Sign out parcial completado")
-
-                    // Manejar errores específicos del sign out parcial
-                    signOutResult.hostedUIError?.let { error ->
-                        Log.e(TAG, "Error HostedUI", error.exception)
-                    }
-                    signOutResult.globalSignOutError?.let { error ->
-                        Log.e(TAG, "Error GlobalSignOut", error.exception)
-                    }
-                    signOutResult.revokeTokenError?.let { error ->
-                        Log.e(TAG, "Error RevokeToken", error.exception)
+            Amplify.Auth.signOut(options) { signOutResult ->
+                when (signOutResult) {
+                    is AWSCognitoAuthSignOutResult.CompleteSignOut -> {
+                        Log.i(TAG, "✅ Sign out completado exitosamente")
+                        if (!continuation.isCancelled) {
+                            continuation.resume(Result.success(Unit))
+                        }
                     }
 
-                    // El usuario sigue deslogueado del dispositivo, así que es exitoso
-                    if (!continuation.isCancelled) {
-                        continuation.resume(Result.success(Unit))
+                    is AWSCognitoAuthSignOutResult.PartialSignOut -> {
+                        Log.w(TAG, "⚠️ Sign out parcial completado")
+
+                        // Manejar errores específicos del sign out parcial
+                        signOutResult.hostedUIError?.let { error ->
+                            Log.e(TAG, "Error HostedUI", error.exception)
+                        }
+                        signOutResult.globalSignOutError?.let { error ->
+                            Log.e(TAG, "Error GlobalSignOut", error.exception)
+                        }
+                        signOutResult.revokeTokenError?.let { error ->
+                            Log.e(TAG, "Error RevokeToken", error.exception)
+                        }
+
+                        // El usuario sigue deslogueado del dispositivo, así que es exitoso
+                        if (!continuation.isCancelled) {
+                            continuation.resume(Result.success(Unit))
+                        }
                     }
-                }
-                is AWSCognitoAuthSignOutResult.FailedSignOut -> {
-                    Log.e(TAG, "❌ Sign out falló completamente", signOutResult.exception)
-                    if (!continuation.isCancelled) {
-                        continuation.resume(Result.failure(signOutResult.exception))
+
+                    is AWSCognitoAuthSignOutResult.FailedSignOut -> {
+                        Log.e(TAG, "❌ Sign out falló completamente", signOutResult.exception)
+                        if (!continuation.isCancelled) {
+                            continuation.resume(Result.failure(signOutResult.exception))
+                        }
                     }
                 }
             }
         }
-    }
 
     /**
      * Resetear contraseña (inicia el flujo y envía código)
@@ -302,25 +305,26 @@ class AuthRepository {
     /**
      * Obtener atributos del usuario actual
      */
-    suspend fun fetchUserAttributes(): Result<List<AuthUserAttribute>> = suspendCancellableCoroutine { continuation ->
+    suspend fun fetchUserAttributes(): Result<List<AuthUserAttribute>> =
+        suspendCancellableCoroutine { continuation ->
 
-        Amplify.Auth.fetchUserAttributes(
-            { attributes ->
-                Log.i(TAG, "✅ User attributes retrieved: ${attributes.size} attributes")
-                attributes.forEach { attribute ->
-                    Log.i(TAG, "${attribute.key.keyString}: ${attribute.value}")
-                }
+            Amplify.Auth.fetchUserAttributes(
+                { attributes ->
+                    Log.i(TAG, "✅ User attributes retrieved: ${attributes.size} attributes")
+                    attributes.forEach { attribute ->
+                        Log.i(TAG, "${attribute.key.keyString}: ${attribute.value}")
+                    }
 
-                if (!continuation.isCancelled) {
-                    continuation.resume(Result.success(attributes))
+                    if (!continuation.isCancelled) {
+                        continuation.resume(Result.success(attributes))
+                    }
+                },
+                { error ->
+                    Log.e(TAG, "❌ Failed to fetch user attributes: ${error.message}", error)
+                    if (!continuation.isCancelled) {
+                        continuation.resume(Result.failure(error))
+                    }
                 }
-            },
-            { error ->
-                Log.e(TAG, "❌ Failed to fetch user attributes: ${error.message}", error)
-                if (!continuation.isCancelled) {
-                    continuation.resume(Result.failure(error))
-                }
-            }
-        )
-    }
+            )
+        }
 }

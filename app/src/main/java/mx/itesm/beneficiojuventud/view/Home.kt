@@ -27,7 +27,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.*
-import mx.itesm.beneficiojuventud.model.MerchantCardData
+import mx.itesm.beneficiojuventud.utils.MerchantCardData
 import mx.itesm.beneficiojuventud.model.Promo
 import mx.itesm.beneficiojuventud.model.PromoTheme
 import mx.itesm.beneficiojuventud.model.popularCategories

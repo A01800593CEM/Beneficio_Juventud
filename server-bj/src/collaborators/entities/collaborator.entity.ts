@@ -31,6 +31,15 @@ export class Collaborator {
     id: number;
 
     /**
+     * The unique identifier from Cognito for the collaborator.
+     * Used for authentication and linking with Cognito user.
+     * @maps cognito_id
+     * @maxLength 50
+     */
+    @Column({name: 'cognito_id'})
+    cognitoId: string;
+
+    /**
      * Official name of the collaborator's business.
      * @columnName nombre_negocio
      * @maxLength 255

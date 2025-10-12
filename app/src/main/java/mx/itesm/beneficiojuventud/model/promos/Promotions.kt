@@ -1,4 +1,4 @@
-package mx.itesm.beneficiojuventud.model
+package mx.itesm.beneficiojuventud.model.promos
 
 import com.google.gson.annotations.SerializedName
 import java.util.Date

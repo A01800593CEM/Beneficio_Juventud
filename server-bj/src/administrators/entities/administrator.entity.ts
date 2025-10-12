@@ -23,6 +23,15 @@ export class Administrator {
   id: number;
 
   /**
+   * The unique identifier from Cognito for the administrator.
+   * Used for authentication and linking with Cognito user.
+   * @maps cognito_id
+   * @maxLength 50
+   */
+  @Column({name: 'cognito_id'})
+  cognitoId: string;
+
+  /**
    * The administrator's first name.
    * @maps nombre
    * @maxLength 255

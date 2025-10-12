@@ -15,6 +15,5 @@ enum class BookStatus {
     @SerializedName("pendiente") pendiente,
     @SerializedName("usada") usada,
     @SerializedName("cancelada")  cancelada
-
 }
 
