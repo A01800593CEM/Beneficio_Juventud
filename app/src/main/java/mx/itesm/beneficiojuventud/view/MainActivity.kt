@@ -22,6 +22,7 @@ import com.google.gson.Gson
 import mx.itesm.beneficiojuventud.model.webhook.PromotionData
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 
 /**
  * **MainActivity**
@@ -39,32 +40,41 @@ class MainActivity : ComponentActivity() {
 
 /**
  * Muestra el contenido principal según el estado de autenticación.
- * @param authViewModel ViewModel que gestiona el estado de sesión.
  */
 @Composable
-private fun AppContent(authViewModel: AuthViewModel = viewModel()) {
-    val nav = rememberNavController() // <-- NavController estable
-    AppNav(nav = nav, authViewModel = authViewModel)
+private fun AppContent(
+    authViewModel: AuthViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel()
+) {
+    val nav = rememberNavController()
+    AppNav(
+        nav = nav,
+        authViewModel = authViewModel,
+        userViewModel = userViewModel
+    )
 }
-
-
 
 /**
  * Controla la navegación principal de la aplicación usando una ruta neutral "launcher"
  * que decide imperativamente a qué pantalla ir y limpia el back stack.
  */
 @Composable
-private fun AppNav(nav: NavHostController, authViewModel: AuthViewModel) {
+private fun AppNav(
+    nav: NavHostController,
+    authViewModel: AuthViewModel,
+    userViewModel: UserViewModel
+) {
     val appState by authViewModel.appState.collectAsState()
+    val currentUserId by authViewModel.currentUserId.collectAsState()
 
     NavHost(
         navController = nav,
         startDestination = "launcher"
     ) {
         composable("launcher") {
-            // ➊ Evita decidir más de una vez por arranque
             var decided by rememberSaveable { mutableStateOf(false) }
 
+            // 1) Decide navegación cuando ya consultamos auth
             LaunchedEffect(appState.hasCheckedAuth, appState.isAuthenticated) {
                 if (decided || !appState.hasCheckedAuth) return@LaunchedEffect
                 decided = true
@@ -82,7 +92,14 @@ private fun AppNav(nav: NavHostController, authViewModel: AuthViewModel) {
                 }
             }
 
-            // ➋ Loader mientras aún no sabemos el estado:
+            LaunchedEffect(currentUserId) {
+                userViewModel.clearUser() // limpia inmediatamente (y cancela/invalidará lo anterior)
+                if (!currentUserId.isNullOrBlank()) {
+                    userViewModel.getUserById(currentUserId!!)
+                }
+            }
+
+
             Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
         }
 
@@ -92,26 +109,26 @@ private fun AppNav(nav: NavHostController, authViewModel: AuthViewModel) {
         composable(Screens.Register.route) { Register(nav, authViewModel = authViewModel) }
         composable(Screens.ForgotPassword.route) { ForgotPassword(nav) }
         composable(Screens.RecoveryCode.route) { RecoveryCode(nav) }
-
         composable("recovery_code/{email}") { backStackEntry ->
             val email = java.net.URLDecoder.decode(
-                backStackEntry.arguments?.getString("email") ?: "", "UTF-8"
+                backStackEntry.arguments?.getString("email") ?: "",
+                "UTF-8"
             )
             RecoveryCode(nav, emailArg = email)
         }
-
         composable(Screens.ConfirmSignUp.route) { ConfirmSignUp(nav, "", authViewModel = authViewModel) }
         composable("confirm_signup/{email}") { backStackEntry ->
             val email = java.net.URLDecoder.decode(
-                backStackEntry.arguments?.getString("email") ?: "", "UTF-8"
+                backStackEntry.arguments?.getString("email") ?: "",
+                "UTF-8"
             )
             ConfirmSignUp(nav, email, authViewModel = authViewModel)
         }
-
         composable(Screens.NewPassword.route) { NewPassword(nav) }
         composable("new_password/{email}/{code}") { backStackEntry ->
             val email = java.net.URLDecoder.decode(
-                backStackEntry.arguments?.getString("email") ?: "", "UTF-8"
+                backStackEntry.arguments?.getString("email") ?: "",
+                "UTF-8"
             )
             val code = backStackEntry.arguments?.getString("code") ?: ""
             NewPassword(nav, emailArg = email, codeArg = code)
@@ -122,8 +139,8 @@ private fun AppNav(nav: NavHostController, authViewModel: AuthViewModel) {
         composable(Screens.OnboardingCategories.route) { OnboardingCategories(nav) }
 
         // --- Principales ---
-        composable(Screens.Home.route) { Home(nav) }
-        composable(Screens.Profile.route) { Profile(nav) }
+        composable(Screens.Home.route) { Home(nav, userViewModel = userViewModel) }
+        composable(Screens.Profile.route) { Profile(nav, authViewModel, userViewModel) }
         composable(Screens.EditProfile.route) { EditProfile(nav) }
         composable(Screens.History.route) { History(nav) }
         composable(Screens.Settings.route) { Settings(nav) }
@@ -144,21 +161,15 @@ private fun AppNav(nav: NavHostController, authViewModel: AuthViewModel) {
     }
 }
 
-/**
- * Convierte una cadena JSON a un objeto [PromotionData].
- */
+/** Convierte una cadena JSON a un objeto [PromotionData]. */
 private fun parsePromotionDataFromJson(json: String): PromotionData =
     Gson().fromJson(json, PromotionData::class.java)
 
-/**
- * Convierte un objeto [PromotionData] a una cadena JSON.
- */
+/** Convierte un objeto [PromotionData] a una cadena JSON. */
 private fun promotionDataToJson(promotionData: PromotionData): String =
     Gson().toJson(promotionData)
 
-/**
- * Vista previa de [AppContent] dentro del tema BeneficioJuventud.
- */
+/** Vista previa de [AppContent] dentro del tema BeneficioJuventud. */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun GreetingPreview() {

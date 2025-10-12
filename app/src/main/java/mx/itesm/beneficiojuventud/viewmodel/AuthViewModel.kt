@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import mx.itesm.beneficiojuventud.model.auth.AuthRepository
 import mx.itesm.beneficiojuventud.model.auth.AuthState
 import mx.itesm.beneficiojuventud.model.users.UserProfile
@@ -233,19 +234,54 @@ class AuthViewModel : ViewModel() {
 
     fun signOut(globalSignOut: Boolean = true) {
         viewModelScope.launch {
-            _authState.value = AuthState(isLoading = true)
-            val result = authRepository.signOut(globalSignOut)
+            // 1) Evita múltiples sign-out simultáneos
+            if (_authState.value.isLoading) return@launch
+
+            // 2) Marca loading y limpia error previo
+            _authState.value = _authState.value.copy(isLoading = true, error = null)
+
+            val result = runCatching {
+                withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    // Suponiendo que devuelve Result<Unit>; usamos getOrThrow para propagar excepción
+                    authRepository.signOut(globalSignOut).getOrThrow()
+                }
+            }
+
             result.fold(
                 onSuccess = {
-                    _authState.value = AuthState()
+                    // 3) Limpieza local SIEMPRE tras cerrar sesión
                     _currentUser.value = null
                     _currentUserId.value = null
                     _pendingUserProfile = null
-                    clearPendingCredentials() // limpieza extra (Parche 4)
+                    clearPendingCredentials()
+
+                    // Estado: no logueado, sin loading ni error
+                    _authState.value = AuthState(isLoading = false)
+
+                    // Si tu refreshAuthState() vuelve a consultar a Amplify/Cognito para emitir el estado global,
+                    // puedes mantenerla. Si te re-activa loading, muévela detrás de una bandera.
                     refreshAuthState()
                 },
                 onFailure = { e ->
-                    _authState.value = AuthState(error = e.message ?: "Error al cerrar sesión")
+                    // Si ya estaba firmado fuera, trátalo como éxito idempotente
+                    val msg = e.message.orEmpty()
+                    val alreadySignedOut =
+                        msg.contains("SignedOutException", ignoreCase = true) ||
+                                msg.contains("currently signed out", ignoreCase = true)
+
+                    if (alreadySignedOut) {
+                        _currentUser.value = null
+                        _currentUserId.value = null
+                        _pendingUserProfile = null
+                        clearPendingCredentials()
+                        _authState.value = AuthState(isLoading = false)
+                        refreshAuthState()
+                    } else {
+                        _authState.value = AuthState(
+                            isLoading = false,
+                            error = msg.ifEmpty { "Error al cerrar sesión" }
+                        )
+                    }
                 }
             )
         }
