@@ -91,38 +91,24 @@ fun Login(
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.navigationBars)
                     .windowInsetsPadding(WindowInsets.ime)
-                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                MainButton(
-                    text = if (authState.isLoading) "Iniciando sesión..." else "Inicia Sesión",
-                    enabled = !authState.isLoading && email.isNotEmpty() && password.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    showError = false
-                    authViewModel.signIn(email, password)
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp, bottom = 4.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Text(
+                    "¿No tienes cuenta?  ",
+                    style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                )
+                TextButton(onClick = { nav.navigate(Screens.Register.route) }) {
                     Text(
-                        "¿No tienes cuenta?  ",
-                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
+                        "Regístrate",
+                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF008D96))
                     )
-                    TextButton(onClick = { nav.navigate(Screens.Register.route) }) {
-                        Text(
-                            "Regístrate",
-                            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF008D96))
-                        )
-                    }
                 }
             }
         }
@@ -135,7 +121,7 @@ fun Login(
                 .dismissKeyboardOnTap()
         ) {
             LazyColumn(
-                userScrollEnabled = false,
+                userScrollEnabled = true,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 24.dp, vertical = 24.dp),
@@ -223,6 +209,21 @@ fun Login(
                         }
                     }
                 }
+
+                // BOTÓN PRINCIPAL EN EL CONTENIDO
+                item {
+                    MainButton(
+                        text = if (authState.isLoading) "Iniciando sesión..." else "Inicia Sesión",
+                        enabled = !authState.isLoading && email.isNotEmpty() && password.isNotEmpty(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp, vertical = 12.dp)
+                    ) {
+                        showError = false
+                        authViewModel.signIn(email, password)
+                    }
+                }
+
                 if (showError && errorMessage.isNotEmpty()) {
                     item {
                         Card(
@@ -248,7 +249,9 @@ fun Login(
                         }
                     }
                 }
+
                 item { GradientDivider_OR(modifier = Modifier.padding(vertical = 16.dp)) }
+
                 item {
                     AltLoginButton(
                         text = "Continuar con Google",
