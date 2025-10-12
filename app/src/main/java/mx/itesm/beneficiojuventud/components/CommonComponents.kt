@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.components
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,31 +31,50 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun CategoryPill(icon: ImageVector, label: String, onClick: () -> Unit = {}) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+fun CategoryPill(
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    onClick: () -> Unit = {}
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+    ) {
         Surface(
-            color = Color(0xFFEFF7F7),
+            color = if (selected) Color(0xFF008D96).copy(alpha = 0.15f) else Color(0xFFEFF7F7),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier
                 .size(48.dp)
+                .border(
+                    width = if (selected) 2.dp else 0.dp,
+                    color = if (selected) Color(0xFF008D96) else Color.Transparent,
+                    shape = RoundedCornerShape(12.dp)
+                )
                 .clickable { onClick() }
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     icon,
                     contentDescription = label,
-                    tint = Color(0xFF008D96),
+                    tint = if (selected) Color(0xFF008D96) else Color(0xFF008D96),
                     modifier = Modifier.size(28.dp)
                 )
             }
         }
+
         Spacer(Modifier.height(4.dp))
-        Text(label,
+
+        Text(
+            text = label,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF616161))
+            color = if (selected) Color(0xFF008D96) else Color(0xFF616161)
+        )
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
