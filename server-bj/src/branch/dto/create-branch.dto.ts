@@ -1,4 +1,16 @@
-import { IsInt, IsNotEmpty, IsObject, IsOptional, IsPhoneNumber, IsString, Matches} from 'class-validator';
+import { IsInt, 
+    IsNotEmpty, 
+    IsObject, 
+    IsOptional, 
+    IsPhoneNumber, 
+    IsString, 
+    Matches} 
+from 'class-validator';
+
+/**
+ * Data Transfer Object (DTO) for creating a new branch.
+ * Contains all necessary information for branch registration with validation rules.
+ */
 export class CreateBranchDto {
     @IsInt()
     collaboratorId: number;
@@ -15,7 +27,7 @@ export class CreateBranchDto {
     @IsString() @IsNotEmpty()
     zipCode: string;
 
-    // Acepta formato "(lon,lat)" o "(x,y)" como string
+    // Accepts format “(lon,lat)” or “(x,y)” as string
     @IsOptional()
     @IsString()
     @Matches(/^\(\s*-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?\s*\)$/)

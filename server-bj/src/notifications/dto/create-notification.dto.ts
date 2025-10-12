@@ -3,6 +3,10 @@ import { NotificationType } from '../enums/notification-type.enums';
 import { NotificationStatus } from '../enums/notification-status.enum';
 import { RecipientType } from '../enums/recipient-type.enums';
 
+/**
+ * Data Transfer Object for creating a new notification.
+ * Contains all the necessary fields and validation rules for notification creation.
+ */
 export class CreateNotificationDto {
   @IsString() @IsNotEmpty()
   title: string;

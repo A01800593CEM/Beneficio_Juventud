@@ -8,6 +8,25 @@ import { PromotionsModule } from 'src/promotions/promotions.module';
 import { BranchModule } from '../branch/branch.module';
 import { CollaboratorsModule } from 'src/collaborators/collaborators.module';
 
+/**
+ * Redeemed Coupon module that encapsulates all logic for managing coupon redemption records.
+ *
+ * @remarks
+ * This module integrates several domain entities:
+ * - {@link Redeemedcoupon}: TypeORM entity representing a coupon redemption.
+ * - {@link UsersModule}: Provides user context for redemptions.
+ * - {@link PromotionsModule}: Links each redemption to a specific promotion.
+ * - {@link BranchModule}: Associates redemptions with a branch.
+ * - {@link CollaboratorsModule}: Connects redemptions to collaborators.
+ *
+ * @example
+ * ```ts
+ * @Module({
+ *   imports: [RedeemedcouponModule],
+ * })
+ * export class AppModule {}
+ * ```
+ */
 @Module({
   controllers: [RedeemedcouponController],
   providers: [RedeemedcouponService],

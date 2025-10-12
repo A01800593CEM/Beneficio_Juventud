@@ -12,6 +12,10 @@ import {
 } from 'class-validator';
 import { CollaboratorState } from '../enums/collaborator-state.enum';
 
+/**
+ * Data Transfer Object for creating a new collaborator.
+ * Contains all the necessary fields and validation rules for collaborator creation.
+ */
 export class CreateCollaboratorDto {
   @IsString()
   @IsNotEmpty()

@@ -7,8 +7,17 @@ import { Repository, In } from 'typeorm';
 import { Category } from 'src/categories/entities/category.entity';
 import { CollaboratorState } from './enums/collaborator-state.enum';
 
+/**
+ * Service responsible for managing collaborator operations.
+ * Handles business logic for collaborator creation, retrieval, updates, and management.
+ */
 @Injectable()
 export class CollaboratorsService {
+  /**
+   * Creates an instance of CollaboratorsService.
+   * @param collaboratorsRepository - The TypeORM repository for Collaborator entities
+   * @param categoriesRepository - The TypeORM repository for Category entities
+   */
   constructor(
     @InjectRepository(Collaborator)
     private collaboratorsRepository: Repository<Collaborator>,
@@ -17,6 +26,11 @@ export class CollaboratorsService {
     private categoriesRepository: Repository<Category>
   ) {}
   
+  /**
+   * Creates a new collaborator with associated categories.
+   * @param createCollaboratorDto - The DTO containing collaborator information
+   * @returns Promise<Collaborator> The newly created collaborator
+   */
   async create(createCollaboratorDto: CreateCollaboratorDto): Promise<Collaborator> {
     const { categoryIds, ...data } = createCollaboratorDto;
 
@@ -32,13 +46,22 @@ export class CollaboratorsService {
     return this.collaboratorsRepository.save(collaborator);
   }
 
-
+  /**
+   * Retrieves all collaborators with their associated categories.
+   * @returns Promise<Collaborator[]> Array of all collaborators
+   */
   async findAll(): Promise<Collaborator[]> {
     return this.collaboratorsRepository.find({ 
       relations: ['categories'] });
   }
  
   // Only finds the active collaborators
+  /**
+   * Finds an active collaborator by ID.
+   * @param id - The collaborator's unique identifier
+   * @returns Promise<Collaborator> The found collaborator with favorites and categories
+   * @throws NotFoundException if collaborator is not found
+   */
   async findOne(id: number): Promise<Collaborator | null> {
     const collaborator = this.collaboratorsRepository.findOne({ 
       where: { id,
@@ -55,6 +78,11 @@ export class CollaboratorsService {
   }
 
   // Finds in all the database
+  /**
+   * Finds a collaborator by ID regardless of state.
+   * @param id - The collaborator's unique identifier
+   * @returns Promise<Collaborator> The found collaborator with favorites and categories
+   */
   async trueFindOne(id: number): Promise<Collaborator | null> {
     return this.collaboratorsRepository.findOne({ 
       where: { id,
@@ -65,6 +93,13 @@ export class CollaboratorsService {
          'categories'] });
   }
 
+  /**
+   * Updates a collaborator's information.
+   * @param id - The collaborator's unique identifier
+   * @param updateCollaboratorDto - The DTO containing updated information
+   * @returns Promise<Collaborator> The updated collaborator
+   * @throws NotFoundException if collaborator is not found
+   */
   async update(id: number, updateCollaboratorDto: UpdateCollaboratorDto): Promise<Collaborator> {
     const collaborator = await this.collaboratorsRepository.findOne({
       where: { id },
@@ -77,10 +112,8 @@ export class CollaboratorsService {
 
     const { categoryIds, ...updateData } = updateCollaboratorDto;
 
-    
     Object.assign(collaborator, updateData);
 
-    
     if (categoryIds && categoryIds.length > 0) {
       const categories = await this.categoriesRepository.findBy({ id: In(categoryIds) });
       collaborator.categories = categories;
@@ -89,6 +122,11 @@ export class CollaboratorsService {
     return this.collaboratorsRepository.save(collaborator);
   }
 
+  /**
+   * Soft deletes a collaborator by setting their state to INACTIVE.
+   * @param id - The collaborator's unique identifier
+   * @throws NotFoundException if collaborator is not found
+   */
   async remove(id: number): Promise<void> {
     const collaborator = await this.findOne(id);
     if (!collaborator) {
@@ -97,15 +135,27 @@ export class CollaboratorsService {
     await this.collaboratorsRepository.update(id, { state: CollaboratorState.INACTIVE})
   }
 
+  /**
+   * Retrieves an inactive collaborator for potential reactivation.
+   * @param id - The collaborator's unique identifier
+   * @returns Promise<Collaborator> The found collaborator
+   * @throws NotFoundException if collaborator is not found
+   */
   async reActivate(id: number): Promise<Collaborator> {
     const collaborator = await this.trueFindOne(id);
     if (!collaborator) {
       throw new NotFoundException('Collaborator not found');
     }
     return collaborator
-    
   }
 
+  /**
+   * Adds additional categories to an existing collaborator.
+   * @param collaboratorId - The collaborator's unique identifier
+   * @param categoryIds - Array of category IDs to add
+   * @returns Promise<Collaborator> The updated collaborator with new categories
+   * @throws NotFoundException if collaborator is not found
+   */
   async addCategories(collaboratorId: number, categoryIds: number[]) {
     const collaborator = await this.collaboratorsRepository.findOne({
       where: { id: collaboratorId },
@@ -116,18 +166,24 @@ export class CollaboratorsService {
       throw new NotFoundException('Collaborator not found');
     }
 
-    const categories = await this.categoriesRepository.findBy({ id: In([...categoryIds]) }); //.findBy({ id: In([1, 2, 3]) })
+    const categories = await this.categoriesRepository.findBy({ id: In([...categoryIds]) });
 
     collaborator.categories = [...collaborator.categories, ...categories];
 
     return this.collaboratorsRepository.save(collaborator);
   }
+
+  /**
+   * Finds all collaborators belonging to a specific category.
+   * @param categoryName - The name of the category to filter by
+   * @returns Promise<Collaborator[]> Array of collaborators in the specified category
+   */
   async findByCategory(categoryName: string): Promise<Collaborator[]> {
-  return this.collaboratorsRepository
-    .createQueryBuilder('collaborator')
-    .innerJoin('collaborator.categories', 'category')
-    .where('category.name = :categoryName', { categoryName })
-    .getMany();
+    return this.collaboratorsRepository
+      .createQueryBuilder('collaborator')
+      .innerJoin('collaborator.categories', 'category')
+      .where('category.name = :categoryName', { categoryName })
+      .getMany();
 }
 
  

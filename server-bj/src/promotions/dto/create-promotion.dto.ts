@@ -3,6 +3,14 @@ import { Type } from 'class-transformer';
 import { PromotionType } from '../enums/promotion-type.enums';
 import { PromotionState } from '../enums/promotion-state.enums';
 
+
+/**
+ * DTO representing the payload required to create a new promotion.
+ *
+ * @remarks
+ * This class is validated automatically by NestJS when used with the `@Body()` decorator
+ * in a controller method and the `ValidationPipe`.
+ */
 export class CreatePromotionDto {
   @IsInt()
   collaboratorId: number;
