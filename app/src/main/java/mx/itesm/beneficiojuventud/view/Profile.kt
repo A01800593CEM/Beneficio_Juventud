@@ -77,8 +77,6 @@ fun Profile(
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var isLoadingImage by remember { mutableStateOf(false) }
 
-    // Asegura tener el usuario actual de Cognito (para el sub)
-    LaunchedEffect(Unit) { authViewModel.getCurrentUser() }
 
     val currentUserId by authViewModel.currentUserId.collectAsState()
     val actualUserId = currentUserId ?: "anonymous"

@@ -100,43 +100,37 @@ private val newOffers = listOf(
 )
 
 /**
- * Pantalla Home con saludo, búsqueda, categorías (API) y promos (API cuando hay filtro).
+ * Pantalla Home con saludo, búsqueda, categorías (API) y promos (API cuando hay filtro),
+ * suscribiéndose DIRECTO a los estados de cada ViewModel con collectAsState().
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Home(
     nav: NavHostController,
     modifier: Modifier = Modifier,
-    categoryViewModel: CategoryViewModel = viewModel(),     // mismo VM que Onboarding (para filtros/categorías)
+    categoryViewModel: CategoryViewModel = viewModel(), // mismo VM que Onboarding
     userViewModel: UserViewModel,
-    promoViewModel: PromoViewModel = viewModel()            // VM de promos (backend)
+    promoViewModel: PromoViewModel = viewModel()        // VM de promos (backend)
 ) {
-    // Usuario
+    // ▶ Suscripción a cada VM (formato de la imagen)
     val user by userViewModel.userState.collectAsState()
-    val displayName = remember(user.name) {
-        user.name?.trim()?.takeIf { it.isNotEmpty() }?.split(" ")?.firstOrNull() ?: "Usuario"
-    }
 
-    // UI state
+    val categories by categoryViewModel.categories.collectAsState()
+    val catLoading by categoryViewModel.loading.collectAsState()
+    val catError by categoryViewModel.error.collectAsState()
+
+    val promoList by promoViewModel.promoListState.collectAsState()
+
+    // Estado local de UI
     var selectedTab by remember { mutableStateOf(BJTab.Home) }
     var search by rememberSaveable { mutableStateOf("") }
     var selectedCategoryName by rememberSaveable { mutableStateOf<String?>(null) }
 
-    // Categorías desde VM
-    val categories by categoryViewModel.categories.collectAsState()
-    val isLoading by categoryViewModel.loading.collectAsState(initial = false)
-    val error by categoryViewModel.error.collectAsState(initial = null)
-
-    // Carga inicial de categorías
-    LaunchedEffect(Unit) {
-        if (categories.isEmpty()) categoryViewModel.loadCategories()
-    }
-
-    // Promos desde backend cuando hay filtro de categoría
-    val promoList by promoViewModel.promoListState.collectAsState()
+    // Loading/Error locales para promos (tu PromoVM no los expone aún)
     var promoLoading by remember { mutableStateOf(false) }
     var promoError by remember { mutableStateOf<String?>(null) }
 
+    // Carga de promos cuando cambia el filtro de categoría
     LaunchedEffect(selectedCategoryName) {
         promoError = null
         if (!selectedCategoryName.isNullOrBlank()) {
@@ -147,16 +141,15 @@ fun Home(
         }
     }
 
-    // Si NO hay filtro de categoría, mostramos demos (y se puede filtrar localmente por texto)
-    val filteredDemos = remember(selectedCategoryName) {
-        if (selectedCategoryName.isNullOrBlank()) demos
-        else demos.filter { matchesCategory(it, selectedCategoryName!!) }
+    // Nombre a mostrar
+    val displayName = remember(user.name) {
+        user.name?.trim()?.takeIf { it.isNotEmpty() }?.split(" ")?.firstOrNull() ?: "Usuario"
     }
 
-    // Si hay filtro, usamos backend -> mapeo a modelo UI
-    val uiPromos: List<Promo> = remember(selectedCategoryName, promoList, filteredDemos) {
+    // Lista final para el carrusel
+    val uiPromos: List<Promo> = remember(selectedCategoryName, promoList) {
         if (selectedCategoryName.isNullOrBlank()) {
-            filteredDemos
+            demos
         } else {
             promoList.map { it.toUiPromo() }
         }
@@ -257,7 +250,7 @@ fun Home(
                 .padding(padding),
             contentPadding = PaddingValues(bottom = 96.dp)
         ) {
-            // Categorías (API)
+            // ─── Categorías (API) ────────────────────────────────────────────────
             item {
                 SectionTitle(
                     "Categorías Populares",
@@ -265,7 +258,7 @@ fun Home(
                 )
 
                 when {
-                    isLoading -> {
+                    catLoading -> {
                         Row(
                             Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -278,7 +271,7 @@ fun Home(
                             Text("Cargando categorías…")
                         }
                     }
-                    error != null -> {
+                    catError != null -> {
                         Row(
                             Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -289,7 +282,9 @@ fun Home(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Spacer(Modifier.width(12.dp))
-                            TextButton(onClick = { categoryViewModel.loadCategories() }) { Text("Reintentar") }
+                            TextButton(onClick = { categoryViewModel.loadCategories() }) {
+                                Text("Reintentar")
+                            }
                         }
                     }
                     else -> {
@@ -301,7 +296,7 @@ fun Home(
                         ) {
                             categories.forEach { c ->
                                 val name = c.name ?: return@forEach
-                                val icon = Icons.Outlined.NotificationsNone // placeholder si API no provee icono
+                                val icon = Icons.Outlined.NotificationsNone // placeholder si API no trae icono
                                 CategoryPill(
                                     icon = icon,
                                     label = name,
@@ -338,7 +333,7 @@ fun Home(
                 Spacer(Modifier.height(8.dp))
             }
 
-            // Recomendado / Filtrado
+            // ─── Recomendado / Filtrado ─────────────────────────────────────────
             item {
                 SectionTitle(
                     if (selectedCategoryName.isNullOrBlank()) "Recomendado para ti"
@@ -374,7 +369,7 @@ fun Home(
                             )
                         }
                     }
-                    uiPromos.isEmpty() -> {
+                    uiPromos.isEmpty() && !selectedCategoryName.isNullOrBlank() -> {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -398,7 +393,7 @@ fun Home(
                 }
             }
 
-            // Ofertas Especiales
+            // ─── Ofertas Especiales ─────────────────────────────────────────────
             item {
                 SectionTitle(
                     "Ofertas Especiales",
@@ -407,7 +402,7 @@ fun Home(
                 MerchantRow(data = specialOffers) { _ -> nav.navigate(Screens.Business.route) }
             }
 
-            // Lo nuevo
+            // ─── Lo nuevo ───────────────────────────────────────────────────────
             item {
                 SectionTitle(
                     "Lo Nuevo",
@@ -416,7 +411,7 @@ fun Home(
                 MerchantRow(data = newOffers) { _ -> nav.navigate(Screens.Business.route) }
             }
 
-            // Pie
+            // ─── Pie ────────────────────────────────────────────────────────────
             item {
                 Spacer(Modifier.height(8.dp))
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -439,7 +434,7 @@ private fun HomePreview() {
 }
 
 /**
- * Verifica si un [Promo] coincide con una categoría textual.
+ * Verifica si un [Promo] coincide con una categoría textual (para los demos).
  */
 private fun matchesCategory(promo: Promo, category: String): Boolean {
     val c = category.lowercase()
@@ -456,7 +451,6 @@ private fun matchesCategory(promo: Promo, category: String): Boolean {
 
 /**
  * Mapper de DTO backend -> UI model usado por el carrusel.
- * Ajusta los nombres de campos a tu `Promotions`.
  */
 private fun Promotions.toUiPromo(): Promo {
     val titulo = this.title ?: "Promoción"
