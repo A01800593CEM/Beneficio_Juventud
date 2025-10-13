@@ -2,6 +2,27 @@ import { IsString, IsEmail, IsEnum, MinLength, IsNotEmpty, IsDate, IsPhoneNumber
 import { Type } from "class-transformer";
 import { UserState } from "../enums/user-state.enum";
 
+/**
+ * DTO representing the data required to create a new user record.
+ *
+ * @remarks
+ * This class applies validation rules to incoming data before persisting a user.
+ * It uses decorators from `class-validator` to enforce correct formats, and
+ * `class-transformer` to handle date conversion.
+ *
+ * @example
+ * ```json
+ * {
+ *   "name": "Iván",
+ *   "lastNamePaternal": "Carrillo",
+ *   "lastNameMaternal": "López",
+ *   "birthDate": "2001-08-15T00:00:00.000Z",
+ *   "phoneNumber": "+52 5512345678",
+ *   "email": "ivan@example.com",
+ *   "accountState": "activo"
+ * }
+ * ```
+ */
 export class CreateUserDto {
     @IsString()
     @IsNotEmpty()
@@ -34,7 +55,6 @@ export class CreateUserDto {
     accountState: UserState
 
     @IsArray()
-    @ArrayNotEmpty()
     @IsString({ each: true})
     userPrefCategories: string[]
 }

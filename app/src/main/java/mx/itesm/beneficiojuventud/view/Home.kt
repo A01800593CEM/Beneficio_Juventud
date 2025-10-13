@@ -12,14 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -51,6 +44,14 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.utils.MerchantCardData
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+
+// Extras necesarios para insets
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 
 /** Datos demo para el carrusel de promociones (fallback cuando NO hay filtro). */
 private val demos = listOf(
@@ -99,10 +100,6 @@ private val newOffers = listOf(
     MerchantCardData("VeggieGo", "Saludable", 4.4)
 )
 
-/**
- * Pantalla Home con saludo, búsqueda, categorías (API) y promos (API cuando hay filtro),
- * suscribiéndose DIRECTO a los estados de cada ViewModel con collectAsState().
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Home(
@@ -112,7 +109,7 @@ fun Home(
     userViewModel: UserViewModel,
     promoViewModel: PromoViewModel = viewModel()        // VM de promos (backend)
 ) {
-    // ▶ Suscripción a cada VM (formato de la imagen)
+    // ▶ Suscripción a cada VM
     val user by userViewModel.userState.collectAsState()
 
     val categories by categoryViewModel.categories.collectAsState()
@@ -157,77 +154,14 @@ fun Home(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets.safeDrawing
+            .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
         topBar = {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-            ) {
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_beneficio_joven),
-                        contentDescription = "Logo",
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFD7F2F3)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Person,
-                                contentDescription = null,
-                                tint = Color(0xFF008D96)
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                "Hola, $displayName",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                                color = Color(0xFF4B4C7E)
-                            )
-                            Text(
-                                "¿Listo para ahorrar?",
-                                fontSize = 11.sp,
-                                color = Color(0xFF8C8C8C)
-                            )
-                        }
-                    }
-                    Icon(
-                        imageVector = Icons.Outlined.NotificationsNone,
-                        contentDescription = "Notificaciones",
-                        tint = Color(0xFF008D96),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                Spacer(Modifier.height(10.dp))
-                BJSearchBar(
-                    query = search,
-                    onQueryChange = { search = it },
-                    onSearch = { /* TODO: búsqueda global */ },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                GradientDivider(
-                    thickness = 2.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp)
-                )
-            }
+            TopBar(
+                displayName = displayName,
+                search = search,
+                onSearchChange = { search = it }
+            )
         },
         bottomBar = {
             BJBottomBar(
@@ -243,12 +177,21 @@ fun Home(
                 }
             )
         }
-    ) { padding ->
+    ) { innerPadding ->
+        val bottomInset = WindowInsets.navigationBars
+            .only(WindowInsetsSides.Bottom)
+            .asPaddingValues()
+            .calculateBottomPadding()
+        val bottomBarHeight = 56.dp
+
         LazyColumn(
             modifier = modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(bottom = 96.dp)
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding),
+            contentPadding = PaddingValues(
+                bottom = bottomBarHeight + bottomInset + 16.dp
+            )
         ) {
             // ─── Categorías (API) ────────────────────────────────────────────────
             item {
@@ -422,6 +365,91 @@ fun Home(
     }
 }
 
+/** TopBar segura (solo Top + Horizontal). */
+@Composable
+private fun TopBar(
+    displayName: String,
+    search: String,
+    onSearchChange: (String) -> Unit
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            // 👉 Respeta notch/estatus bar y laterales, no el fondo
+            .windowInsetsPadding(
+                WindowInsets.safeDrawing.only(
+                    WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+                )
+            )
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+    ) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Image(
+                painter = painterResource(id = R.drawable.logo_beneficio_joven),
+                contentDescription = "Logo",
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFD7F2F3)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Person,
+                        contentDescription = null,
+                        tint = Color(0xFF008D96)
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text(
+                        "Hola, $displayName",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
+                        color = Color(0xFF4B4C7E)
+                    )
+                    Text(
+                        "¿Listo para ahorrar?",
+                        fontSize = 11.sp,
+                        color = Color(0xFF8C8C8C)
+                    )
+                }
+            }
+            Icon(
+                imageVector = Icons.Outlined.NotificationsNone,
+                contentDescription = "Notificaciones",
+                tint = Color(0xFF008D96),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        BJSearchBar(
+            query = search,
+            onQueryChange = onSearchChange,
+            onSearch = { /* TODO: búsqueda global */ },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        GradientDivider(
+            thickness = 2.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp)
+        )
+    }
+}
+
 /** Vista previa de [Home] con datos demo. */
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, showSystemUi = true)
@@ -433,25 +461,7 @@ private fun HomePreview() {
     }
 }
 
-/**
- * Verifica si un [Promo] coincide con una categoría textual (para los demos).
- */
-private fun matchesCategory(promo: Promo, category: String): Boolean {
-    val c = category.lowercase()
-    val tags: Set<String> = when (promo.subtitle.lowercase()) {
-        "cine stelar"      -> setOf("cine", "entretenimiento")
-        "el sazón de iván" -> setOf("mexicana", "pozole", "restaurante")
-        "bocado rápido"    -> setOf("saludable", "comida rápida", "veg", "bowls")
-        "café norte"       -> setOf("cafetería", "café", "postres")
-        else               -> emptySet()
-    }
-    val text = "${promo.title} ${promo.subtitle} ${promo.body}".lowercase()
-    return c in tags || text.contains(c)
-}
-
-/**
- * Mapper de DTO backend -> UI model usado por el carrusel.
- */
+/** Mapper de DTO backend -> UI model usado por el carrusel. */
 private fun Promotions.toUiPromo(): Promo {
     val titulo = this.title ?: "Promoción"
     val descripcion = this.description ?: ""

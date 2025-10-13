@@ -15,6 +15,10 @@ class PromoViewModel : ViewModel() {
     private val _promoListState = MutableStateFlow<List<Promotions>>(emptyList())
     val promoListState: StateFlow<List<Promotions>> = _promoListState
 
+    suspend fun getAllPromotions() {
+        _promoListState.value = model.getAllPromotions()
+    }
+
     suspend fun getPromotionById(id: Int) {
         _promoState.value = model.getPromotionById(id)
     }

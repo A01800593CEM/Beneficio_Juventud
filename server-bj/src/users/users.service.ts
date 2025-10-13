@@ -21,16 +21,27 @@ export class UsersService {
   async create(createUserDto: CreateUserDto): Promise<User> {
     const { userPrefCategories, ...data } = createUserDto;
 
-    const categoriesEntities = await this.categoriesRepository.findBy({
-      name: In(userPrefCategories),
-    });
+    if (userPrefCategories) {
+      const categoriesEntities = await this.categoriesRepository.findBy({
+        name: In(userPrefCategories),
+      });
+    
 
     const user = this.usersRepository.create({
       ...data,
       categories: categoriesEntities,
     });
-    
+
     return this.usersRepository.save(user)
+
+  }
+    else {
+      const user = this.usersRepository.create({
+      ...data
+    });
+    return this.usersRepository.save(user)
+    }
+    
   }
 
   async findAll(): Promise<User[]> {
