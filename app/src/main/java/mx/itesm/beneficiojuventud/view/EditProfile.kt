@@ -47,6 +47,7 @@ import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
+import mx.itesm.beneficiojuventud.components.BJTopHeader
 import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.components.MainButton
@@ -133,9 +134,9 @@ fun EditProfile(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         topBar = {
-            EditProfileTopBar(
+            BJTopHeader(
                 title = "Editar Perfil",
                 nav = nav
             )
@@ -154,13 +155,12 @@ fun EditProfile(
                 }
             )
         }
-    ) { padding ->
+    ) { innerPadding ->
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(innerPadding)
         ) {
-            // Contenido principal con scroll
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

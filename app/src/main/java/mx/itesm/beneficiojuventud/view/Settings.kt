@@ -24,6 +24,7 @@ import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
+import mx.itesm.beneficiojuventud.components.BJTopHeader
 import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
@@ -47,54 +48,12 @@ fun Settings(nav: NavHostController, modifier: Modifier = Modifier) {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         topBar = {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_beneficio_joven),
-                        contentDescription = "Logo",
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        BackButton(nav = nav)
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = "Configuración",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                            fontSize = 20.sp,
-                            color = Color(0xFF616161)
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Outlined.NotificationsNone,
-                        contentDescription = "Notificaciones",
-                        tint = Color(0xFF008D96),
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
-                GradientDivider(
-                    thickness = 2.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
-            }
+            BJTopHeader(
+                title = "Configuración",
+                nav = nav
+            )
         },
         bottomBar = {
             BJBottomBar(
@@ -110,11 +69,11 @@ fun Settings(nav: NavHostController, modifier: Modifier = Modifier) {
                 }
             )
         }
-    ) { padding ->
+    ) { innerPadding ->
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(innerPadding)
         ) {
             LazyColumn(
                 modifier = Modifier

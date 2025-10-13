@@ -97,54 +97,13 @@ fun Business(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        // 🔧 Evita doble padding de status bar (BJTopHeader ya aplica safeDrawing Top+Horizontal)
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         topBar = {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-            ) {
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_beneficio_joven),
-                        contentDescription = "Logo",
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        BackButton(nav = nav)
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = business.name,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 20.sp,
-                            color = Color(0xFF616161),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Outlined.NotificationsNone,
-                        contentDescription = "Notificaciones",
-                        tint = Color(0xFF008D96),
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
-
-                GradientDivider(
-                    thickness = 2.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
-            }
+            BJTopHeader(
+                title = business.name,
+                nav = nav
+            )
         },
         bottomBar = {
             BJBottomBar(
@@ -160,11 +119,11 @@ fun Business(
                 }
             )
         }
-    ) { padding ->
+    ) { innerPadding ->
         LazyColumn(
             modifier = modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(innerPadding),
             contentPadding = PaddingValues(bottom = 96.dp, start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {

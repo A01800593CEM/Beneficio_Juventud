@@ -34,6 +34,5 @@ class CollabViewModel : ViewModel() {
 
     suspend fun deleteCollaborator(id: Int) {
         model.deleteCollaborator(id)
-        // Si eliminas desde un listado, refresca la lista después desde la UI
     }
 }
