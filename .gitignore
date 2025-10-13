@@ -51,3 +51,5 @@ captures/
 # === Kotlin/Java backups ===
 *.kt~
 *.java~
+
+server-bj/beneficio-joven-firebase-adminsdk-fbsvc-076ac563fc.json

@@ -29,6 +29,8 @@ runtimeSaveableVersion = "1.9.3"
 navigationRuntimeKtx = "2.9.5"
 uiTextVersion = "1.9.3"
 ui = "1.9.3"
+googleGmsGoogleServices = "4.4.4"
+firebaseMessaging = "25.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -74,10 +76,12 @@ runtime-saveable = { group = "androidx.compose.runtime", name = "runtime-saveabl
 androidx-navigation-runtime-ktx = { group = "androidx.navigation", name = "navigation-runtime-ktx", version.ref = "navigationRuntimeKtx" }
 ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiTextVersion" }
 ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" }
 
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
 

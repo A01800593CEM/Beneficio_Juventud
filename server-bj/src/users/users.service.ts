@@ -19,7 +19,7 @@ export class UsersService {
   ) {}
   
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const { categories: userPrefCategories, ...data } = createUserDto;
+    const { userPrefCategories, ...data } = createUserDto;
 
     const categoriesEntities = await this.categoriesRepository.findBy({
       name: In(userPrefCategories),
@@ -64,13 +64,22 @@ export class UsersService {
   async update(cognitoId: string, updateUserDto: UpdateUserDto): Promise<User>  {
     const user = await this.usersRepository.findOne({
       where: { cognitoId }, 
-      relations: ['userPrefCategories', 'favorites', 'bookings', 'redeemedcoupon']
+      relations: ['categories', 'favorites', 'bookings', 'redeemedcoupon']
     });
 
     if (!user) {
       throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
     
+    const { userPrefCategories, ...updateData} = updateUserDto
+
+    Object.assign(user, updateData)
+
+    if (userPrefCategories && userPrefCategories.length > 0) {
+      const categories = await this.categoriesRepository.findBy({ name: In(userPrefCategories) });
+      user.categories = categories;
+    }
+
     return this.usersRepository.save(user)
   }
 

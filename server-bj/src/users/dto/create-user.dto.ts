@@ -36,5 +36,5 @@ export class CreateUserDto {
     @IsArray()
     @ArrayNotEmpty()
     @IsString({ each: true})
-    categories: string[]
+    userPrefCategories: string[]
 }
