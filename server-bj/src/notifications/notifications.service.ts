@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import admin from "firebase-admin";
-const serviceAccount = require("../beneficio-joven-firebase-adminsdk-fbsvc-076ac563fc.json")
+const serviceAccount = require("beneficio-joven-firebase-adminsdk-fbsvc-d68b1788f4.json")
 
 @Injectable()
 export class NotificationsService {
