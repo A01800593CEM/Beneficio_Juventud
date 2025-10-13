@@ -20,6 +20,16 @@ object RemoteServicePromos {
 
     private val promoApiService by lazy { retrofit.create(PromoApiService::class.java) }
 
+
+    suspend fun getAllPromotions(): List<Promotions> {
+        val response = promoApiService.getAllPromotions()
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        return response.body() ?: emptyList()
+    }
+
+
     suspend fun getPromotionById(id: Int): Promotions {
         val response = promoApiService.getPromotionById(id)
         if (!response.isSuccessful) {

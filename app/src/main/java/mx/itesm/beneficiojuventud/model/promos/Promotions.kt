@@ -28,5 +28,5 @@ enum class PromotionType {
 enum class PromotionState {
     @SerializedName("activa") activa,
     @SerializedName("inactiva") inactiva,
-    @SerializedName("finaliazada") finalizada
+    @SerializedName("finalizada") finalizada
 }
