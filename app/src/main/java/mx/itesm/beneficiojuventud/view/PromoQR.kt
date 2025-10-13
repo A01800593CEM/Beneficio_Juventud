@@ -39,6 +39,7 @@ import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.components.BJTab
+import mx.itesm.beneficiojuventud.components.BJTopHeader
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.model.PromoTheme
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
@@ -130,7 +131,14 @@ fun PromoQR(
 
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
-            topBar = { PromoQRTopBar(nav) },
+            // 🔧 Evita doble padding de status bar (BJTopHeader ya aplica safeDrawing Top+Horizontal)
+            contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
+            topBar = {
+                BJTopHeader(
+                    title = "Promoción",
+                    nav = nav
+                )
+            },
             bottomBar = {
                 BJBottomBar(
                     selected = selectedTab,
@@ -145,12 +153,12 @@ fun PromoQR(
                     }
                 )
             }
-        ) { padding ->
+        ) { innerPadding ->
 
             LazyColumn(
                 modifier = modifier
                     .fillMaxSize()
-                    .padding(padding),
+                    .padding(innerPadding),
                 contentPadding = PaddingValues(bottom = 96.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
