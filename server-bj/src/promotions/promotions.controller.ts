@@ -2,14 +2,19 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { PromotionsService } from './promotions.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
-
+import { CategoriesByNamePipe } from 'src/common/pipes/transform-to-id.pipe';
+import { Category } from 'src/categories/entities/category.entity';
 @Controller('promotions')
 export class PromotionsController {
   constructor(private readonly promotionsService: PromotionsService) {}
 
   @Post()
-  create(@Body() createPromotionDto: CreatePromotionDto) {
-    return this.promotionsService.create(createPromotionDto);
+  create(
+    @Body('categories', CategoriesByNamePipe) categories: Category[],
+    @Body() createPromotionDto: CreatePromotionDto) {
+    return this.promotionsService.create({
+      ...createPromotionDto,
+      categoryIds: categories.map(category => category.id)});
   }
 
   @Get()
@@ -37,4 +42,6 @@ export class PromotionsController {
   promotionPerCategory(@Param('category') category: string) {
     return this.promotionsService.promotionPerCategory(category);
   }
+
+  
 }
