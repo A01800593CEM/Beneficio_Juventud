@@ -6,6 +6,8 @@ import { Repository, In } from 'typeorm';
 import { Promotion } from './entities/promotion.entity';
 import { Category } from 'src/categories/entities/category.entity';
 import { PromotionState } from './enums/promotion-state.enums';
+import { sendNotification } from 'src/enviar';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class PromotionsService {
@@ -14,7 +16,8 @@ export class PromotionsService {
     private promotionsRepository: Repository<Promotion>,
 
     @InjectRepository(Category)
-    private categoriesRepository: Repository<Category>
+    private categoriesRepository: Repository<Category>,
+    private readonly notificationsService: NotificationsService
   ) {}
   async create(createPromotionDto: CreatePromotionDto): Promise<Promotion> {
       const { categoryIds, ...data } = createPromotionDto;
@@ -27,6 +30,7 @@ export class PromotionsService {
         ...data,
         categories,
       });
+      this.notificationsService.sendNotification();
       return this.promotionsRepository.save(promotion);
     }
 

@@ -22,7 +22,9 @@ class NotificationsService: FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
-        println("Llegó la notificación REMOTA $message")
+        println("Llegó la notificación TITULO: ${message.notification?.title}")
+        println("Llegó la notificación BODY: ${message.notification?.body}")
+        println("Llegó la notificación KEY1: ${message.data?.getValue("key1")}")
         message.notification?.let {
             enviarNotificacion(it)
         }

@@ -71,7 +71,7 @@ export class User {
         referencedColumnName: 'id'
     },
     })
-        categories: Category[];
+    categories: Category[];
 
 
 }
