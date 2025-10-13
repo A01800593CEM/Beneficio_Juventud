@@ -168,4 +168,20 @@ export class PromotionsService {
 
   return qb.getMany();
 }
+
+  //Promotions by Collaborator
+  /**
+   * Obtiene promociones asociadas a un colaborador específico usando su Cognito ID.
+   * @param cognitoId ID de Cognito del colaborador
+   * @returns Arreglo de promociones del colaborador
+   */
+  async promotionsByCollaborator(cognitoId: string): Promise<Promotion[]> {
+    const qb = this.promotionsRepository
+      .createQueryBuilder('promotion')
+      .leftJoinAndSelect('promotion.categories', 'categories')
+      .innerJoin('promotion.collaborator', 'collaborator')
+      .where('collaborator.cognito_id = :cognitoId', { cognitoId });
+
+    return qb.getMany();
+  }
 }
