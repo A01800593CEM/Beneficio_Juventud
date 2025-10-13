@@ -10,6 +10,8 @@ import retrofit2.http.Path
 
 interface PromoApiService {
 
+    @GET("promotions")
+    suspend fun getAllPromotions(): Response<List<Promotions>>
     @GET("promotions/{id}")
     suspend fun getPromotionById(@Path("id") id: Int): Response<Promotions>
 
