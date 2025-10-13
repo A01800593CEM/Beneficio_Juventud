@@ -26,13 +26,8 @@ export class Branch {
     @PrimaryGeneratedColumn({ name: 'sucursal_id' })
     branchId: number;
 
-    /**
-     * ID of the collaborator managing this branch.
-     * Foreign key to collaborators table.
-     * @maps colaborador_id
-     */
-    @Column({name: 'colaborador_id'})
-    collaboratorId: number;
+  @Column({name: 'colaborador_id'})
+  collaboratorId: string;
 
     /**
      * Name of the branch.
@@ -114,7 +109,7 @@ export class Branch {
      * Each branch is managed by one collaborator.
      */
     @ManyToOne(() => Collaborator, collaborator => collaborator.branch)
-    @JoinColumn({ name: 'colaborador_id' })
+    @JoinColumn({ name: 'colaborador_id', referencedColumnName: 'cognitoId' })
     collaborators: Relation<Collaborator>;
 
     /**

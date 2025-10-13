@@ -1,11 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToMany, JoinTable, } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToMany, JoinTable, ManyToOne, JoinColumn, } from 'typeorm';
 import { PromotionType } from '../enums/promotion-type.enums';
 import { PromotionState } from '../enums/promotion-state.enums';
 import { Booking } from '../../bookings/entities/booking.entity';
 import type { Relation } from 'typeorm';
 import { Redeemedcoupon } from 'src/redeemedcoupon/entities/redeemedcoupon.entity';
-import { Notification } from 'src/notifications/entities/notification.entity';
 import { Category } from 'src/categories/entities/category.entity';
+import { Collaborator } from 'src/collaborators/entities/collaborator.entity';
 
 /**
  * Entity representing a promotion in the system.
@@ -32,7 +32,7 @@ export class Promotion {
    * @example 12
    */
   @Column({name: 'colaborador_id'})
-  collaboratorId: number
+  collaboratorId: string
 
   /**
    * Title of the promotion.
@@ -160,17 +160,6 @@ export class Promotion {
   @OneToMany(() => Redeemedcoupon, redeemedcoupons => redeemedcoupons.promotion)
     redeemedcoupon: Relation<Redeemedcoupon>
 
-  /**
-   * Notifications triggered by this promotion.
-   * One promotion can have multiple notifications.
-   */
-  @OneToMany(() => Notification, notifications => notifications.promotions)
-    notifications: Relation<Notification>
-
-  /**
-   * Categories associated with this promotion.
-   * A promotion can belong to multiple categories.
-   */
   @ManyToMany(() => Category, category => category.promotions)
   @JoinTable({
       name: 'promocion_categoria',
@@ -184,4 +173,7 @@ export class Promotion {
     },
       })
         categories: Category[];
+  @ManyToOne(() => Collaborator, collaborator => collaborator.promotions)
+  @JoinColumn({name: 'colaborador_id'})
+  collaborator: Relation<Collaborator>;
 }

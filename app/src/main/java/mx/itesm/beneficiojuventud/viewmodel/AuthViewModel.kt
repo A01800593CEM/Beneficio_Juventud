@@ -3,13 +3,16 @@ package mx.itesm.beneficiojuventud.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import mx.itesm.beneficiojuventud.model.auth.AuthRepository
 import mx.itesm.beneficiojuventud.model.auth.AuthState
 import mx.itesm.beneficiojuventud.model.users.UserProfile
+import java.util.UUID
 
 /** Estado global de la app. */
 data class AppState(
@@ -35,6 +38,10 @@ class AuthViewModel : ViewModel() {
     private val _currentUser = MutableStateFlow<String?>(null)
     private val _currentUserId = MutableStateFlow<String?>(null)
     val currentUserId: StateFlow<String?> = _currentUserId.asStateFlow()
+
+    // ===== Llave de sesión (para invalidar estados remember/rememberSaveable) =====
+    private val _sessionKey = MutableStateFlow(UUID.randomUUID().toString())
+    val sessionKey: StateFlow<String> = _sessionKey.asStateFlow()
 
     // ===== Datos temporales durante registro =====
     private var _pendingUserProfile: UserProfile? = null
@@ -102,11 +109,8 @@ class AuthViewModel : ViewModel() {
                 result.fold(
                     onSuccess = { r ->
                         Log.d("AuthViewModel", "SignUp exitoso: needsConfirmation=${!r.isSignUpComplete}")
-                        val sub = r.userId // <- sub de Cognito (cognitoId)
-
-                        // 👇 NUEVO: recuerda en memoria el cognitoId desde YA
+                        val sub = r.userId // sub de Cognito (cognitoId)
                         _currentUserId.value = sub
-
                         _authState.value = AuthState(
                             isSuccess = r.isSignUpComplete,
                             needsConfirmation = !r.isSignUpComplete,
@@ -125,19 +129,14 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-
     fun confirmSignUp(email: String, code: String) {
         viewModelScope.launch {
-            // Mantén el sub previo
             val priorSub = _authState.value.cognitoSub
-
-            // no pises el estado entero; solo marca loading y limpia error
             _authState.value = _authState.value.copy(isLoading = true, error = null)
 
             val result = authRepository.confirmSignUp(email, code)
             result.fold(
                 onSuccess = { isComplete ->
-                    // confirmación lista
                     _authState.value = _authState.value.copy(
                         isLoading = false,
                         isSuccess = isComplete,
@@ -145,7 +144,6 @@ class AuthViewModel : ViewModel() {
                         cognitoSub = priorSub
                     )
 
-                    // AUTO SIGN-IN si tenemos credenciales en memoria
                     val pendingEmail = _pendingEmail
                     val pendingPw = _pendingPlainPassword
                     if (isComplete && !pendingEmail.isNullOrBlank() && !pendingPw.isNullOrBlank()) {
@@ -154,6 +152,7 @@ class AuthViewModel : ViewModel() {
                             signInResult.fold(
                                 onSuccess = { r ->
                                     if (r.isSignedIn) {
+                                        _sessionKey.value = UUID.randomUUID().toString()
                                         refreshAuthState()
                                     } else {
                                         _authState.value = _authState.value.copy(
@@ -161,7 +160,6 @@ class AuthViewModel : ViewModel() {
                                             needsConfirmation = true
                                         )
                                     }
-                                    // Limpia credenciales temporales pase lo que pase
                                     clearPendingCredentials()
                                 },
                                 onFailure = { e ->
@@ -212,8 +210,8 @@ class AuthViewModel : ViewModel() {
                     onSuccess = { r ->
                         Log.d("AuthViewModel", "SignIn exitoso: isSignedIn=${r.isSignedIn}")
                         if (r.isSignedIn) {
-
                             _authState.value = AuthState(isSuccess = true)
+                            _sessionKey.value = UUID.randomUUID().toString() // nueva sesión
                             refreshAuthState()
                         } else {
                             _authState.value = AuthState(needsConfirmation = true)
@@ -233,19 +231,45 @@ class AuthViewModel : ViewModel() {
 
     fun signOut(globalSignOut: Boolean = true) {
         viewModelScope.launch {
-            _authState.value = AuthState(isLoading = true)
-            val result = authRepository.signOut(globalSignOut)
+            if (_authState.value.isLoading) return@launch
+            _authState.value = _authState.value.copy(isLoading = true, error = null)
+
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    authRepository.signOut(globalSignOut).getOrThrow()
+                }
+            }
+
             result.fold(
                 onSuccess = {
-                    _authState.value = AuthState()
                     _currentUser.value = null
                     _currentUserId.value = null
                     _pendingUserProfile = null
-                    clearPendingCredentials() // limpieza extra (Parche 4)
+                    clearPendingCredentials()
+                    _sessionKey.value = UUID.randomUUID().toString()
+                    _authState.value = AuthState(isLoading = false)
                     refreshAuthState()
                 },
                 onFailure = { e ->
-                    _authState.value = AuthState(error = e.message ?: "Error al cerrar sesión")
+                    val msg = e.message.orEmpty()
+                    val alreadySignedOut =
+                        msg.contains("SignedOutException", ignoreCase = true) ||
+                                msg.contains("currently signed out", ignoreCase = true)
+
+                    if (alreadySignedOut) {
+                        _currentUser.value = null
+                        _currentUserId.value = null
+                        _pendingUserProfile = null
+                        clearPendingCredentials()
+                        _sessionKey.value = UUID.randomUUID().toString()
+                        _authState.value = AuthState(isLoading = false)
+                        refreshAuthState()
+                    } else {
+                        _authState.value = AuthState(
+                            isLoading = false,
+                            error = msg.ifEmpty { "Error al cerrar sesión" }
+                        )
+                    }
                 }
             )
         }

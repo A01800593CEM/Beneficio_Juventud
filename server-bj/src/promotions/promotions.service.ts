@@ -6,6 +6,8 @@ import { Repository, In } from 'typeorm';
 import { Promotion } from './entities/promotion.entity';
 import { Category } from 'src/categories/entities/category.entity';
 import { PromotionState } from './enums/promotion-state.enums';
+import { sendNotification } from 'src/enviar';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 /**
  * Servicio responsable de la lógica de negocio para promociones.
@@ -26,7 +28,8 @@ export class PromotionsService {
     private promotionsRepository: Repository<Promotion>,
 
     @InjectRepository(Category)
-    private categoriesRepository: Repository<Category>
+    private categoriesRepository: Repository<Category>,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   /**
@@ -76,7 +79,7 @@ export class PromotionsService {
         relations: ['categories'] });
           
       if (!promotion) {
-        throw new NotFoundException(`User with id ${id} not found`);
+        throw new NotFoundException(`Promotion with id ${id} not found`);
       }
       return promotion
     }
@@ -168,20 +171,15 @@ export class PromotionsService {
 
   return qb.getMany();
 }
-
-  //Promotions by Collaborator
+//Promotions by Collaborator
   /**
    * Obtiene promociones asociadas a un colaborador específico usando su Cognito ID.
    * @param cognitoId ID de Cognito del colaborador
    * @returns Arreglo de promociones del colaborador
    */
-  async promotionsByCollaborator(cognitoId: string): Promise<Promotion[]> {
-    const qb = this.promotionsRepository
-      .createQueryBuilder('promotion')
-      .leftJoinAndSelect('promotion.categories', 'categories')
-      .innerJoin('promotion.collaborator', 'collaborator')
-      .where('collaborator.cognito_id = :cognitoId', { cognitoId });
-
-    return qb.getMany();
+  async promotionsByCollaborator(collaboratorId: string): Promise<Promotion[]> {
+    return this.promotionsRepository.find({
+      where: {collaboratorId}
+    })
   }
 }

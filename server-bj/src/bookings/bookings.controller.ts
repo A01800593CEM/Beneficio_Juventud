@@ -79,6 +79,6 @@ export class BookingsController {
    */
   @Get('user_bookings/:id')
   getUserBookings(@Param('id') id: string){
-    return this.bookingsService.findByUserId(+id);
+    return this.bookingsService.findByUserId(id)
   }
 }

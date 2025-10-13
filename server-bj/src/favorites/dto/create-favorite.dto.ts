@@ -7,9 +7,9 @@ import { IsInt, IsNotEmpty } from 'class-validator';
 export class CreateFavoriteDto {
   @IsInt()
   @IsNotEmpty()
-  userId: number;
+  userId: string;
 
   @IsInt()
   @IsNotEmpty()
-  collaboratorId: number;
+  collaboratorId: string;
 }

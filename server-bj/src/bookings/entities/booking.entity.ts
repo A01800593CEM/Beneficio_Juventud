@@ -25,13 +25,8 @@ export class Booking {
   @PrimaryGeneratedColumn({ name: 'reserva_id' })
   bookingId: number;
 
-  /**
-   * The ID of the user who made the booking.
-   * Foreign key to the users table.
-   * @maps usuario_id
-   */
-  @Column({name: 'usuario_id'})
-  userId: number
+  @Column({name: 'usuario_id', type: 'varchar'})
+  userId: string;
 
   /**
    * The ID of the promotion being booked.
@@ -85,7 +80,8 @@ export class Booking {
    * Each booking belongs to one user.
    */
   @ManyToOne(() => User, users => users.bookings)
-  @JoinColumn({ name: 'usuario_id', referencedColumnName: 'id' })
+  @JoinColumn({ name: 'usuario_id', 
+                referencedColumnName: 'cognitoId' })
   user: Relation<User>;
 
   /**

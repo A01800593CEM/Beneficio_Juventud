@@ -16,20 +16,12 @@ export class FavoritesController {
    */
   constructor(private readonly favoritesService: FavoritesService) {}
 
-  /**
-   * Creates a new favorite relationship between a user and a collaborator.
-   * @route POST /users/favorites
-   * @param createFavoriteDto - The data transfer object containing user and collaborator IDs
-   * @returns Promise containing the newly created favorite relationship
-   * @example
-   * // Request body
-   * {
-   *   "userId": 1,
-   *   "collaboratorId": 2
-   * }
-   */
-  @Post()
-  async create(@Body() createFavoriteDto: CreateFavoriteDto) {
+  @Post(':userId/:collaboratorId')
+  async create(@Param('userId') userId: string,
+    @Param('collaboratorId') collaboratorId: string,) {
+    let createFavoriteDto = new CreateFavoriteDto();
+    createFavoriteDto.userId = userId;
+    createFavoriteDto.collaboratorId = collaboratorId;
     return this.favoritesService.create(createFavoriteDto);
   }
 
@@ -52,8 +44,8 @@ export class FavoritesController {
    */
   @Get(':userId/:collaboratorId')
   async findOne(
-    @Param('userId') userId: number,
-    @Param('collaboratorId') collaboratorId: number,
+    @Param('userId') userId: string,
+    @Param('collaboratorId') collaboratorId: string,
   ) {
     return this.favoritesService.findOne(userId, collaboratorId);
   }
@@ -68,8 +60,8 @@ export class FavoritesController {
    */
   @Patch(':userId/:collaboratorId')
   async update(
-    @Param('userId') userId: number,
-    @Param('collaboratorId') collaboratorId: number,
+    @Param('userId') userId: string,
+    @Param('collaboratorId') collaboratorId: string,
     @Body() updateFavoriteDto: UpdateFavoriteDto,
   ) {
     return this.favoritesService.update(userId, collaboratorId, updateFavoriteDto);
@@ -84,22 +76,16 @@ export class FavoritesController {
    */
   @Delete(':userId/:collaboratorId')
   async remove(
-    @Param('userId') userId: number,
-    @Param('collaboratorId') collaboratorId: number,
+    @Param('userId') userId: string,
+    @Param('collaboratorId') collaboratorId: string,
   ) {
     return this.favoritesService.remove(userId, collaboratorId);
   }
 
     // Favorite Collaborators 
-    /**
-   * Retrieves all favorite collaborators for a specific user.
-   * @route GET /users/favorites/user_favorites/:id
-   * @param id - The ID of the user
-   * @returns Promise containing an array of the user's favorite collaborators
-   */
-  @Get('user_favorites/:id')
+  @Get(':id')
   async getFavoriteCollaborators(@Param('id') id: string) {
-    return this.favoritesService.findByUser(+id)
+    return this.favoritesService.findByUser(id)
   }
 
 }

@@ -22,10 +22,10 @@ import { IsInt,} from 'class-validator';
  */
 export class CreateRedeemedcouponDto {
   @IsInt()
-  userId: number;
+  userId: string;
 
   @IsInt()
-  collaboratorId: number;
+  collaboratorId: string;
 
   @IsInt()
   branchId: number;

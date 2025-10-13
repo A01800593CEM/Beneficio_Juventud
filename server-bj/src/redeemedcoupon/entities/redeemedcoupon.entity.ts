@@ -45,19 +45,11 @@ export class Redeemedcoupon {
   @CreateDateColumn({ name: 'fecha_uso' })
   usedDate: Date;
 
-  /**
-   * ID of the user who redeemed the coupon.
-   * @example 14
-   */
-  @Column({ name: 'usuario_id' })
-  userId: number;
+  @Column({name: 'usuario_id'})
+  userId: string;
 
-  /**
-   * ID of the collaborator (business) associated with the redemption.
-   * @example 3
-   */
-  @Column({ name: 'colaborador_id' })
-  collaboratorId: number;
+  @Column({name: 'colaborador_id'})
+  collaboratorId: string;
 
   /**
    * ID of the branch where the coupon was redeemed.
@@ -73,24 +65,13 @@ export class Redeemedcoupon {
   @Column({ name: 'promocion_id' })
   promotionId: number;
 
-  // ────────────────────────────────
-  // Relations
-  // ────────────────────────────────
-
-  /**
-   * User who redeemed the coupon.
-   * Many coupon uses belong to one user.
-   */
-  @ManyToOne(() => User, (user) => user.redeemedcoupon)
-  @JoinColumn({ name: 'usuario_id' })
+  //Relations
+  @ManyToOne(() => User, users => users.redeemedcoupon)
+  @JoinColumn({ name: 'usuario_id', referencedColumnName: 'cognitoId' })
   user: Relation<User>;
 
-  /**
-   * Collaborator (merchant) associated with this redemption.
-   * Many redemptions can occur under one collaborator.
-   */
-  @ManyToOne(() => Collaborator, (collaborator) => collaborator.redeemedcoupon)
-  @JoinColumn({ name: 'colaborador_id' })
+  @ManyToOne(() => Collaborator, collaborators => collaborators.redeemedcoupon)
+  @JoinColumn({ name: 'colaborador_id', referencedColumnName: 'cognitoId' })
   collaborator: Relation<Collaborator>;
 
   /**

@@ -1,10 +1,10 @@
 package mx.itesm.beneficiojuventud.view
 
 import CategoryViewModel
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -12,7 +12,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.*
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -20,22 +27,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
-import mx.itesm.beneficiojuventud.components.*
-import mx.itesm.beneficiojuventud.utils.MerchantCardData
+import mx.itesm.beneficiojuventud.components.BJBottomBar
+import mx.itesm.beneficiojuventud.components.BJSearchBar
+import mx.itesm.beneficiojuventud.components.BJTab
+import mx.itesm.beneficiojuventud.components.GradientDivider
+import mx.itesm.beneficiojuventud.components.MerchantRow
+import mx.itesm.beneficiojuventud.components.PromoCarousel
+import mx.itesm.beneficiojuventud.components.SectionTitle
+import mx.itesm.beneficiojuventud.components.CategoryPill
 import mx.itesm.beneficiojuventud.model.Promo
 import mx.itesm.beneficiojuventud.model.PromoTheme
+import mx.itesm.beneficiojuventud.model.promos.PromotionType
+import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.utils.MerchantCardData
+import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 
-/** Datos demo para el carrusel de promociones. */
-private val promos = listOf(
+/** Datos demo para el carrusel de promociones (fallback cuando NO hay filtro). */
+private val demos = listOf(
     Promo(
         R.drawable.el_fuego_sagrado,
         "Jueves Pozolero",
@@ -82,35 +100,59 @@ private val newOffers = listOf(
 )
 
 /**
- * Pantalla Home con saludo, búsqueda, categorías (desde API) y listados de promos.
- * @param nav Controlador de navegación para mover entre pantallas.
- * @param modifier Modificador opcional para el layout.
- * @param vm ViewModel de categorías (mismo que Onboarding).
+ * Pantalla Home con saludo, búsqueda, categorías (API) y promos (API cuando hay filtro),
+ * suscribiéndose DIRECTO a los estados de cada ViewModel con collectAsState().
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Home(
     nav: NavHostController,
     modifier: Modifier = Modifier,
-    vm: CategoryViewModel = viewModel()
+    categoryViewModel: CategoryViewModel = viewModel(), // mismo VM que Onboarding
+    userViewModel: UserViewModel,
+    promoViewModel: PromoViewModel = viewModel()        // VM de promos (backend)
 ) {
+    // ▶ Suscripción a cada VM (formato de la imagen)
+    val user by userViewModel.userState.collectAsState()
+
+    val categories by categoryViewModel.categories.collectAsState()
+    val catLoading by categoryViewModel.loading.collectAsState()
+    val catError by categoryViewModel.error.collectAsState()
+
+    val promoList by promoViewModel.promoListState.collectAsState()
+
+    // Estado local de UI
     var selectedTab by remember { mutableStateOf(BJTab.Home) }
     var search by rememberSaveable { mutableStateOf("") }
     var selectedCategoryName by rememberSaveable { mutableStateOf<String?>(null) }
 
-    // Estados del VM de categorías
-    val categories by vm.categories.collectAsState()
-    val isLoading by vm.loading.collectAsState(initial = false)
-    val error by vm.error.collectAsState(initial = null)
+    // Loading/Error locales para promos (tu PromoVM no los expone aún)
+    var promoLoading by remember { mutableStateOf(false) }
+    var promoError by remember { mutableStateOf<String?>(null) }
 
-    // Carga inicial de categorías
-    LaunchedEffect(Unit) {
-        if (categories.isEmpty()) vm.loadCategories()
+    // Carga de promos cuando cambia el filtro de categoría
+    LaunchedEffect(selectedCategoryName) {
+        promoError = null
+        if (!selectedCategoryName.isNullOrBlank()) {
+            promoLoading = true
+            runCatching { promoViewModel.getPromotionByCategory(selectedCategoryName!!) }
+                .onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
+            promoLoading = false
+        }
     }
 
-    val filteredPromos = remember(selectedCategoryName) {
-        if (selectedCategoryName.isNullOrBlank()) promos
-        else promos.filter { matchesCategory(it, selectedCategoryName!!) }
+    // Nombre a mostrar
+    val displayName = remember(user.name) {
+        user.name?.trim()?.takeIf { it.isNotEmpty() }?.split(" ")?.firstOrNull() ?: "Usuario"
+    }
+
+    // Lista final para el carrusel
+    val uiPromos: List<Promo> = remember(selectedCategoryName, promoList) {
+        if (selectedCategoryName.isNullOrBlank()) {
+            demos
+        } else {
+            promoList.map { it.toUiPromo() }
+        }
     }
 
     Scaffold(
@@ -152,7 +194,7 @@ fun Home(
                         Spacer(Modifier.width(8.dp))
                         Column {
                             Text(
-                                "Hola, Iván",
+                                "Hola, $displayName",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
                                 color = Color(0xFF4B4C7E)
                             )
@@ -208,7 +250,7 @@ fun Home(
                 .padding(padding),
             contentPadding = PaddingValues(bottom = 96.dp)
         ) {
-            // Categorías (API)
+            // ─── Categorías (API) ────────────────────────────────────────────────
             item {
                 SectionTitle(
                     "Categorías Populares",
@@ -216,7 +258,7 @@ fun Home(
                 )
 
                 when {
-                    isLoading -> {
+                    catLoading -> {
                         Row(
                             Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -229,8 +271,7 @@ fun Home(
                             Text("Cargando categorías…")
                         }
                     }
-
-                    error != null -> {
+                    catError != null -> {
                         Row(
                             Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -241,10 +282,11 @@ fun Home(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Spacer(Modifier.width(12.dp))
-                            TextButton(onClick = { vm.loadCategories() }) { Text("Reintentar") }
+                            TextButton(onClick = { categoryViewModel.loadCategories() }) {
+                                Text("Reintentar")
+                            }
                         }
                     }
-
                     else -> {
                         Row(
                             Modifier
@@ -254,9 +296,7 @@ fun Home(
                         ) {
                             categories.forEach { c ->
                                 val name = c.name ?: return@forEach
-                                // Usa un ícono por defecto; si tu API trae tipo/icono, mapéalo aquí
-                                val icon = Icons.Outlined.NotificationsNone
-
+                                val icon = Icons.Outlined.NotificationsNone // placeholder si API no trae icono
                                 CategoryPill(
                                     icon = icon,
                                     label = name,
@@ -293,7 +333,7 @@ fun Home(
                 Spacer(Modifier.height(8.dp))
             }
 
-            // Recomendado / Filtrado
+            // ─── Recomendado / Filtrado ─────────────────────────────────────────
             item {
                 SectionTitle(
                     if (selectedCategoryName.isNullOrBlank()) "Recomendado para ti"
@@ -301,29 +341,59 @@ fun Home(
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
-                if (filteredPromos.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "No hay cupones para esta categoría.",
-                            color = Color(0xFF8C8C8C),
-                            fontSize = 13.sp
+                when {
+                    promoLoading -> {
+                        Row(
+                            Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text("Buscando cupones…")
+                        }
+                    }
+                    promoError != null && !selectedCategoryName.isNullOrBlank() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No se pudieron cargar las promos: $promoError",
+                                color = Color(0xFF8C8C8C),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                    uiPromos.isEmpty() && !selectedCategoryName.isNullOrBlank() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No hay cupones para esta categoría.",
+                                color = Color(0xFF8C8C8C),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                    else -> {
+                        PromoCarousel(
+                            promos = uiPromos,
+                            modifier = Modifier.height(130.dp),
+                            onItemClick = { _ -> nav.navigate(Screens.PromoQR.route) }
                         )
                     }
-                } else {
-                    PromoCarousel(
-                        promos = filteredPromos,
-                        modifier = Modifier.height(130.dp),
-                        onItemClick = { _ -> nav.navigate(Screens.PromoQR.route) }
-                    )
                 }
             }
 
-            // Ofertas Especiales
+            // ─── Ofertas Especiales ─────────────────────────────────────────────
             item {
                 SectionTitle(
                     "Ofertas Especiales",
@@ -332,7 +402,7 @@ fun Home(
                 MerchantRow(data = specialOffers) { _ -> nav.navigate(Screens.Business.route) }
             }
 
-            // Lo nuevo
+            // ─── Lo nuevo ───────────────────────────────────────────────────────
             item {
                 SectionTitle(
                     "Lo Nuevo",
@@ -341,7 +411,7 @@ fun Home(
                 MerchantRow(data = newOffers) { _ -> nav.navigate(Screens.Business.route) }
             }
 
-            // Pie
+            // ─── Pie ────────────────────────────────────────────────────────────
             item {
                 Spacer(Modifier.height(8.dp))
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -353,24 +423,21 @@ fun Home(
 }
 
 /** Vista previa de [Home] con datos demo. */
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun HomePreview() {
     BeneficioJuventudTheme {
         val nav = rememberNavController()
-        Home(nav = nav)
+        Home(nav = nav, userViewModel = UserViewModel())
     }
 }
 
 /**
- * Verifica si un [Promo] coincide con una categoría textual.
- * @param promo Promoción a evaluar.
- * @param category Categoría a comparar (texto).
- * @return `true` si hay coincidencia en tags o texto; `false` en caso contrario.
+ * Verifica si un [Promo] coincide con una categoría textual (para los demos).
  */
 private fun matchesCategory(promo: Promo, category: String): Boolean {
     val c = category.lowercase()
-
     val tags: Set<String> = when (promo.subtitle.lowercase()) {
         "cine stelar"      -> setOf("cine", "entretenimiento")
         "el sazón de iván" -> setOf("mexicana", "pozole", "restaurante")
@@ -378,7 +445,32 @@ private fun matchesCategory(promo: Promo, category: String): Boolean {
         "café norte"       -> setOf("cafetería", "café", "postres")
         else               -> emptySet()
     }
-
     val text = "${promo.title} ${promo.subtitle} ${promo.body}".lowercase()
     return c in tags || text.contains(c)
+}
+
+/**
+ * Mapper de DTO backend -> UI model usado por el carrusel.
+ */
+private fun Promotions.toUiPromo(): Promo {
+    val titulo = this.title ?: "Promoción"
+    val descripcion = this.description ?: ""
+    val tipo = when (this.promotionType) {
+        PromotionType.descuento -> "Descuento"
+        PromotionType.multicompra -> "Multicompra"
+        PromotionType.regalo -> "Regalo"
+        PromotionType.otro -> "Otro"
+        else -> "Promoción"
+    }
+
+    // Placeholder temporal mientras conectas carga de imágenes por URL
+    val imagenLocal = R.drawable.bolos
+
+    return Promo(
+        imagenLocal,
+        titulo,
+        tipo,
+        descripcion,
+        theme = PromoTheme.LIGHT
+    )
 }

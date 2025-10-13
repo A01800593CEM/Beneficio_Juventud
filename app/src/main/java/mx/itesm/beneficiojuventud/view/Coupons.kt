@@ -3,13 +3,20 @@ package mx.itesm.beneficiojuventud.view
 import CategoryViewModel
 import android.net.Uri
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NotificationsNone
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -36,7 +43,7 @@ import mx.itesm.beneficiojuventud.model.PromoTheme
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
 /**
- * Fuente de datos temporal para renderizar cupones en la lista de la pantalla.
+ * Fuente de datos temporal para renderizar cupones en la lista.
  * Reemplazar por datos remotos cuando se integre el backend.
  */
 private val coupons = listOf(
@@ -64,18 +71,11 @@ private val coupons = listOf(
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
-/**
- * Pantalla de "Cupones" con barra superior, navegación inferior y lista desplazable.
- * Muestra categorías populares desde API y un listado de cupones; al tocar un cupón navega a PromoQR.
- * @param nav Controlador de navegación para cambiar entre pantallas y abrir detalles.
- * @param modifier Modificador externo para ajustar tamaño, padding o comportamiento del contenedor.
- * @param vm ViewModel de categorías (mismo que Onboarding) para poblar y filtrar.
- */
 @Composable
 fun Coupons(
     nav: NavHostController,
     modifier: Modifier = Modifier,
-    vm: CategoryViewModel = viewModel() // ⬅️ usa el MISMO VM de categorías
+    vm: CategoryViewModel = viewModel() // Usa el MISMO VM de categorías
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
 
@@ -84,16 +84,13 @@ fun Coupons(
     val isLoading by vm.loading.collectAsState(initial = false)
     val error by vm.error.collectAsState(initial = null)
 
-    // Selección local del filtro por categoría (id)
+    // Filtro por categoría (id)
     var selectedCategoryId by rememberSaveable { mutableStateOf<Int?>(null) }
 
-    // Carga categorías al entrar si no están
+    // Carga categorías si están vacías
     LaunchedEffect(Unit) {
         if (categories.isEmpty()) vm.loadCategories()
     }
-
-    // Si tuvieras endpoint para cupones por categoría, lo disparas aquí:
-    // LaunchedEffect(selectedCategoryId) { vm.loadCouponsByCategory(selectedCategoryId) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -162,38 +159,28 @@ fun Coupons(
                     }
 
                     else -> {
-                        Row(
-                            Modifier
-                                .padding(horizontal = 16.dp)
-                                .horizontalScroll(rememberScrollState()),
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            categories.forEach { c ->
-                                val id = c.id ?: return@forEach
+                            items(
+                                items = categories,
+                                key = { it.id ?: (it.name ?: it.hashCode()).hashCode() }
+                            ) { c ->
+                                val id = c.id ?: return@items
                                 val name = c.name ?: "Categoría"
 
-                                Row(
-                                    Modifier
-                                        .padding(horizontal = 16.dp)
-                                        .horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                                ) {
-                                    categories.forEach { c ->
-                                        val id = c.id ?: return@forEach
-                                        val name = c.name ?: "Categoría"
-                                        // Usa un ícono por defecto (puedes asignar otro según tu API)
-                                        val icon = Icons.Outlined.NotificationsNone
-
-                                        CategoryPill(
-                                            icon = icon,
-                                            label = name,
-                                            selected = selectedCategoryId == id,
-                                            onClick = {
-                                                selectedCategoryId = if (selectedCategoryId == id) null else id
-                                            }
-                                        )
+                                CategoryPill(
+                                    icon = Icons.Outlined.NotificationsNone, // Ajusta si tu API trae iconos
+                                    label = name,
+                                    selected = selectedCategoryId == id,
+                                    onClick = {
+                                        selectedCategoryId =
+                                            if (selectedCategoryId == id) null else id
+                                        // Si tienes endpoint por categoría, dispara aquí:
+                                        // vm.loadCouponsByCategory(selectedCategoryId)
                                     }
-                                }
+                                )
                             }
                         }
                     }
@@ -210,9 +197,11 @@ fun Coupons(
                 )
             }
 
-            // Lista de cupones usando tu PromoImageBanner (click -> navega a PromoQR)
-            // TODO: si usas 'selectedCategoryId', aquí filtra según tu modelo/endpoint real.
-            items(count = coupons.size, key = { it }) { i ->
+            // Lista de cupones usando PromoImageBanner (click -> navega a PromoQR)
+            items(
+                count = coupons.size,
+                key = { it }
+            ) { i ->
                 val titleArg = Uri.encode(coupons[i].title)
                 PromoImageBanner(
                     promo = coupons[i],
@@ -221,7 +210,6 @@ fun Coupons(
                         .height(150.dp)
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     onClick = {
-                        // Navegación con argumentos opcionales:
                         nav.navigate(Screens.PromoQR.route + "?idx=$i&title=$titleArg")
                     }
                 )
@@ -243,9 +231,7 @@ fun Coupons(
 }
 
 /**
- * Barra superior de la pantalla de cupones con logo, título, botón de regreso y acceso a notificaciones.
- * @param title Título a mostrar junto al botón de regreso.
- * @param nav Controlador de navegación usado por el botón de regreso.
+ * Barra superior de la pantalla de cupones.
  */
 @Composable
 private fun CouponsTopBar(
@@ -301,10 +287,6 @@ private fun CouponsTopBar(
     }
 }
 
-/**
- * Vista previa de la pantalla de cupones con tema de la app y sistema.
- * Útil para validar diseño sin ejecutar en dispositivo.
- */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun CouponsPreview() {

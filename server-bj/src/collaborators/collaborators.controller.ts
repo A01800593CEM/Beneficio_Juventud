@@ -4,6 +4,7 @@ import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
 import { UpdateCollaboratorDto } from './dto/update-collaborator.dto';
 import { CategoriesByNamePipe } from 'src/common/pipes/transform-to-id.pipe';
 import { Category } from 'src/categories/entities/category.entity';
+import { PromotionsService } from 'src/promotions/promotions.service';
 
 /**
  * Controller responsible for handling collaborator-related HTTP requests.
@@ -12,11 +13,9 @@ import { Category } from 'src/categories/entities/category.entity';
  */
 @Controller('collaborators')
 export class CollaboratorsController {
-  /**
-   * Creates an instance of CollaboratorsController.
-   * @param collaboratorsService - The service handling collaborator business logic
-   */
-  constructor(private readonly collaboratorsService: CollaboratorsService) {}
+  constructor(
+    private readonly collaboratorsService: CollaboratorsService,
+    private readonly promotionsService: PromotionsService) {}
 
   /**
    * Creates a new collaborator.
@@ -107,6 +106,12 @@ export class CollaboratorsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.collaboratorsService.remove(id);
+  }
+
+  @Get('promotions/:id')
+  getPromotions(@Param('id') id: string) {
+    console.log(id)
+    return this.promotionsService.promotionsByCollaborator(id)
   }
 
 }

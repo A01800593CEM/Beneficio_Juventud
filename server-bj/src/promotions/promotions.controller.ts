@@ -2,22 +2,8 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { PromotionsService } from './promotions.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
-
-/**
- * Controller that exposes endpoints for managing promotions.
- *
- * @remarks
- * This controller handles the CRUD operations for the `Promotion` entity:
- * - `POST /promotions` — Create a new promotion
- * - `GET /promotions` — Retrieve all promotions
- * - `GET /promotions/:id` — Retrieve a specific promotion by ID
- * - `PATCH /promotions/:id` — Update a promotion
- * - `DELETE /promotions/:id` — Delete a promotion
- * - `GET /promotions/category/:category` — Retrieve promotions by category
- *
- * All routes delegate their logic to the {@link PromotionsService}.
- */
-
+import { CategoriesByNamePipe } from 'src/common/pipes/transform-to-id.pipe';
+import { Category } from 'src/categories/entities/category.entity';
 @Controller('promotions')
 export class PromotionsController {
   /**
@@ -46,8 +32,12 @@ export class PromotionsController {
    * ```
    */
   @Post()
-  create(@Body() createPromotionDto: CreatePromotionDto) {
-    return this.promotionsService.create(createPromotionDto);
+  create(
+    @Body('categories', CategoriesByNamePipe) categories: Category[],
+    @Body() createPromotionDto: CreatePromotionDto) {
+    return this.promotionsService.create({
+      ...createPromotionDto,
+      categoryIds: categories.map(category => category.id)});
   }
 
   /**
@@ -119,4 +109,6 @@ export class PromotionsController {
   promotionPerCategory(@Param('category') category: string) {
     return this.promotionsService.promotionPerCategory(category);
   }
+
+  
 }

@@ -82,15 +82,9 @@ export class BookingsService {
   }
 
   // Service method to find bookings by userId
-  /**
-   * Finds all bookings associated with a specific user.
-   * Includes related user and promotion data.
-   * @param userId - The unique identifier of the user
-   * @returns Promise resolving to an array of the user's bookings
-   */
-  async findByUserId(userId: number): Promise<Booking[]> {
+  async findByUserId(userId: string): Promise<Booking[]> {
     return this.bookingsRepository.find({
-      where: { user: { id: userId } },
+      where: { user: { cognitoId: userId } },
       relations: ['user', 'promotion'],
     });
   }

@@ -1,5 +1,7 @@
 import { Collaborator } from 'src/collaborators/entities/collaborator.entity';
 import { Promotion } from 'src/promotions/entities/promotion.entity';
+import { User } from 'src/users/entities/user.entity';
+import type { Relation } from 'typeorm';
 import { 
   Entity, 
   PrimaryGeneratedColumn, 
@@ -37,7 +39,7 @@ export class Category {
      * Bidirectional relationship with Collaborator.categories.
      */
     @ManyToMany(() => Collaborator, collaborator => collaborator.categories)
-    collaborators: Collaborator[]
+    collaborators: Relation<Collaborator[]>
 
     /**
      * Many-to-Many relationship with Promotion entity.
@@ -46,6 +48,9 @@ export class Category {
      * Bidirectional relationship with Promotion.categories.
      */
     @ManyToMany(() => Promotion, promotions => promotions.categories)
-    promotions: Promotion[]
+    promotions: Relation<Promotion[]>
+
+    @ManyToMany(() => User, user => user.favorites)
+    users: Relation<User[]>
     
 }

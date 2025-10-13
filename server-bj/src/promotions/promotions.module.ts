@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Promotion } from './entities/promotion.entity';
 import { BookingsModule } from 'src/bookings/bookings.module';
 import { CategoriesModule } from 'src/categories/categories.module';
+import { NotificacionsModule } from 'src/notifications/notifications.module';
 
 /**
  * Promotions module responsible for handling all promotion-related functionality.
@@ -32,7 +33,8 @@ import { CategoriesModule } from 'src/categories/categories.module';
     TypeOrmModule.forFeature([Promotion]),
     forwardRef(() => PromotionsModule),
     forwardRef(() => BookingsModule),
-    forwardRef(() => CategoriesModule)
+    forwardRef(() => CategoriesModule),
+    NotificacionsModule
 ],
 exports: [PromotionsService],
 })
