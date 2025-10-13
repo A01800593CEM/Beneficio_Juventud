@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository, LessThanOrEqual } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Promotion } from '../promotions/entities/promotion.entity';
 import { Booking } from '../bookings/entities/booking.entity';
@@ -39,10 +39,10 @@ export class ExpirationsService {
 
     for (const promo of promosExpiring) {
       const exists = await this.notifRepo.findOne({
-        where: { 
+        where: {
           title: 'Promoción por expirar',
           recipientId: promo.collaboratorId,
-          promotions: { promotionId: promo.promotionId }
+          promotions: { promotionId: promo.promotionId },
         },
       });
       if (exists) continue; // evita duplicados
@@ -50,7 +50,7 @@ export class ExpirationsService {
       await this.notifRepo.save(
         this.notifRepo.create({
           title: 'Promoción por expirar',
-          message: `La promoción "${promo.title}" vence el ${promo.endDate.toISOString().slice(0,10)}.`,
+          message: `La promoción "${promo.title}" vence el ${promo.endDate.toISOString().slice(0, 10)}.`,
           type: NotificationType.ALERT,
           recipientType: RecipientType.COLLABORATOR,
           recipientId: promo.collaboratorId,
@@ -63,17 +63,19 @@ export class ExpirationsService {
 
     // 2️⃣ Cupones (Bookings) que vencen en menos de 24h
     const bookingsExpiring = await this.bookingRepo.find({
-        where: { limitUseDate: LessThanOrEqual(in24h) },
-        relations: ['promotion', 'user'],
-});
-
+      where: { limitUseDate: LessThanOrEqual(in24h) },
+      relations: ['promotion'], // 👈 sin 'user' para evitar el join problemático
+    });
 
     for (const book of bookingsExpiring) {
+      const recipientId = book.userId; // 👈 usamos la FK cruda
+      if (!recipientId) continue;
+
       const exists = await this.notifRepo.findOne({
-        where: { 
+        where: {
           title: 'Cupón por expirar',
-          recipientId: book.user.id,
-          promotions: { promotionId: book.promotion.promotionId }
+          recipientId,
+          promotions: { promotionId: book.promotion.promotionId },
         },
       });
       if (exists) continue;
@@ -81,10 +83,12 @@ export class ExpirationsService {
       await this.notifRepo.save(
         this.notifRepo.create({
           title: 'Cupón por expirar',
-          message: `Tu cupón de "${book.promotion.title}" vence el ${book.limitUseDate ? book.limitUseDate.toISOString().slice(0,10) : 'fecha desconocida'}.`,
+          message: `Tu cupón de "${book.promotion.title}" vence el ${
+            book.limitUseDate ? book.limitUseDate.toISOString().slice(0, 10) : 'pronto'
+          }.`,
           type: NotificationType.ALERT,
           recipientType: RecipientType.USER,
-          recipientId: book.user.id,
+          recipientId,
           status: NotificationStatus.PENDING,
           segmentCriteria: { kind: 'booking-expiring', id: book.bookingId },
           promotions: book.promotion,
@@ -100,5 +104,4 @@ export class ExpirationsService {
     await this.checkExpirations();
     return { ok: true, message: 'Manual expiration check executed.' };
   }
-
 }
