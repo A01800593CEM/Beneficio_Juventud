@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import admin from "firebase-admin";
+import { Promotion } from 'src/promotions/entities/promotion.entity';
 
 
 const token = "d6pkRCOgTVCX4CezhHXNvh:APA91bFtNzHwDJOhmWdU6ZaTiyC5bce3H00knep7lcGgn5qTprmBtsGJamSGwmQmLWuq4utjMaEwFyNmimJuEKMCfoy36FIaRbJE7kEx4z-GZhMgndcJVxg";
@@ -9,6 +10,10 @@ const token = "d6pkRCOgTVCX4CezhHXNvh:APA91bFtNzHwDJOhmWdU6ZaTiyC5bce3H00knep7lc
 @Injectable()
 export class NotificationsService {
   constructor(@Inject('FIREBASE_ADMIN') private admin: admin.app.App) {}
+
+  async newPromoNotif(newPromo: Promotion) {
+    
+  }
 
   async sendNotification() {
     await admin.messaging().send({
