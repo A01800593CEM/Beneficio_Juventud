@@ -52,7 +52,6 @@ export class PromotionsService {
         ...data,
         categories,
       });
-      this.notificationsService.sendNotification();
       return this.promotionsRepository.save(promotion);
     }
 
@@ -172,4 +171,15 @@ export class PromotionsService {
 
   return qb.getMany();
 }
+//Promotions by Collaborator
+  /**
+   * Obtiene promociones asociadas a un colaborador específico usando su Cognito ID.
+   * @param cognitoId ID de Cognito del colaborador
+   * @returns Arreglo de promociones del colaborador
+   */
+  async promotionsByCollaborator(collaboratorId: string): Promise<Promotion[]> {
+    return this.promotionsRepository.find({
+      where: {collaboratorId}
+    })
+  }
 }

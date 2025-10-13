@@ -14,6 +14,7 @@ import { CollaboratorState } from '../enums/collaborator-state.enum';
 import { Favorite } from 'src/favorites/entities/favorite.entity';
 import { Redeemedcoupon } from 'src/redeemedcoupon/entities/redeemedcoupon.entity';
 import { Branch } from 'src/branch/entities/branch.entity';
+import { Promotion } from 'src/promotions/entities/promotion.entity';
 
 /**
  * Entity representing a collaborator in the system.
@@ -165,14 +166,17 @@ export class Collaborator {
      * @relation one-to-many
      */
     @OneToMany(() => Redeemedcoupon, redeemedcoupons => redeemedcoupons.collaborator)
-    redeemedcoupon: Relation<Redeemedcoupon>
+    redeemedcoupon: Relation<Redeemedcoupon>;
 
     /**
      * Physical branches of this collaborator.
      * @relation one-to-many
      */
     @OneToMany(() => Branch, branches => branches.collaborators)
-    branch: Relation<Branch>
+    branch: Relation<Branch>;
+
+    @OneToMany(() => Promotion, promotions => promotions.collaborator)
+    promotions: Relation<Promotion[]>;
     
 
 }

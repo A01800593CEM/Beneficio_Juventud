@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CategoriesModule } from 'src/categories/categories.module';
 import { FavoritesModule } from 'src/favorites/favorites.module';
 import { BranchModule } from 'src/branch/branch.module';
+import { PromotionsModule } from 'src/promotions/promotions.module';
 
 /**
  * Module responsible for managing collaborators functionality in the application.
@@ -32,7 +33,8 @@ import { BranchModule } from 'src/branch/branch.module';
     TypeOrmModule.forFeature([Collaborator]),
     forwardRef(() => CategoriesModule),
     forwardRef(() => FavoritesModule),
-    forwardRef(() => BranchModule) 
+    forwardRef(() => BranchModule) ,
+    forwardRef(() => PromotionsModule)
 ],
   controllers: [CollaboratorsController],
   providers: [CollaboratorsService],

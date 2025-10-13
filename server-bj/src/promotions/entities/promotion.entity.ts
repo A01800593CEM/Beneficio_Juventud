@@ -1,10 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToMany, JoinTable, } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToMany, JoinTable, ManyToOne, JoinColumn, } from 'typeorm';
 import { PromotionType } from '../enums/promotion-type.enums';
 import { PromotionState } from '../enums/promotion-state.enums';
 import { Booking } from '../../bookings/entities/booking.entity';
 import type { Relation } from 'typeorm';
 import { Redeemedcoupon } from 'src/redeemedcoupon/entities/redeemedcoupon.entity';
 import { Category } from 'src/categories/entities/category.entity';
+import { Collaborator } from 'src/collaborators/entities/collaborator.entity';
 
 @Entity({ name: 'promocion' })
 export class Promotion {
@@ -86,4 +87,7 @@ export class Promotion {
     },
       })
         categories: Category[];
+  @ManyToOne(() => Collaborator, collaborator => collaborator.promotions)
+  @JoinColumn({name: 'colaborador_id'})
+  collaborator: Relation<Collaborator>;
 }
