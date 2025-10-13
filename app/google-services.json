@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "539242565369",
+    "project_id": "beneficio-joven",
+    "storage_bucket": "beneficio-joven.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:539242565369:android:33590f8f987e1ec326dc28",
+        "android_client_info": {
+          "package_name": "mx.itesm.beneficiojuventud"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvlEL66F7Bp8nHjiVoH6Kp2sVU8F76UtU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

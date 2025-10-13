@@ -11,7 +11,7 @@ export class CreateBookingDto {
   promotionId: number;
 
   @IsInt()
-  userId: number;
+  userId: string;
 
   @IsDate() @Type(() => Date)
   limitUseDate?: Date;

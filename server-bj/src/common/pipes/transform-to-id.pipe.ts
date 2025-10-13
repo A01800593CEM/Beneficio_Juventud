@@ -1,6 +1,9 @@
 import { PipeTransform, Injectable, NotFoundException } from '@nestjs/common';
 import { CategoriesService } from '../../categories/categories.service';
 import { Category } from '../../categories/entities/category.entity';
+import { CollaboratorsService } from '../../collaborators/collaborators.service';
+import { UsersService } from '../../users/users.service';
+import { AdministratorsService } from '../../administrators/administrators.service';
 
 @Injectable()
 export class CategoriesByNamePipe implements PipeTransform {
@@ -18,3 +21,5 @@ export class CategoriesByNamePipe implements PipeTransform {
     return categories;
   }
 }
+
+

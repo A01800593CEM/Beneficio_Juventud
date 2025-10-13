@@ -5,6 +5,7 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
+import { sendNotification } from './enviar';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
