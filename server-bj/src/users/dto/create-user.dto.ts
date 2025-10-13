@@ -55,7 +55,6 @@ export class CreateUserDto {
     accountState: UserState
 
     @IsArray()
-    @ArrayNotEmpty()
     @IsString({ each: true})
     userPrefCategories: string[]
 }
