@@ -4,7 +4,8 @@ import com.google.gson.annotations.SerializedName
 import java.util.Date
 
 data class Promotions(
-    val collaboratorId: Int? = null,
+    val promotionId: Int? = null,
+    val collaboratorId: String? = null,
     val title: String? = null,
     val description: String? = null,
     val imageUrl: String? = null,

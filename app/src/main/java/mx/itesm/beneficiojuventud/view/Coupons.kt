@@ -1,6 +1,5 @@
 package mx.itesm.beneficiojuventud.view
 
-import CategoryViewModel
 import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,74 +12,88 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import mx.itesm.beneficiojuventud.R
+import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.components.*
-import mx.itesm.beneficiojuventud.model.Promo
 import mx.itesm.beneficiojuventud.model.PromoTheme
+import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
+import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 
 // Insets
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
-
-/**
- * Fuente de datos temporal para renderizar cupones en la lista.
- */
-private val coupons = listOf(
-    Promo(
-        bg = R.drawable.el_fuego_sagrado,
-        title = "Martes 2×1",
-        subtitle = "Cine Stelar",
-        body = "Compra un boleto y obtén el segundo gratis para la misma función.",
-        theme = PromoTheme.DARK
-    ),
-    Promo(
-        bg = R.drawable.el_fuego_sagrado,
-        title = "Jueves Pozolero",
-        subtitle = "El Sazón de Iván",
-        body = "2×1 en todos nuestros pozoles.",
-        theme = PromoTheme.LIGHT
-    ),
-    Promo(
-        bg = R.drawable.carne,
-        title = "Lunes sin Carne",
-        subtitle = "Bocado Rápido",
-        body = "20% en bowls vegetarianos.",
-        theme = PromoTheme.DARK
-    )
-)
+import androidx.compose.foundation.layout.only
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Coupons(
     nav: NavHostController,
     modifier: Modifier = Modifier,
-    vm: CategoryViewModel = viewModel() // Usa el MISMO VM de categorías
+    vm: CategoryViewModel = viewModel(),          // VM de categorías (el mismo que ya usas)
+    promoVm: PromoViewModel = viewModel()         // VM de promociones reales
 ) {
-    var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
+    var selectedTab by rememberSaveable { mutableStateOf(BJTab.Coupons) }
 
-    // Estados del VM
+    // Estados de categorías
     val categories by vm.categories.collectAsState()
-    val isLoading by vm.loading.collectAsState(initial = false)
-    val error by vm.error.collectAsState(initial = null)
+    val isLoadingCategories by vm.loading.collectAsState(initial = false)
+    val categoriesError by vm.error.collectAsState(initial = null)
+
+    // Estados de promos
+    val promos by promoVm.promoListState.collectAsState()
+    var loadingPromos by rememberSaveable { mutableStateOf(false) }
+    var promosError by rememberSaveable { mutableStateOf<String?>(null) }
 
     // Filtro por categoría (id)
     var selectedCategoryId by rememberSaveable { mutableStateOf<Int?>(null) }
 
-    // Carga categorías si están vacías
+    val scope = rememberCoroutineScope()
+
+    // Cargar categorías si están vacías
     LaunchedEffect(Unit) {
         if (categories.isEmpty()) vm.loadCategories()
+    }
+
+    // Cargar promos (todas) al entrar
+    LaunchedEffect(Unit) {
+        loadingPromos = true
+        promosError = null
+        try {
+            promoVm.getAllPromotions()
+        } catch (e: Exception) {
+            promosError = e.message ?: "Error loading promotions"
+        } finally {
+            loadingPromos = false
+        }
+    }
+
+    // Reaccionar a cambio de categoría
+    LaunchedEffect(selectedCategoryId) {
+        loadingPromos = true
+        promosError = null
+        try {
+            if (selectedCategoryId == null) {
+                promoVm.getAllPromotions()
+            } else {
+                // Si tu backend espera el nombre, ajusta aquí; de momento usamos id -> toString()
+                promoVm.getPromotionByCategory(selectedCategoryId.toString())
+            }
+        } catch (e: Exception) {
+            promosError = e.message ?: "Error filtering promotions"
+        } finally {
+            loadingPromos = false
+        }
     }
 
     Scaffold(
@@ -108,7 +121,8 @@ fun Coupons(
             )
         }
     ) { innerPadding ->
-            val bottomInset = WindowInsets.navigationBars
+        // Altura estimada de la bottom bar + navegación del sistema
+        val bottomInset = WindowInsets.navigationBars
             .only(WindowInsetsSides.Bottom)
             .asPaddingValues()
             .calculateBottomPadding()
@@ -119,10 +133,11 @@ fun Coupons(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding),
-                        contentPadding = PaddingValues(
+            contentPadding = PaddingValues(
                 bottom = bottomBarHeight + bottomInset + 16.dp
             )
         ) {
+
             // Categorías Populares (desde API)
             item {
                 SectionTitle(
@@ -131,7 +146,7 @@ fun Coupons(
                 )
 
                 when {
-                    isLoading -> {
+                    isLoadingCategories -> {
                         Row(
                             Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -145,7 +160,7 @@ fun Coupons(
                         }
                     }
 
-                    error != null -> {
+                    categoriesError != null -> {
                         Row(
                             Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -167,19 +182,18 @@ fun Coupons(
                         ) {
                             items(
                                 items = categories,
-                                key = { it.id ?: (it.name ?: it.hashCode()).hashCode() }
+                                key = { it.id ?: (it.name ?: it.hashCode().toString()).hashCode() }
                             ) { c ->
                                 val id = c.id ?: return@items
                                 val name = c.name ?: "Categoría"
 
                                 CategoryPill(
-                                    icon = Icons.Outlined.NotificationsNone, // Ajusta si tu API trae iconos
+                                    icon = Icons.Outlined.NotificationsNone, // reemplaza con tu ícono cuando lo tengas
                                     label = name,
                                     selected = selectedCategoryId == id,
                                     onClick = {
                                         selectedCategoryId =
                                             if (selectedCategoryId == id) null else id
-                                        // TODO: vm.loadCouponsByCategory(selectedCategoryId)
                                     }
                                 )
                             }
@@ -193,27 +207,103 @@ fun Coupons(
             // Título de lista
             item {
                 SectionTitle(
-                    "Todos los Cupones",
+                    if (selectedCategoryId == null) "Todos los cupones" else "Cupones por categoría",
                     Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 6.dp)
                 )
             }
 
-            // Lista de cupones usando PromoImageBanner (click -> navega a PromoQR)
-            items(
-                count = coupons.size,
-                key = { it }
-            ) { i ->
-                val titleArg = Uri.encode(coupons[i].title)
-                PromoImageBanner(
-                    promo = coupons[i],
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    onClick = {
-                        nav.navigate(Screens.PromoQR.route + "?idx=$i&title=$titleArg")
+            // Estado de carga/errores/empty para promos
+            when {
+                loadingPromos -> {
+                    item {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text("Cargando cupones…")
+                        }
                     }
-                )
+                }
+
+                promosError != null -> {
+                    item {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Error al cargar cupones",
+                                color = Color(0xFFB00020),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            TextButton(onClick = {
+                                scope.launch {
+                                    loadingPromos = true
+                                    promosError = null
+                                    try {
+                                        if (selectedCategoryId == null) {
+                                            promoVm.getAllPromotions()
+                                        } else {
+                                            promoVm.getPromotionByCategory(selectedCategoryId.toString())
+                                        }
+                                    } catch (e: Exception) {
+                                        promosError = e.message ?: "Error"
+                                    } finally {
+                                        loadingPromos = false
+                                    }
+                                }
+                            }) { Text("Reintentar") }
+                        }
+                    }
+                }
+
+                promos.isEmpty() -> {
+                    item {
+                        EmptyState(
+                            title = "No hay cupones disponibles",
+                            body = if (selectedCategoryId == null)
+                                "Vuelve más tarde para ver nuevas promociones."
+                            else
+                                "No encontramos cupones en esta categoría. Prueba con otra."
+                        )
+                    }
+                }
+
+                else -> {
+                    // Lista de cupones reales usando tu PromoImageBanner (Coil)
+                    items(
+                        items = promos,
+                        key = { it.promotionId ?: it.hashCode() }
+                    ) { promo ->
+                        PromoImageBanner(
+                            promo = promo,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp)
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            onClick = {
+                                val id = promo.promotionId ?: return@PromoImageBanner
+                                // Navegación por id (ajusta a tu NavGraph real)
+                                // nav.navigate("${Screens.PromoQR.route}?id=$id")
+                                nav.navigate("${Screens.PromoQR.route}/$id")
+                            },
+                            themeResolver = { _: Promotions ->
+                                // Si más adelante guardas un flag en BD para tema, resuélvelo aquí
+                                PromoTheme.LIGHT
+                            }
+                        )
+                    }
+                }
             }
 
             // Pie
@@ -228,6 +318,23 @@ fun Coupons(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyState(
+    title: String,
+    body: String
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(title, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161))
+        Spacer(Modifier.height(6.dp))
+        Text(body, fontSize = 12.sp, color = Color(0xFF9E9E9E))
     }
 }
 

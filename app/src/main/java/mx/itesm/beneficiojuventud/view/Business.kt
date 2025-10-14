@@ -1,12 +1,12 @@
 package mx.itesm.beneficiojuventud.view
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,29 +19,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.*
-import mx.itesm.beneficiojuventud.model.Promo
-import mx.itesm.beneficiojuventud.model.PromoTheme
+import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 
-// --------- Mock data ----------
+// ---------- Datos del negocio (mock para la cabecera) ----------
 
-/**
- * Información básica del negocio mostrada en la pantalla de detalle.
- * @param imageRes Recurso drawable de la imagen del negocio.
- * @param name Nombre comercial del negocio.
- * @param category Categoría a la que pertenece.
- * @param location Ubicación breve o sucursal.
- * @param rating Calificación promedio mostrada al usuario.
- * @param isFavorite Indica si el negocio está marcado como favorito.
- */
 data class BusinessInfo(
     val imageRes: Int,
     val name: String,
@@ -59,45 +50,38 @@ private val mockBusiness = BusinessInfo(
     rating = 4.7
 )
 
-private val businessCoupons = listOf(
-    Promo(
-        bg = R.drawable.el_fuego_sagrado,
-        title = "Martes 2×1",
-        subtitle = "Cine Stelar",
-        body = "Compra un boleto y obtén el segundo gratis para la misma función.",
-        theme = PromoTheme.DARK
-    ),
-    Promo(
-        bg = R.drawable.el_fuego_sagrado,
-        title = "Martes 2×1",
-        subtitle = "Cine Stelar",
-        body = "Compra un boleto y obtén el segundo gratis para la misma función.",
-        theme = PromoTheme.DARK
-    )
-)
+// ---------- Pantalla ----------
 
-// --------- Pantalla ----------
-
-/**
- * Pantalla de detalle de un negocio con hero, datos básicos y cupones disponibles.
- * @param nav Controlador de navegación para manejar back y tabs.
- * @param modifier Modificador externo del contenedor.
- * @param business Datos del negocio a mostrar; por defecto usa mock.
- * @param coupons Lista de cupones asociados al negocio.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Business(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     business: BusinessInfo = mockBusiness,
-    coupons: List<Promo> = businessCoupons
+    // Si quieres inyectar promos pre-cargadas para este negocio, pásalas aquí.
+    initialCoupons: List<Promotions> = emptyList(),
+    promoViewModel: PromoViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Home) }
 
+    // State del VM
+    val vmPromos by promoViewModel.promoListState.collectAsState()
+
+    // Fuente de verdad para la lista: si me pasas initialCoupons los uso;
+    // si no, uso lo del VM y hago fetch al montar.
+    val coupons: List<Promotions> by remember(initialCoupons, vmPromos) {
+        mutableStateOf(if (initialCoupons.isNotEmpty()) initialCoupons else vmPromos)
+    }
+
+    // Carga inicial si no recibimos initialCoupons
+    LaunchedEffect(initialCoupons) {
+        if (initialCoupons.isEmpty()) {
+            promoViewModel.getAllPromotions()
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        // 🔧 Evita doble padding de status bar (BJTopHeader ya aplica safeDrawing Top+Horizontal)
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         topBar = {
             BJTopHeader(
@@ -136,6 +120,7 @@ fun Business(
                 )
             }
 
+            // 👉 Ahora coupons es List<Promotions>, compatible con PromoImageBanner real
             items(coupons.size) { i ->
                 PromoImageBanner(
                     promo = coupons[i],
@@ -155,13 +140,8 @@ fun Business(
     }
 }
 
-// --------- UI helpers ----------
+// ---------- UI helpers ----------
 
-/**
- * Tarjeta de cabecera con imagen, gradiente y datos clave del negocio.
- * @param business Información del negocio a renderizar.
- * @param modifier Modificador opcional del contenedor.
- */
 @Composable
 private fun BusinessHeroCard(
     business: BusinessInfo,
@@ -259,9 +239,7 @@ private fun BusinessHeroCard(
     }
 }
 
-/**
- * Vista previa de la pantalla de negocio con datos mock.
- */
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun BusinessPreview() {
