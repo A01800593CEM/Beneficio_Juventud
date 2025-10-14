@@ -32,20 +32,23 @@ export class ExpirationsService {
     const now = new Date();
     const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-    // 1️⃣ Promociones que vencen en menos de 24h
+    // 1) Promos que vencen en <= 24h
     const promosExpiring = await this.promoRepo.find({
       where: { endDate: LessThanOrEqual(in24h) },
     });
 
     for (const promo of promosExpiring) {
+      const recipientIdNum = Number(promo.collaboratorId); // <-- asegurar número
+
       const exists = await this.notifRepo.findOne({
         where: {
           title: 'Promoción por expirar',
-          recipientId: promo.collaboratorId,
+          recipientId: recipientIdNum,
+          // OJO: usa 'promotions' o 'promotion' según tu Notification entity
           promotions: { promotionId: promo.promotionId },
         },
       });
-      if (exists) continue; // evita duplicados
+      if (exists) continue;
 
       await this.notifRepo.save(
         this.notifRepo.create({
@@ -53,28 +56,33 @@ export class ExpirationsService {
           message: `La promoción "${promo.title}" vence el ${promo.endDate.toISOString().slice(0, 10)}.`,
           type: NotificationType.ALERT,
           recipientType: RecipientType.COLLABORATOR,
-          recipientId: promo.collaboratorId,
+          recipientId: recipientIdNum,
           status: NotificationStatus.PENDING,
           segmentCriteria: { kind: 'promotion-expiring', id: promo.promotionId },
+          // OJO: usa 'promotions' o 'promotion' según tu Notification entity
           promotions: promo,
         }),
       );
     }
 
-    // 2️⃣ Cupones (Bookings) que vencen en menos de 24h
+    // 2) Bookings que vencen en <= 24h
     const bookingsExpiring = await this.bookingRepo.find({
       where: { limitUseDate: LessThanOrEqual(in24h) },
-      relations: ['promotion'], // 👈 sin 'user' para evitar el join problemático
+      relations: ['promotion'], // sin 'user'
     });
 
     for (const book of bookingsExpiring) {
-      const recipientId = book.userId; // 👈 usamos la FK cruda
-      if (!recipientId) continue;
+      const recipientIdNum = Number(book.userId); // <-- asegurar número
+      if (!recipientIdNum) continue;
+
+      // Asegura que venga la promo (por si alguna fila quedó sin FK)
+      if (!book.promotion) continue;
 
       const exists = await this.notifRepo.findOne({
         where: {
           title: 'Cupón por expirar',
-          recipientId,
+          recipientId: recipientIdNum,
+          // OJO: usa 'promotions' o 'promotion' según tu Notification entity
           promotions: { promotionId: book.promotion.promotionId },
         },
       });
@@ -88,9 +96,10 @@ export class ExpirationsService {
           }.`,
           type: NotificationType.ALERT,
           recipientType: RecipientType.USER,
-          recipientId,
+          recipientId: recipientIdNum,
           status: NotificationStatus.PENDING,
           segmentCriteria: { kind: 'booking-expiring', id: book.bookingId },
+          // OJO: usa 'promotions' o 'promotion' según tu Notification entity
           promotions: book.promotion,
         }),
       );
@@ -99,7 +108,7 @@ export class ExpirationsService {
     this.logger.log('✅ Revisión completada');
   }
 
-  //Tests
+  // Endpoint manual de prueba
   async runManualCheck() {
     await this.checkExpirations();
     return { ok: true, message: 'Manual expiration check executed.' };
