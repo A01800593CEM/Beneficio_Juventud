@@ -6,6 +6,7 @@ import type { Relation } from 'typeorm';
 import { Redeemedcoupon } from 'src/redeemedcoupon/entities/redeemedcoupon.entity';
 import { Category } from 'src/categories/entities/category.entity';
 import { Collaborator } from 'src/collaborators/entities/collaborator.entity';
+import { Notification } from 'src/notifications/entities/notification.entity';
 
 /**
  * Entity representing a promotion in the system.
@@ -176,4 +177,7 @@ export class Promotion {
   @ManyToOne(() => Collaborator, collaborator => collaborator.promotions)
   @JoinColumn({name: 'colaborador_id'})
   collaborator: Relation<Collaborator>;
+
+  @OneToMany(() => Notification, notifications => notifications.promotions)
+    notifications: Relation<Notification>;
 }
