@@ -1,6 +1,7 @@
 package mx.itesm.beneficiojuventud.view
 
 import android.graphics.Bitmap
+import android.util.Log // LOG: import
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -58,6 +59,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.IconToggleButton
 
+// LOG: etiqueta global para Logcat
+private const val TAG = "PromoQR"
+
 // ---------- Mappers de texto ----------
 private val PromotionType.displayName: String
     get() = when (this) {
@@ -86,6 +90,7 @@ data class PromoDetailUi(
     val stockLabel: String,
     val theme: PromoTheme = PromoTheme.LIGHT
 )
+
 
 // ---------- Helpers ----------
 private fun formatDate(date: Date?): String {
@@ -166,7 +171,8 @@ private fun generateQrImageBitmap(data: String, sizePx: Int = 900): ImageBitmap?
             hints
         )
         bitMatrixToBitmap(matrix).asImageBitmap()
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        Log.e(TAG, "Error generando imagen de QR", e) // LOG
         null
     }
 }
@@ -189,7 +195,7 @@ fun PromoQR(
 
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-
+    val scope = rememberCoroutineScope()
     // Snackbar para feedback
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -197,9 +203,12 @@ fun PromoQR(
     LaunchedEffect(promotionId) {
         isLoading = true
         error = null
+        Log.d(TAG, "API:getPromotionById START promotionId=$promotionId") // LOG
         try {
             viewModel.getPromotionById(promotionId)
+            Log.d(TAG, "API:getPromotionById DONE promotionId=$promotionId") // LOG
         } catch (e: Exception) {
+            Log.e(TAG, "API:getPromotionById ERROR promotionId=$promotionId", e) // LOG
             error = e.message ?: "Error al cargar la promoción."
         } finally {
             isLoading = false
@@ -211,14 +220,36 @@ fun PromoQR(
     val userError by userViewModel.error.collectAsState()
 
     LaunchedEffect(cognitoId) {
-        userViewModel.getFavoritePromotions(cognitoId)
+        Log.d(TAG, "API:getFavoritePromotions START user=$cognitoId") // LOG
+        try {
+            userViewModel.getFavoritePromotions(cognitoId)
+            Log.d(TAG, "API:getFavoritePromotions DONE user=$cognitoId") // LOG
+        } catch (e: Exception) {
+            Log.e(TAG, "API:getFavoritePromotions ERROR user=$cognitoId", e) // LOG
+        }
     }
 
     // Mostrar errores del backend en snackbar
     LaunchedEffect(userError) {
         userError?.let { msg ->
+            Log.w(TAG, "API:UserViewModel ERROR message=$msg") // LOG
             snackbarHostState.showSnackbar(message = msg)
         }
+    }
+
+    // Logs cuando cambia promo (respuesta de getPromotionById)
+    LaunchedEffect(promo) {
+        if ((promo.title != null) || (promo.description != null) || (promo.imageUrl != null)) {
+            Log.d(
+                TAG,
+                "STATE:promo UPDATED id=$promotionId title=${promo.title} type=${promo.promotionType} state=${promo.promotionState}"
+            )
+        }
+    }
+
+    // Logs cuando cambian favoritos (respuesta de getFavoritePromotions / refreshFavorites)
+    LaunchedEffect(favPromos) {
+        Log.d(TAG, "STATE:favorites UPDATED user=$cognitoId count=${favPromos.size}") // LOG
     }
 
     val detail: PromoDetailUi? = remember(promo) {
@@ -227,15 +258,23 @@ fun PromoQR(
     }
 
     val qrPayload = remember(promotionId, cognitoId, promo.limitPerUser) {
-        buildQrPayload(
+        val payload = buildQrPayload(
             promotionId = promotionId,
             userId = cognitoId,
             limitPerUser = promo.limitPerUser
         )
+        // LOG: evita exponer completo el UID en logs
+        Log.d(
+            TAG,
+            "QR:payload BUILT pid=$promotionId uidPrefix=${cognitoId.take(6)} lpu=${promo.limitPerUser} length=${payload.length}"
+        )
+        payload
     }
     var qrImage by remember(promotionId, cognitoId, promo.limitPerUser) { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(qrPayload) {
+        Log.d(TAG, "QR:image GENERATE START") // LOG
         qrImage = generateQrImageBitmap(qrPayload, sizePx = 900)
+        Log.d(TAG, "QR:image GENERATE DONE success=${qrImage != null}") // LOG
     }
 
     // ======= Favorito (derivado del backend) + UI optimista =======
@@ -245,19 +284,37 @@ fun PromoQR(
     var isFavoriteLocal by remember(promotionId, isFavoriteRemote) { mutableStateOf(isFavoriteRemote) }
 
     fun toggleFavorite() {
-        // Optimista inmediato
         val newValue = !isFavoriteLocal
+        Log.d(
+            TAG,
+            "UI:toggleFavorite CLICK promotionId=$promotionId user=$cognitoId from=$isFavoriteLocal to=$newValue"
+        )
+        // Optimista
         isFavoriteLocal = newValue
 
-        // Llamada real al backend
-        if (newValue) {
-            userViewModel.favoritePromotion(promotionId, cognitoId)
-        } else {
-            userViewModel.unfavoritePromotion(promotionId, cognitoId)
+        // Llamadas reales
+        try {
+            if (newValue) {
+                Log.d(TAG, "API:favoritePromotion START pid=$promotionId user=$cognitoId")
+                userViewModel.favoritePromotion(promotionId, cognitoId)
+                Log.d(TAG, "API:favoritePromotion DONE pid=$promotionId user=$cognitoId")
+            } else {
+                Log.d(TAG, "API:unfavoritePromotion START pid=$promotionId user=$cognitoId")
+                userViewModel.unfavoritePromotion(promotionId, cognitoId)
+                Log.d(TAG, "API:unfavoritePromotion DONE pid=$promotionId user=$cognitoId")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "API:favorite/unfavorite ERROR pid=$promotionId user=$cognitoId", e)
         }
 
-        // Refrescar lista backend para mantener consistencia (opcional si tu endpoint devuelve estado)
-        userViewModel.refreshFavorites(cognitoId)
+        // Refrescar lista
+        try {
+            Log.d(TAG, "API:refreshFavorites START user=$cognitoId")
+            userViewModel.refreshFavorites(cognitoId)
+            Log.d(TAG, "API:refreshFavorites DONE user=$cognitoId")
+        } catch (e: Exception) {
+            Log.e(TAG, "API:refreshFavorites ERROR user=$cognitoId", e)
+        }
     }
 
     val theme = detail?.theme ?: PromoTheme.LIGHT
