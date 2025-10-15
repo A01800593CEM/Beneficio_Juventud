@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.users.RemoteServiceUser
 import mx.itesm.beneficiojuventud.model.users.UserProfile
 
@@ -22,6 +23,12 @@ class UserViewModel : ViewModel() {
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
+
+    private val _favoritePromotions = MutableStateFlow<List<Promotions>>(emptyList())
+    val favoritePromotions: StateFlow<List<Promotions>> = _favoritePromotions
+
+    private val _favoriteCollabs = MutableStateFlow<List<Int>>(emptyList())
+    val favoriteCollabs: StateFlow<List<Int>> = _favoriteCollabs
 
     /** Token para invalidar respuestas tardías cuando cambia de cuenta o se hace clear. */
     private var loadToken: Int = 0
@@ -113,4 +120,131 @@ class UserViewModel : ViewModel() {
             )
         }
     }
+
+    fun favoritePromotion(promotionId: Int, cognitoId: String) {
+        _error.value = null
+        // No activamos el loading global para no bloquear la UI por una acción rápida.
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { model.favoritePromotion(promotionId, cognitoId) }
+            }
+            result.onFailure { e ->
+                _error.value = e.message ?: "Error al marcar favorito"
+            }.onSuccess {
+                // Refrescamos listas para mantener consistencia
+                refreshFavorites(cognitoId)
+            }
+        }
+    }
+
+    fun unfavoritePromotion(promotionId: Int, cognitoId: String) {
+        _error.value = null
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { model.unfavoritePromotion(promotionId, cognitoId) }
+            }
+            result.onFailure { e ->
+                _error.value = e.message ?: "Error al quitar favorito"
+            }.onSuccess {
+                // Refrescamos listas para mantener consistencia
+                refreshFavorites(cognitoId)
+            }
+        }
+    }
+
+    fun getFavoritePromotions(cognitoId: String) {
+        val myToken = ++loadToken
+        _error.value = null
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { model.getFavoritePromotions(cognitoId) }
+            }
+            if (myToken != loadToken) return@launch
+
+            result.fold(
+                onSuccess = { list -> _favoritePromotions.value = list },
+                onFailure = { e -> _error.value = e.message ?: "Error al obtener promociones favoritas" }
+            )
+            _isLoading.value = false
+        }
+    }
+
+    fun getFavoriteCollabs(cognitoId: String) {
+        val myToken = ++loadToken
+        _error.value = null
+        _isLoading.value = true
+
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { model.getFavoriteCollabs(cognitoId) }
+            }
+            if (myToken != loadToken) return@launch
+
+            result.fold(
+                onSuccess = { ids -> _favoriteCollabs.value = ids },
+                onFailure = { e -> _error.value = e.message ?: "Error al obtener colaboradores favoritos" }
+            )
+            _isLoading.value = false
+        }
+    }
+
+    /** Conveniencia para refrescar ambas listas de favoritos sin pelear con el token global. */
+    fun refreshFavorites(cognitoId: String) {
+        // No tocamos loadToken aquí para no invalidar otras cargas largas.
+        viewModelScope.launch {
+            // Promos
+            runCatching {
+                withContext(Dispatchers.IO) { model.getFavoritePromotions(cognitoId) }
+            }.onSuccess { _favoritePromotions.value = it }
+                .onFailure { e -> _error.value = e.message ?: "Error al refrescar promociones favoritas" }
+
+            // Collabs
+            runCatching {
+                withContext(Dispatchers.IO) { model.getFavoriteCollabs(cognitoId) }
+            }.onSuccess { _favoriteCollabs.value = it }
+                .onFailure { e -> _error.value = e.message ?: "Error al refrescar colaboradores favoritos" }
+        }
+    }
+
+    // --- COLLABORATORS FAVORITES ---
+
+    fun favoriteCollaborator(collaboratorId: Int, cognitoId: String) {
+        _error.value = null
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { model.favoriteCollaborator(collaboratorId, cognitoId) }
+            }
+            result.onFailure { e ->
+                _error.value = e.message ?: "Error al marcar colaborador como favorito"
+            }.onSuccess {
+                // Mantén el estado consistente
+                refreshFavorites(cognitoId)
+            }
+        }
+    }
+
+    fun unfavoriteCollaborator(collaboratorId: Int, cognitoId: String) {
+        _error.value = null
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { model.unfavoriteCollaborator(collaboratorId, cognitoId) }
+            }
+            result.onFailure { e ->
+                _error.value = e.message ?: "Error al quitar colaborador de favoritos"
+            }.onSuccess {
+                // Mantén el estado consistente
+                refreshFavorites(cognitoId)
+            }
+        }
+    }
+
+    fun toggleFavoriteCollaborator(collaboratorId: Int, cognitoId: String) {
+        val isFav = _favoriteCollabs.value.contains(collaboratorId)
+        if (isFav) unfavoriteCollaborator(collaboratorId, cognitoId)
+        else favoriteCollaborator(collaboratorId, cognitoId)
+    }
+
+
 }

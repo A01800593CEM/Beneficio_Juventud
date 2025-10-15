@@ -197,10 +197,9 @@ private fun AppNav(
             composable(Screens.History.route) { History(nav) }
             composable(Screens.Settings.route) { Settings(nav) }
             composable(Screens.Help.route) { Help(nav) }
-            composable(Screens.Favorites.route) { Favorites(nav) }
+            composable(Screens.Favorites.route) { Favorites(nav, userViewModel = userViewModel) }
             composable(Screens.Coupons.route) { Coupons(nav) }
             composable(Screens.Business.route) { Business(nav) }
-            composable(Screens.PromoQR.route) { PromoQR(nav) }
             composable(Screens.GenerarPromocion.route) { GenerarPromocion(nav) }
             composable(Screens.GenerarPromocionIA.route) { GenerarPromocionIA(nav) }
 
@@ -209,6 +208,33 @@ private fun AppNav(
                 val json = nav.previousBackStackEntry?.savedStateHandle?.get<String>("promotion_data")
                 val promo = json?.let { parsePromotionDataFromJson(it) }
                 EditPromotion(nav, promo)
+            }
+
+            composable(
+                route = Screens.PromoQR.route,
+                arguments = Screens.PromoQR.arguments
+            ) { backStackEntry ->
+
+                // Memoiza el argumento para que no cambie en recomposiciones
+                val promotionId = remember(backStackEntry) {
+                    backStackEntry.arguments?.getInt("promotionId")
+                } ?: return@composable
+
+                // Toma el cognitoId del AuthViewModel (StateFlow<String?>)
+                val cognitoId by authViewModel.currentUserId.collectAsState()
+
+                // Si aún no cargó, muestra loader breve (evita entrar con "")
+                if (cognitoId.isNullOrBlank()) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    PromoQR(
+                        nav = nav,
+                        promotionId = promotionId,
+                        cognitoId = cognitoId!!
+                    )
+                }
             }
         }
     }

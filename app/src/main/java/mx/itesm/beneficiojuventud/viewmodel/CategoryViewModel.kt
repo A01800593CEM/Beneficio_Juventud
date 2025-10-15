@@ -1,3 +1,4 @@
+package mx.itesm.beneficiojuventud.viewmodel
 // imports nuevos:
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
