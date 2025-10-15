@@ -26,95 +26,47 @@ import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
+import mx.itesm.beneficiojuventud.components.BJTopHeader
+import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
+/**
+ * Representa una pregunta frecuente con su respuesta correspondiente.
+ * @param question Pregunta planteada por el usuario.
+ * @param answer Respuesta explicativa mostrada en la interfaz.
+ */
 data class FaqItem(val question: String, val answer: String)
 
+/**
+ * Pantalla de ayuda y soporte que muestra contacto, línea de ayuda y preguntas frecuentes.
+ * Incluye barra de navegación inferior y divisor superior con gradiente.
+ * @param nav Controlador de navegación para cambiar de pantalla.
+ * @param modifier Modificador opcional para ajustar el contenedor.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
-    var selectedTab by remember { mutableStateOf(BJTab.Perfil) }
+    var selectedTab by remember { mutableStateOf(BJTab.Profile) }
     val appVersion = "1.0.01"
 
     val faqs = remember {
         listOf(
-            FaqItem(
-                "¿Cómo uso mis cupones?",
-                "Ve a la sección de cupones y selecciona el que quieras usar. Muestra el código al comerciante."
-            ),
-            FaqItem(
-                "¿Los cupones tienen fecha de vencimiento?",
-                "Sí, cada cupón tiene una fecha límite que aparece en los detalles del mismo."
-            ),
-            FaqItem(
-                "¿Cómo actualizo mi información personal?",
-                "Ve a Perfil > Editar Perfil para actualizar tus datos personales."
-            ),
-            FaqItem(
-                "¿Puedo compartir mis cupones?",
-                "Los cupones son personales e intransferibles, vinculados a tu cuenta."
-            ),
+            FaqItem("¿Cómo uso mis cupones?", "Ve a la sección de cupones y selecciona el que quieras usar. Muestra el código al comerciante."),
+            FaqItem("¿Los cupones tienen fecha de vencimiento?", "Sí, cada cupón tiene una fecha límite que aparece en los detalles del mismo."),
+            FaqItem("¿Cómo actualizo mi información personal?", "Ve a Perfil > Editar Perfil para actualizar tus datos personales."),
+            FaqItem("¿Puedo compartir mis cupones?", "Los cupones son personales e intransferibles, vinculados a tu cuenta.")
         )
     }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         topBar = {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_beneficio_joven),
-                        contentDescription = "Logo",
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { nav.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.Outlined.ChevronLeft,
-                                contentDescription = "Volver",
-                                tint = Color(0xFF616161),
-                                modifier = Modifier.size(40.dp)
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = "Ayuda y Soporte",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                            fontSize = 20.sp,
-                            color = Color(0xFF616161)
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Outlined.NotificationsNone,
-                        contentDescription = "Notificaciones",
-                        tint = Color(0xFF008D96),
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
-                GradientDivider(
-                    thickness = 2.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
-            }
+            BJTopHeader(
+                title = "Ayuda y Soporte",
+                nav = nav
+            )
         },
         bottomBar = {
             BJBottomBar(
@@ -122,19 +74,19 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Menu      -> nav.navigate(Screens.MainMenu.route)
-                        BJTab.Cupones   -> { /* nav.navigate(...) */ }
-                        BJTab.Favoritos -> { /* nav.navigate(...) */ }
-                        BJTab.Perfil    -> Unit
+                        BJTab.Home      -> nav.navigate(Screens.Home.route)
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
                     }
                 }
             )
         }
-    ) { padding ->
+    ) { innerPadding ->
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(innerPadding)
         ) {
             LazyColumn(
                 modifier = Modifier
@@ -152,6 +104,7 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                         onClick = { /* TODO: abrir Intent.ACTION_SENDTO mailto: */ }
                     )
                 }
+
                 // Línea de ayuda
                 item {
                     HelpActionItem(
@@ -174,10 +127,9 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                 }
 
                 // Lista de FAQs
-                items(faqs) { item ->
-                    FaqCard(item)
-                }
+                items(faqs) { item -> FaqCard(item) }
 
+                // Versión al final
                 item {
                     Spacer(Modifier.height(8.dp))
                     Box(
@@ -185,7 +137,7 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Versión 1.0.01",
+                            text = "Versión $appVersion",
                             color = Color(0xFFAEAEAE),
                             fontSize = 10.sp,
                             textAlign = TextAlign.Center,
@@ -199,7 +151,13 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
     }
 }
 
-/** Ítem con icono con gradiente y chevron (correo / teléfono) */
+/**
+ * Ítem de acción para contacto o soporte con ícono, texto y chevron lateral.
+ * @param icon Icono representativo de la acción.
+ * @param title Título principal del ítem.
+ * @param subtitle Subtítulo con información de contacto.
+ * @param onClick Acción ejecutada al presionar el ítem.
+ */
 @Composable
 private fun HelpActionItem(
     icon: ImageVector,
@@ -214,7 +172,7 @@ private fun HelpActionItem(
         shadowElevation = 0.dp,
         border = ButtonDefaults.outlinedButtonBorder.copy(
             width = 1.dp,
-            brush = SolidColor(Color(0xFFE6E6E6))
+            brush = SolidColor(Color(0xFFD3D3D3))
         ),
         modifier = Modifier
             .fillMaxWidth()
@@ -254,7 +212,13 @@ private fun HelpActionItem(
     }
 }
 
-/** Ícono con gradiente */
+/**
+ * Ícono con gradiente aplicado mediante mezcla de color.
+ * @param imageVector Ícono base a renderizar.
+ * @param brush Degradado aplicado al ícono.
+ * @param modifier Modificador opcional para ajustar tamaño o posición.
+ * @param contentDescription Descripción accesible del ícono.
+ */
 @Composable
 fun GradientIcon(
     imageVector: ImageVector,
@@ -277,7 +241,10 @@ fun GradientIcon(
     )
 }
 
-/** Tarjeta de FAQ */
+/**
+ * Tarjeta que muestra una pregunta frecuente con su respuesta.
+ * @param item Elemento FAQ con pregunta y respuesta.
+ */
 @Composable
 private fun FaqCard(item: FaqItem) {
     Surface(
@@ -287,7 +254,7 @@ private fun FaqCard(item: FaqItem) {
         shadowElevation = 0.dp,
         border = ButtonDefaults.outlinedButtonBorder.copy(
             width = 1.dp,
-            brush = SolidColor(Color(0xFFE6E6E6))
+            brush = SolidColor(Color(0xFFD3D3D3))
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -309,6 +276,9 @@ private fun FaqCard(item: FaqItem) {
     }
 }
 
+/**
+ * Vista previa de la pantalla de ayuda y soporte.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun HelpPreview() {

@@ -1,0 +1,38 @@
+package mx.itesm.beneficiojuventud.viewmodel
+
+import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
+import mx.itesm.beneficiojuventud.model.collaborators.RemoteServiceCollab
+
+class CollabViewModel : ViewModel() {
+
+    private val model = RemoteServiceCollab
+
+    private val _collabState = MutableStateFlow(Collaborator())
+    val collabState: StateFlow<Collaborator> = _collabState
+
+    private val _collabListState = MutableStateFlow<List<Collaborator>>(emptyList())
+    val collabListState: StateFlow<List<Collaborator>> = _collabListState
+
+    suspend fun getCollaboratorById(id: String) {
+        _collabState.value = model.getCollaboratorById(id)
+    }
+
+    suspend fun getCollaboratorsByCategory(categoryName: String) {
+        _collabListState.value = model.getCollaboratorsByCategory(categoryName)
+    }
+
+    suspend fun createCollaborator(collaborator: Collaborator) {
+        _collabState.value = model.createCollaborator(collaborator)
+    }
+
+    suspend fun updateCollaborator(id: String, update: Collaborator) {
+        _collabState.value = model.updateCollaborator(id, update)
+    }
+
+    suspend fun deleteCollaborator(id: String) {
+        model.deleteCollaborator(id)
+    }
+}

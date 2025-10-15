@@ -54,3 +54,6 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+applogin-31ac0-firebase-adminsdk-fbsvc-d677e8f97e.json
+beneficio-joven-firebase-adminsdk-fbsvc-f6886c6f95.json

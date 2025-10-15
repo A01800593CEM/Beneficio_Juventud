@@ -4,11 +4,13 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
     namespace = "mx.itesm.beneficiojuventud"
     compileSdk = 36
+
 
     defaultConfig {
         applicationId = "mx.itesm.beneficiojuventud"
@@ -18,6 +20,24 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    packaging {
+        resources {
+            excludes += setOf(
+                // Los que ya causaban el error
+                "META-INF/INDEX.LIST",
+                // El nuevo que reportaste de Netty
+                "META-INF/io.netty.versions.properties",
+                // Opcionales comunes para evitar más choques
+                "META-INF/DEPENDENCIES",
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1",
+                "META-INF/*.SF",
+                "META-INF/*.DSA",
+                "META-INF/*.RSA"
+            )
+        }
     }
 
     buildTypes {
@@ -47,7 +67,15 @@ android {
 
 dependencies {
     implementation(libs.androidx.foundation.layout)
+    implementation(libs.androidx.ui.geometry)
+    implementation(libs.androidx.runtime.saveable)
+    implementation(libs.firebase.appdistribution.gradle)
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.runtime.saveable)
+    implementation(libs.androidx.navigation.runtime.ktx)
+    implementation(libs.ui.text)
+    implementation(libs.ui)
+    implementation(libs.firebase.messaging)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     implementation(libs.androidx.core.ktx)
@@ -74,10 +102,11 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.ui.unit)
-    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("androidx.compose.material:material:1.6.8")
     implementation(libs.vico.core)
     implementation(libs.vico.compose)
+    implementation("com.google.zxing:core:3.5.3")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -29,7 +29,20 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
-
+/**
+ * Pantalla para establecer una nueva contraseña tras el flujo de “forgot password”.
+ * Navega a Login al confirmarse correctamente y limpia el estado del AuthViewModel.
+ * @param nav Controlador de navegación para gestionar el back y el destino posterior.
+ * @param modifier Modificador para ajustes externos del layout.
+ * @param emailArg Correo del usuario al que se le restablece la contraseña.
+ * @param codeArg Código de verificación recibido por el usuario.
+ * @param viewModel ViewModel de autenticación que expone estado y acciones.
+ * @param imageRes Recurso drawable mostrado en el encabezado.
+ * @param minLength Longitud mínima requerida para la contraseña.
+ * @param requireLetter Si es true, exige al menos una letra en la contraseña.
+ * @param requireDigit Si es true, exige al menos un dígito en la contraseña.
+ * @return Unit
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewPassword(
@@ -72,7 +85,8 @@ fun NewPassword(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = {}, navigationIcon = { BackButton(nav = nav) })
+            TopAppBar(title = {}, navigationIcon = { BackButton(nav = nav) },
+                modifier = Modifier.padding(10.dp, 16.dp ,0.dp, 0.dp))
         }
     ) { inner ->
         Column(
@@ -191,6 +205,14 @@ fun NewPassword(
     }
 }
 
+/**
+ * Valida una contraseña según longitud, presencia de letras y dígitos.
+ * @param pass Contraseña a evaluar.
+ * @param minLen Longitud mínima permitida.
+ * @param requireLetter Si es true, requiere al menos una letra.
+ * @param requireDigit Si es true, requiere al menos un dígito.
+ * @return true si cumple todos los criterios, false en caso contrario
+ */
 private fun isPasswordValid(
     pass: String,
     minLen: Int,
@@ -203,7 +225,10 @@ private fun isPasswordValid(
     return true
 }
 
-
+/**
+ * Previsualiza la pantalla de nueva contraseña con tema de la app.
+ * @return Unit
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun NewPasswordPreview() {

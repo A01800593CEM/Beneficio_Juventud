@@ -32,12 +32,28 @@ import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.CodeTextField
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
+/**
+ * Pantalla para introducir y validar el código de recuperación de contraseña (OTP de 6 dígitos).
+ * Muestra un temporizador para reenviar el código y navega al flujo de creación de nueva contraseña al verificar.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecoveryCode(
+    /**
+     * Controlador de navegación para retroceder y continuar al siguiente paso del flujo.
+     */
     nav: NavHostController,
+    /**
+     * Modificador externo para composición y pruebas.
+     */
     modifier: Modifier = Modifier,
+    /**
+     * Correo electrónico al cual se envió el código de verificación.
+     */
     emailArg: String = "beneficio_user@juventud.com",
+    /**
+     * ViewModel de autenticación que gestiona el estado y acciones de recuperación.
+     */
     viewModel: AuthViewModel = viewModel()
 ) {
     var email by remember { mutableStateOf(emailArg) }
@@ -59,6 +75,7 @@ fun RecoveryCode(
         }
     }
 
+    // Dispara el reenvío del código y reinicia el temporizador.
     fun handleResend() {
         if (canResend) {
             viewModel.resetPassword(email)
@@ -70,7 +87,15 @@ fun RecoveryCode(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = {}, navigationIcon = { BackButton(nav = nav) })
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    BackButton(
+                        nav = nav,
+                        modifier = Modifier.padding(10.dp, 16.dp, 0.dp, 0.dp)
+                    )
+                }
+            )
         },
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
@@ -133,22 +158,21 @@ fun RecoveryCode(
             }
 
             // ----- Fila de OTP -----
-            Row (modifier = modifier.fillMaxWidth(0.9f)){
+            Row(modifier = modifier.fillMaxWidth(0.9f)) {
                 CodeTextField(
                     value = code,
                     onValueChange = { code = it },
                     length = 6,
-                    isError = false, // o true si quieres resaltar error
+                    isError = false,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 16.dp),
                     onFilled = { filled ->
-                        // Opcional: navegar en automático cuando se complete
+                        // Opcional: navegación automática al completar el código.
                         // nav.navigate(Screens.newPasswordWithEmailAndCode(email, filled))
                     }
                 )
             }
-
 
             // ----- Botón Verificar -----
             Column(
@@ -170,9 +194,7 @@ fun RecoveryCode(
 
             // ----- Reenviar -----
             Text(
-                text = if (canResend) "Reenviar código" else "Reenviar código  (00:${
-                    seconds.toString().padStart(2, '0')
-                })",
+                text = if (canResend) "Reenviar código" else "Reenviar código  (00:${seconds.toString().padStart(2, '0')})",
                 color = if (canResend) Color(0xFF008D96) else Color(0xFF7D7A7A),
                 fontSize = 13.sp,
                 modifier = Modifier
@@ -184,13 +206,20 @@ fun RecoveryCode(
     }
 }
 
-
+/**
+ * Extensión de Modifier para clicks sin efecto de ripple, útil en textos de acción secundarios.
+ * @param onClick Acción a ejecutar al detectar un toque.
+ * @return El mismo Modifier con soporte de gesto tap sin ripple.
+ */
 @Composable
 private fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier =
     this.then(Modifier.pointerInput(Unit) {
         detectTapGestures(onTap = { onClick() })
     })
 
+/**
+ * Vista previa de la pantalla RecoveryCode con tema y sistema UI visibles.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun RecoveryCodePreview() {

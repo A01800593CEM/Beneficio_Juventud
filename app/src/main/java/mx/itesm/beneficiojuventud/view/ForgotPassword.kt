@@ -41,8 +41,15 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
-
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Pantalla para solicitar el restablecimiento de contraseña.
+ * Envía un código de verificación al correo si el formato es válido y, al éxito con confirmación requerida, navega a la pantalla de RecoveryCode con el email como argumento.
+ * Observa el estado de autenticación para manejar navegación y errores posteriores.
+ * @param nav Controlador de navegación para mover a RecoveryCode y regresar.
+ * @param modifier Modificador externo del contenedor.
+ * @param viewModel ViewModel de autenticación que expone authState y la acción resetPassword.
+ */
 @Composable
 fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier, viewModel: AuthViewModel = viewModel()) {
     var email by remember { mutableStateOf("") }
@@ -52,19 +59,17 @@ fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier, viewMo
 
     val authState by viewModel.authState.collectAsState()
 
-    // Navegar a RecoveryCode cuando se envíe el código exitosamente
+    // Navega a RecoveryCode cuando se envía el código exitosamente y Cognito requiere confirmación
     LaunchedEffect(authState.isSuccess, authState.needsConfirmation) {
         if (authState.isSuccess && authState.needsConfirmation) {
-            // Pasar el email como argumento a la pantalla de RecoveryCode
             nav.navigate(Screens.recoveryCodeWithEmail(email))
             viewModel.clearState()
         }
     }
 
-    // Mostrar errores
+    // Manejo de errores (mostrar Snackbar/diálogo según tu implementación)
     authState.error?.let { error ->
         LaunchedEffect(error) {
-            // Aquí puedes mostrar un Snackbar o diálogo con el error
             println("Error reset password: $error")
         }
     }
@@ -80,8 +85,6 @@ fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier, viewMo
         },
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
-
-        BackButton(nav)
 
         Column(
             modifier = modifier
@@ -129,9 +132,11 @@ fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier, viewMo
                     modifier = modifier.padding(horizontal = 24.dp)
                 )
             }
-            Column(modifier = modifier
-                .fillMaxWidth(0.95f)
-                .padding(top = 10.dp)) {
+            Column(
+                modifier = modifier
+                    .fillMaxWidth(0.95f)
+                    .padding(top = 10.dp)
+            ) {
                 Text(
                     "Correo Electrónico",
                     style = TextStyle(
@@ -142,14 +147,16 @@ fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier, viewMo
                     modifier = modifier.padding(24.dp, 30.dp, 24.dp, 8.dp)
                 )
 
-                // Campo correo (tu componente)
+                // Campo correo (componente propio)
                 EmailTextField(
                     value = email,
                     onValueChange = { email = it },
                     modifier = Modifier
                         .padding(horizontal = 24.dp)
                 )
-                MainButton("Obtener Código",
+
+                MainButton(
+                    "Obtener Código",
                     modifier = Modifier
                         .padding(top = 20.dp)
                         .fillMaxWidth(0.95f)
@@ -163,7 +170,10 @@ fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier, viewMo
     }
 }
 
-
+/**
+ * Vista previa de ForgotPassword con el tema de la app.
+ * Útil para validar layout sin ejecutar en dispositivo.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun ForgotPasswordPreview() {

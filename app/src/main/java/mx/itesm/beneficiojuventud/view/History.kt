@@ -25,12 +25,25 @@ import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
+import mx.itesm.beneficiojuventud.components.BJTopHeader
+import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
 // ---- Modelo de datos ----
+
+/**
+ * Tipos de eventos mostrados en el historial del usuario.
+ */
 enum class HistoryType { CUPON_USADO, CUPON_GUARDADO, FAVORITO_AGREGADO }
 
+/**
+ * Entrada de historial que describe un evento mostrado en la lista.
+ * @param type Tipo de evento registrado.
+ * @param title Título corto del evento.
+ * @param subtitle Descripción breve o contexto del evento.
+ * @param date Fecha legible del evento en formato corto.
+ */
 data class HistoryEntry(
     val type: HistoryType,
     val title: String,
@@ -39,10 +52,17 @@ data class HistoryEntry(
 )
 
 // ---- Pantalla ----
+
+/**
+ * Pantalla de historial con encabezado, divisor y lista de eventos.
+ * Incluye barra inferior de navegación con pestañas de la app.
+ * @param nav Controlador de navegación para cambiar de pantalla.
+ * @param modifier Modificador opcional para ajustar el contenedor de la pantalla.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun History(nav: NavHostController, modifier: Modifier = Modifier) {
-    var selectedTab by remember { mutableStateOf(BJTab.Perfil) }
+    var selectedTab by remember { mutableStateOf(BJTab.Profile) }
 
     val entries = remember {
         listOf(
@@ -58,67 +78,12 @@ fun History(nav: NavHostController, modifier: Modifier = Modifier) {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         topBar = {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-            ) {
-                // Logo centrado arriba
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_beneficio_joven),
-                        contentDescription = "Logo",
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // Fila con back, título y campana
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { nav.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.Outlined.ChevronLeft,
-                                contentDescription = "Volver",
-                                modifier = Modifier.size(40.dp),
-                                tint = Color(0xFF616161)
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = "Historial",
-                            fontWeight = FontWeight.Black,
-                            fontSize = 20.sp,
-                            color = Color(0xFF616161)
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Outlined.NotificationsNone,
-                        contentDescription = "Notificaciones",
-                        tint = Color(0xFF008D96),
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
-
-                // Divisor gradiente
-                GradientDivider(
-                    thickness = 2.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
-            }
+            BJTopHeader(
+                title = "Historial",
+                nav = nav
+            )
         },
         bottomBar = {
             BJBottomBar(
@@ -126,19 +91,19 @@ fun History(nav: NavHostController, modifier: Modifier = Modifier) {
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Menu      -> nav.navigate(Screens.MainMenu.route)
-                        BJTab.Cupones   -> { /* nav.navigate(...) */ }
-                        BJTab.Favoritos -> { /* nav.navigate(...) */ }
-                        BJTab.Perfil    -> Unit
+                        BJTab.Home      -> nav.navigate(Screens.Home.route)
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
                     }
                 }
             )
         }
-    ) { padding ->
+    ) { innerPadding ->
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(innerPadding)
         ) {
             LazyColumn(
                 modifier = Modifier
@@ -177,6 +142,12 @@ fun History(nav: NavHostController, modifier: Modifier = Modifier) {
 }
 
 // ---- Item / Tarjeta ----
+
+/**
+ * Tarjeta de una entrada del historial con icono, textos y fecha.
+ * @param entry Entrada de historial a mostrar.
+ * @param onClick Acción al tocar la tarjeta.
+ */
 @Composable
 private fun HistoryCard(
     entry: HistoryEntry,
@@ -189,7 +160,7 @@ private fun HistoryCard(
         shadowElevation = 0.dp,
         border = ButtonDefaults.outlinedButtonBorder.copy(
             width = 1.dp,
-            brush = SolidColor(Color(0xFFE6E6E6))
+            brush = SolidColor(Color(0xFFD3D3D3))
         ),
         modifier = Modifier
             .fillMaxWidth()
@@ -253,6 +224,9 @@ private fun HistoryCard(
     }
 }
 
+/**
+ * Vista previa del historial para herramientas de diseño.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun HistoryScreenPreview() {

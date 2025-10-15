@@ -19,8 +19,18 @@ foundation = "1.9.2"
 uiUnit = "1.9.2"
 amplify = "2.30.1"
 foundationLayout = "1.9.2"
+uiGeometry = "1.9.2"
+runtimeSaveable = "1.9.2"
+firebaseAppdistributionGradle = "5.1.1"
+firebaseFirestoreKtx = "26.0.1"
 vico = "1.14.0"
 foundationVersion = "1.9.3"
+runtimeSaveableVersion = "1.9.3"
+navigationRuntimeKtx = "2.9.5"
+uiTextVersion = "1.9.3"
+ui = "1.9.3"
+googleGmsGoogleServices = "4.4.4"
+firebaseMessaging = "25.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -55,13 +65,23 @@ amplify-datastore = { group = "com.amplifyframework", name = "aws-datastore", ve
 amplify-api = { group = "com.amplifyframework", name = "aws-api", version.ref = "amplify" }
 amplify-storage = { group = "com.amplifyframework", name = "aws-storage-s3", version.ref = "amplify" }
 androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
+androidx-ui-geometry = { group = "androidx.compose.ui", name = "ui-geometry", version.ref = "uiGeometry" }
+androidx-runtime-saveable = { group = "androidx.compose.runtime", name = "runtime-saveable", version.ref = "runtimeSaveable" }
+firebase-appdistribution-gradle = { group = "com.google.firebase", name = "firebase-appdistribution-gradle", version.ref = "firebaseAppdistributionGradle" }
+firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebaseFirestoreKtx" }
 vico-core = { group = "com.patrykandpatrick.vico", name = "core", version.ref = "vico" }
 vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundationVersion" }
+runtime-saveable = { group = "androidx.compose.runtime", name = "runtime-saveable", version.ref = "runtimeSaveableVersion" }
+androidx-navigation-runtime-ktx = { group = "androidx.navigation", name = "navigation-runtime-ktx", version.ref = "navigationRuntimeKtx" }
+ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiTextVersion" }
+ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" }
 
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
 

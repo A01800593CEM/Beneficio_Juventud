@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Person
@@ -41,13 +42,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.amplifyframework.core.Amplify
-import com.amplifyframework.storage.StorageAccessLevel
-import com.amplifyframework.storage.StorageException
 import com.amplifyframework.storage.StoragePath
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
+import mx.itesm.beneficiojuventud.components.BJTopHeader
+import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
@@ -56,13 +57,21 @@ import java.io.File
 import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Pantalla para editar el perfil del usuario.
+ * Permite cambiar nombre, correo, teléfono, fecha de nacimiento y actualizar la foto de perfil en Amplify Storage.
+ * Carga el ID del usuario activo y recupera la imagen de perfil al iniciar.
+ * @param nav Controlador de navegación para moverse entre pantallas.
+ * @param modifier Modificador para ajustar el contenedor de la pantalla.
+ * @param authViewModel ViewModel de autenticación usado para obtener el usuario actual.
+ */
 @Composable
 fun EditProfile(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
-    var selectedTab by remember { mutableStateOf(BJTab.Perfil) }
+    var selectedTab by remember { mutableStateOf(BJTab.Profile) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -78,7 +87,7 @@ fun EditProfile(
     var isUploading by remember { mutableStateOf(false) }
     var isDownloading by remember { mutableStateOf(false) }
 
-    // Load user info when screen opens
+    // Carga el usuario al abrir la pantalla
     LaunchedEffect(Unit) {
         authViewModel.getCurrentUser()
     }
@@ -92,27 +101,28 @@ fun EditProfile(
     ) { uri ->
         if (uri != null) {
             avatarUri = uri
-            uploadProfileImage(context, uri, actualUserId,
+            uploadProfileImage(
+                context,
+                uri,
+                actualUserId,
                 onSuccess = { url ->
                     profileImageUrl = url
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Foto de perfil actualizada correctamente")
-                    }
+                    scope.launch { snackbarHostState.showSnackbar("Foto de perfil actualizada correctamente") }
                 },
                 onError = { error ->
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Error al subir la imagen: $error")
-                    }
+                    scope.launch { snackbarHostState.showSnackbar("Error al subir la imagen: $error") }
                 },
                 onLoading = { loading -> isUploading = loading }
             )
         }
     }
 
-    // Load profile image on startup
+    // Intenta descargar la foto de perfil existente
     LaunchedEffect(actualUserId) {
         try {
-            downloadProfileImage(context, actualUserId,
+            downloadProfileImage(
+                context,
+                actualUserId,
                 onSuccess = { url -> profileImageUrl = url },
                 onError = { Log.d("EditProfile", "Storage not configured yet: $it") },
                 onLoading = { loading -> isDownloading = loading }
@@ -124,65 +134,12 @@ fun EditProfile(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         topBar = {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-            ) {
-                // Logo centrado arriba
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_beneficio_joven),
-                        contentDescription = "Logo",
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // Fila con back, título y campana
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { nav.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Volver"
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = "Editar Perfil",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                            fontSize = 20.sp,
-                            color = Color(0xFF616161)
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Outlined.NotificationsNone,
-                        contentDescription = "Notificaciones",
-                        tint = Color(0xFF008D96)
-                    )
-                }
-
-                // Divisor con gradiente debajo del encabezado
-                GradientDivider(
-                    thickness = 2.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
-            }
+            BJTopHeader(
+                title = "Editar Perfil",
+                nav = nav
+            )
         },
         bottomBar = {
             BJBottomBar(
@@ -190,21 +147,20 @@ fun EditProfile(
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Menu      -> nav.navigate(Screens.MainMenu.route)
-                        BJTab.Cupones   -> { /* nav.navigate(...) */ }
-                        BJTab.Favoritos -> { /* nav.navigate(...) */ }
-                        BJTab.Perfil    -> Unit
+                        BJTab.Home      -> nav.navigate(Screens.Home.route)
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
                     }
                 }
             )
         }
-    ) { padding ->
+    ) { innerPadding ->
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(innerPadding)
         ) {
-            // Contenido principal con scroll
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -212,18 +168,11 @@ fun EditProfile(
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Imagen de perfil
+                // Avatar
                 Box(
                     modifier = Modifier
                         .size(100.dp)
-                        .clip(CircleShape)
-                        .clickable {
-                            if (!isUploading) {
-                                pickImage.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                )
-                            }
-                        },
+                        .clip(CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     when {
@@ -264,7 +213,14 @@ fun EditProfile(
                     text = "Cambiar Foto",
                     color = Color(0xFF008D96),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 16.sp,
+                    modifier = Modifier.clickable {
+                        if (!isUploading) {
+                            pickImage.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    }
                 )
 
                 Spacer(Modifier.height(20.dp))
@@ -298,7 +254,6 @@ fun EditProfile(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Botón principal
                 MainButton(
                     text = "Guardar Cambios",
                     onClick = {
@@ -308,10 +263,10 @@ fun EditProfile(
                     }
                 )
 
-                Spacer(Modifier.height(80.dp)) // Espacio adicional para que el scroll no tape el botón
+                Spacer(Modifier.height(80.dp))
             }
 
-            // Texto de versión anclado dinámicamente al fondo (sin align)
+            // Versión anclada al fondo
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -330,7 +285,76 @@ fun EditProfile(
     }
 }
 
+/**
+ * Barra superior reutilizable para la pantalla de edición de perfil.
+ * Muestra logo centrado, botón atrás y acceso a notificaciones.
+ * @param title Título de la pantalla.
+ * @param nav Controlador de navegación usado por el botón de regreso.
+ */
+@Composable
+private fun EditProfileTopBar(
+    title: String,
+    nav: NavHostController
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+    ) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Image(
+                painter = painterResource(id = R.drawable.logo_beneficio_joven),
+                contentDescription = "Logo",
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BackButton(
+                    nav = nav,
+                    modifier = Modifier.size(40.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 20.sp,
+                    color = Color(0xFF616161)
+                )
+            }
+            Icon(
+                imageVector = Icons.Outlined.NotificationsNone,
+                contentDescription = "Notificaciones",
+                tint = Color(0xFF008D96),
+                modifier = Modifier.size(26.dp)
+            )
+        }
+
+        GradientDivider(
+            thickness = 2.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Campo de texto estilizado para datos de perfil.
+ * Aplica ícono inicial, borde personalizado y opciones de teclado según el tipo.
+ * @param value Valor actual del campo.
+ * @param onValueChange Callback invocado cuando cambia el texto.
+ * @param label Etiqueta mostrada como hint/label.
+ * @param leadingIcon Ícono a la izquierda del campo.
+ * @param keyboardType Tipo de teclado para la entrada.
+ */
 @Composable
 fun ProfileTextField(
     value: String,
@@ -378,8 +402,16 @@ fun ProfileTextField(
     )
 }
 
-
-// Upload profile image to Amplify Storage
+/**
+ * Sube la imagen de perfil del usuario a Amplify Storage.
+ * Crea un archivo temporal a partir del URI, lo sube y obtiene la URL de descarga.
+ * @param context Contexto para resolver el contenido y el caché.
+ * @param imageUri URI de la imagen seleccionada.
+ * @param userId Identificador del usuario; se usa para nombrar el archivo en el storage.
+ * @param onSuccess Callback con la URL pública o firmada de la imagen subida.
+ * @param onError Callback con el mensaje de error en caso de fallo.
+ * @param onLoading Callback que expone el estado de carga durante la operación.
+ */
 fun uploadProfileImage(
     context: Context,
     imageUri: Uri,
@@ -392,7 +424,6 @@ fun uploadProfileImage(
         onLoading(true)
         Log.d("ProfileUpload", "Starting upload for user: $userId")
 
-        // Create a temporary file from the URI
         val inputStream = context.contentResolver.openInputStream(imageUri)
         val tempFile = File(context.cacheDir, "profile_image_${System.currentTimeMillis()}.jpg")
         val outputStream = FileOutputStream(tempFile)
@@ -412,9 +443,7 @@ fun uploadProfileImage(
             { result ->
                 Log.d("ProfileUpload", "Upload completed: ${result.path}")
                 onLoading(false)
-                // Clean up temp file
                 tempFile.delete()
-                // Get the download URL
                 getProfileImageUrl(storagePath, onSuccess, onError)
             },
             { error ->
@@ -431,7 +460,15 @@ fun uploadProfileImage(
     }
 }
 
-// Download profile image from Amplify Storage
+/**
+ * Descarga la imagen de perfil desde Amplify Storage a un archivo local.
+ * Útil cuando no se dispone de una URL pública o se prefiere caché local.
+ * @param context Contexto para crear el archivo en caché.
+ * @param userId Identificador del usuario; determina la ruta del archivo en el storage.
+ * @param onSuccess Callback con la ruta local absoluta del archivo descargado.
+ * @param onError Callback con el mensaje de error en caso de fallo.
+ * @param onLoading Callback que expone el estado de carga durante la operación.
+ */
 fun downloadProfileImage(
     context: Context,
     userId: String,
@@ -468,7 +505,12 @@ fun downloadProfileImage(
     }
 }
 
-// Get download URL for uploaded image
+/**
+ * Obtiene la URL de descarga para una imagen previamente subida a Amplify Storage.
+ * @param storagePath Ruta del archivo en el storage.
+ * @param onSuccess Callback con la URL generada por el proveedor de almacenamiento.
+ * @param onError Callback con el mensaje de error en caso de fallo.
+ */
 private fun getProfileImageUrl(
     storagePath: StoragePath,
     onSuccess: (String) -> Unit,
@@ -487,6 +529,10 @@ private fun getProfileImageUrl(
     )
 }
 
+/**
+ * Vista previa de la pantalla de edición de perfil bajo el tema de la app.
+ * Permite validar el layout en el inspector sin ejecutar en dispositivo.
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun EditProfilePreview() {

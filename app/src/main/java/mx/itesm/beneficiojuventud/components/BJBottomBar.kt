@@ -1,7 +1,6 @@
 package mx.itesm.beneficiojuventud.components
 
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
@@ -10,74 +9,23 @@ import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import mx.itesm.beneficiojuventud.view.GradientIcon
 
-/** Tabs del proyecto */
-enum class BJTab { Menu, Cupones, Favoritos, Perfil }
+enum class BJTab { Home, Coupons, Favorites, Profile }
 
-/** Icono con gradiente */
-@Composable
-fun GradientIcon(
-    imageVector: ImageVector,
-    brush: Brush,
-    modifier: Modifier = Modifier
-) {
-    Icon(
-        imageVector = imageVector,
-        contentDescription = null,
-        tint = Color.Unspecified,
-        modifier = modifier.drawWithCache {
-            onDrawWithContent {
-                drawIntoCanvas { canvas ->
-                    val bounds = Rect(0f, 0f, size.width, size.height)
-                    canvas.saveLayer(bounds, Paint())
-                    drawContent()
-                    drawRect(brush = brush, blendMode = BlendMode.SrcIn)
-                    canvas.restore()
-                }
-            }
-        }
-    )
-}
-
-/** Texto con gradiente */
-@Composable
-fun GradientText(
-    text: String,
-    brush: Brush,
-    modifier: Modifier = Modifier,
-) {
-    val base = MaterialTheme.typography.labelSmall
-    Text(
-        text = text,
-        style = base.copy(
-            fontWeight = FontWeight.Bold,
-            fontSize = 10.sp,
-            color = Color.White
-        ),
-        modifier = modifier.drawWithCache {
-            onDrawWithContent {
-                drawIntoCanvas { canvas ->
-                    val bounds = Rect(0f, 0f, size.width, size.height)
-                    canvas.saveLayer(bounds, Paint())
-                    drawContent()
-                    drawRect(brush = brush, blendMode = BlendMode.SrcIn)
-                    canvas.restore()
-                }
-            }
-        }
-    )
-}
-
-/** Menú inferior */
+/** ---- BottomBar que NO crece de alto, solo se "sube" si hay gesto/botones del sistema ---- */
 @Composable
 fun BJBottomBar(
     selected: BJTab,
@@ -86,86 +34,133 @@ fun BJBottomBar(
     activeBrush: Brush = Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96))),
     inactiveIconColor: Color = Color(0xFF616161),
     inactiveTextColor: Color = Color(0xFF616161),
-    iconSize: androidx.compose.ui.unit.Dp = 28.dp
+    iconSize: Dp = 28.dp
 ) {
     val labelBase = MaterialTheme.typography.labelSmall
 
-    NavigationBar(containerColor = containerColor) {
+    // Altura real del inset inferior (pill/botones); 0dp en equipos que no la muestran
+    val bottomInset = WindowInsets.navigationBars
+        .only(WindowInsetsSides.Bottom)
+        .asPaddingValues()
+        .calculateBottomPadding()
 
-        @Composable
-        fun label(text: String, isSelected: Boolean) =
-            if (isSelected)
-                GradientText(
-                    text,
-                    activeBrush,
-                    modifier = Modifier.offset(y = (-6).dp) // 👈 sube el texto
-                )
-            else
-                Text(
-                    text = text,
-                    style = labelBase.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp
-                    ),
-                    color = inactiveTextColor,
-                    modifier = Modifier.offset(y = (-6).dp) // 👈 sube el texto también
-                )
-
-        @Composable
-        fun iconContent(
-            icon: ImageVector,
-            isSelected: Boolean
+    Column(Modifier.fillMaxWidth()) {
+        NavigationBar(
+            containerColor = containerColor,
+            tonalElevation = 0.dp,
+            // No dejamos que NavigationBar cambie su alto por insets
+            windowInsets = WindowInsets(0),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp) // ← altura fija (no se hace "más gorda")
         ) {
-            val mod = Modifier.size(iconSize)
-            if (isSelected)
-                GradientIcon(icon, activeBrush, modifier = mod)
-            else
-                Icon(icon, null, tint = inactiveIconColor, modifier = mod)
+            @Composable
+            fun Label(text: String, isSelected: Boolean) {
+                val mod = Modifier.offset(y = (-4).dp)
+                if (isSelected) {
+                    GradientText(text, activeBrush, modifier = mod)
+                } else {
+                    Text(
+                        text = text,
+                        style = labelBase.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
+                        color = inactiveTextColor,
+                        modifier = mod
+                    )
+                }
+            }
+
+            @Composable
+            fun IconC(icon: ImageVector, isSelected: Boolean) {
+                val mod = Modifier
+                    .size(iconSize)
+                    .offset(y = 2.dp)
+                if (isSelected) GradientIcon(icon, activeBrush, modifier = mod)
+                else Icon(icon, null, tint = inactiveIconColor, modifier = mod)
+            }
+
+            @Composable
+            fun Item(tab: BJTab, icon: ImageVector, labelText: String) {
+                NavigationBarItem(
+                    selected = selected == tab,
+                    onClick = { onSelect(tab) },
+                    icon = { IconC(icon, selected == tab) },
+                    label = { Label(labelText, selected == tab) },
+                    alwaysShowLabel = true,
+                    colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
+                    modifier = Modifier.padding(vertical = 0.dp)
+                )
+            }
+
+            Item(BJTab.Home, Icons.Outlined.Home, "Menú")
+            Item(BJTab.Coupons, Icons.Outlined.QrCode, "Cupones")
+            Item(BJTab.Favorites, Icons.Outlined.FavoriteBorder, "Favoritos")
+            Item(BJTab.Profile, Icons.Outlined.Person, "Perfil")
         }
 
-        // Ítems del menú
-        NavigationBarItem(
-            selected = selected == BJTab.Menu,
-            onClick = { onSelect(BJTab.Menu) },
-            icon = { iconContent(Icons.Outlined.Home, selected == BJTab.Menu) },
-            label = { label("Menú", selected == BJTab.Menu) },
-            alwaysShowLabel = true,
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
-        )
+        // Este espacio SOLO aparece si hay inset inferior; empuja la barra hacia arriba.
+        if (bottomInset > 0.dp) {
+            Spacer(Modifier.height(bottomInset))
+        }
+    }
+}
 
-        NavigationBarItem(
-            selected = selected == BJTab.Cupones,
-            onClick = { onSelect(BJTab.Cupones) },
-            icon = { iconContent(Icons.Outlined.QrCode, selected == BJTab.Cupones) },
-            label = { label("Cupones", selected == BJTab.Cupones) },
-            alwaysShowLabel = true,
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
-        )
+/** Texto con gradiente (mismo que venías usando) */
+@Composable
+fun GradientText(
+    text: String,
+    brush: Brush,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.labelSmall.copy(
+        fontWeight = FontWeight.Bold,
+        fontSize = 10.sp
+    )
+) {
+    val annotated = buildAnnotatedString {
+        withStyle(
+            SpanStyle(
+                brush = brush,
+                fontSize = style.fontSize,
+                fontWeight = style.fontWeight,
+                fontFamily = style.fontFamily,
+                letterSpacing = style.letterSpacing
+            )
+        ) { append(text) }
+    }
+    Text(text = annotated, modifier = modifier, style = style.copy(color = Color.Unspecified))
+}
 
-        NavigationBarItem(
-            selected = selected == BJTab.Favoritos,
-            onClick = { onSelect(BJTab.Favoritos) },
-            icon = { iconContent(Icons.Outlined.FavoriteBorder, selected == BJTab.Favoritos) },
-            label = { label("Favoritos", selected == BJTab.Favoritos) },
-            alwaysShowLabel = true,
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
-        )
-
-        NavigationBarItem(
-            selected = selected == BJTab.Perfil,
-            onClick = { onSelect(BJTab.Perfil) },
-            icon = { iconContent(Icons.Outlined.Person, selected == BJTab.Perfil) },
-            label = { label("Perfil", selected == BJTab.Perfil) },
-            alwaysShowLabel = true,
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
-        )
+/** ---- Ejemplo de uso en Scaffold sin duplicar el inset inferior ---- */
+@Composable
+fun DemoScreen(
+    selected: BJTab = BJTab.Home,
+    onSelect: (BJTab) -> Unit = {}
+) {
+    Scaffold(
+        // Respetamos solo TOP + HORIZONTAL; el BOTTOM lo maneja BJBottomBar
+        contentWindowInsets = WindowInsets.safeDrawing
+            .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+        bottomBar = {
+            BJBottomBar(selected = selected, onSelect = onSelect)
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        ) {
+            // …tu contenido…
+            Spacer(Modifier.height(24.dp))
+            Text(
+                "Contenido de ejemplo",
+                modifier = Modifier.padding(16.dp),
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
     }
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFFFFFFFF)
 @Composable
 private fun BJBottomBarPreview() {
-    MaterialTheme {
-        BJBottomBar(selected = BJTab.Menu, onSelect = {})
-    }
+    MaterialTheme { DemoScreen() }
 }
