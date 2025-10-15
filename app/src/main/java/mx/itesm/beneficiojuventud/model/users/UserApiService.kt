@@ -46,7 +46,6 @@ interface UserApiService {
     @GET("users/promotions/fav/{cognitoId}")
     suspend fun getFavoritePromotions(@Path("cognitoId") cognitoId: String): Response<List<Promotions>>
 
-    @GET("users/collaborators/fav/{cognitoId}")
+    @GET("users/collaborators/fav/user/{cognitoId}")
     suspend fun getFavoriteCollabs(@Path("cognitoId") cognitoId: String): Response<List<Int>>
-
 }

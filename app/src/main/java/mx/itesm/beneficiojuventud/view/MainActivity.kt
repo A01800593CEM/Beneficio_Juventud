@@ -203,11 +203,11 @@ private fun AppNav(
             composable(Screens.Help.route) { Help(nav) }
             composable(Screens.Favorites.route) { Favorites(nav, userViewModel = userViewModel) }
             composable(Screens.Coupons.route) { Coupons(nav) }
-            composable("business/{collabId}") { backStackEntry ->
-                val collabId = backStackEntry.arguments?.getString("collabId") ?: return@composable
+            composable(route = Screens.Business.route, arguments = Screens.Business.arguments) { backStackEntry ->
+                val encoded = backStackEntry.arguments?.getString("collabId") ?: return@composable
+                val collabId = java.net.URLDecoder.decode(encoded, "UTF-8")
                 Business(nav = nav, collabId = collabId)
             }
-
             composable(Screens.GenerarPromocion.route) { GenerarPromocion(nav) }
             composable(Screens.GenerarPromocionIA.route) { GenerarPromocionIA(nav) }
 

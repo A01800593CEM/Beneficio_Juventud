@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.view
 
+import MerchantRow
 import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
 import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
@@ -33,16 +34,12 @@ import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJSearchBar
 import mx.itesm.beneficiojuventud.components.CategoryPill
 import mx.itesm.beneficiojuventud.components.GradientDivider
-import mx.itesm.beneficiojuventud.components.MerchantRow
 import mx.itesm.beneficiojuventud.components.PromoCarousel
 import mx.itesm.beneficiojuventud.components.SectionTitle
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
-// ✨ NUEVO: usamos Collaborator del backend
-import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
-// ✨ NUEVO: ViewModel de colaboradores
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 
 // Insets
@@ -431,8 +428,9 @@ fun Home(
                         MerchantRow(
                             collaborators = collaborators,
                             onItemClick = { collab ->
-                                val id = collab.collaboratorId ?: collab.rfc ?: collab.email ?: collab.businessName.orEmpty()
-                                nav.navigate("business/${java.net.URLEncoder.encode(id, "UTF-8")}")
+                                collab.collaboratorId?.let { id ->
+                                    nav.navigate(Screens.Business.createRoute(id))
+                                }
                             }
                         )
                     }
@@ -492,8 +490,13 @@ fun Home(
                     else -> {
                         MerchantRow(
                             collaborators = collaborators,
-                            onItemClick = { _ -> nav.navigate(Screens.Business.route) }
+                            onItemClick = { collab ->
+                                collab.collaboratorId?.let { id ->
+                                    nav.navigate(Screens.Business.createRoute(id))
+                                }
+                            }
                         )
+
                     }
                 }
             }

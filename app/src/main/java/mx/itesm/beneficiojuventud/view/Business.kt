@@ -20,9 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.components.*
-import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 
