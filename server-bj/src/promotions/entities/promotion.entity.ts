@@ -6,6 +6,9 @@ import type { Relation } from 'typeorm';
 import { Redeemedcoupon } from 'src/redeemedcoupon/entities/redeemedcoupon.entity';
 import { Category } from 'src/categories/entities/category.entity';
 import { Collaborator } from 'src/collaborators/entities/collaborator.entity';
+import { PromotionTheme } from '../enums/promotion-theme.enum';
+import { User } from 'src/users/entities/user.entity';
+import { Notification } from 'src/notifications/entities/notification.entity';
 
 @Entity({ name: 'promocion' })
 export class Promotion {
@@ -66,6 +69,16 @@ export class Promotion {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
+
+  @Column({
+    type: 'enum',
+    enum: PromotionTheme,
+    enumName: 'tema',
+    name: 'theme',
+  })
+
+  @Column({name: 'es_reservable'})
+  is_bookable: boolean;
   
   //Relations
   @OneToMany(() => Booking, bookings => bookings.promotion)
@@ -74,20 +87,26 @@ export class Promotion {
   @OneToMany(() => Redeemedcoupon, redeemedcoupons => redeemedcoupons.promotion)
     redeemedcoupon: Relation<Redeemedcoupon>
 
+  @ManyToMany(() => User, user => user.favoritePromos)
+    favoritedBy: Relation<User[]>;
+
   @ManyToMany(() => Category, category => category.promotions)
   @JoinTable({
-      name: 'promocion_categoria',
-      joinColumn: {
-      name: 'promocion_id',
-      referencedColumnName: 'promotionId',
-    },
-      inverseJoinColumn: {
-      name: 'categoria_id',
-      referencedColumnName: 'id'
-    },
-      })
+    name: 'promocion_categoria',
+    joinColumn: {
+    name: 'promocion_id',
+    referencedColumnName: 'promotionId',
+  },
+    inverseJoinColumn: {
+    name: 'categoria_id',
+    referencedColumnName: 'id'
+  },
+    })
         categories: Category[];
   @ManyToOne(() => Collaborator, collaborator => collaborator.promotions)
   @JoinColumn({name: 'colaborador_id'})
   collaborator: Relation<Collaborator>;
+
+  @OneToMany(() => Notification, notifications => notifications.promotions)
+    notifications: Relation<Notification>;
 }

@@ -11,7 +11,7 @@ import retrofit2.http.Path
 interface CollabApiService {
 
     @GET("collaborators/{id}")
-    suspend fun getCollaboratorById(@Path("id") id: Int): Response<Collaborator>
+    suspend fun getCollaboratorById(@Path("id") id: String): Response<Collaborator>
 
     @GET("collaborators/category/{categoryName}")
     suspend fun getCollaboratorsByCategory(@Path("categoryName") categoryName: String): Response<List<Collaborator>>
@@ -20,8 +20,8 @@ interface CollabApiService {
     suspend fun createCollaborator(@Body collaborator: Collaborator): Response<Collaborator>
 
     @PATCH("collaborators/{id}")
-    suspend fun updateCollaborator(@Path("id") id: Int, @Body update: Collaborator) : Response<Collaborator>
+    suspend fun updateCollaborator(@Path("id") id: String, @Body update: Collaborator) : Response<Collaborator>
 
     @DELETE("collaborators/{id}")
-    suspend fun deleteCollaborator(@Path("id") id: Int): Response<Unit>
+    suspend fun deleteCollaborator(@Path("id") id: String): Response<Unit>
 }

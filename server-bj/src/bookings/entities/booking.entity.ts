@@ -46,6 +46,6 @@ export class Booking {
   user: Relation<User>;
 
   @ManyToOne(() => Promotion, promotions => promotions.bookings)
-  @JoinColumn({ name: 'promocion_id' })
+  @JoinColumn({ name: 'promocion_id', referencedColumnName: 'promotionId' })
   promotion: Relation<Promotion>;
 }

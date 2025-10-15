@@ -13,7 +13,10 @@ import { AdministratorsModule } from './administrators/administrators.module';
 //import { ReportsModule } from './reports/reports.module';
 import { RedeemedcouponModule } from './redeemedcoupon/redeemedcoupon.module';
 import { BranchModule } from './branch/branch.module';
-import { NotificacionsModule } from './notifications/notifications.module';
+import { NotificationsModule } from './notifications/notifications.module';
+//Notificaciones con schedule
+import { ScheduleModule } from '@nestjs/schedule';
+import { ExpirationsModule } from './expirations/expirations.module';
 
 
 @Module({
@@ -49,7 +52,10 @@ import { NotificacionsModule } from './notifications/notifications.module';
     RedeemedcouponModule,
     BranchModule,
     BranchModule,
-    NotificacionsModule
+    NotificationsModule,
+    //Schedule
+    ScheduleModule.forRoot(),
+    ExpirationsModule
   ],
   controllers: [AppController],
   providers: [AppService],

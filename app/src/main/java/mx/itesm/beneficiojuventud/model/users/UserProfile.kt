@@ -17,6 +17,7 @@ data class UserProfile(
     val updatedAt: String? = null,
     val notificationToken: String? = null,
     val favorites: List<String>? = null, // COGNITO ID
+    val favoritePromos: List<Int>? = null,
     val userPrefCategories: List<String>? = null, // Para guardar las categorías seleccionadas del onboarding
     val profileImageKey: String? = null // Key de la imagen en S3
 )

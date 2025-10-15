@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,30 +24,23 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import mx.itesm.beneficiojuventud.R
+import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
 import mx.itesm.beneficiojuventud.components.BJTopHeader
-import mx.itesm.beneficiojuventud.components.PromoImageBanner
+import mx.itesm.beneficiojuventud.components.PromoImageBannerFav
 import mx.itesm.beneficiojuventud.components.SectionTitle
-import mx.itesm.beneficiojuventud.model.Promo
 import mx.itesm.beneficiojuventud.model.PromoTheme
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 
-/// ---- Mock data ----
-
-/**
- * Modelo de negocio favorito mostrado en la lista.
- * @param imageRes Recurso drawable de la imagen del negocio.
- * @param name Nombre comercial del negocio.
- * @param category Categoría a la que pertenece.
- * @param location Ubicación resumida para mostrar en tarjeta.
- * @param rating Calificación promedio mostrada con estrella.
- * @param isFavorite Indica si está marcado como favorito.
- */
+// ------------------------------------------------------------
+// Ahora con id de colaborador para poder togglear favorito
 data class FavoriteMerchant(
+    val id: Int,                 // <--- ID del colaborador
     val imageRes: Int,
     val name: String,
     val category: String,
@@ -54,71 +48,37 @@ data class FavoriteMerchant(
     val rating: Double,
     val isFavorite: Boolean = true
 )
+// ------------------------------------------------------------
 
-/**
- * Datos de ejemplo para la sección de negocios favoritos.
- */
-private val sampleFavorites = listOf(
-    FavoriteMerchant(R.drawable.el_fuego_sagrado, "Fuego Lento & Brasa", "Alimentos", "Zona Rosa, Local 45", 4.7),
-    FavoriteMerchant(R.drawable.el_fuego_sagrado, "Fuego Lento & Brasa", "Alimentos", "Zona Rosa, Local 45", 4.7),
-    FavoriteMerchant(R.drawable.el_fuego_sagrado, "Fuego Lento & Brasa", "Alimentos", "Zona Rosa, Local 45", 4.7),
-)
-
-/**
- * Modo de visualización de la pantalla de favoritos.
- */
 private enum class FavoriteMode { Coupons, Businesses }
 
-/**
- * Datos de ejemplo para la sección de cupones favoritos.
- */
-private val samplePromos = listOf(
-    Promo(
-        bg = R.drawable.bolos,
-        title = "Martes 2×1",
-        subtitle = "Cine Stelar",
-        body = "Compra un boleto y obtén el segundo gratis para la misma función.",
-        theme = PromoTheme.LIGHT
-    ),
-    Promo(
-        bg = R.drawable.bolos,
-        title = "Miércoles de Palomitas",
-        subtitle = "Cine Stelar",
-        body = "Palomitas tamaño grande al precio de chicas.",
-        theme = PromoTheme.DARK
-    ),
-    Promo(
-        bg = R.drawable.bolos,
-        title = "2×1 en Boliche",
-        subtitle = "Strike Center",
-        body = "Aplica de 5–8 pm. No acumulable con otras promos.",
-        theme = PromoTheme.LIGHT
-    )
-)
-
-
-/**
- * Pantalla de Favoritos con pestaña inferior, barra superior y contenido en lista.
- * Permite alternar entre cupones guardados y negocios favoritos mediante una píldora de selección.
- * @param nav Controlador de navegación para cambio de pantallas.
- * @param modifier Modificador externo para el contenedor de la pantalla.
- * @param favorites Lista de negocios favoritos a renderizar en modo Businesses.
- * @param promos Lista de cupones favoritos a renderizar en modo Coupons.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Favorites(
     nav: NavHostController,
     modifier: Modifier = Modifier,
-    favorites: List<FavoriteMerchant> = sampleFavorites,
-    promos: List<Promo> = samplePromos
+    favoriteMerchants: List<FavoriteMerchant> = emptyList(),
+    userViewModel: UserViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Favorites) }
     var mode by remember { mutableStateOf(FavoriteMode.Coupons) }
 
+    val user by userViewModel.userState.collectAsState()
+    val favoritePromos by userViewModel.favoritePromotions.collectAsState()
+    val favoriteCollabIds by userViewModel.favoriteCollabs.collectAsState()
+    val errorMsg by userViewModel.error.collectAsState()
+
+    val scope = rememberCoroutineScope()
+    val cognitoId = user.cognitoId.orEmpty()
+
+    LaunchedEffect(cognitoId) {
+        if (cognitoId.isNotBlank()) {
+            userViewModel.refreshFavorites(cognitoId)
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        // 🔧 Evita doble padding de status bar (BJTopHeader ya aplica safeDrawing Top+Horizontal)
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         topBar = {
             BJTopHeader(
@@ -147,6 +107,7 @@ fun Favorites(
                 .padding(innerPadding),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)
         ) {
+
             // Toggle modo
             item {
                 Spacer(Modifier.height(8.dp))
@@ -161,11 +122,11 @@ fun Favorites(
                 Spacer(Modifier.height(12.dp))
             }
 
-            // Título con conteo
+            // Título con conteo (usa listas reales)
             item {
                 val count = when (mode) {
-                    FavoriteMode.Businesses -> favorites.size
-                    FavoriteMode.Coupons    -> promos.size
+                    FavoriteMode.Businesses -> favoriteCollabIds.size
+                    FavoriteMode.Coupons    -> favoritePromos.size
                 }
                 val label = if (mode == FavoriteMode.Businesses)
                     "$count Negocios Guardados" else "$count Cupones Guardados"
@@ -173,32 +134,66 @@ fun Favorites(
                 SectionTitle(label, Modifier.padding(top = 6.dp, bottom = 8.dp))
             }
 
+            // Si no hay login, mensaje genérico
+            if (cognitoId.isBlank()) {
+                item {
+                    EmptyState(
+                        title = "Inicia sesión para ver tus favoritos",
+                        body = "Necesitamos tu cuenta para sincronizar cupones y negocios guardados."
+                    )
+                }
+                return@LazyColumn
+            }
+
             // Contenido según modo
             when (mode) {
                 FavoriteMode.Businesses -> {
-                    items(favorites) { merchant ->
-                        FavoriteCard(
-                            merchant = merchant,
-                            onClick = { /* TODO: nav a detalle */ },
-                            onToggleFavorite = { /* TODO */ },
-                            modifier = Modifier.padding(vertical = 6.dp)
-                        )
+                    val shownMerchants = favoriteMerchants.filter { favoriteCollabIds.contains(it.id) }
+                    if (shownMerchants.isEmpty()) {
+                        item { EmptyState("Sin negocios favoritos", "Cuando marques un negocio como favorito aparecerá aquí.") }
+                    } else {
+                        items(shownMerchants) { merchant ->
+                            FavoriteCard(
+                                merchant = merchant,
+                                onClick = { /* TODO nav detalle negocio */ },
+                                onToggleFavorite = {
+                                    scope.launch { userViewModel.toggleFavoriteCollaborator(merchant.id, cognitoId) }
+                                },
+                                modifier = Modifier.padding(vertical = 6.dp)
+                            )
+                        }
                     }
                 }
                 FavoriteMode.Coupons -> {
-                    items(promos.size) { i ->
-                        PromoImageBanner(
-                            promo = promos[i],
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(150.dp)
-                                .padding(vertical = 6.dp)
-                        )
+                    if (favoritePromos.isEmpty()) {
+                        item { EmptyState("Sin cupones favoritos", "Guarda cupones para verlos aquí y canjéalos más tarde.") }
+                    } else {
+                        items(favoritePromos, key = { it.promotionId ?: it.hashCode() }) { promo ->
+                            PromoImageBannerFav(
+                                promo = promo,
+                                isFavorite = true, // en esta pantalla son favoritos
+                                onFavoriteClick = { p ->
+                                    val id = p.promotionId ?: return@PromoImageBannerFav
+                                    scope.launch {
+                                        userViewModel.unfavoritePromotion(id, cognitoId)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(150.dp)
+                                    .padding(vertical = 6.dp),
+                                onClick = {
+                                    val id = promo.promotionId ?: return@PromoImageBannerFav
+                                    // TODO: nav a detalle del cupón
+                                    // nav.navigate("${Screens.PromoDetail.route}/$id")
+                                },
+                                themeResolver = { PromoTheme.LIGHT }
+                            )
+                        }
                     }
                 }
             }
 
-            // Footer versión
             item {
                 Spacer(Modifier.height(8.dp))
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -209,17 +204,6 @@ fun Favorites(
     }
 }
 
-
-/**
- * Control con forma de píldora para alternar entre dos opciones exclusivas.
- * Usa inversión de color para indicar la opción activa.
- * @param left Etiqueta de la opción izquierda.
- * @param right Etiqueta de la opción derecha.
- * @param selectedLeft Indica si la opción izquierda está activa.
- * @param onSelectLeft Acción al seleccionar la opción izquierda.
- * @param onSelectRight Acción al seleccionar la opción derecha.
- * @param modifier Modificador externo del componente.
- */
 @Composable
 private fun TogglePill(
     left: String,
@@ -237,7 +221,7 @@ private fun TogglePill(
         modifier = modifier.height(40.dp)
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            // Left (invertido: seleccionado -> blanco)
+            // Left
             Surface(
                 color = if (selectedLeft) Color(0xFFFFFFFF) else bg,
                 shape = RoundedCornerShape(24.dp),
@@ -259,7 +243,7 @@ private fun TogglePill(
                     )
                 }
             }
-            // Right (invertido: seleccionado -> blanco)
+            // Right
             Surface(
                 color = if (!selectedLeft) Color(0xFFFFFFFF) else bg,
                 shape = RoundedCornerShape(24.dp),
@@ -285,13 +269,6 @@ private fun TogglePill(
     }
 }
 
-/**
- * Tarjeta para mostrar un negocio favorito con imagen, datos básicos, rating y acción de favorito.
- * @param merchant Modelo con la información del negocio.
- * @param onClick Acción al pulsar la tarjeta completa.
- * @param onToggleFavorite Acción al pulsar el ícono de favorito.
- * @param modifier Modificador externo de la tarjeta.
- */
 @Composable
 private fun FavoriteCard(
     merchant: FavoriteMerchant,
@@ -366,19 +343,34 @@ private fun FavoriteCard(
             }
 
             IconButton(onClick = onToggleFavorite) {
+                val isFav = true // por diseño de esta tarjeta
                 Icon(
-                    imageVector = Icons.Outlined.Favorite,
-                    contentDescription = "Quitar de favoritos",
-                    tint = Color(0xFFE53935)
+                    imageVector = if (isFav) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = if (isFav) "Quitar de favoritos" else "Agregar a favoritos",
+                    tint = if (isFav) Color(0xFFE53935) else Color(0xFF9E9E9E)
                 )
             }
         }
     }
 }
 
-/**
- * Vista previa de la pantalla de favoritos con el tema de la app.
- */
+@Composable
+private fun EmptyState(
+    title: String,
+    body: String
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(title, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161))
+        Spacer(Modifier.height(6.dp))
+        Text(body, fontSize = 12.sp, color = Color(0xFF9E9E9E))
+    }
+}
+
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun FavoritePreview() {

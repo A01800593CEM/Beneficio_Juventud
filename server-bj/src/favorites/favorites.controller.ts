@@ -3,11 +3,11 @@ import { FavoritesService } from './favorites.service';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
 import { UpdateFavoriteDto } from './dto/update-favorite.dto';
 
-@Controller('users/favorites')
+@Controller('users/collaborators/fav')
 export class FavoritesController {
   constructor(private readonly favoritesService: FavoritesService) {}
 
-  @Post(':userId/:collaboratorId')
+  @Post('user/:userId/collaborator/:collaboratorId')
   async create(@Param('userId') userId: string,
     @Param('collaboratorId') collaboratorId: string,) {
     let createFavoriteDto = new CreateFavoriteDto();
@@ -21,7 +21,7 @@ export class FavoritesController {
     return this.favoritesService.findAll();
   }
 
-  @Get(':userId/:collaboratorId')
+  @Get('user/:userId/collaborator/:collaboratorId')
   async findOne(
     @Param('userId') userId: string,
     @Param('collaboratorId') collaboratorId: string,
@@ -29,7 +29,7 @@ export class FavoritesController {
     return this.favoritesService.findOne(userId, collaboratorId);
   }
 
-  @Patch(':userId/:collaboratorId')
+  @Patch('user/:userId/collaborator/:collaboratorId')
   async update(
     @Param('userId') userId: string,
     @Param('collaboratorId') collaboratorId: string,
@@ -38,7 +38,7 @@ export class FavoritesController {
     return this.favoritesService.update(userId, collaboratorId, updateFavoriteDto);
   }
 
-  @Delete(':userId/:collaboratorId')
+  @Delete('user/:userId/collaborator/:collaboratorId')
   async remove(
     @Param('userId') userId: string,
     @Param('collaboratorId') collaboratorId: string,
@@ -46,10 +46,9 @@ export class FavoritesController {
     return this.favoritesService.remove(userId, collaboratorId);
   }
 
-    // Favorite Collaborators 
-  @Get(':id')
-  async getFavoriteCollaborators(@Param('id') id: string) {
-    return this.favoritesService.findByUser(id)
+  @Get('user/:userId')
+  async getFavoriteCollaborators(@Param('userId') userId: string) {
+    return this.favoritesService.findByUser(userId)
   }
 
 }

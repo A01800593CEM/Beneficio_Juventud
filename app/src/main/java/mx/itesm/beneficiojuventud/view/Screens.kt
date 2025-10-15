@@ -1,5 +1,8 @@
 package mx.itesm.beneficiojuventud.view
 
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+
 sealed class Screens(val route: String) {
     data object Login : Screens("login")
     data object Register : Screens("register")
@@ -26,8 +29,12 @@ sealed class Screens(val route: String) {
     data object Favorites : Screens("favorites")
     data object Coupons : Screens("coupons")
     data object Business : Screens("business")
-    data object PromoQR : Screens("promo_qr")
+    data object PromoQR: Screens("promoQR/{promotionId}") {
+        fun createRoute(promotionId: Int) = "promoQR/$promotionId"
+        val arguments = listOf(navArgument("promotionId") { type = NavType.IntType })
+    }
     data object GenerarPromocion : Screens("generar_promocion")
     data object GenerarPromocionIA : Screens("generar_promocion_ia")
     data object EditPromotion : Screens("edit_promotion")
+
 }
