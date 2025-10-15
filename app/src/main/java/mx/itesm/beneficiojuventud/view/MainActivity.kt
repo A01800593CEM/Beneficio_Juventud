@@ -29,6 +29,7 @@ import com.google.gson.Gson
 import mx.itesm.beneficiojuventud.model.webhook.PromotionData
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 
 /**
@@ -90,13 +91,15 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppContent(
     authViewModel: AuthViewModel = viewModel(),
-    userViewModel: UserViewModel = viewModel()
+    userViewModel: UserViewModel = viewModel(),
+    collabViewModel: CollabViewModel = viewModel()
 ) {
     val nav = rememberNavController()
     AppNav(
         nav = nav,
         authViewModel = authViewModel,
-        userViewModel = userViewModel
+        userViewModel = userViewModel,
+        collabViewModel = collabViewModel
     )
 }
 
@@ -109,7 +112,8 @@ private fun AppContent(
 private fun AppNav(
     nav: NavHostController,
     authViewModel: AuthViewModel,
-    userViewModel: UserViewModel
+    userViewModel: UserViewModel,
+    collabViewModel: CollabViewModel
 ) {
     val appState by authViewModel.appState.collectAsState()
     val currentUserId by authViewModel.currentUserId.collectAsState()
@@ -191,7 +195,7 @@ private fun AppNav(
             composable(Screens.OnboardingCategories.route) { OnboardingCategories(nav) }
 
             // --- App principal ---
-            composable(Screens.Home.route) { Home(nav, userViewModel = userViewModel) }
+            composable(Screens.Home.route) { Home(nav, userViewModel = userViewModel, collabViewModel = collabViewModel) }
             composable(Screens.Profile.route) { Profile(nav, authViewModel, userViewModel) }
             composable(Screens.EditProfile.route) { EditProfile(nav) }
             composable(Screens.History.route) { History(nav) }
@@ -199,7 +203,11 @@ private fun AppNav(
             composable(Screens.Help.route) { Help(nav) }
             composable(Screens.Favorites.route) { Favorites(nav, userViewModel = userViewModel) }
             composable(Screens.Coupons.route) { Coupons(nav) }
-            composable(Screens.Business.route) { Business(nav) }
+            composable("business/{collabId}") { backStackEntry ->
+                val collabId = backStackEntry.arguments?.getString("collabId") ?: return@composable
+                Business(nav = nav, collabId = collabId)
+            }
+
             composable(Screens.GenerarPromocion.route) { GenerarPromocion(nav) }
             composable(Screens.GenerarPromocionIA.route) { GenerarPromocionIA(nav) }
 

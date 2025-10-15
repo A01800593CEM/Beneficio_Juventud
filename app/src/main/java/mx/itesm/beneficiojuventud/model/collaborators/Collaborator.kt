@@ -3,6 +3,7 @@ package mx.itesm.beneficiojuventud.model.collaborators
 import com.google.gson.annotations.SerializedName
 
 data class Collaborator(
+    val collaboratorId: String? = null,
     val businessName: String? = null,
     val rfc: String? = null,
     val representativeName: String? = null,
