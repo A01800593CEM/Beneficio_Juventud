@@ -60,10 +60,20 @@ export class PromotionsService {
    * Obtiene todas las promociones, incluyendo sus categorías.
    * @returns Arreglo de promociones.
    */
-    async findAll(): Promise<Promotion[]> {
-        return this.promotionsRepository.find({ 
-          relations: ['categories'] });
-      }
+    async findAll(): Promise<any[]> {
+  const promotions = await this.promotionsRepository.find({
+    relations: ['categories', 'collaborator'],
+  });
+
+  return promotions.map(promo => {
+    const { collaborator, ...rest } = promo; // destructure out collaborator
+    return {
+      ...rest,
+      businessName: collaborator.businessName,
+    };
+  });
+}
+
 
     /**
    * Obtiene una promoción activa por ID.
@@ -160,8 +170,8 @@ export class PromotionsService {
   async promotionPerCategory(category: string): Promise<Promotion[]> {
   const qb = this.promotionsRepository
     .createQueryBuilder('promotion')
-    .leftJoin('promotion.categories', 'category')
-    .addSelect(['category.id', 'category.name']);
+    .leftJoin('promotion.categories', 'category', 'collaboratorId')
+    .addSelect(['category.id', 'category.name', 'collaborator.businessName']);
 
   const asNumber = Number(category);
   if (!Number.isNaN(asNumber)) {

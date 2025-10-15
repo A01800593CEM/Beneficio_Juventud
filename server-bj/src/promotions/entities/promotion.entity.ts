@@ -104,7 +104,9 @@ export class Promotion {
     })
         categories: Category[];
   @ManyToOne(() => Collaborator, collaborator => collaborator.promotions)
-  @JoinColumn({name: 'colaborador_id'})
+  @JoinColumn({
+    name: 'colaborador_id',
+    referencedColumnName: 'cognitoId'})
   collaborator: Relation<Collaborator>;
 
   @OneToMany(() => Notification, notifications => notifications.promotions)
