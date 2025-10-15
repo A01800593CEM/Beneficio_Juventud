@@ -8,6 +8,7 @@ import { Category } from 'src/categories/entities/category.entity';
 import { Collaborator } from 'src/collaborators/entities/collaborator.entity';
 import { PromotionTheme } from '../enums/promotion-theme.enum';
 import { User } from 'src/users/entities/user.entity';
+import { Notification } from 'src/notifications/entities/notification.entity';
 
 @Entity({ name: 'promocion' })
 export class Promotion {

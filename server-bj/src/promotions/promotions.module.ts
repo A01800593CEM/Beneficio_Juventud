@@ -36,7 +36,7 @@ import { UsersModule } from 'src/users/users.module';
     forwardRef(() => BookingsModule),
     forwardRef(() => CategoriesModule),
     forwardRef(() => UsersModule),
-    NotificacionsModule
+    forwardRef(() => NotificationsModule)
 ],
 exports: [TypeOrmModule, PromotionsService],
 })
