@@ -23,7 +23,7 @@ interface Promotion {
   title: string;
 }
 
-async function seedDatabase() {
+export async function seedDatabase() {
   const baseUrl = 'http://localhost:3000';
 
   const log = (msg: string, ok = true) =>

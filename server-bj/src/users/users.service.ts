@@ -7,61 +7,43 @@ import { Repository, In } from 'typeorm';
 import { BookingsService } from 'src/bookings/bookings.service';
 import { UserState } from './enums/user-state.enum';
 import { Category } from 'src/categories/entities/category.entity';
+import { Promotion } from 'src/promotions/entities/promotion.entity';
 
 @Injectable()
 export class UsersService {
-  /**
-   * Creates an instance of the UsersService.
-   *
-   * @param usersRepository - TypeORM repository for managing {@link User} entities.
-   * @param bookingsService - Service used to manage related user bookings.
-   */
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(Category)
     private categoriesRepository: Repository<Category>,
+    @InjectRepository(Promotion)
+    private promotionsRepository: Repository<Promotion>,
     private bookingsService: BookingsService,
   ) {}
-
-  /**
-   * Creates a new user and persists it to the database.
-   *
-   * @param createUserDto - DTO containing the new user's information.
-   * @returns The created {@link User}.
-   *
-   * @example
-   * await usersService.create({
-   *   name: 'Iván',
-   *   lastNamePaternal: 'Carrillo',
-   *   lastNameMaternal: 'López',
-   *   birthDate: new Date('2001-08-15'),
-   *   phoneNumber: '+52 5512345678',
-   *   email: 'ivan@example.com',
-   *   accountState: UserState.ACTIVE,
-   * });
-   */
+  
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const { userPrefCategories, ...data } = createUserDto;
+    const { userPrefCategories, favoritePromos, ...data } = createUserDto;
+    
+    let validUserPrefCategories: Category[] = userPrefCategories ? 
+    await this.categoriesRepository.findBy({
+        name: In(userPrefCategories),
+      }) : [];
 
-    const categoriesEntities = await this.categoriesRepository.findBy({
-      name: In(userPrefCategories),
-    });
+    let validUserFavoritePromos: Promotion[] = favoritePromos ? 
+    await this.promotionsRepository.findBy({
+        promotionId: In(favoritePromos),
+      }) : [];
+    
 
     const user = this.usersRepository.create({
       ...data,
-      categories: categoriesEntities,
+      categories: validUserPrefCategories,
+      favoritePromos: validUserFavoritePromos
     });
-    
+
     return this.usersRepository.save(user)
   }
 
-   /**
-   * Retrieves all users in the system.
-   *
-   * @returns A Promise resolving to an array of {@link User} entities.
-   * @example await usersService.findAll();
-   */
   async findAll(): Promise<User[]> {
     return this.usersRepository.find();
   }
@@ -75,18 +57,11 @@ export class UsersService {
                   'favorites',
                   'favorites.collaborator',
                   'redeemedcoupon',
-                  'redeemedcoupon.promotion'
+                  'redeemedcoupon.promotion',
+                  'favoritePromos'
                 ] });
   }
 
-  /**
-   * Retrieves an active user by ID.
-   *
-   * @param id - Unique identifier of the user.
-   * @throws {NotFoundException} If no active user is found with the given ID.
-   * @returns The matching active {@link User}.
-   * @example await usersService.findOne(8);
-   */
   async findOne(cognitoId: string): Promise<User | null> {
     const user = await this.usersRepository.findOne({ 
       where: { 
@@ -101,14 +76,14 @@ export class UsersService {
   async update(cognitoId: string, updateUserDto: UpdateUserDto): Promise<User>  {
     const user = await this.usersRepository.findOne({
       where: { cognitoId }, 
-      relations: ['categories', 'favorites', 'bookings', 'redeemedcoupon']
+      relations: ['categories', 'favorites', 'bookings', 'redeemedcoupon', 'favoritePromos']
     });
 
     if (!user) {
       throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
     
-    const { userPrefCategories, ...updateData} = updateUserDto
+    const { userPrefCategories, favoritePromos, ...updateData} = updateUserDto
 
     Object.assign(user, updateData)
 
@@ -117,19 +92,14 @@ export class UsersService {
       user.categories = categories;
     }
 
+    if (favoritePromos && favoritePromos.length > 0) {
+      const promotions = await this.promotionsRepository.findBy({ promotionId: In( favoritePromos )});
+      user.favoritePromos = promotions;
+    }
+
     return this.usersRepository.save(user)
   }
 
-   /**
-   * Deactivates a user account (logical deletion).
-   *
-   * @param id - ID of the user to deactivate.
-   * @throws {NotFoundException} If the user does not exist.
-   * @returns A void Promise after deactivation.
-   *
-   * @example
-   * await usersService.remove(7);
-   */
   async remove(cognitoId: string): Promise<void>{
     const user = await this.findOne(cognitoId);
     if (!user) {
@@ -138,16 +108,6 @@ export class UsersService {
     await this.usersRepository.update(cognitoId, { accountState: UserState.INACTIVE });
   }
 
-  /**
-   * Reactivates a previously deactivated user account.
-   *
-   * @param id - ID of the user to reactivate.
-   * @throws {NotFoundException} If the user does not exist.
-   * @returns The reactivated {@link User}.
-   *
-   * @example
-   * await usersService.reActivate(7);
-   */
   async reActivate(cognitoId: string): Promise<User> {
     const user = await this.trueFindOne(cognitoId);
     if (!user) {
@@ -156,5 +116,33 @@ export class UsersService {
     await this.usersRepository.update(cognitoId, { accountState: UserState.ACTIVE })
     return user;
   }
+
+  async getFavoritePromos(cognitoId: string): Promise<Promotion[]> {
+    const user = await this.trueFindOne(cognitoId);
+    if (!user) {
+      throw new NotFoundException(`User with id ${cognitoId} not found`);
+    };
+    return user.favoritePromos;
+  }
+
+  async addFavoritePromo(cognitoId: string, promotionId: number): Promise<void> {
+    const user = await this.trueFindOne(cognitoId);
+
+    if (!user) {
+      throw new NotFoundException(`User with id ${cognitoId} not found`);
+    };
+
+    const promotion = await this.promotionsRepository.findBy({ promotionId: promotionId })
+    user.favoritePromos.concat(promotion);
+  }
+
+  async remFavoritePromo(cognitoId: string, promotionId: number,): Promise<void> {
+  await this.usersRepository
+    .createQueryBuilder()
+    .relation(User, 'favoritePromos')
+    .of(cognitoId) // refers to user.cognitoId
+    .remove(promotionId); // refers to promotion.promotionId
+}
+
 
 }

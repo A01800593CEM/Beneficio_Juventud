@@ -5,6 +5,7 @@ import { Booking } from "src/bookings/entities/booking.entity";
 import { Favorite } from "src/favorites/entities/favorite.entity";
 import { Redeemedcoupon } from "src/redeemedcoupon/entities/redeemedcoupon.entity";
 import { Category } from "src/categories/entities/category.entity";
+import { Promotion } from "src/promotions/entities/promotion.entity";
 
 /**
  * Entidad que modela a un usuario final.
@@ -140,6 +141,20 @@ export class User {
     },
     })
     categories: Category[];
+
+    @ManyToMany(() => Promotion, promotions => promotions.favoritedBy)
+    @JoinTable({
+        name: 'cupon_favorito',
+    joinColumn: {
+        name: 'usuario_id',
+        referencedColumnName: 'cognitoId',
+    },
+    inverseJoinColumn: {
+        name: 'promocion_id',
+        referencedColumnName: 'promotionId'
+    },
+    })
+    favoritePromos: Relation<Promotion[]>;
 
 
 }

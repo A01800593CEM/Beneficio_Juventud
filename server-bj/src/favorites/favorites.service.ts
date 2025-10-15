@@ -6,35 +6,18 @@ import { CreateFavoriteDto } from './dto/create-favorite.dto';
 import { UpdateFavoriteDto } from './dto/update-favorite.dto';
 import { Collaborator } from 'src/collaborators/entities/collaborator.entity';
 
-/**
- * Service responsible for managing favorite relationships between users and collaborators.
- * Handles business logic for creating, retrieving, updating, and removing favorites.
- */
 @Injectable()
 export class FavoritesService {
-  /**
-   * Creates an instance of FavoritesService.
-   * @param favoritesRepository - The TypeORM repository for Favorite entities
-   */
   constructor(
     @InjectRepository(Favorite)
     private favoritesRepository: Repository<Favorite>,
   ) {}
 
-  /**
-   * Creates a new favorite relationship.
-   * @param createFavoriteDto - Data transfer object containing user and collaborator IDs
-   * @returns Promise<Favorite> The newly created favorite relationship
-   */
   async create(createFavoriteDto: CreateFavoriteDto): Promise<Favorite> {
     const favorite = this.favoritesRepository.create(createFavoriteDto);
     return this.favoritesRepository.save(favorite);
   }
 
-  /**
-   * Retrieves all favorite relationships with their associated users and collaborators.
-   * @returns Promise<Favorite[]> Array of all favorite relationships
-   */
   async findAll(): Promise<Favorite[]> {
     return this.favoritesRepository.find({
       relations: ['user', 'collaborator'],
@@ -56,14 +39,6 @@ export class FavoritesService {
     return favorite;
   }
 
-  /**
-   * Updates a favorite relationship.
-   * @param userId - The ID of the user
-   * @param collaboratorId - The ID of the collaborator
-   * @param updateFavoriteDto - Data transfer object containing updated information
-   * @returns Promise<Favorite> The updated favorite relationship
-   * @throws NotFoundException if the favorite relationship doesn't exist
-   */
   async update(
     userId: string,
     collaboratorId: string,
