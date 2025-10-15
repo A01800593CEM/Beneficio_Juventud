@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsEnum, MinLength, IsNotEmpty, IsDate, IsPhoneNumber, MaxLength, ArrayNotEmpty, IsArray } from 'class-validator';
+import { IsString, IsEmail, IsEnum, MinLength, IsNotEmpty, IsDate, IsPhoneNumber, MaxLength, ArrayNotEmpty, IsArray, IsInt } from 'class-validator';
 import { Type } from "class-transformer";
 import { UserState } from "../enums/user-state.enum";
 
@@ -43,18 +43,22 @@ export class CreateUserDto {
 
     @IsDate()
     @Type(() => Date)
-    birthDate: Date
+    birthDate: Date;
 
     @IsPhoneNumber("MX")
-    phoneNumber: string
+    phoneNumber: string;
 
     @IsEmail()
-    email: string
+    email: string;
 
     @IsEnum(UserState)
-    accountState: UserState
+    accountState: UserState;
 
     @IsArray()
     @IsString({ each: true})
-    userPrefCategories: string[]
+    userPrefCategories: string[];
+
+    @IsArray()
+    @IsInt({ each: true })
+    favoritePromos: number[];
 }

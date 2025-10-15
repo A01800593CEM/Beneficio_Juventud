@@ -1,7 +1,8 @@
-import { IsDate, IsEnum, IsInt, IsOptional, IsString, IsUrl, IsArray, ArrayNotEmpty} from 'class-validator';
+import { IsDate, IsEnum, IsInt, IsOptional, IsString, IsUrl, IsArray, ArrayNotEmpty, IsBoolean} from 'class-validator';
 import { Type } from 'class-transformer';
 import { PromotionType } from '../enums/promotion-type.enums';
 import { PromotionState } from '../enums/promotion-state.enums';
+import { PromotionTheme } from '../enums/promotion-theme.enum';
 
 
 /**
@@ -57,5 +58,11 @@ export class CreatePromotionDto {
   @IsOptional() @IsArray() @ArrayNotEmpty()
   @IsInt({ each: true })
   categoryIds?: number[];
+
+  @IsEnum(PromotionTheme)
+  promotionTheme: PromotionTheme;
+
+  @IsBoolean()
+  is_bookable: boolean;
 
 }

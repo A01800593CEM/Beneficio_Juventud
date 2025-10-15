@@ -52,6 +52,7 @@ export class PromotionsService {
         ...data,
         categories,
       });
+      this.notificationsService.newPromoNotif(promotion);
       return this.promotionsRepository.save(promotion);
     }
 
@@ -182,4 +183,6 @@ export class PromotionsService {
       where: {collaboratorId}
     })
   }
+
+  
 }

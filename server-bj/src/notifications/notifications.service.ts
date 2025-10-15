@@ -12,7 +12,17 @@ export class NotificationsService {
   constructor(@Inject('FIREBASE_ADMIN') private admin: admin.app.App) {}
 
   async newPromoNotif(newPromo: Promotion) {
-    
+    await admin.messaging().send({
+    topic: newPromo.collaboratorId, // Users get subscribed to the theme of the id of the collaborator
+    notification: {
+        title: newPromo.title,
+        body: newPromo.description
+    },
+    data: { // Opcional: datos personalizados
+        promotion: String(newPromo.promotionId),
+        action: 'openPromoDetail'
+    }
+});
   }
 
   async sendNotification() {

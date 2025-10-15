@@ -111,4 +111,19 @@ export class UsersController {
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
   }
+
+  @Get('/promotions/fav/:userId')
+  getFavoritePromos(@Param('userId') userId: string) {
+    return this.usersService.getFavoritePromos(userId);
+  }
+
+  @Patch('promotions/fav/:promotion_id/:user_id')
+  addFavoritePromo(@Param('promotion_id') promotionId: number, @Param('user_id') userId: string) {
+    return this.usersService.addFavoritePromo(userId, promotionId);
+  }
+
+  @Patch('promotions/unfav/:promotion_id/:user_id')
+  remFavoritePromo(@Param('promotion_id') promotionId: number, @Param('user_id') userId: string) {
+    return this.usersService.remFavoritePromo(userId, promotionId);
+  }
 }

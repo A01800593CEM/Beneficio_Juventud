@@ -3,7 +3,7 @@ import { FavoritesService } from './favorites.service';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
 import { UpdateFavoriteDto } from './dto/update-favorite.dto';
 
-@Controller('users/favorites')
+@Controller('users/collaborators/fav')
 export class FavoritesController {
   constructor(private readonly favoritesService: FavoritesService) {}
 
