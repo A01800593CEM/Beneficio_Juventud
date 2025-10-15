@@ -4,14 +4,18 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -21,10 +25,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import mx.itesm.beneficiojuventud.model.promos.Promotions
+import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.model.PromoTheme
+import mx.itesm.beneficiojuventud.model.promos.PromotionState
+import mx.itesm.beneficiojuventud.model.promos.PromotionType
+import mx.itesm.beneficiojuventud.model.promos.Promotions
 
-// Paletas de texto
+// -------------------- Paletas de texto --------------------
+
 private data class PromoTextColors(
     val titleColor: Color,
     val subtitleColor: Color,
@@ -42,6 +50,8 @@ private val DarkTextTheme = PromoTextColors(
     subtitleColor = Color(0xFF616161),
     bodyColor = Color(0xFF636363)
 )
+
+// -------------------- API pública --------------------
 
 /**
  * Carrusel de promociones reales desde la BD.
@@ -64,14 +74,13 @@ fun PromoCarousel(
             PromoImageBanner(
                 promo = promo,
                 modifier = Modifier
-                    .width(320.dp)      // banner tipo “hero”
+                    .width(320.dp)
                     .height(150.dp),
                 onClick = { onItemClick(promo) }
             )
         }
     }
 }
-
 
 /**
  * Card individual para cada promoción.
@@ -112,15 +121,19 @@ fun PromoImageBanner(
         )
     }
 
+    // Mapeo directo desde tu entidad
     val title = promo.title ?: "Promoción"
     val subtitle = buildString {
-        promo.promotionType?.let { append(it.name.replaceFirstChar { c -> c.uppercase() }) }
-        promo.promotionState?.let { append(" • ${it.name.replaceFirstChar { c -> c.uppercase() }}") }
+        promo.promotionType?.let { append(it.displayName) }
+        promo.promotionState?.let {
+            if (isNotEmpty()) append(" • ")
+            append(it.displayName)
+        }
     }
     val body = promo.description.orEmpty()
 
-    // Soporta null/empty
-    val dataToLoad = promo.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.placeholder_promo
+    // Soporta null/empty y falla con placeholder
+    val dataToLoad = promo.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.bolos
 
     Surface(
         shape = RoundedCornerShape(radius),
@@ -135,8 +148,8 @@ fun PromoImageBanner(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(dataToLoad)
                     .crossfade(true)
-                    .placeholder(R.drawable.placeholder_promo) // crea un drawable simple
-                    .error(R.drawable.placeholder_promo)
+                    .placeholder(R.drawable.bolos)
+                    .error(R.drawable.bolos)
                     .build(),
                 contentDescription = title,
                 contentScale = ContentScale.Crop,
@@ -186,7 +199,7 @@ fun PromoImageBanner(
                         fontWeight = FontWeight.SemiBold,
                         lineHeight = 16.sp,
                         modifier = Modifier
-                            .fillMaxWidth(0.7f) // un poco más ancho para textos largos
+                            .fillMaxWidth(0.7f)
                             .padding(end = 8.dp)
                     )
                 }
@@ -195,9 +208,10 @@ fun PromoImageBanner(
     }
 }
 
+// -------------------- Helpers de UI --------------------
 
 /**
- * Texto truncado en 2 líneas (con "…").
+ * Texto truncado en 2 líneas (con "…") usando cálculo de overflow real.
  */
 @Composable
 private fun TwoLineEllipsizedText(
@@ -230,3 +244,20 @@ private fun TwoLineEllipsizedText(
         }
     )
 }
+
+// -------------------- Mappers bonitos para enums (opcional) --------------------
+
+private val PromotionType.displayName: String
+    get() = when (this) {
+        PromotionType.descuento -> "Descuento"
+        PromotionType.multicompra -> "Multicompra"
+        PromotionType.regalo -> "Regalo"
+        PromotionType.otro -> "Otro"
+    }
+
+private val PromotionState.displayName: String
+    get() = when (this) {
+        PromotionState.activa -> "Activa"
+        PromotionState.inactiva -> "Inactiva"
+        PromotionState.finalizada -> "Finalizada"
+    }

@@ -309,10 +309,11 @@ fun Home(
                         // 👉 Usa el carrusel con nombres originales: PromoCarousel + PromoImageBanner
                         PromoCarousel(
                             promos = uiPromos,
-                            modifier = Modifier.height(150.dp),
-                            onItemClick = { _ ->
-                                // Si luego agregas 'id' en Promotions, pásalo aquí.
-                                nav.navigate(Screens.PromoQR.route)
+                            onItemClick = { promo ->
+                                // Asegúrate de que la promo tenga id
+                                promo.promotionId?.let { id ->
+                                    nav.navigate(Screens.PromoQR.createRoute(id))
+                                }
                             }
                         )
                     }

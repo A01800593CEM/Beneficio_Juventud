@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.view
 
+import android.graphics.Bitmap
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -7,8 +8,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -17,13 +16,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -32,79 +30,202 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.MultiFormatWriter
+import com.google.zxing.common.BitMatrix
 import mx.itesm.beneficiojuventud.R
-import mx.itesm.beneficiojuventud.components.BJBottomBar
-import mx.itesm.beneficiojuventud.components.BackButton
-import mx.itesm.beneficiojuventud.components.GradientDivider
-import mx.itesm.beneficiojuventud.components.BJTab
-import mx.itesm.beneficiojuventud.components.BJTopHeader
-import mx.itesm.beneficiojuventud.components.MainButton
+import mx.itesm.beneficiojuventud.components.*
 import mx.itesm.beneficiojuventud.model.PromoTheme
+import mx.itesm.beneficiojuventud.model.promos.PromotionState
+import mx.itesm.beneficiojuventud.model.promos.PromotionType
+import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
+import java.text.SimpleDateFormat
+import java.util.*
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 
-/**
- * Modelo de datos para el detalle de una promoción con QR.
- * Incluye recursos visuales, metadatos de vigencia, descripción, términos y tema visual.
- * @param bannerRes Recurso drawable del banner.
- * @param title Título de la promoción.
- * @param merchant Nombre del comercio.
- * @param discountLabel Etiqueta del descuento mostrada como badge.
- * @param validUntil Fecha de vigencia en texto.
- * @param description Descripción de la promoción.
- * @param terms Términos y condiciones.
- * @param qrBitmap Imagen del QR generada en runtime (opcional).
- * @param qrRes Recurso drawable del QR estático (fallback).
- * @param uses Usos consumidos por el usuario.
- * @param maxUses Límite de usos disponibles.
- * @param theme Tema visual para contrastes (LIGHT/DARK).
- */
-data class PromoDetail(
-    val bannerRes: Int,
+// ---------- Mappers de texto (iguales a los del carrusel) ----------
+private val PromotionType.displayName: String
+    get() = when (this) {
+        PromotionType.descuento   -> "Descuento"
+        PromotionType.multicompra -> "Multicompra"
+        PromotionType.regalo      -> "Regalo"
+        PromotionType.otro        -> "Otro"
+    }
+
+private val PromotionState.displayName: String
+    get() = when (this) {
+        PromotionState.activa     -> "Activa"
+        PromotionState.inactiva   -> "Inactiva"
+        PromotionState.finalizada -> "Finalizada"
+    }
+
+// ---------- Modelo solo para QR visual ----------
+data class PromoDetailUi(
+    val bannerUrlOrRes: Any, // String URL o @DrawableRes Int
     val title: String,
     val merchant: String,
     val discountLabel: String,
     val validUntil: String,
     val description: String,
     val terms: String,
-    val qrBitmap: ImageBitmap? = null,
-    val qrRes: Int? = null,
-    val uses: Int = 2,
-    val maxUses: Int = 5,
+    val stockLabel: String,
     val theme: PromoTheme = PromoTheme.LIGHT
 )
 
-/**
- * Pantalla de detalle de promoción con visual del banner, info, usos y un pop-up que muestra el QR para canje.
- * Ofrece simulación de escaneo para UI y navegación mediante barra inferior.
- * @param nav Controlador de navegación para moverse entre pantallas.
- * @param modifier Modificador externo del contenedor raíz.
- * @return Unit
- */
+// ---------- Helpers de forma y QR ----------
+
+private fun formatDate(date: Date?): String {
+    if (date == null) return "—"
+    val fmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    return fmt.format(date)
+}
+
+private fun buildDiscountLabel(p: Promotions): String {
+    // Preferimos el string de la promo si viene armado (e.g. "50% OFF" o "2x1")
+    p.promotionString?.takeIf { it.isNotBlank() }?.let { return it }
+    // Si no, mostrar tipo
+    return p.promotionType?.displayName ?: "Promoción"
+}
+
+private fun toUi(p: Promotions): PromoDetailUi {
+    val banner = p.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.bolos
+    val title  = p.title ?: "Promoción"
+    val merch  = p.collaboratorId?.let { "Colaborador #$it" } ?: "Comercio"
+    val valid  = formatDate(p.endDate)
+    val desc   = p.description ?: "Sin descripción."
+    val terms  = buildString {
+        append("Tipo: ${p.promotionType?.displayName ?: "—"}")
+        p.promotionState?.let { append(" • Estado: ${it.displayName}") }
+    }
+    val stock  = if (p.totalStock != null && p.availableStock != null) {
+        "Stock: ${p.availableStock} / ${p.totalStock}"
+    } else "Stock: —"
+
+    return PromoDetailUi(
+        bannerUrlOrRes = banner,
+        title = title,
+        merchant = merch,
+        discountLabel = buildDiscountLabel(p),
+        validUntil = valid,
+        description = desc,
+        terms = terms,
+        stockLabel = stock,
+        theme = PromoTheme.LIGHT
+    )
+}
+
+// ----- QR payload & encoding (ZXing) -----
+
+private fun buildQrPayload(
+    promotionId: Int,
+    userId: String,
+    limitPerUser: Int?
+): String {
+    val version = 1
+    val ts = System.currentTimeMillis()
+    val nonce = UUID.randomUUID().toString().substring(0, 8)
+    val lpu = limitPerUser ?: -1
+    // Formato compacto apto para POS/lector:
+    // bj|v=1|pid=123|uid=...|lpu=2|ts=...|n=abcd1234
+    return "bj|v=$version|pid=$promotionId|uid=$userId|lpu=$lpu|ts=$ts|n=$nonce"
+}
+
+private fun bitMatrixToBitmap(matrix: BitMatrix): Bitmap {
+    val width = matrix.width
+    val height = matrix.height
+    val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    for (y in 0 until height) {
+        for (x in 0 until width) {
+            bmp.setPixel(x, y, if (matrix[x, y]) 0xFF000000.toInt() else 0xFFFFFFFF.toInt())
+        }
+    }
+    return bmp
+}
+
+private fun generateQrImageBitmap(data: String, sizePx: Int = 900): ImageBitmap? {
+    return try {
+        val hints = mapOf(
+            EncodeHintType.MARGIN to 1,
+            EncodeHintType.CHARACTER_SET to "UTF-8",
+            // Usa error correction M (intermedio). Si tu lector es delicado, sube a Q/H
+            EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M
+        )
+        val matrix = MultiFormatWriter().encode(
+            data,
+            BarcodeFormat.QR_CODE,
+            sizePx,
+            sizePx,
+            hints
+        )
+        bitMatrixToBitmap(matrix).asImageBitmap()
+    } catch (_: Exception) {
+        null
+    }
+}
+
+// ---------- Pantalla ----------
 @Composable
 fun PromoQR(
     nav: NavHostController,
-    modifier: Modifier = Modifier
+    promotionId: Int,
+    cognitoId: String,                      // 👈 ID del usuario (Cognito)
+    modifier: Modifier = Modifier,
+    viewModel: PromoViewModel = viewModel()
 ) {
-    val detail = PromoDetail(
-        bannerRes = R.drawable.el_fuego_sagrado,
-        title = "2do Café al 50%",
-        merchant = "Café Origo",
-        discountLabel = "50% OFF",
-        validUntil = "12/30/2024",
-        description = "Compra un boleto y obtén el segundo gratis para la misma función.",
-        terms = "Válido solo los martes. No aplica en estrenos ni funciones 3D. Presentar cupón en taquilla.",
-        qrRes = R.drawable.qr_demo,
-        theme = PromoTheme.LIGHT
-    )
-
     var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
-    var isRedeemed by rememberSaveable { mutableStateOf(false) }
     var showQrDialog by rememberSaveable { mutableStateOf(false) }
+    var isRedeemed by rememberSaveable { mutableStateOf(false) }
 
-    val theme = detail.theme
-    val titleColor = if (theme == PromoTheme.LIGHT) Color(0xFFFFFFFF) else Color(0xFF505050)
+    // Colecciona el StateFlow del ViewModel
+    val promo by viewModel.promoState.collectAsState()
+
+    // Loading / error locales
+    var isLoading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(promotionId) {
+        isLoading = true
+        error = null
+        try {
+            viewModel.getPromotionById(promotionId) // actualiza promoState
+        } catch (e: Exception) {
+            error = e.message ?: "Error al cargar la promoción."
+        } finally {
+            isLoading = false
+        }
+    }
+
+    // Mapea Promotions a UI
+    val detail: PromoDetailUi? = remember(promo) {
+        val hasData = (promo.title != null) || (promo.description != null) || (promo.imageUrl != null)
+        if (hasData) toUi(promo) else null
+    }
+
+    // Genera payload y QR cuando tengamos datos relevantes
+    val qrPayload = remember(promotionId, cognitoId, promo.limitPerUser) {
+        buildQrPayload(
+            promotionId = promotionId,
+            userId = cognitoId,
+            limitPerUser = promo.limitPerUser
+        )
+    }
+    var qrImage by remember(promotionId, cognitoId, promo.limitPerUser) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(qrPayload) {
+        qrImage = generateQrImageBitmap(qrPayload, sizePx = 900)
+    }
+
+    val theme = detail?.theme ?: PromoTheme.LIGHT
+    val titleColor    = if (theme == PromoTheme.LIGHT) Color(0xFFFFFFFF) else Color(0xFF505050)
     val subtitleColor = if (theme == PromoTheme.LIGHT) Color(0xFFD3D3D3) else Color(0xFF616161)
     val gradientBrush = when (theme) {
         PromoTheme.LIGHT -> Brush.horizontalGradient(
@@ -127,210 +248,242 @@ fun PromoQR(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-
-        Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
-            // 🔧 Evita doble padding de status bar (BJTopHeader ya aplica safeDrawing Top+Horizontal)
-            contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
-            topBar = {
-                BJTopHeader(
-                    title = "Promoción",
-                    nav = nav
-                )
-            },
-            bottomBar = {
-                BJBottomBar(
-                    selected = selectedTab,
-                    onSelect = { tab ->
-                        selectedTab = tab
-                        when (tab) {
-                            BJTab.Home      -> nav.navigate(Screens.Home.route)
-                            BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
-                            BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
-                            BJTab.Profile   -> nav.navigate(Screens.Profile.route)
-                        }
-                    }
-                )
-            }
-        ) { innerPadding ->
-
-            LazyColumn(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(bottom = 96.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                item {
-                    Card(
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                            .fillMaxWidth()
-                            .height(210.dp),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Box(Modifier.fillMaxSize()) {
-                            Image(
-                                painter = painterResource(id = detail.bannerRes),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .graphicsLayer(alpha = 0.85f)
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .drawWithCache {
-                                        onDrawWithContent {
-                                            drawContent()
-                                            drawRect(brush = gradientBrush)
-                                        }
-                                    }
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(12.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(Color(0xFF008D96))
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Text(
-                                    text = detail.discountLabel,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
-                                )
-                            }
-                            Column(
-                                modifier = Modifier
-                                    .align(Alignment.BottomStart)
-                                    .padding(16.dp)
-                            ) {
-                                Text(
-                                    text = detail.merchant,
-                                    color = subtitleColor.copy(alpha = 0.95f),
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    text = detail.title,
-                                    color = titleColor,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 28.sp,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
+        topBar = { BJTopHeader(title = "Promoción", nav = nav) },
+        bottomBar = {
+            BJBottomBar(
+                selected = selectedTab,
+                onSelect = { tab ->
+                    selectedTab = tab
+                    when (tab) {
+                        BJTab.Home      -> nav.navigate(Screens.Home.route)
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
                     }
                 }
-
-                item { InfoCard(detail) }
-
-                item {
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "Usos ${detail.uses} / ${detail.maxUses}",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF3C3C3C),
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                }
-
-                item {
-                    Spacer(Modifier.height(8.dp))
-                    MainButton(
-                        text = "Ver QR",
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        onClick = { showQrDialog = true }
-                    )
-                }
-
-                item {
-                    Spacer(Modifier.height(20.dp))
-                    Text(
-                        "Versión 1.0.12",
-                        color = Color.Gray,
-                        fontSize = 10.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-            }
+            )
         }
+    ) { innerPadding ->
 
-        if (showQrDialog) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(1f)
-                    .background(Color.Black.copy(alpha = 0.50f))
-                    .pointerInput(Unit) { detectTapGestures(onTap = { showQrDialog = false }) },
-                contentAlignment = Alignment.Center
-            ) {
+        when {
+            isLoading -> {
                 Box(
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(MaterialTheme.colorScheme.surface)
-                        .pointerInput(Unit) { detectTapGestures(onTap = { /* consume */ }) }
+                    Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator() }
+            }
+            error != null -> {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) { Text(text = error!!, color = Color.Red) }
+            }
+            detail != null -> {
+                LazyColumn(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentPadding = PaddingValues(bottom = 96.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .widthIn(min = 300.dp, max = 420.dp)
-                            .padding(horizontal = 24.dp, vertical = 28.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Top
-                    ) {
-                        Text(
-                            text = "Código de Canje",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(Modifier.height(16.dp))
-
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                                .fillMaxWidth()
+                                .height(210.dp),
+                            shape = RoundedCornerShape(20.dp)
                         ) {
-                            Crossfade(
-                                targetState = isRedeemed,
-                                label = "redeem_overlay_xfade"
-                            ) { redeemed ->
-                                if (redeemed) {
-                                    RedeemedCardInner()
+                            Box(Modifier.fillMaxSize()) {
+                                // Banner desde URL o drawable
+                                if (detail.bannerUrlOrRes is String) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(detail.bannerUrlOrRes)
+                                            .crossfade(true)
+                                            .placeholder(R.drawable.bolos)
+                                            .error(R.drawable.bolos)
+                                            .build(),
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .graphicsLayer(alpha = 0.92f)
+                                    )
                                 } else {
-                                    QRCardInner(detail)
+                                    Image(
+                                        painter = painterResource(id = detail.bannerUrlOrRes as Int),
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .graphicsLayer(alpha = 0.92f)
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .drawWithCache {
+                                            onDrawWithContent {
+                                                drawContent()
+                                                drawRect(brush = gradientBrush)
+                                            }
+                                        }
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(12.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(Color(0xFF008D96))
+                                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = detail.discountLabel,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .padding(16.dp)
+                                ) {
+                                    Text(
+                                        text = detail.merchant,
+                                        color = subtitleColor.copy(alpha = 0.95f),
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(
+                                        text = detail.title,
+                                        color = titleColor,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 28.sp,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
                             }
                         }
+                    }
 
+                    item { InfoCardApi(detail) }
+
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = detail.stockLabel,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF3C3C3C),
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
+
+                    item {
+                        Spacer(Modifier.height(8.dp))
+                        MainButton(
+                            text = "Ver QR",
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            onClick = { showQrDialog = true }
+                        )
+                    }
+
+                    item {
                         Spacer(Modifier.height(20.dp))
+                        Text(
+                            "Versión 1.0.12",
+                            color = Color.Gray,
+                            fontSize = 10.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextButton(
-                                onClick = { isRedeemed = true },
-                                modifier = Modifier.weight(1f)
-                            ) { Text("Simular escaneo") }
+    if (showQrDialog) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(1f)
+                .background(Color.Black.copy(alpha = 0.50f))
+                .pointerInput(Unit) { detectTapGestures(onTap = { showQrDialog = false }) },
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .pointerInput(Unit) { detectTapGestures(onTap = { /* consume */ }) }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .widthIn(min = 300.dp, max = 420.dp)
+                        .padding(horizontal = 24.dp, vertical = 28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Top
+                ) {
+                    Text(
+                        text = "Código de Canje",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        textAlign = TextAlign.Center
+                    )
 
-                            MainButton(
-                                text = "Cerrar",
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(52.dp),
-                                onClick = { showQrDialog = false }
-                            )
+                    Spacer(Modifier.height(16.dp))
+
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Crossfade(
+                            targetState = isRedeemed,
+                            label = "redeem_overlay_xfade"
+                        ) { redeemed ->
+                            if (redeemed) {
+                                RedeemedCardInner()
+                            } else {
+                                QRCardInner(
+                                    detail = detail ?: return@Crossfade,
+                                    qrBitmap = qrImage
+                                )
+                            }
                         }
+                    }
+
+                    Spacer(Modifier.height(20.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = { isRedeemed = true },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Simular escaneo") }
+
+                        MainButton(
+                            text = "Cerrar",
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp),
+                            onClick = { showQrDialog = false }
+                        )
                     }
                 }
             }
@@ -338,13 +491,10 @@ fun PromoQR(
     }
 }
 
-/**
- * Tarjeta de información con descripción, vigencia y términos de la promoción.
- * @param detail Detalle de la promoción a mostrar.
- * @return Unit
- */
+// ---------- Secciones reutilizadas ----------
+
 @Composable
-private fun InfoCard(detail: PromoDetail) {
+private fun InfoCardApi(detail: PromoDetailUi) {
     Card(
         modifier = Modifier
             .padding(horizontal = 16.dp)
@@ -392,17 +542,12 @@ private fun InfoCard(detail: PromoDetail) {
     }
 }
 
-/**
- * Contenido del QR dentro del pop-up: tarjeta con imagen QR y texto instructivo.
- * @param detail Detalle de la promoción para contextualizar el mensaje.
- * @return Unit
- */
 @Composable
-private fun QRCardInner(detail: PromoDetail) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
-    ) {
+private fun QRCardInner(
+    detail: PromoDetailUi,
+    qrBitmap: ImageBitmap?
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -414,14 +559,17 @@ private fun QRCardInner(detail: PromoDetail) {
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = detail.qrRes ?: R.drawable.qr_demo),
-                    contentDescription = "QR",
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (qrBitmap != null) {
+                    Image(
+                        bitmap = qrBitmap,
+                        contentDescription = "QR",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    CircularProgressIndicator()
+                }
             }
         }
-
         Spacer(Modifier.height(12.dp))
         Text(
             text = "Presenta este código QR en ${detail.merchant} para canjear tu descuento",
@@ -438,11 +586,6 @@ private fun QRCardInner(detail: PromoDetail) {
     }
 }
 
-/**
- * Vista alternativa para mostrar el estado de canje exitoso dentro del pop-up.
- * Dibuja un borde punteado y mensajes de confirmación.
- * @return Unit
- */
 @Composable
 private fun RedeemedCardInner() {
     val dash = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
@@ -453,11 +596,11 @@ private fun RedeemedCardInner() {
                 val strokeWidth = 2.dp.toPx()
                 drawRoundRect(
                     color = Color(0xFFDFE3E6),
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                    style = Stroke(
                         width = strokeWidth,
                         pathEffect = dash
                     ),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
+                    cornerRadius = CornerRadius(16.dp.toPx())
                 )
             }
             .padding(vertical = 18.dp),
@@ -485,66 +628,16 @@ private fun RedeemedCardInner() {
     }
 }
 
-/**
- * Barra superior con botón de regreso, logo y atajo a notificaciones.
- * @param nav Controlador de navegación para manejar el back.
- * @return Unit
- */
-@Composable
-private fun PromoQRTopBar(nav: NavHostController) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-    ) {
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Image(
-                painter = painterResource(id = R.drawable.logo_beneficio_joven),
-                contentDescription = "Logo",
-                modifier = Modifier.size(28.dp)
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                BackButton(nav = nav)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "Promo",
-                    fontWeight = FontWeight.Black,
-                    fontSize = 20.sp,
-                    color = Color(0xFF616161)
-                )
-            }
-            Icon(
-                imageVector = Icons.Outlined.NotificationsNone,
-                contentDescription = "Notificaciones",
-                tint = Color(0xFF008D96),
-                modifier = Modifier.size(26.dp)
-            )
-        }
-        GradientDivider(
-            thickness = 2.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-        )
-    }
-}
-
-/**
- * Previsualiza la pantalla de detalle de promoción con QR.
- * @return Unit
- */
+// Preview local (usa una promo dummy)
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun PromoQRPreview() {
     BeneficioJuventudTheme {
         val nav = rememberNavController()
-        PromoQR(nav)
+        PromoQR(
+            nav = nav,
+            promotionId = 123,
+            cognitoId = "a1fbe500-a091-70e3-5a7b-3b1f4537f10f"
+        )
     }
 }

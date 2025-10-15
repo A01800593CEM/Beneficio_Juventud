@@ -18,7 +18,8 @@ data class Promotions(
     val availableStock: Int? = null,
     val limitPerUser: Int? = null,
     val dailyLimitPerUser: Int? = null,
-    val promotionState: PromotionState? = null
+    val promotionState: PromotionState? = null,
+    val theme: PromoTheme? = null
 )
 enum class PromotionType {
     @SerializedName("descuento") descuento,
@@ -30,4 +31,9 @@ enum class PromotionState {
     @SerializedName("activa") activa,
     @SerializedName("inactiva") inactiva,
     @SerializedName("finalizada") finalizada
+}
+
+enum class PromoTheme {
+    @SerializedName("dark") dark,
+    @SerializedName("light") light,
 }
