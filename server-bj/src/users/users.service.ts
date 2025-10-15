@@ -118,7 +118,10 @@ export class UsersService {
   }
 
   async getFavoritePromos(cognitoId: string): Promise<Promotion[]> {
-    const user = await this.trueFindOne(cognitoId);
+    const user = await this.usersRepository.findOne({
+      where: { cognitoId },
+      relations: ['favoritePromos']
+    });
     if (!user) {
       throw new NotFoundException(`User with id ${cognitoId} not found`);
     };
@@ -126,14 +129,11 @@ export class UsersService {
   }
 
   async addFavoritePromo(cognitoId: string, promotionId: number): Promise<void> {
-    const user = await this.trueFindOne(cognitoId);
-
-    if (!user) {
-      throw new NotFoundException(`User with id ${cognitoId} not found`);
-    };
-
-    const promotion = await this.promotionsRepository.findBy({ promotionId: promotionId })
-    user.favoritePromos.concat(promotion);
+    await this.usersRepository
+      .createQueryBuilder()
+      .relation(User, 'favoritePromos')
+      .of(cognitoId)
+      .add(promotionId);
   }
 
   async remFavoritePromo(cognitoId: string, promotionId: number,): Promise<void> {
