@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.model.users
 
+import mx.itesm.beneficiojuventud.model.promos.Promotions
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -21,4 +22,31 @@ interface UserApiService {
 
     @DELETE("users/{cognitoId}")
     suspend fun deleteUser(@Path("cognitoId") cognitoId: String): Response<Unit>
+
+    @PATCH("users/promotions/fav/{promotionId}/{cognitoId}")
+    suspend fun favoritePromotion(
+        @Path("promotionId") promotionId: Int,
+        @Path("cognitoId") cognitoId: String): Response<Unit>
+
+    @PATCH("users/promotions/unfav/{promotionId}/{cognitoId}")
+    suspend fun unfavoritePromotion(
+        @Path("promotionId") promotionId: Int,
+        @Path("cognitoId") cognitoId: String): Response<Unit>
+
+    @POST("users/collaborators/fav/{cognitoId}/{collaboratorId}")
+    suspend fun favoriteCollaborator(
+        @Path("collaboratorId") collaboratorId: Int,
+        @Path("cognitoId") cognitoId: String): Response<Unit>
+
+    @DELETE("users/collaborators/fav/{cognitoId}/{collaboratorId}")
+    suspend fun unfavoriteCollaborator(
+        @Path("collaboratorId") collaboratorId: Int,
+        @Path("cognitoId") cognitoId: String): Response<Unit>
+
+    @GET("users/promotions/fav/{cognitoId}")
+    suspend fun getFavoritePromotions(@Path("cognitoId") cognitoId: String): Response<List<Promotions>>
+
+    @GET("users/collaborators/fav/{cognitoId}")
+    suspend fun getFavoriteCollabs(@Path("cognitoId") cognitoId: String): Response<List<Int>>
+
 }

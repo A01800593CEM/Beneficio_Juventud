@@ -1,6 +1,7 @@
 package mx.itesm.beneficiojuventud.model.users
 
 import com.google.gson.GsonBuilder
+import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.utils.Constants
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -51,4 +52,48 @@ object RemoteServiceUser {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
         }
     }
+
+    suspend fun favoritePromotion(promotionId: Int, cognitoId: String) {
+        val response = userApiService.favoritePromotion(promotionId, cognitoId)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+    }
+    suspend fun unfavoritePromotion(promotionId: Int, cognitoId: String) {
+        val response = userApiService.unfavoritePromotion(promotionId, cognitoId)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+    }
+
+    suspend fun getFavoritePromotions(cognitoId: String): List<Promotions> {
+        val response = userApiService.getFavoritePromotions(cognitoId)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        return response.body() ?: throw Exception("Respuesta vacía al obtener las promociones favoritas")
+    }
+
+    suspend fun getFavoriteCollabs(cognitoId: String): List<Int> {
+        val response = userApiService.getFavoriteCollabs(cognitoId)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        return response.body() ?: throw Exception("Respuesta vacía al obtener los colaboradores favoritos")
+    }
+
+    suspend fun favoriteCollaborator(collaboratorId: Int, cognitoId: String) {
+        val response = userApiService.favoriteCollaborator(collaboratorId, cognitoId)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+    }
+
+    suspend fun unfavoriteCollaborator(collaboratorId: Int, cognitoId: String) {
+        val response = userApiService.unfavoriteCollaborator(collaboratorId, cognitoId)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+    }
 }
+

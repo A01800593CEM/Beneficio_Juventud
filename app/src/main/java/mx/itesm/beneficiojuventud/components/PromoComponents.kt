@@ -6,7 +6,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -207,6 +211,150 @@ fun PromoImageBanner(
         }
     }
 }
+
+@Composable
+fun PromoImageBannerFav(
+    promo: Promotions,
+    isFavorite: Boolean,
+    onFavoriteClick: (Promotions) -> Unit,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
+    themeResolver: (Promotions) -> PromoTheme = { PromoTheme.LIGHT }
+) {
+    val radius = 16.dp
+    val theme = themeResolver(promo)
+
+    val textColors = when (theme) {
+        PromoTheme.LIGHT -> LightTextTheme
+        PromoTheme.DARK -> DarkTextTheme
+    }
+
+    val gradientBrush = when (theme) {
+        PromoTheme.LIGHT -> Brush.horizontalGradient(
+            0.00f to Color(0xFF2B2B2B).copy(alpha = 1f),
+            0.15f to Color(0xFF2B2B2B).copy(alpha = .95f),
+            0.30f to Color(0xFF2B2B2B).copy(alpha = .70f),
+            0.45f to Color(0xFF2B2B2B).copy(alpha = .40f),
+            0.60f to Color(0xFF2B2B2B).copy(alpha = .25f),
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+        PromoTheme.DARK -> Brush.horizontalGradient(
+            0.00f to Color.White.copy(alpha = 1f),
+            0.15f to Color.White.copy(alpha = .95f),
+            0.30f to Color.White.copy(alpha = .70f),
+            0.45f to Color.White.copy(alpha = .40f),
+            0.60f to Color.White.copy(alpha = .25f),
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
+
+    val title = promo.title ?: "Promoción"
+    val subtitle = buildString {
+        promo.promotionType?.let { append(it.displayName) }
+        promo.promotionState?.let {
+            if (isNotEmpty()) append(" • ")
+            append(it.displayName)
+        }
+    }
+    val body = promo.description.orEmpty()
+    val dataToLoad = promo.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.bolos
+
+    Surface(
+        shape = RoundedCornerShape(radius),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(1.dp, Color(0xFFD3D3D3)),
+        modifier = modifier.clickable { onClick() }
+    ) {
+        Box(Modifier.clip(RoundedCornerShape(radius))) {
+
+            // Imagen
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(dataToLoad)
+                    .crossfade(true)
+                    .placeholder(R.drawable.bolos)
+                    .error(R.drawable.bolos)
+                    .build(),
+                contentDescription = title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Gradiente de texto
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .drawWithCache {
+                        onDrawWithContent {
+                            drawContent()
+                            drawRect(brush = gradientBrush)
+                        }
+                    }
+            )
+
+            // Corazón favorito (arriba-derecha)
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = Color.White.copy(alpha = 0.92f),
+                border = BorderStroke(1.dp, Color(0xFFE5E5E5)),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(10.dp)
+            ) {
+                IconButton(onClick = { onFavoriteClick(promo) }) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = "Favorito",
+                        tint = if (isFavorite) Color(0xFFE53935) else Color(0xFF505050)
+                    )
+                }
+            }
+
+            // Texto
+            Column(
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = title,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Black,
+                    color = textColors.titleColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        text = subtitle,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = textColors.subtitleColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (body.isNotBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    TwoLineEllipsizedText(
+                        text = body,
+                        color = textColors.bodyColor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        lineHeight = 16.sp,
+                        modifier = Modifier
+                            .fillMaxWidth(0.7f)
+                            .padding(end = 8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 // -------------------- Helpers de UI --------------------
 

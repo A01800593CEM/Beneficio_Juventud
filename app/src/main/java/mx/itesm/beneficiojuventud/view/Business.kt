@@ -225,11 +225,11 @@ private fun BusinessHeroCard(
                 Spacer(Modifier.weight(1f))
                 Surface(
                     shape = RoundedCornerShape(24.dp),
-                    color = Color.White.copy(alpha = 0.25f)
+                    color = Color.Transparent
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.FavoriteBorder,
-                        contentDescription = "Guardar",
+                        contentDescription = "Favorito",
                         tint = Color.White,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                     )

@@ -197,7 +197,7 @@ private fun AppNav(
             composable(Screens.History.route) { History(nav) }
             composable(Screens.Settings.route) { Settings(nav) }
             composable(Screens.Help.route) { Help(nav) }
-            composable(Screens.Favorites.route) { Favorites(nav) }
+            composable(Screens.Favorites.route) { Favorites(nav, userViewModel = userViewModel) }
             composable(Screens.Coupons.route) { Coupons(nav) }
             composable(Screens.Business.route) { Business(nav) }
             composable(Screens.GenerarPromocion.route) { GenerarPromocion(nav) }

@@ -8,6 +8,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,6 +42,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.common.BitMatrix
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.*
 import mx.itesm.beneficiojuventud.model.PromoTheme
@@ -47,13 +51,14 @@ import mx.itesm.beneficiojuventud.model.promos.PromotionType
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import androidx.compose.material3.IconToggleButton
 
-// ---------- Mappers de texto (iguales a los del carrusel) ----------
+// ---------- Mappers de texto ----------
 private val PromotionType.displayName: String
     get() = when (this) {
         PromotionType.descuento   -> "Descuento"
@@ -82,8 +87,7 @@ data class PromoDetailUi(
     val theme: PromoTheme = PromoTheme.LIGHT
 )
 
-// ---------- Helpers de forma y QR ----------
-
+// ---------- Helpers ----------
 private fun formatDate(date: Date?): String {
     if (date == null) return "—"
     val fmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -91,9 +95,7 @@ private fun formatDate(date: Date?): String {
 }
 
 private fun buildDiscountLabel(p: Promotions): String {
-    // Preferimos el string de la promo si viene armado (e.g. "50% OFF" o "2x1")
     p.promotionString?.takeIf { it.isNotBlank() }?.let { return it }
-    // Si no, mostrar tipo
     return p.promotionType?.displayName ?: "Promoción"
 }
 
@@ -125,7 +127,6 @@ private fun toUi(p: Promotions): PromoDetailUi {
 }
 
 // ----- QR payload & encoding (ZXing) -----
-
 private fun buildQrPayload(
     promotionId: Int,
     userId: String,
@@ -135,8 +136,6 @@ private fun buildQrPayload(
     val ts = System.currentTimeMillis()
     val nonce = UUID.randomUUID().toString().substring(0, 8)
     val lpu = limitPerUser ?: -1
-    // Formato compacto apto para POS/lector:
-    // bj|v=1|pid=123|uid=...|lpu=2|ts=...|n=abcd1234
     return "bj|v=$version|pid=$promotionId|uid=$userId|lpu=$lpu|ts=$ts|n=$nonce"
 }
 
@@ -157,7 +156,6 @@ private fun generateQrImageBitmap(data: String, sizePx: Int = 900): ImageBitmap?
         val hints = mapOf(
             EncodeHintType.MARGIN to 1,
             EncodeHintType.CHARACTER_SET to "UTF-8",
-            // Usa error correction M (intermedio). Si tu lector es delicado, sube a Q/H
             EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M
         )
         val matrix = MultiFormatWriter().encode(
@@ -178,26 +176,29 @@ private fun generateQrImageBitmap(data: String, sizePx: Int = 900): ImageBitmap?
 fun PromoQR(
     nav: NavHostController,
     promotionId: Int,
-    cognitoId: String,                      // 👈 ID del usuario (Cognito)
+    cognitoId: String,
     modifier: Modifier = Modifier,
-    viewModel: PromoViewModel = viewModel()
+    viewModel: PromoViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel() // <- USANDO BACKEND
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
     var showQrDialog by rememberSaveable { mutableStateOf(false) }
     var isRedeemed by rememberSaveable { mutableStateOf(false) }
 
-    // Colecciona el StateFlow del ViewModel
     val promo by viewModel.promoState.collectAsState()
 
-    // Loading / error locales
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    // Snackbar para feedback
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Cargar promo
     LaunchedEffect(promotionId) {
         isLoading = true
         error = null
         try {
-            viewModel.getPromotionById(promotionId) // actualiza promoState
+            viewModel.getPromotionById(promotionId)
         } catch (e: Exception) {
             error = e.message ?: "Error al cargar la promoción."
         } finally {
@@ -205,13 +206,26 @@ fun PromoQR(
         }
     }
 
-    // Mapea Promotions a UI
+    // Cargar favoritos del usuario desde backend
+    val favPromos by userViewModel.favoritePromotions.collectAsState()
+    val userError by userViewModel.error.collectAsState()
+
+    LaunchedEffect(cognitoId) {
+        userViewModel.getFavoritePromotions(cognitoId)
+    }
+
+    // Mostrar errores del backend en snackbar
+    LaunchedEffect(userError) {
+        userError?.let { msg ->
+            snackbarHostState.showSnackbar(message = msg)
+        }
+    }
+
     val detail: PromoDetailUi? = remember(promo) {
         val hasData = (promo.title != null) || (promo.description != null) || (promo.imageUrl != null)
         if (hasData) toUi(promo) else null
     }
 
-    // Genera payload y QR cuando tengamos datos relevantes
     val qrPayload = remember(promotionId, cognitoId, promo.limitPerUser) {
         buildQrPayload(
             promotionId = promotionId,
@@ -222,6 +236,28 @@ fun PromoQR(
     var qrImage by remember(promotionId, cognitoId, promo.limitPerUser) { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(qrPayload) {
         qrImage = generateQrImageBitmap(qrPayload, sizePx = 900)
+    }
+
+    // ======= Favorito (derivado del backend) + UI optimista =======
+    val isFavoriteRemote = remember(favPromos, promotionId) {
+        favPromos.any { it.promotionId == promotionId }
+    }
+    var isFavoriteLocal by remember(promotionId, isFavoriteRemote) { mutableStateOf(isFavoriteRemote) }
+
+    fun toggleFavorite() {
+        // Optimista inmediato
+        val newValue = !isFavoriteLocal
+        isFavoriteLocal = newValue
+
+        // Llamada real al backend
+        if (newValue) {
+            userViewModel.favoritePromotion(promotionId, cognitoId)
+        } else {
+            userViewModel.unfavoritePromotion(promotionId, cognitoId)
+        }
+
+        // Refrescar lista backend para mantener consistencia (opcional si tu endpoint devuelve estado)
+        userViewModel.refreshFavorites(cognitoId)
     }
 
     val theme = detail?.theme ?: PromoTheme.LIGHT
@@ -252,6 +288,7 @@ fun PromoQR(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         topBar = { BJTopHeader(title = "Promoción", nav = nav) },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             BJBottomBar(
                 selected = selectedTab,
@@ -328,6 +365,7 @@ fun PromoQR(
                                     )
                                 }
 
+                                // Overlay de gradiente
                                 Box(
                                     modifier = Modifier
                                         .matchParentSize()
@@ -338,6 +376,8 @@ fun PromoQR(
                                             }
                                         }
                                 )
+
+                                // Etiqueta de descuento (arriba-derecha)
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
@@ -353,6 +393,34 @@ fun PromoQR(
                                         fontSize = 12.sp
                                     )
                                 }
+
+                                // Corazón flotante (abajo-derecha) con backend
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(end = 18.dp, bottom = 18.dp)
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(24.dp),
+                                        color = Color.Black.copy(alpha = 0.25f)
+                                    ) {
+                                        IconToggleButton(
+                                            checked = isFavoriteLocal,
+                                            onCheckedChange = { toggleFavorite() }
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isFavoriteLocal) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                                contentDescription = if (isFavoriteLocal) "Quitar de favoritos" else "Agregar a favoritos",
+                                                tint = if (isFavoriteLocal) Color(0xFFFF3B3B) else Color.White,
+                                                modifier = Modifier
+                                                    .size(34.dp)
+                                                    .padding(horizontal = 5.dp, vertical = 3.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Textos (abajo-izquierda)
                                 Column(
                                     modifier = Modifier
                                         .align(Alignment.BottomStart)
@@ -371,7 +439,8 @@ fun PromoQR(
                                         fontWeight = FontWeight.ExtraBold,
                                         fontSize = 28.sp,
                                         maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.fillMaxWidth(0.70f) // 70% ancho
                                     )
                                 }
                             }
@@ -492,7 +561,6 @@ fun PromoQR(
 }
 
 // ---------- Secciones reutilizadas ----------
-
 @Composable
 private fun InfoCardApi(detail: PromoDetailUi) {
     Card(
