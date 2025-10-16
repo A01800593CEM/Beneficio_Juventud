@@ -26,7 +26,6 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.GradientDivider
-import mx.itesm.beneficiojuventud.viewcollab.PromotionCreationCard
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
 private val TextGrey = Color(0xFF616161)
@@ -36,8 +35,14 @@ private val TextGrey = Color(0xFF616161)
 fun GeneratePromotionScreen(nav: NavHostController) {
     var selectedTab by remember { mutableStateOf<BJTabCollab>(BJTabCollab.Promotions) }
 
-    val sheetState = rememberModalBottomSheetState()
-    var showBottomSheet by remember { mutableStateOf(false) }
+    val sheetStateManual = rememberModalBottomSheetState()
+    var showBottomSheetManual by remember { mutableStateOf(false) }
+
+    val sheetStateAI = rememberModalBottomSheetState()
+    var showBottomSheetAI by remember { mutableStateOf(false) }
+
+    var aiPromptInput by remember { mutableStateOf<String?>(null) }
+
     val scope = rememberCoroutineScope()
 
     Scaffold(
@@ -70,31 +75,63 @@ fun GeneratePromotionScreen(nav: NavHostController) {
                     icon = Icons.Filled.AddBox,
                     title = "Crear Manualmente",
                     description = "Diseña tu promoción, paso a paso, con total control sobre cada detalle.",
-                    onClick = { showBottomSheet = true }
+                    onClick = {
+                        aiPromptInput = null
+                        showBottomSheetManual = true
+                    }
                 )
                 Spacer(Modifier.height(24.dp))
                 PromotionCreationCard(
                     icon = Icons.Default.AutoAwesome,
                     title = "Generar con IA",
                     description = "¿No sabes qué cupón crear? Deja que la inteligencia artificial cree una promoción personalizada para tu negocio.",
-                    onClick = { /* TODO */ }
+                    onClick = { showBottomSheetAI = true }
                 )
             }
         }
     }
 
-    if (showBottomSheet) {
+    if (showBottomSheetManual) {
         ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
-            sheetState = sheetState
+            onDismissRequest = { showBottomSheetManual = false },
+            sheetState = sheetStateManual
         ) {
             NewPromotionSheet(onClose = {
-                scope.launch { sheetState.hide() }.invokeOnCompletion {
-                    if (!sheetState.isVisible) {
-                        showBottomSheet = false
+                scope.launch { sheetStateManual.hide() }.invokeOnCompletion {
+                    if (!sheetStateManual.isVisible) {
+                        showBottomSheetManual = false
                     }
                 }
             })
+        }
+    }
+
+    if (showBottomSheetAI) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheetAI = false },
+            sheetState = sheetStateAI
+        ) {
+            GenerateWithAISheet(
+                onClose = {
+                    scope.launch { sheetStateAI.hide() }.invokeOnCompletion {
+                        if (!sheetStateAI.isVisible) {
+                            showBottomSheetAI = false
+                        }
+                    }
+                },
+                onGeneratePromotion = { prompt ->
+                    aiPromptInput = prompt
+
+                    scope.launch {
+                        sheetStateAI.hide()
+                    }.invokeOnCompletion {
+                        if (!sheetStateAI.isVisible) {
+                            showBottomSheetAI = false
+                            showBottomSheetManual = true
+                        }
+                    }
+                }
+            )
         }
     }
 }
