@@ -6,7 +6,6 @@ import java.util.Date
 data class Promotions(
     val promotionId: Int? = null,
     val collaboratorId: String? = null,
-    val businessName: String? = null,
     val title: String? = null,
     val description: String? = null,
     val imageUrl: String? = null,
@@ -20,7 +19,8 @@ data class Promotions(
     val limitPerUser: Int? = null,
     val dailyLimitPerUser: Int? = null,
     val promotionState: PromotionState? = null,
-    val theme: PromoTheme? = null
+    val theme: PromoTheme? = null,
+    val businessName: String? = null
 )
 enum class PromotionType {
     @SerializedName("descuento") descuento,

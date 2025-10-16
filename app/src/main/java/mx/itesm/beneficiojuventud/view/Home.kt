@@ -428,7 +428,7 @@ fun Home(
                         MerchantRow(
                             collaborators = collaborators,
                             onItemClick = { collab ->
-                                collab.collaboratorId?.let { id ->
+                                collab.cognitoId?.let { id ->
                                     nav.navigate(Screens.Business.createRoute(id))
                                 }
                             }
@@ -491,7 +491,7 @@ fun Home(
                         MerchantRow(
                             collaborators = collaborators,
                             onItemClick = { collab ->
-                                collab.collaboratorId?.let { id ->
+                                collab.cognitoId?.let { id ->
                                     nav.navigate(Screens.Business.createRoute(id))
                                 }
                             }

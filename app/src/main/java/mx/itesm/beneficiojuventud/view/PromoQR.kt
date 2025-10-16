@@ -107,7 +107,7 @@ private fun buildDiscountLabel(p: Promotions): String {
 private fun toUi(p: Promotions): PromoDetailUi {
     val banner = p.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.bolos
     val title  = p.title ?: "Promoción"
-    val merch  = p.collaboratorId?.let { "Colaborador #$it" } ?: "Comercio"
+    val merch  = p.businessName ?: "Sin Nombre Negocio"
     val valid  = formatDate(p.endDate)
     val desc   = p.description ?: "Sin descripción."
     val terms  = buildString {
@@ -239,6 +239,7 @@ fun PromoQR(
 
     // Logs cuando cambia promo (respuesta de getPromotionById)
     LaunchedEffect(promo) {
+        Log.d(TAG, "DEBUG businessName=${promo.businessName}, collaboratorId=${promo.collaboratorId}")
         if ((promo.title != null) || (promo.description != null) || (promo.imageUrl != null)) {
             Log.d(
                 TAG,

@@ -54,7 +54,7 @@ fun MerchantRow(
 }
 
 private fun collabKey(c: Collaborator): Any =
-    c.collaboratorId ?: c.businessName ?: c.email ?: c.hashCode()
+    c.cognitoId ?: c.businessName ?: c.email ?: c.hashCode()
 
 @Composable
 fun MerchantCard(
@@ -118,7 +118,7 @@ fun MerchantCard(
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = collab.categoryIds?.toString().orEmpty(),
+                    text = collab.categories?.toString().orEmpty(),
                     fontSize = 11.sp,
                     color = Color(0xFF9E9E9E),
                     maxLines = 1,
