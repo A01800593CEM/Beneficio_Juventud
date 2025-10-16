@@ -42,4 +42,8 @@ export class PromotionsController {
   ) {
     return this.promotionsService.update(id, dto);
   }
+  @Get('category/:category')
+  async promotionPerCategory(@Param('category') category: string) {
+    return this.promotionsService.promotionPerCategory(category);
+  }
 }
