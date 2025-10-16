@@ -1,19 +1,25 @@
-import { IsDate, IsEnum, IsInt, IsOptional, IsString, IsUrl, IsArray, ArrayNotEmpty, IsBoolean} from 'class-validator';
+import {
+  IsDate,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUrl,
+  IsArray,
+  ArrayNotEmpty,
+  IsBoolean,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { PromotionType } from '../enums/promotion-type.enums';
 import { PromotionState } from '../enums/promotion-state.enums';
 import { PromotionTheme } from '../enums/promotion-theme.enum';
 
-
 /**
  * DTO representing the payload required to create a new promotion.
- *
- * @remarks
- * This class is validated automatically by NestJS when used with the `@Body()` decorator
- * in a controller method and the `ValidationPipe`.
  */
 export class CreatePromotionDto {
-  @IsInt()
+  // En entidad es string (Cognito ID)
+  @IsString()
   collaboratorId: string;
 
   @IsString()
@@ -22,47 +28,66 @@ export class CreatePromotionDto {
   @IsString()
   description: string;
 
-  @IsOptional() @IsUrl()
+  @IsOptional()
+  @IsUrl()
   imageUrl?: string;
 
-  @IsDate() @Type(() => Date)
+  @IsDate()
+  @Type(() => Date)
   initialDate: Date;
 
-  @IsDate() @Type(() => Date)
+  @IsDate()
+  @Type(() => Date)
   endDate: Date;
 
-  @IsOptional() @IsInt()
+  @IsOptional()
+  @IsInt()
   categoryId?: number;
 
   @IsEnum(PromotionType)
   promotionType: PromotionType;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   promotionString?: string;
 
-  @IsOptional() @IsInt()
+  @IsOptional()
+  @IsInt()
   totalStock?: number;
 
-  @IsOptional() @IsInt()
+  @IsOptional()
+  @IsInt()
   availableStock?: number;
 
-  @IsOptional() @IsInt()
+  @IsOptional()
+  @IsInt()
   limitPerUser?: number;
 
-  @IsOptional() @IsInt()
+  @IsOptional()
+  @IsInt()
   dailyLimitPerUser?: number;
 
   @IsEnum(PromotionState)
   promotionState: PromotionState;
 
-  @IsOptional() @IsArray() @ArrayNotEmpty()
+  @IsOptional()
+  @IsArray()
+  @ArrayNotEmpty()
   @IsInt({ each: true })
   categoryIds?: number[];
 
+  /**
+   * (Legacy) si alguien sigue mandando "promotionTheme", lo aceptamos.
+   * Se mapeará a "theme" en el servicio.
+   */
   @IsEnum(PromotionTheme)
-  promotionTheme: PromotionTheme;
+  @IsOptional()
+  promotionTheme?: PromotionTheme;
+
+  @IsEnum(PromotionTheme)
+  @IsOptional()
+  theme?: PromotionTheme;
 
   @IsBoolean()
   is_bookable: boolean;
-
 }
