@@ -16,8 +16,12 @@ class PromoViewModel : ViewModel() {
 
     private val _promoState = MutableStateFlow(Promotions())
     val promoState: StateFlow<Promotions> = _promoState
+
     private val _promoListState = MutableStateFlow<List<Promotions>>(emptyList())
     val promoListState: StateFlow<List<Promotions>> = _promoListState
+
+    // Si prefieres mantenerlas suspend, déjalas así.
+    // Si las llamas desde Compose sin coroutine externa, puedes envolverlas en launch.
 
     suspend fun getAllPromotions() {
         _promoListState.value = model.getAllPromotions()
@@ -43,6 +47,7 @@ class PromoViewModel : ViewModel() {
         model.deletePromotion(id)
     }
 
+    // Favoritos en memoria (solo client-side por ahora)
     private val _favoriteIds = MutableStateFlow<Set<Int>>(emptySet())
     val favoriteIds: StateFlow<Set<Int>> = _favoriteIds.asStateFlow()
 
@@ -52,6 +57,5 @@ class PromoViewModel : ViewModel() {
         _favoriteIds.update { set ->
             if (set.contains(promoId)) set - promoId else set + promoId
         }
-
     }
 }

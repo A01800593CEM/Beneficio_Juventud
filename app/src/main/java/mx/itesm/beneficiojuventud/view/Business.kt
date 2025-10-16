@@ -1,9 +1,9 @@
-// Business.kt (ajustado a IDs String para colaboradores favoritos)
 package mx.itesm.beneficiojuventud.view
 
 import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -25,7 +25,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import mx.itesm.beneficiojuventud.components.*
+import mx.itesm.beneficiojuventud.components.BJBottomBar
+import mx.itesm.beneficiojuventud.components.BJTab
+import mx.itesm.beneficiojuventud.components.BJTopHeader
+import mx.itesm.beneficiojuventud.components.PromoImageBanner
+import mx.itesm.beneficiojuventud.components.SectionTitle
+import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
+import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
@@ -36,8 +42,8 @@ private const val TAG = "Business"
 @Composable
 fun Business(
     nav: NavHostController,
-    collabId: String,      // ← cognitoId del colaborador (String)
-    cognitoId: String,     // ← cognitoId del usuario (String)
+    collabId: String,          // cognitoId del colaborador
+    userCognitoId: String,     // cognitoId del usuario logueado
     modifier: Modifier = Modifier,
     promoViewModel: PromoViewModel = viewModel(),
     collabViewModel: CollabViewModel = viewModel(),
@@ -45,67 +51,93 @@ fun Business(
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Home) }
 
-    val collaborator by collabViewModel.collabState.collectAsState()
-    val promos by promoViewModel.promoListState.collectAsState()
+    // ⬇️ añade initial=... para evitar "Cannot infer type..."
+    val collaborator: Collaborator by collabViewModel
+        .collabState
+        .collectAsState(initial = Collaborator())
+
+    val promos: List<Promotions> by promoViewModel
+        .promoListState
+        .collectAsState(initial = emptyList())
 
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    val userError by userViewModel.error.collectAsState()
 
-    // Carga colaborador (por cognitoId) y promociones
+    // Tu UserViewModel expone 'error', NO 'errorMessage'
+    val errorMsg: String? by userViewModel.error.collectAsState(initial = null)
+
+    // ⬇️ favoritos de colaboradores (objetos) desde el VM actual
+    val favoriteCollabs: List<Collaborator> by userViewModel
+        .favoriteCollabs
+        .collectAsState(initial = emptyList())
+
+    // Set de IDs (cognitoId) para consulta O(1) en UI
+    val favIds: Set<String> = remember(favoriteCollabs) {
+        favoriteCollabs.mapNotNull { it.cognitoId }.toSet()
+    }
+
+    // Cargar colaborador (por cognitoId) y todas las promos
     LaunchedEffect(collabId) {
         runCatching {
             isLoading = true
-            collabViewModel.getCollaboratorById(collabId)  // ← asegúrate que acepte String
+            collabViewModel.getCollaboratorById(collabId)   // acepta cognitoId:String
             promoViewModel.getAllPromotions()
         }.onFailure { e -> error = e.message }
         isLoading = false
     }
 
-    // Favoritos (lista de cognitoId de colaboradores)
-    val favCollabs by userViewModel.favoriteCollabs.collectAsState()
-
-    LaunchedEffect(cognitoId) {
-        runCatching { userViewModel.getFavoriteCollabs(cognitoId) }
+    // Traer favoritos del usuario (colabs + promos)
+    LaunchedEffect(userCognitoId) {
+        runCatching { userViewModel.refreshFavorites(userCognitoId) }
+            .onFailure { e -> Log.e(TAG, "Error al refrescar favoritos: ${e.message}") }
     }
 
-    LaunchedEffect(userError) {
-        userError?.let { snackbarHostState.showSnackbar(it) }
+    // Mostrar errores en snackbar (si manejas errores globales del VM)
+    LaunchedEffect(errorMsg) {
+        errorMsg?.let { snackbarHostState.showSnackbar(it) }
     }
 
-    // ¿Este colaborador (collabId String) está en favoritos?
-    val isFavoriteRemote = remember(favCollabs, collabId) {
-        favCollabs.contains(collabId)
+    // Estado de favorito del colaborador actual (derivado del set)
+    val isFavoriteRemote by remember(favIds, collabId) {
+        mutableStateOf(favIds.contains(collabId))
     }
     var isFavoriteLocal by remember(collabId, isFavoriteRemote) {
         mutableStateOf(isFavoriteRemote)
     }
 
     fun toggleFavorite() {
-        val to = !isFavoriteLocal
-        isFavoriteLocal = to
+        // Optimistic UI
+        isFavoriteLocal = !isFavoriteLocal
 
         runCatching {
-            userViewModel.toggleFavoriteCollaborator(collabId, cognitoId)
+            userViewModel.toggleFavoriteCollaborator(
+                collaboratorId = collabId,     // es cognitoId
+                cognitoId = userCognitoId
+            )
         }.onFailure { e ->
-            Log.e(TAG, "Error al alternar favorito: ${e.message}")
+            Log.e(TAG, "toggleFavoriteCollaborator error: ${e.message}")
         }
 
-        // Refresca del backend para mantener consistencia
-        runCatching { userViewModel.refreshFavorites(cognitoId) }
+        // Refrescar para asegurar consistencia con backend
+        runCatching { userViewModel.refreshFavorites(userCognitoId) }
     }
 
-    // Filtrar promos del colaborador actual (por cognitoId String)
-    val coupons = remember(promos, collabId) {
+    // Promos del colaborador actual
+    val coupons: List<Promotions> = remember(promos, collabId) {
         promos.filter { it.collaboratorId == collabId }
     }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
-        topBar = { BJTopHeader(title = collaborator.businessName ?: "Negocio", nav = nav) },
+        topBar = {
+            BJTopHeader(
+                title = collaborator.businessName ?: "Negocio",
+                nav = nav
+            )
+        },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             BJBottomBar(
@@ -139,12 +171,12 @@ fun Business(
                 ) {
                     item {
                         BusinessHeroHeader(
-                            name = collaborator.businessName ?: "",
-                            description = collaborator.description ?: "",
-                            address = collaborator.address ?: "",
-                            logoUrl = collaborator.logoUrl ?: "",
+                            name = collaborator.businessName.orEmpty(),
+                            description = collaborator.description.orEmpty(),
+                            address = collaborator.address.orEmpty(),
+                            logoUrl = collaborator.logoUrl.orEmpty(),
                             favoriteChecked = isFavoriteLocal,
-                            onToggleFavorite = { toggleFavorite() }
+                            onToggleFavorite = ::toggleFavorite
                         )
                     }
 
@@ -158,12 +190,14 @@ fun Business(
                                     .height(120.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("No hay promociones para este negocio.", color = Color(0xFF8C8C8C))
+                                Text(
+                                    "No hay promociones para este negocio.",
+                                    color = Color(0xFF8C8C8C)
+                                )
                             }
                         }
                     } else {
-                        items(coupons.size) { i ->
-                            val promo = coupons[i]
+                        items(coupons, key = { it.promotionId ?: it.hashCode() }) { promo ->
                             PromoImageBanner(
                                 promo = promo,
                                 modifier = Modifier
@@ -181,7 +215,11 @@ fun Business(
                     item {
                         Spacer(Modifier.height(8.dp))
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            Text("Versión 1.0.01", color = Color(0xFFAEAEAE), fontSize = 10.sp)
+                            Text(
+                                "Versión 1.0.01",
+                                color = Color(0xFFAEAEAE),
+                                fontSize = 10.sp
+                            )
                         }
                     }
                 }
@@ -219,6 +257,7 @@ private fun BusinessHeroHeader(
             modifier = Modifier.matchParentSize()
         )
 
+        // Degradado overlay
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -236,6 +275,7 @@ private fun BusinessHeroHeader(
                 }
         )
 
+        // Botón de favorito
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -261,6 +301,7 @@ private fun BusinessHeroHeader(
             }
         }
 
+        // Textos
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)

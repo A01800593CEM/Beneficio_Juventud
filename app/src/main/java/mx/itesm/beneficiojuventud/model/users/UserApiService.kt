@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.model.users
 
+import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import retrofit2.Response
 import retrofit2.http.Body
@@ -46,13 +47,13 @@ interface UserApiService {
     ): Response<Unit>
 
     // --- Colaboradores favoritos ahora con String IDs ---
-    @POST("users/collaborators/fav/{cognitoId}/{collaboratorId}")
+    @POST("users/collaborators/fav/user/{cognitoId}/collaborator/{collaboratorId}")
     suspend fun favoriteCollaborator(
         @Path("collaboratorId") collaboratorId: String,
         @Path("cognitoId") cognitoId: String
     ): Response<Unit>
 
-    @DELETE("users/collaborators/fav/{cognitoId}/{collaboratorId}")
+    @DELETE("users/collaborators/fav/user/{cognitoId}/collaborator/{collaboratorId}")
     suspend fun unfavoriteCollaborator(
         @Path("collaboratorId") collaboratorId: String,
         @Path("cognitoId") cognitoId: String
@@ -66,5 +67,5 @@ interface UserApiService {
     @GET("users/collaborators/fav/user/{cognitoId}")
     suspend fun getFavoriteCollabs(
         @Path("cognitoId") cognitoId: String
-    ): Response<List<String>>
+    ): Response<List<Collaborator>>
 }

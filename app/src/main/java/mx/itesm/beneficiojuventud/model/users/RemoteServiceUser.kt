@@ -1,6 +1,7 @@
 package mx.itesm.beneficiojuventud.model.users
 
 import com.google.gson.GsonBuilder
+import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.utils.Constants
 import retrofit2.Retrofit
@@ -76,7 +77,7 @@ object RemoteServiceUser {
     }
 
     // --- Colaboradores favoritos ahora como String ---
-    suspend fun getFavoriteCollabs(cognitoId: String): List<String> {
+    suspend fun getFavoriteCollabs(cognitoId: String): List<Collaborator> {
         val response = userApiService.getFavoriteCollabs(cognitoId)
         if (!response.isSuccessful) {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")

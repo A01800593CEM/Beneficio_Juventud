@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.ui.text)
     implementation(libs.ui)
     implementation(libs.firebase.messaging)
+    implementation(libs.litert.support.api)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     implementation(libs.androidx.core.ktx)

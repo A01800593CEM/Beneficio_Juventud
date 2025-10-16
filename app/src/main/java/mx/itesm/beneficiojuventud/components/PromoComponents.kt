@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import mx.itesm.beneficiojuventud.R
-import mx.itesm.beneficiojuventud.model.PromoTheme
+import mx.itesm.beneficiojuventud.model.promos.PromoTheme
 import mx.itesm.beneficiojuventud.model.promos.PromotionState
 import mx.itesm.beneficiojuventud.model.promos.PromotionType
 import mx.itesm.beneficiojuventud.model.promos.Promotions
@@ -94,18 +94,18 @@ fun PromoImageBanner(
     promo: Promotions,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
-    themeResolver: (Promotions) -> PromoTheme = { PromoTheme.LIGHT }
+    themeResolver: (Promotions) -> PromoTheme = { it.theme ?: PromoTheme.light }
 ) {
     val radius = 16.dp
     val theme = themeResolver(promo)
 
     val textColors = when (theme) {
-        PromoTheme.LIGHT -> LightTextTheme
-        PromoTheme.DARK -> DarkTextTheme
+        PromoTheme.light -> LightTextTheme
+        PromoTheme.dark  -> DarkTextTheme
     }
 
     val gradientBrush = when (theme) {
-        PromoTheme.LIGHT -> Brush.horizontalGradient(
+        PromoTheme.light -> Brush.horizontalGradient(
             0.00f to Color(0xFF2B2B2B).copy(alpha = 1f),
             0.15f to Color(0xFF2B2B2B).copy(alpha = .95f),
             0.30f to Color(0xFF2B2B2B).copy(alpha = .70f),
@@ -114,7 +114,7 @@ fun PromoImageBanner(
             0.75f to Color.Transparent,
             1.00f to Color.Transparent
         )
-        PromoTheme.DARK -> Brush.horizontalGradient(
+        PromoTheme.dark -> Brush.horizontalGradient(
             0.00f to Color.White.copy(alpha = 1f),
             0.15f to Color.White.copy(alpha = .95f),
             0.30f to Color.White.copy(alpha = .70f),
@@ -219,35 +219,37 @@ fun PromoImageBannerFav(
     onFavoriteClick: (Promotions) -> Unit,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
-    themeResolver: (Promotions) -> PromoTheme = { PromoTheme.LIGHT }
+    themeResolver: (Promotions) -> PromoTheme = { it.theme ?: PromoTheme.light } // ⟵ aquí también
 ) {
     val radius = 16.dp
     val theme = themeResolver(promo)
 
     val textColors = when (theme) {
-        PromoTheme.LIGHT -> LightTextTheme
-        PromoTheme.DARK -> DarkTextTheme
+        PromoTheme.light -> LightTextTheme
+        PromoTheme.dark  -> DarkTextTheme
     }
 
     val gradientBrush = when (theme) {
-        PromoTheme.LIGHT -> Brush.horizontalGradient(
-            0.00f to Color(0xFF2B2B2B).copy(alpha = 1f),
-            0.15f to Color(0xFF2B2B2B).copy(alpha = .95f),
-            0.30f to Color(0xFF2B2B2B).copy(alpha = .70f),
-            0.45f to Color(0xFF2B2B2B).copy(alpha = .40f),
-            0.60f to Color(0xFF2B2B2B).copy(alpha = .25f),
-            0.75f to Color.Transparent,
-            1.00f to Color.Transparent
-        )
-        PromoTheme.DARK -> Brush.horizontalGradient(
-            0.00f to Color.White.copy(alpha = 1f),
-            0.15f to Color.White.copy(alpha = .95f),
-            0.30f to Color.White.copy(alpha = .70f),
-            0.45f to Color.White.copy(alpha = .40f),
-            0.60f to Color.White.copy(alpha = .25f),
-            0.75f to Color.Transparent,
-            1.00f to Color.Transparent
-        )
+        PromoTheme.light -> /* mismo gradient oscuro */
+            Brush.horizontalGradient(
+                0.00f to Color(0xFF2B2B2B).copy(alpha = 1f),
+                0.15f to Color(0xFF2B2B2B).copy(alpha = .95f),
+                0.30f to Color(0xFF2B2B2B).copy(alpha = .70f),
+                0.45f to Color(0xFF2B2B2B).copy(alpha = .40f),
+                0.60f to Color(0xFF2B2B2B).copy(alpha = .25f),
+                0.75f to Color.Transparent,
+                1.00f to Color.Transparent
+            )
+        PromoTheme.dark -> /* mismo gradient claro */
+            Brush.horizontalGradient(
+                0.00f to Color.White.copy(alpha = 1f),
+                0.15f to Color.White.copy(alpha = .95f),
+                0.30f to Color.White.copy(alpha = .70f),
+                0.45f to Color.White.copy(alpha = .40f),
+                0.60f to Color.White.copy(alpha = .25f),
+                0.75f to Color.Transparent,
+                1.00f to Color.Transparent
+            )
     }
 
     val title = promo.title ?: "Promoción"
@@ -302,7 +304,7 @@ fun PromoImageBannerFav(
                 border = BorderStroke(1.dp, Color(0xFFE5E5E5)),
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(10.dp)
+                    .padding(8.dp)
             ) {
                 IconButton(onClick = { onFavoriteClick(promo) }) {
                     Icon(

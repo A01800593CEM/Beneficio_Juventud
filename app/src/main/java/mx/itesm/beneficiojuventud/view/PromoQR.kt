@@ -108,7 +108,7 @@ private fun toUi(p: Promotions): PromoDetailUi {
     val banner = p.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.bolos
     val title  = p.title ?: "Promoción"
     val merch  = p.businessName ?: "Sin Nombre Negocio"
-    val valid  = formatDate(p.endDate)
+    val valid = formatDate(parseDate(p.endDate))
     val desc   = p.description ?: "Sin descripción."
     val terms  = buildString {
         append("Tipo: ${p.promotionType?.displayName ?: "—"}")
@@ -142,6 +142,17 @@ private fun buildQrPayload(
     val nonce = UUID.randomUUID().toString().substring(0, 8)
     val lpu = limitPerUser ?: -1
     return "bj|v=$version|pid=$promotionId|uid=$userId|lpu=$lpu|ts=$ts|n=$nonce"
+}
+
+private fun parseDate(isoDate: String?): Date? {
+    if (isoDate.isNullOrBlank()) return null
+    return try {
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        sdf.timeZone = TimeZone.getTimeZone("UTC")
+        sdf.parse(isoDate)
+    } catch (e: Exception) {
+        null
+    }
 }
 
 private fun bitMatrixToBitmap(matrix: BitMatrix): Bitmap {

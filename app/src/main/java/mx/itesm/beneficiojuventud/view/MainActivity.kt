@@ -218,7 +218,7 @@ private fun AppNav(
                     Business(
                         nav = nav,
                         collabId = collabId,
-                        cognitoId = cognitoId!!
+                        userCognitoId = cognitoId!!
                     )
                 }
             }
