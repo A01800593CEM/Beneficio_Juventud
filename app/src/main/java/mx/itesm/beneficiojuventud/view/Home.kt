@@ -48,11 +48,13 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.ui.text.style.TextOverflow
 import mx.itesm.beneficiojuventud.components.BJTab
 
 // 👇 NUEVOS imports: diseño “Poster” con fav
 import mx.itesm.beneficiojuventud.components.MerchantRowSelectable
 import mx.itesm.beneficiojuventud.components.MerchantDesign
+import mx.itesm.beneficiojuventud.components.iconForCategoryName
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -236,7 +238,7 @@ fun Home(
                         ) {
                             categories.forEach { c ->
                                 val name = c.name ?: return@forEach
-                                val icon = Icons.Outlined.NotificationsNone // placeholder si API no trae icono
+                                val icon = iconForCategoryName(name)
                                 CategoryPill(
                                     icon = icon,
                                     label = name,
@@ -307,9 +309,12 @@ fun Home(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "Filtrando por: $selectedCategoryName",
+                            text = "Filtrando por: ${selectedCategoryName ?: ""}",
                             color = Color(0xFF8C8C8C),
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f) // ⇦ ocupa el resto y corta
                         )
                     }
                 }
