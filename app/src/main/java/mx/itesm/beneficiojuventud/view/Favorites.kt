@@ -38,9 +38,9 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 
 // ------------------------------------------------------------
-// Ahora con id de colaborador para poder togglear favorito
+// Ahora con cognitoId (String) como ID del colaborador
 data class FavoriteMerchant(
-    val id: Int,                 // <--- ID del colaborador
+    val cognitoId: String,       // ← ID del colaborador (Cognito)
     val imageRes: Int,
     val name: String,
     val category: String,
@@ -65,7 +65,7 @@ fun Favorites(
 
     val user by userViewModel.userState.collectAsState()
     val favoritePromos by userViewModel.favoritePromotions.collectAsState()
-    val favoriteCollabIds by userViewModel.favoriteCollabs.collectAsState()
+    val favoriteCollabIds by userViewModel.favoriteCollabs.collectAsState() // List<String>
     val errorMsg by userViewModel.error.collectAsState()
 
     val scope = rememberCoroutineScope()
@@ -148,16 +148,34 @@ fun Favorites(
             // Contenido según modo
             when (mode) {
                 FavoriteMode.Businesses -> {
-                    val shownMerchants = favoriteMerchants.filter { favoriteCollabIds.contains(it.id) }
+                    // Filtrado por cognitoId (String), ya no por Int
+                    val shownMerchants = favoriteMerchants.filter { merchant ->
+                        favoriteCollabIds.contains(merchant.cognitoId)
+                    }
+
                     if (shownMerchants.isEmpty()) {
-                        item { EmptyState("Sin negocios favoritos", "Cuando marques un negocio como favorito aparecerá aquí.") }
+                        item {
+                            EmptyState(
+                                title = "Sin negocios favoritos",
+                                body = "Cuando marques un negocio como favorito aparecerá aquí."
+                            )
+                        }
                     } else {
-                        items(shownMerchants) { merchant ->
+                        items(
+                            items = shownMerchants,
+                            key = { it.cognitoId } // key estable
+                        ) { merchant ->
                             FavoriteCard(
                                 merchant = merchant,
-                                onClick = { /* TODO nav detalle negocio */ },
+                                onClick = { /* TODO nav detalle negocio con merchant.cognitoId */ },
                                 onToggleFavorite = {
-                                    scope.launch { userViewModel.toggleFavoriteCollaborator(merchant.id, cognitoId) }
+                                    scope.launch {
+                                        userViewModel.toggleFavoriteCollaborator(
+                                            collaboratorId = merchant.cognitoId, // String
+                                            cognitoId = cognitoId                 // String
+                                        )
+                                        userViewModel.refreshFavorites(cognitoId)
+                                    }
                                 },
                                 modifier = Modifier.padding(vertical = 6.dp)
                             )
@@ -166,7 +184,12 @@ fun Favorites(
                 }
                 FavoriteMode.Coupons -> {
                     if (favoritePromos.isEmpty()) {
-                        item { EmptyState("Sin cupones favoritos", "Guarda cupones para verlos aquí y canjéalos más tarde.") }
+                        item {
+                            EmptyState(
+                                title = "Sin cupones favoritos",
+                                body = "Guarda cupones para verlos aquí y canjéalos más tarde."
+                            )
+                        }
                     } else {
                         items(favoritePromos, key = { it.promotionId ?: it.hashCode() }) { promo ->
                             PromoImageBannerFav(
@@ -343,7 +366,7 @@ private fun FavoriteCard(
             }
 
             IconButton(onClick = onToggleFavorite) {
-                val isFav = true // por diseño de esta tarjeta
+                val isFav = true // esta tarjeta representa un favorito
                 Icon(
                     imageVector = if (isFav) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                     contentDescription = if (isFav) "Quitar de favoritos" else "Agregar a favoritos",

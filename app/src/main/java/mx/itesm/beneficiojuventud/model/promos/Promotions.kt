@@ -19,7 +19,8 @@ data class Promotions(
     val limitPerUser: Int? = null,
     val dailyLimitPerUser: Int? = null,
     val promotionState: PromotionState? = null,
-    val theme: PromoTheme? = null
+    val theme: PromoTheme? = null,
+    val businessName: String? = null
 )
 enum class PromotionType {
     @SerializedName("descuento") descuento,

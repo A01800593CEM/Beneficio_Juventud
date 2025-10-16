@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.view
 
+import MerchantRow
 import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
 import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
@@ -33,14 +34,13 @@ import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJSearchBar
 import mx.itesm.beneficiojuventud.components.CategoryPill
 import mx.itesm.beneficiojuventud.components.GradientDivider
-import mx.itesm.beneficiojuventud.components.MerchantRow
 import mx.itesm.beneficiojuventud.components.PromoCarousel
 import mx.itesm.beneficiojuventud.components.SectionTitle
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
-import mx.itesm.beneficiojuventud.utils.MerchantCardData
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 
 // Insets
 import androidx.compose.foundation.layout.WindowInsets
@@ -58,7 +58,9 @@ fun Home(
     modifier: Modifier = Modifier,
     categoryViewModel: CategoryViewModel = viewModel(), // mismo VM que Onboarding
     userViewModel: UserViewModel,
-    promoViewModel: PromoViewModel = viewModel()        // VM de promos (backend)
+    promoViewModel: PromoViewModel = viewModel(),        // VM de promos (backend)
+    // ✨ NUEVO: VM colaboradores (backend)
+    collabViewModel: CollabViewModel = viewModel()
 ) {
     // ▶ Suscripciones
     val user by userViewModel.userState.collectAsState()
@@ -66,7 +68,11 @@ fun Home(
     val catLoading by categoryViewModel.loading.collectAsState()
     val catError by categoryViewModel.error.collectAsState()
     val scope = rememberCoroutineScope()
+
     val promoList by promoViewModel.promoListState.collectAsState()
+
+    // ✨ NUEVO: lista de colaboradores del backend
+    val collaborators by collabViewModel.collabListState.collectAsState()
 
     // Estado de UI
     var selectedTab by remember { mutableStateOf(BJTab.Home) }
@@ -77,6 +83,10 @@ fun Home(
     var promoLoading by remember { mutableStateOf(false) }
     var promoError by remember { mutableStateOf<String?>(null) }
 
+    // ✨ NUEVO: Loading/Error locales para colaboradores
+    var collabLoading by remember { mutableStateOf(false) }
+    var collabError by remember { mutableStateOf<String?>(null) }
+
     // Carga inicial de TODAS las promos
     LaunchedEffect(Unit) {
         promoError = null
@@ -84,6 +94,18 @@ fun Home(
         runCatching { promoViewModel.getAllPromotions() }
             .onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
         promoLoading = false
+    }
+
+    // ✨ NUEVO: Carga inicial de colaboradores usando 1ra categoría si no hay selección
+    LaunchedEffect(categories) {
+        if (categories.isNotEmpty() && selectedCategoryName == null) {
+            val firstCat = categories.first().name ?: return@LaunchedEffect
+            collabError = null
+            collabLoading = true
+            runCatching { collabViewModel.getCollaboratorsByCategory(firstCat) }
+                .onFailure { e -> collabError = e.message ?: "Error al cargar colaboradores" }
+            collabLoading = false
+        }
     }
 
     // Carga de promos cuando cambia el filtro de categoría
@@ -94,6 +116,16 @@ fun Home(
         runCatching { promoViewModel.getPromotionByCategory(selectedCategoryName!!) }
             .onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
         promoLoading = false
+    }
+
+    // ✨ NUEVO: Carga de colaboradores cuando cambia el filtro de categoría
+    LaunchedEffect(selectedCategoryName) {
+        val cat = selectedCategoryName ?: return@LaunchedEffect
+        collabError = null
+        collabLoading = true
+        runCatching { collabViewModel.getCollaboratorsByCategory(cat) }
+            .onFailure { e -> collabError = e.message ?: "Error al cargar colaboradores" }
+        collabLoading = false
     }
 
     // Nombre a mostrar
@@ -198,21 +230,30 @@ fun Home(
                                     selected = selectedCategoryName == name,
                                     onClick = {
                                         selectedCategoryName = if (selectedCategoryName == name) null else name
-                                        // (opcional) si quieres refrescar inmediatamente sin esperar al LaunchedEffect:
+                                        // Refrescar inmediatamente promos + colaboradores
                                         scope.launch {
-                                            if (selectedCategoryName == null) {
-                                                promoError = null
-                                                promoLoading = true
-                                                runCatching { promoViewModel.getAllPromotions() }
-                                                    .onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
-                                                promoLoading = false
-                                            } else {
-                                                promoError = null
-                                                promoLoading = true
-                                                runCatching { promoViewModel.getPromotionByCategory(selectedCategoryName!!) }
-                                                    .onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
-                                                promoLoading = false
-                                            }
+                                            // PROMOS
+                                            promoError = null
+                                            promoLoading = true
+                                            runCatching {
+                                                if (selectedCategoryName == null) {
+                                                    promoViewModel.getAllPromotions()
+                                                } else {
+                                                    promoViewModel.getPromotionByCategory(selectedCategoryName!!)
+                                                }
+                                            }.onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
+                                            promoLoading = false
+
+                                            // ✨ COLABORADORES
+                                            collabError = null
+                                            collabLoading = true
+                                            runCatching {
+                                                val cat = selectedCategoryName
+                                                    ?: categories.firstOrNull()?.name
+                                                    ?: return@runCatching
+                                                collabViewModel.getCollaboratorsByCategory(cat)
+                                            }.onFailure { e -> collabError = e.message ?: "Error al cargar colaboradores" }
+                                            collabLoading = false
                                         }
                                     }
                                 )
@@ -231,11 +272,22 @@ fun Home(
                             onClick = {
                                 selectedCategoryName = null
                                 scope.launch {
+                                    // PROMOS
                                     promoError = null
                                     promoLoading = true
                                     runCatching { promoViewModel.getAllPromotions() }
                                         .onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
                                     promoLoading = false
+
+                                    // ✨ COLABORADORES: vuelve a 1ra categoría como “default”
+                                    if (categories.isNotEmpty()) {
+                                        collabError = null
+                                        collabLoading = true
+                                        runCatching {
+                                            collabViewModel.getCollaboratorsByCategory(categories.first().name!!)
+                                        }.onFailure { e -> collabError = e.message ?: "Error al cargar colaboradores" }
+                                        collabLoading = false
+                                    }
                                 }
                             },
                             label = { Text("Quitar filtro") }
@@ -310,7 +362,6 @@ fun Home(
                         PromoCarousel(
                             promos = uiPromos,
                             onItemClick = { promo ->
-                                // Asegúrate de que la promo tenga id
                                 promo.promotionId?.let { id ->
                                     nav.navigate(Screens.PromoQR.createRoute(id))
                                 }
@@ -320,34 +371,134 @@ fun Home(
                 }
             }
 
-            // ─── Ofertas Especiales (mock visual) ───────────────────────────────
+            // ─── Ofertas Especiales (BACKEND) ───────────────────────────────────
             item {
                 SectionTitle(
-                    "Ofertas Especiales",
+                    if (selectedCategoryName.isNullOrBlank())
+                        "Ofertas Especiales"
+                    else
+                        "Comercios ($selectedCategoryName)",
                     Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp, bottom = 6.dp)
                 )
-                val specialOffers = listOf(
-                    MerchantCardData("Fuego Lento & Brasa", "Asador • Parrilla", 4.7),
-                    MerchantCardData("Bocado Rápido", "Comida rápida", 4.6),
-                    MerchantCardData("Pastas Nonna", "Italiano", 4.8),
-                    MerchantCardData("Café Norte", "Cafetería", 4.5)
-                )
-                MerchantRow(data = specialOffers) { _ -> nav.navigate(Screens.Business.route) }
+
+                when {
+                    collabLoading -> {
+                        Row(
+                            Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text("Cargando comercios…")
+                        }
+                    }
+                    collabError != null -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No se pudieron cargar los comercios: $collabError",
+                                color = Color(0xFF8C8C8C),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                    collaborators.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No hay comercios para esta categoría.",
+                                color = Color(0xFF8C8C8C),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                    else -> {
+                        // 👉 Nuevo MerchantRow que consume List<Collaborator> (backend)
+                        MerchantRow(
+                            collaborators = collaborators,
+                            onItemClick = { collab ->
+                                collab.cognitoId?.let { id ->
+                                    nav.navigate(Screens.Business.createRoute(id))
+                                }
+                            }
+                        )
+                    }
+                }
             }
 
-            // ─── Lo nuevo (mock visual) ────────────────────────────────────────
+            // ─── Lo nuevo (puedes mantener misma fuente de colaboradores) ───────
             item {
                 SectionTitle(
                     "Lo Nuevo",
                     Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 6.dp)
                 )
-                val newOffers = listOf(
-                    MerchantCardData("Fuego Lento & Brasa", "Asador • Parrilla", 4.7),
-                    MerchantCardData("Bocado Rápido", "Comida rápida", 4.6),
-                    MerchantCardData("Panadería Luz", "Pan dulce", 4.9),
-                    MerchantCardData("VeggieGo", "Saludable", 4.4)
-                )
-                MerchantRow(data = newOffers) { _ -> nav.navigate(Screens.Business.route) }
+                // Reutilizamos los mismos collaborators; si luego creas endpoint “recent”,
+                // aquí cambias la carga sin tocar la UI.
+                when {
+                    collabLoading -> {
+                        Row(
+                            Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text("Cargando comercios…")
+                        }
+                    }
+                    collabError != null -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No se pudieron cargar los comercios: $collabError",
+                                color = Color(0xFF8C8C8C),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                    collaborators.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No hay comercios disponibles.",
+                                color = Color(0xFF8C8C8C),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                    else -> {
+                        MerchantRow(
+                            collaborators = collaborators,
+                            onItemClick = { collab ->
+                                collab.cognitoId?.let { id ->
+                                    nav.navigate(Screens.Business.createRoute(id))
+                                }
+                            }
+                        )
+
+                    }
+                }
             }
 
             // ─── Pie ────────────────────────────────────────────────────────────

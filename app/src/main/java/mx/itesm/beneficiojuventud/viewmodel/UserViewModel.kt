@@ -27,15 +27,15 @@ class UserViewModel : ViewModel() {
     private val _favoritePromotions = MutableStateFlow<List<Promotions>>(emptyList())
     val favoritePromotions: StateFlow<List<Promotions>> = _favoritePromotions
 
-    private val _favoriteCollabs = MutableStateFlow<List<Int>>(emptyList())
-    val favoriteCollabs: StateFlow<List<Int>> = _favoriteCollabs
+    private val _favoriteCollabs = MutableStateFlow<List<String>>(emptyList())
+    val favoriteCollabs: StateFlow<List<String>> = _favoriteCollabs
 
     /** Token para invalidar respuestas tardías cuando cambia de cuenta o se hace clear. */
     private var loadToken: Int = 0
 
     /** Limpia el perfil y **anula** cualquier request en curso. */
     fun clearUser() {
-        loadToken++                 // invalida todas las respuestas pendientes
+        loadToken++
         _error.value = null
         _userState.value = UserProfile()
         _isLoading.value = false
@@ -51,7 +51,7 @@ class UserViewModel : ViewModel() {
             val result = runCatching {
                 withContext(Dispatchers.IO) { model.getUserById(cognitoId) }
             }
-            if (myToken != loadToken) return@launch // llegó tarde, se descarta
+            if (myToken != loadToken) return@launch
 
             result.fold(
                 onSuccess = { user -> _userState.value = user },
@@ -100,7 +100,6 @@ class UserViewModel : ViewModel() {
     }
 
     fun deleteUser(cognitoId: String) {
-        // Borrar no necesita tomar ownership del token; pero limpiamos estado local si aplica.
         _error.value = null
         _isLoading.value = true
 
@@ -109,10 +108,7 @@ class UserViewModel : ViewModel() {
                 withContext(Dispatchers.IO) { model.deleteUser(cognitoId) }
             }
             result.fold(
-                onSuccess = {
-                    // Si borraste el usuario actual, deja el state limpio
-                    clearUser()
-                },
+                onSuccess = { clearUser() },
                 onFailure = { e ->
                     _error.value = e.message ?: "Error al eliminar usuario"
                     _isLoading.value = false
@@ -123,7 +119,6 @@ class UserViewModel : ViewModel() {
 
     fun favoritePromotion(promotionId: Int, cognitoId: String) {
         _error.value = null
-        // No activamos el loading global para no bloquear la UI por una acción rápida.
         viewModelScope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) { model.favoritePromotion(promotionId, cognitoId) }
@@ -131,7 +126,6 @@ class UserViewModel : ViewModel() {
             result.onFailure { e ->
                 _error.value = e.message ?: "Error al marcar favorito"
             }.onSuccess {
-                // Refrescamos listas para mantener consistencia
                 refreshFavorites(cognitoId)
             }
         }
@@ -146,7 +140,6 @@ class UserViewModel : ViewModel() {
             result.onFailure { e ->
                 _error.value = e.message ?: "Error al quitar favorito"
             }.onSuccess {
-                // Refrescamos listas para mantener consistencia
                 refreshFavorites(cognitoId)
             }
         }
@@ -190,17 +183,13 @@ class UserViewModel : ViewModel() {
         }
     }
 
-    /** Conveniencia para refrescar ambas listas de favoritos sin pelear con el token global. */
     fun refreshFavorites(cognitoId: String) {
-        // No tocamos loadToken aquí para no invalidar otras cargas largas.
         viewModelScope.launch {
-            // Promos
             runCatching {
                 withContext(Dispatchers.IO) { model.getFavoritePromotions(cognitoId) }
             }.onSuccess { _favoritePromotions.value = it }
                 .onFailure { e -> _error.value = e.message ?: "Error al refrescar promociones favoritas" }
 
-            // Collabs
             runCatching {
                 withContext(Dispatchers.IO) { model.getFavoriteCollabs(cognitoId) }
             }.onSuccess { _favoriteCollabs.value = it }
@@ -210,7 +199,7 @@ class UserViewModel : ViewModel() {
 
     // --- COLLABORATORS FAVORITES ---
 
-    fun favoriteCollaborator(collaboratorId: Int, cognitoId: String) {
+    fun favoriteCollaborator(collaboratorId: String, cognitoId: String) {
         _error.value = null
         viewModelScope.launch {
             val result = runCatching {
@@ -219,13 +208,12 @@ class UserViewModel : ViewModel() {
             result.onFailure { e ->
                 _error.value = e.message ?: "Error al marcar colaborador como favorito"
             }.onSuccess {
-                // Mantén el estado consistente
                 refreshFavorites(cognitoId)
             }
         }
     }
 
-    fun unfavoriteCollaborator(collaboratorId: Int, cognitoId: String) {
+    fun unfavoriteCollaborator(collaboratorId: String, cognitoId: String) {
         _error.value = null
         viewModelScope.launch {
             val result = runCatching {
@@ -234,17 +222,14 @@ class UserViewModel : ViewModel() {
             result.onFailure { e ->
                 _error.value = e.message ?: "Error al quitar colaborador de favoritos"
             }.onSuccess {
-                // Mantén el estado consistente
                 refreshFavorites(cognitoId)
             }
         }
     }
 
-    fun toggleFavoriteCollaborator(collaboratorId: Int, cognitoId: String) {
+    fun toggleFavoriteCollaborator(collaboratorId: String, cognitoId: String) {
         val isFav = _favoriteCollabs.value.contains(collaboratorId)
         if (isFav) unfavoriteCollaborator(collaboratorId, cognitoId)
         else favoriteCollaborator(collaboratorId, cognitoId)
     }
-
-
 }

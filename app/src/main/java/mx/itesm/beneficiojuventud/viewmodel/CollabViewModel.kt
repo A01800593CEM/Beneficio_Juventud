@@ -16,7 +16,7 @@ class CollabViewModel : ViewModel() {
     private val _collabListState = MutableStateFlow<List<Collaborator>>(emptyList())
     val collabListState: StateFlow<List<Collaborator>> = _collabListState
 
-    suspend fun getCollaboratorById(id: Int) {
+    suspend fun getCollaboratorById(id: String) {
         _collabState.value = model.getCollaboratorById(id)
     }
 
@@ -28,11 +28,11 @@ class CollabViewModel : ViewModel() {
         _collabState.value = model.createCollaborator(collaborator)
     }
 
-    suspend fun updateCollaborator(id: Int, update: Collaborator) {
+    suspend fun updateCollaborator(id: String, update: Collaborator) {
         _collabState.value = model.updateCollaborator(id, update)
     }
 
-    suspend fun deleteCollaborator(id: Int) {
+    suspend fun deleteCollaborator(id: String) {
         model.deleteCollaborator(id)
     }
 }

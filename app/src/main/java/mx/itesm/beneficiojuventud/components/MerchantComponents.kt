@@ -1,13 +1,14 @@
-package mx.itesm.beneficiojuventud.components
-
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material3.*
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,21 +16,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import mx.itesm.beneficiojuventud.R
-import mx.itesm.beneficiojuventud.utils.MerchantCardData
+import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 
 @Composable
 fun MerchantRow(
-    data: List<MerchantCardData>,
-    onItemClick: (MerchantCardData) -> Unit = {} // <- NUEVO
+    collaborators: List<Collaborator>,
+    onItemClick: (Collaborator) -> Unit = {}
 ) {
-    // ancho aprox 62% del ancho de pantalla
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val cardWidth = screenWidth * 0.62f
 
@@ -37,22 +38,34 @@ fun MerchantRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(data.size) { i ->
+        items(
+            items = collaborators,
+            key = { collabKey(it) } // clave estable como en promos
+        ) { collab ->
             MerchantCard(
-                item = data[i],
-                index = i,
+                collab = collab,
                 modifier = Modifier
                     .width(cardWidth)
-                    .height(150.dp) // puedes subirlo a 160–170dp si quieres más texto
-                    .clickable { onItemClick(data[i]) } // <- CLICK AQUÍ
+                    .height(150.dp),
+                onClick = { onItemClick(collab) } // click como en PromoImageBanner
             )
         }
     }
 }
 
+private fun collabKey(c: Collaborator): Any =
+    c.cognitoId ?: c.businessName ?: c.email ?: c.hashCode()
+
 @Composable
-fun MerchantCard(item: MerchantCardData, index: Int, modifier: Modifier = Modifier) {
-    val imageRes = if (index % 2 == 0) R.drawable.brasa else R.drawable.ensalada
+fun MerchantCard(
+    collab: Collaborator,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
+) {
+    val name = collab.businessName ?: "Colaborador"
+    val imageUrl = collab.logoUrl
+    val ratingText = "—"
+    val fallbackRes = R.drawable.brasa
 
     Surface(
         shape = RoundedCornerShape(14.dp),
@@ -61,22 +74,28 @@ fun MerchantCard(item: MerchantCardData, index: Int, modifier: Modifier = Modifi
             width = 1.dp,
             brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFE6E6E6))
         ),
-        modifier = modifier
+        modifier = modifier.clickable(enabled = true) { onClick() } // ⟵ igual que en promo
     ) {
         Column {
-            Image(
-                painter = painterResource(id = imageRes),
-                contentDescription = null,
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(imageUrl.takeIf { !it.isNullOrBlank() } ?: fallbackRes)
+                    .crossfade(true)
+                    .placeholder(fallbackRes)
+                    .error(fallbackRes)
+                    .build(),
+                contentDescription = name,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(82.dp)
                     .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)),
                 contentScale = ContentScale.Crop
             )
+
             Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = item.name,
+                        text = name,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 13.sp,
                         color = Color(0xFF3A3A3A),
@@ -92,36 +111,20 @@ fun MerchantCard(item: MerchantCardData, index: Int, modifier: Modifier = Modifi
                     )
                     Spacer(Modifier.width(2.dp))
                     Text(
-                        text = String.format("%.1f", item.rating),
+                        text = ratingText,
                         fontSize = 11.sp,
                         color = Color(0xFF7A7A7A)
                     )
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = item.category,
+                    text = collab.categories?.toString().orEmpty(),
                     fontSize = 11.sp,
                     color = Color(0xFF9E9E9E),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewMerchantRow() {
-    val sampleData = listOf(
-        MerchantCardData("Sneaker Lab", "Limpieza de tenis", 4.8),
-        MerchantCardData("Bocado Rápido", "Comida saludable", 4.6),
-        MerchantCardData("Café Aroma", "Restaurante", 4.9),
-        MerchantCardData("TechZone", "Electrónica", 4.7),
-    )
-    MaterialTheme {
-        Surface(color = Color(0xFFF5F5F5)) {
-            MerchantRow(sampleData)
         }
     }
 }
