@@ -1,6 +1,7 @@
 package mx.itesm.beneficiojuventud.model.collaborators
 
 import com.google.gson.annotations.SerializedName
+import mx.itesm.beneficiojuventud.model.categories.Category
 
 data class Collaborator(
     val cognitoId: String? = null,
@@ -15,7 +16,7 @@ data class Collaborator(
     val description: String? = null,
     val registrationDate: String? = null,
     val state: CollaboratorsState? = null,
-    val categories: List<String>? = null,
+    val categories: List<Category>? = null,
 )
 
 enum class CollaboratorsState{

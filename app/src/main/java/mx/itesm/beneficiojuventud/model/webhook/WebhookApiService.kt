@@ -3,14 +3,10 @@ package mx.itesm.beneficiojuventud.model.webhook
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
+import mx.itesm.beneficiojuventud.model.categories.Category
 
 data class WebhookRequest(
     val text: String
-)
-
-data class Category(
-    val id: Int,
-    val name: String
 )
 
 data class PromotionData(

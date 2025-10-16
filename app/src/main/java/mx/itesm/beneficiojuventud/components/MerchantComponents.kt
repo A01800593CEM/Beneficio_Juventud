@@ -118,7 +118,7 @@ fun MerchantCard(
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = collab.categories?.toString().orEmpty(),
+                    text = collab.categories?.joinToString(", ") { it.name ?: "" } ?: "",
                     fontSize = 11.sp,
                     color = Color(0xFF9E9E9E),
                     maxLines = 1,
