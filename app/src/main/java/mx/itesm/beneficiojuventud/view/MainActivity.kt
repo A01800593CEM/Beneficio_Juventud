@@ -197,7 +197,7 @@ private fun AppNav(
             // --- App principal ---
             composable(Screens.Home.route) { Home(nav, userViewModel = userViewModel, collabViewModel = collabViewModel) }
             composable(Screens.Profile.route) { Profile(nav, authViewModel, userViewModel) }
-            composable(Screens.EditProfile.route) { EditProfile(nav) }
+            composable(Screens.EditProfile.route) { EditProfile(nav,authViewModel = authViewModel) }
             composable(Screens.History.route) { History(nav) }
             composable(Screens.Settings.route) { Settings(nav) }
             composable(Screens.Help.route) { Help(nav) }
