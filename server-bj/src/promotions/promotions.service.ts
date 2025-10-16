@@ -82,17 +82,19 @@ export class PromotionsService {
    * @throws {NotFoundException} Si no existe una promoción activa con ese ID.
    * @returns La promoción encontrada.
    */
-    async findOne(id: number): Promise<Promotion | null> {
-      const promotion = this.promotionsRepository.findOne({ 
+    async findOne(id: number): Promise<object> {
+      const promotion = await this.promotionsRepository.findOne({ 
         where: { promotionId: id,
                  promotionState: PromotionState.ACTIVE
          },
-        relations: ['categories'] });
+        relations: ['categories', 'collaborator'] });
           
       if (!promotion) {
         throw new NotFoundException(`Promotion with id ${id} not found`);
       }
-      return promotion
+      const { collaborator, ...rest} = promotion
+      return {...rest, 
+        businessName: collaborator.businessName}
     }
   
     // Finds in all the database
