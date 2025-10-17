@@ -156,8 +156,9 @@ private fun AppNav(
         NavHost(navController = nav, startDestination = start) {
             // Splash/loader interno (sin navegación programática)
             composable("splash") {
-                Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
+                Startup()
             }
+
 
             // --- Autenticación ---
             composable(Screens.LoginRegister.route) { LoginRegister(nav) }

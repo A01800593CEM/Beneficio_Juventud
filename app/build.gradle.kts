@@ -108,6 +108,9 @@ dependencies {
     implementation(libs.vico.core)
     implementation(libs.vico.compose)
     implementation("com.google.zxing:core:3.5.3")
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
