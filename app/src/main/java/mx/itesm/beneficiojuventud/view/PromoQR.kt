@@ -17,7 +17,6 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -62,6 +61,7 @@ import java.util.*
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.IconToggleButton
+import androidx.compose.ui.Alignment
 
 // ---------- Log
 private const val TAG = "PromoQR"
@@ -422,8 +422,8 @@ fun PromoQR(
                                     color = Color.White.copy(alpha = 0.92f),
                                     border = BorderStroke(1.dp, Color(0xFFE5E5E5)),
                                     modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(8.dp)
+                                        .align(Alignment.BottomEnd)
+                                        .padding(12.dp)
                                 ) {
                                     IconToggleButton(
                                         checked = isFavoriteLocal,

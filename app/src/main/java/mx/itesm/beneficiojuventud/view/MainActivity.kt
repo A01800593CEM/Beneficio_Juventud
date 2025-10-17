@@ -14,9 +14,11 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.Firebase
 import com.google.firebase.messaging.FirebaseMessaging
@@ -201,16 +203,19 @@ private fun AppNav(
             EditPromotion(nav, promo)
         }
 
-        composable(Screens.PromoQR.route) { backStackEntry ->
-            val promotionId = remember(backStackEntry) {
-                backStackEntry.arguments?.getInt("promotionId")
-            } ?: return@composable
+        composable(
+            route = Screens.PromoQR.route, // "promoQR/{promotionId}"
+            arguments = listOf(
+                navArgument("promotionId") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val promotionId = backStackEntry.arguments?.getInt("promotionId") ?: return@composable
 
             val cognitoId by authViewModel.currentUserId.collectAsState()
             if (!cognitoId.isNullOrBlank()) {
                 PromoQR(nav, promotionId, cognitoId!!)
             } else {
-                Startup() // muestra tu splash también mientras espera
+                Startup()
             }
         }
     }
