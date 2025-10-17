@@ -10,6 +10,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -316,7 +317,12 @@ fun EditProfile(
                         userViewModel.updateUser(actualUserId, update)
 
                         scope.launch {
-                            snackbarHostState.showSnackbar("Guardando cambios…")
+                            snackbarHostState.currentSnackbarData?.dismiss() // cierra cualquier snackbar previo
+                            snackbarHostState.showSnackbar(
+                                message = "Guardando cambios…",
+                                withDismissAction = false,
+                                duration = SnackbarDuration.Indefinite
+                            )
                         }
                     },
                     enabled = !isLoading
@@ -355,17 +361,40 @@ fun EditProfile(
 
     // Feedback de éxito y navegación a Profile cuando termine el guardado sin error
     LaunchedEffect(isLoading, errorMsg, backendUser) {
-        if (justSaved && !isLoading && errorMsg.isNullOrBlank()) {
-            // Confirmamos éxito
-            snackbarHostState.showSnackbar("Cambios guardados")
-            // Navega a Profile respetando tu navegación actual
-            nav.navigate(Screens.Profile.route) {
-                popUpTo(Screens.Profile.route) { inclusive = true }
-                launchSingleTop = true
+        if (justSaved && !isLoading) {
+            if (errorMsg.isNullOrBlank()) {
+                // Éxito: cerrar "Guardando…" y mostrar "Cambios guardados" sin bloquear
+                snackbarHostState.currentSnackbarData?.dismiss()
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = "Cambios guardados",
+                        withDismissAction = true,
+                        duration = SnackbarDuration.Short
+                    )
+                }
+
+                justSaved = false
+
+                // Navegar inmediatamente (sin esperar al snackbar)
+                nav.navigate(Screens.Profile.route) {
+                    popUpTo(Screens.Profile.route) { inclusive = true }
+                    launchSingleTop = true
+                }
+            } else {
+                // Error: sustituir snackbar y NO bloquear
+                snackbarHostState.currentSnackbarData?.dismiss()
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = errorMsg ?: "Error al guardar",
+                        withDismissAction = true,
+                        duration = SnackbarDuration.Long
+                    )
+                }
+                justSaved = false
             }
-            justSaved = false
         }
     }
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -427,14 +456,13 @@ private fun DatePickerField(
     onDateSelected: (String) -> Unit
 ) {
     val context = LocalContext.current
+    val interaction = remember { MutableInteractionSource() }
 
     fun showSystemDatePicker() {
-        // Fecha inicial para el picker: si value es válido (dd/MM/yyyy) la usamos; si no, hoy.
-        val initial = runCatching {
-            LocalDate.parse(value.trim(), displayFormatter)
-        }.getOrElse { LocalDate.now() }
+        val initial = runCatching { LocalDate.parse(value.trim(), displayFormatter) }
+            .getOrElse { LocalDate.now() }
 
-        val dialog = DatePickerDialog(
+        DatePickerDialog(
             context,
             { _, year, monthOfYear, dayOfMonth ->
                 val picked = LocalDate.of(year, monthOfYear + 1, dayOfMonth)
@@ -443,56 +471,56 @@ private fun DatePickerField(
             initial.year,
             initial.monthValue - 1,
             initial.dayOfMonth
-        )
-        dialog.show()
+        ).show()
     }
 
-    // Box clickable para que cualquier toque abra el DatePicker
-    Box(
+    OutlinedTextField(
+        value = value,
+        onValueChange = { /* read-only visual */ },
+        readOnly = true,
+        label = {
+            Text(
+                text = label,
+                color = Color(0xFFAEAEAE),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp
+            )
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = Color(0xFF616161),
+                modifier = Modifier
+                    .size(35.dp)
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = null
+                    ) { showSystemDatePicker() }
+            )
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
-            .clickable { showSystemDatePicker() }
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = { /* read-only visual, selección solo por DatePicker */ },
-            readOnly = true,
-            label = {
-                Text(
-                    text = label,
-                    color = Color(0xFFAEAEAE),
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.sp
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                    tint = Color(0xFF616161),
-                    modifier = Modifier
-                        .size(35.dp)
-                        .clickable { showSystemDatePicker() } // también desde el ícono
-                )
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF008D96),
-                unfocusedBorderColor = Color(0xFFD3D3D3),
-                cursorColor = Color(0xFF008D96),
-                focusedLabelColor = Color(0xFF008D96)
-            ),
-            textStyle = LocalTextStyle.current.copy(
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF616161)
-            )
+            .clickable( // <-- ahora toca en cualquier parte del campo
+                interactionSource = interaction,
+                indication = null
+            ) { showSystemDatePicker() },
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Color(0xFF008D96),
+            unfocusedBorderColor = Color(0xFFD3D3D3),
+            cursorColor = Color(0xFF008D96),
+            focusedLabelColor = Color(0xFF008D96)
+        ),
+        textStyle = LocalTextStyle.current.copy(
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF616161)
         )
-    }
+    )
 }
 
 // =================== Helpers de fecha ===================

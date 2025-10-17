@@ -40,7 +40,7 @@ import mx.itesm.beneficiojuventud.model.promos.PromoTheme
 fun Coupons(
     nav: NavHostController,
     modifier: Modifier = Modifier,
-    vm: CategoryViewModel = viewModel(),          // VM de categorías (el mismo que ya usas)
+    vm: CategoryViewModel = viewModel(),          // VM de categorías
     promoVm: PromoViewModel = viewModel()         // VM de promociones reales
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(BJTab.Coupons) }
@@ -187,8 +187,11 @@ fun Coupons(
                                 val id = c.id ?: return@items
                                 val name = c.name ?: "Categoría"
 
+                                // Usa tu función de ícono dinámico
+                                val icon = iconForCategoryName(name)
+
                                 CategoryPill(
-                                    icon = Icons.Outlined.NotificationsNone, // reemplaza con tu ícono cuando lo tengas
+                                    icon = icon,
                                     label = name,
                                     selected = selectedCategoryId == id,
                                     onClick = {
@@ -293,7 +296,7 @@ fun Coupons(
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                             onClick = {
                                 val id = promo.promotionId ?: return@PromoImageBanner
-                                nav.navigate("${Screens.PromoQR.route}/$id")
+                                nav.navigate("promoQR/$id")
                             },
                             themeResolver = { p -> p.theme ?: PromoTheme.light }
                         )
