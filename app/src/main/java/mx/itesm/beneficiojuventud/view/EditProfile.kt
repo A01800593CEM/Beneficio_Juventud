@@ -1,5 +1,7 @@
 package mx.itesm.beneficiojuventud.view
 
+import android.annotation.SuppressLint
+import android.app.DatePickerDialog
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -8,6 +10,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -15,11 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material3.*
@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -48,28 +49,24 @@ import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
 import mx.itesm.beneficiojuventud.components.BJTopHeader
-import mx.itesm.beneficiojuventud.components.BackButton
-import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.components.MainButton
+import mx.itesm.beneficiojuventud.model.users.UserProfile
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import java.io.File
 import java.io.FileOutputStream
+import java.time.*
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 
 @OptIn(ExperimentalMaterial3Api::class)
-/**
- * Pantalla para editar el perfil del usuario.
- * Permite cambiar nombre, correo, teléfono, fecha de nacimiento y actualizar la foto de perfil en Amplify Storage.
- * Carga el ID del usuario activo y recupera la imagen de perfil al iniciar.
- * @param nav Controlador de navegación para moverse entre pantallas.
- * @param modifier Modificador para ajustar el contenedor de la pantalla.
- * @param authViewModel ViewModel de autenticación usado para obtener el usuario actual.
- */
 @Composable
 fun EditProfile(
     nav: NavHostController,
     modifier: Modifier = Modifier,
-    authViewModel: AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    authViewModel: AuthViewModel,
+    userViewModel: UserViewModel
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Profile) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -77,24 +74,59 @@ fun EditProfile(
     val context = LocalContext.current
     val appVersion = "1.0.01"
 
-    var name by rememberSaveable { mutableStateOf("Ivan Serrano de León") }
-    var email by rememberSaveable { mutableStateOf("ivandil@beneficio.com") }
-    var phone by rememberSaveable { mutableStateOf("+52 55 1234 5678") }
-    var birth by rememberSaveable { mutableStateOf("18 / 09 / 2004") }
+    // ====== UI state (editable) ======
+    var firstName by rememberSaveable { mutableStateOf("") }
+    var lastNamePat by rememberSaveable { mutableStateOf("") }
+    var lastNameMat by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    var phone by rememberSaveable { mutableStateOf("") }
+    var birthDisplay by rememberSaveable { mutableStateOf("") } // dd/MM/yyyy
 
     var avatarUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var isUploading by remember { mutableStateOf(false) }
     var isDownloading by remember { mutableStateOf(false) }
 
-    // Carga el usuario al abrir la pantalla
-    LaunchedEffect(Unit) {
-        authViewModel.getCurrentUser()
-    }
+    // Flag para detectar confirmación de guardado
+    var justSaved by remember { mutableStateOf(false) }
 
+    // ====== Load current Cognito user ======
+    LaunchedEffect(Unit) { authViewModel.getCurrentUser() }
     val currentUserId by authViewModel.currentUserId.collectAsState()
     val actualUserId = currentUserId ?: "anonymous"
     Log.d("EditProfile", "Current User ID: $actualUserId")
+
+    // ====== Load user profile from backend ======
+    val backendUser by userViewModel.userState.collectAsState()
+    val isLoading by userViewModel.isLoading.collectAsState()
+    val errorMsg by userViewModel.error.collectAsState()
+
+    // Cargar datos cuando tenemos el cognitoId
+    LaunchedEffect(actualUserId) {
+        if (actualUserId != "anonymous") {
+            userViewModel.getUserById(actualUserId)
+            // Intenta descargar la foto de perfil existente
+            runCatching {
+                downloadProfileImage(
+                    context,
+                    actualUserId,
+                    onSuccess = { url -> profileImageUrl = url },
+                    onError = { Log.d("EditProfile", "Storage not configured yet: $it") },
+                    onLoading = { loading -> isDownloading = loading }
+                )
+            }
+        }
+    }
+
+    // Sincroniza el estado de UI cuando llegan datos del backend
+    LaunchedEffect(backendUser) {
+        backendUser.name?.let { firstName = it }
+        backendUser.lastNamePaternal?.let { lastNamePat = it }
+        backendUser.lastNameMaternal?.let { lastNameMat = it }
+        backendUser.email?.let { email = it }
+        backendUser.phoneNumber?.let { phone = it }
+        backendUser.birthDate?.let { birthDisplay = isoToDisplay(it) }
+    }
 
     val pickImage = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -117,29 +149,11 @@ fun EditProfile(
         }
     }
 
-    // Intenta descargar la foto de perfil existente
-    LaunchedEffect(actualUserId) {
-        try {
-            downloadProfileImage(
-                context,
-                actualUserId,
-                onSuccess = { url -> profileImageUrl = url },
-                onError = { Log.d("EditProfile", "Storage not configured yet: $it") },
-                onLoading = { loading -> isDownloading = loading }
-            )
-        } catch (e: Exception) {
-            Log.d("EditProfile", "Storage not configured yet, skipping image download")
-        }
-    }
-
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         topBar = {
-            BJTopHeader(
-                title = "Editar Perfil",
-                nav = nav
-            )
+            BJTopHeader(title = "Editar Perfil", nav = nav)
         },
         bottomBar = {
             BJBottomBar(
@@ -154,7 +168,8 @@ fun EditProfile(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Box(
             modifier = modifier
@@ -168,7 +183,7 @@ fun EditProfile(
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Avatar
+                // ===== Avatar =====
                 Box(
                     modifier = Modifier
                         .size(100.dp)
@@ -176,7 +191,7 @@ fun EditProfile(
                     contentAlignment = Alignment.Center
                 ) {
                     when {
-                        isUploading || isDownloading -> {
+                        isUploading || isDownloading || isLoading -> {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(40.dp),
                                 color = Color(0xFF008D96)
@@ -187,7 +202,9 @@ fun EditProfile(
                                 model = profileImageUrl,
                                 contentDescription = "Foto de perfil",
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.matchParentSize().clip(CircleShape)
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(CircleShape)
                             )
                         }
                         avatarUri != null -> {
@@ -195,7 +212,9 @@ fun EditProfile(
                                 model = avatarUri,
                                 contentDescription = "Foto de perfil",
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.matchParentSize().clip(CircleShape)
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(CircleShape)
                             )
                         }
                         else -> {
@@ -215,7 +234,7 @@ fun EditProfile(
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     modifier = Modifier.clickable {
-                        if (!isUploading) {
+                        if (!isUploading && actualUserId != "anonymous") {
                             pickImage.launch(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                             )
@@ -225,10 +244,23 @@ fun EditProfile(
 
                 Spacer(Modifier.height(20.dp))
 
+                // ===== Campos =====
                 ProfileTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = "Nombre Completo",
+                    value = firstName,
+                    onValueChange = { firstName = it },
+                    label = "Nombre",
+                    leadingIcon = Icons.Outlined.Person
+                )
+                ProfileTextField(
+                    value = lastNamePat,
+                    onValueChange = { lastNamePat = it },
+                    label = "Apellido Paterno",
+                    leadingIcon = Icons.Outlined.Person
+                )
+                ProfileTextField(
+                    value = lastNameMat,
+                    onValueChange = { lastNameMat = it },
+                    label = "Apellido Materno",
                     leadingIcon = Icons.Outlined.Person
                 )
                 ProfileTextField(
@@ -245,28 +277,71 @@ fun EditProfile(
                     leadingIcon = Icons.Outlined.Phone,
                     keyboardType = KeyboardType.Phone
                 )
-                ProfileTextField(
-                    value = birth,
-                    onValueChange = { birth = it },
-                    label = "Fecha de Nacimiento",
-                    leadingIcon = Icons.Outlined.CalendarMonth
+
+                // === Campo Fecha (abre DatePicker del sistema al tocar cualquier parte) ===
+                DatePickerField(
+                    value = birthDisplay,
+                    label = "Fecha de Nacimiento (dd/MM/yyyy)",
+                    leadingIcon = Icons.Outlined.CalendarMonth,
+                    onDateSelected = { newDisplay ->
+                        birthDisplay = newDisplay
+                    }
                 )
 
                 Spacer(Modifier.height(24.dp))
 
                 MainButton(
-                    text = "Guardar Cambios",
+                    text = if (isLoading) "Guardando..." else "Guardar Cambios",
                     onClick = {
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Cambios guardados correctamente.")
+                        if (actualUserId == "anonymous") {
+                            scope.launch { snackbarHostState.showSnackbar("Inicia sesión para guardar cambios.") }
+                            return@MainButton
                         }
-                    }
+
+                        val birthIso = displayToIsoOrNull(birthDisplay)
+                        if (birthDisplay.isNotBlank() && birthIso == null) {
+                            scope.launch { snackbarHostState.showSnackbar("Fecha inválida. Usa formato dd/MM/yyyy.") }
+                            return@MainButton
+                        }
+
+                        val update = UserProfile(
+                            name = firstName.ifBlank { null },
+                            lastNamePaternal = lastNamePat.ifBlank { null },
+                            lastNameMaternal = lastNameMat.ifBlank { null },
+                            email = email.ifBlank { null },
+                            phoneNumber = phone.ifBlank { null },
+                            birthDate = birthIso
+                        )
+
+                        justSaved = true
+                        userViewModel.updateUser(actualUserId, update)
+
+                        scope.launch {
+                            snackbarHostState.currentSnackbarData?.dismiss() // cierra cualquier snackbar previo
+                            snackbarHostState.showSnackbar(
+                                message = "Guardando cambios…",
+                                withDismissAction = false,
+                                duration = SnackbarDuration.Indefinite
+                            )
+                        }
+                    },
+                    enabled = !isLoading
                 )
+
+                if (!errorMsg.isNullOrBlank()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = errorMsg ?: "",
+                        color = Color(0xFFB00020),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
 
                 Spacer(Modifier.height(80.dp))
             }
 
-            // Versión anclada al fondo
+            // Versión
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -283,84 +358,52 @@ fun EditProfile(
             }
         }
     }
-}
 
-/**
- * Barra superior reutilizable para la pantalla de edición de perfil.
- * Muestra logo centrado, botón atrás y acceso a notificaciones.
- * @param title Título de la pantalla.
- * @param nav Controlador de navegación usado por el botón de regreso.
- */
-@Composable
-private fun EditProfileTopBar(
-    title: String,
-    nav: NavHostController
-) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-    ) {
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Image(
-                painter = painterResource(id = R.drawable.logo_beneficio_joven),
-                contentDescription = "Logo",
-                modifier = Modifier.size(28.dp)
-            )
-        }
-        Spacer(Modifier.height(8.dp))
+    // Feedback de éxito y navegación a Profile cuando termine el guardado sin error
+    LaunchedEffect(isLoading, errorMsg, backendUser) {
+        if (justSaved && !isLoading) {
+            if (errorMsg.isNullOrBlank()) {
+                // Éxito: cerrar "Guardando…" y mostrar "Cambios guardados" sin bloquear
+                snackbarHostState.currentSnackbarData?.dismiss()
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = "Cambios guardados",
+                        withDismissAction = true,
+                        duration = SnackbarDuration.Short
+                    )
+                }
 
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                BackButton(
-                    nav = nav,
-                    modifier = Modifier.size(40.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = title,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 20.sp,
-                    color = Color(0xFF616161)
-                )
+                justSaved = false
+
+                // Navegar inmediatamente (sin esperar al snackbar)
+                nav.navigate(Screens.Profile.route) {
+                    popUpTo(Screens.Profile.route) { inclusive = true }
+                    launchSingleTop = true
+                }
+            } else {
+                // Error: sustituir snackbar y NO bloquear
+                snackbarHostState.currentSnackbarData?.dismiss()
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = errorMsg ?: "Error al guardar",
+                        withDismissAction = true,
+                        duration = SnackbarDuration.Long
+                    )
+                }
+                justSaved = false
             }
-            Icon(
-                imageVector = Icons.Outlined.NotificationsNone,
-                contentDescription = "Notificaciones",
-                tint = Color(0xFF008D96),
-                modifier = Modifier.size(26.dp)
-            )
         }
-
-        GradientDivider(
-            thickness = 2.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-        )
     }
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-/**
- * Campo de texto estilizado para datos de perfil.
- * Aplica ícono inicial, borde personalizado y opciones de teclado según el tipo.
- * @param value Valor actual del campo.
- * @param onValueChange Callback invocado cuando cambia el texto.
- * @param label Etiqueta mostrada como hint/label.
- * @param leadingIcon Ícono a la izquierda del campo.
- * @param keyboardType Tipo de teclado para la entrada.
- */
 @Composable
 fun ProfileTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
-    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    leadingIcon: ImageVector,
     keyboardType: KeyboardType = KeyboardType.Text
 ) {
     OutlinedTextField(
@@ -402,16 +445,119 @@ fun ProfileTextField(
     )
 }
 
-/**
- * Sube la imagen de perfil del usuario a Amplify Storage.
- * Crea un archivo temporal a partir del URI, lo sube y obtiene la URL de descarga.
- * @param context Contexto para resolver el contenido y el caché.
- * @param imageUri URI de la imagen seleccionada.
- * @param userId Identificador del usuario; se usa para nombrar el archivo en el storage.
- * @param onSuccess Callback con la URL pública o firmada de la imagen subida.
- * @param onError Callback con el mensaje de error en caso de fallo.
- * @param onLoading Callback que expone el estado de carga durante la operación.
- */
+// =================== Campo de Fecha con DatePicker del sistema ===================
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DatePickerField(
+    value: String,
+    label: String,
+    leadingIcon: ImageVector,
+    onDateSelected: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val interaction = remember { MutableInteractionSource() }
+
+    fun showSystemDatePicker() {
+        val initial = runCatching { LocalDate.parse(value.trim(), displayFormatter) }
+            .getOrElse { LocalDate.now() }
+
+        DatePickerDialog(
+            context,
+            { _, year, monthOfYear, dayOfMonth ->
+                val picked = LocalDate.of(year, monthOfYear + 1, dayOfMonth)
+                onDateSelected(picked.format(displayFormatter))
+            },
+            initial.year,
+            initial.monthValue - 1,
+            initial.dayOfMonth
+        ).show()
+    }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = { /* read-only visual */ },
+        readOnly = true,
+        label = {
+            Text(
+                text = label,
+                color = Color(0xFFAEAEAE),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp
+            )
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = Color(0xFF616161),
+                modifier = Modifier
+                    .size(35.dp)
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = null
+                    ) { showSystemDatePicker() }
+            )
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clickable( // <-- ahora toca en cualquier parte del campo
+                interactionSource = interaction,
+                indication = null
+            ) { showSystemDatePicker() },
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Color(0xFF008D96),
+            unfocusedBorderColor = Color(0xFFD3D3D3),
+            cursorColor = Color(0xFF008D96),
+            focusedLabelColor = Color(0xFF008D96)
+        ),
+        textStyle = LocalTextStyle.current.copy(
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF616161)
+        )
+    )
+}
+
+// =================== Helpers de fecha ===================
+
+private val displayFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+private val isoDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+/** Convierte ISO que puede venir como "2025-10-02" o "2025-10-02T00:00:00.000Z" a "dd/MM/yyyy". */
+private fun isoToDisplay(iso: String): String {
+    val trimmed = iso.trim()
+    return try {
+        if (trimmed.contains("T")) {
+            val odt = OffsetDateTime.parse(trimmed)
+            odt.toLocalDate().format(displayFormatter)
+        } else {
+            LocalDate.parse(trimmed, isoDateFormatter).format(displayFormatter)
+        }
+    } catch (e: DateTimeParseException) {
+        runCatching {
+            LocalDate.parse(trimmed.substring(0, 10), isoDateFormatter).format(displayFormatter)
+        }.getOrElse { trimmed }
+    }
+}
+
+/** Convierte "dd/MM/yyyy" a "yyyy-MM-dd" para el backend; si está vacío o inválido, regresa null. */
+private fun displayToIsoOrNull(display: String): String? {
+    val clean = display.trim()
+    if (clean.isBlank()) return null
+    return try {
+        LocalDate.parse(clean, displayFormatter).format(isoDateFormatter)
+    } catch (_: Exception) {
+        null
+    }
+}
+
+// =================== Storage helpers (sin cambios) ===================
+
 fun uploadProfileImage(
     context: Context,
     imageUri: Uri,
@@ -460,15 +606,6 @@ fun uploadProfileImage(
     }
 }
 
-/**
- * Descarga la imagen de perfil desde Amplify Storage a un archivo local.
- * Útil cuando no se dispone de una URL pública o se prefiere caché local.
- * @param context Contexto para crear el archivo en caché.
- * @param userId Identificador del usuario; determina la ruta del archivo en el storage.
- * @param onSuccess Callback con la ruta local absoluta del archivo descargado.
- * @param onError Callback con el mensaje de error en caso de fallo.
- * @param onLoading Callback que expone el estado de carga durante la operación.
- */
 fun downloadProfileImage(
     context: Context,
     userId: String,
@@ -505,12 +642,6 @@ fun downloadProfileImage(
     }
 }
 
-/**
- * Obtiene la URL de descarga para una imagen previamente subida a Amplify Storage.
- * @param storagePath Ruta del archivo en el storage.
- * @param onSuccess Callback con la URL generada por el proveedor de almacenamiento.
- * @param onError Callback con el mensaje de error en caso de fallo.
- */
 private fun getProfileImageUrl(
     storagePath: StoragePath,
     onSuccess: (String) -> Unit,
@@ -527,17 +658,4 @@ private fun getProfileImageUrl(
             onError(error.message ?: "Error obteniendo URL")
         }
     )
-}
-
-/**
- * Vista previa de la pantalla de edición de perfil bajo el tema de la app.
- * Permite validar el layout en el inspector sin ejecutar en dispositivo.
- */
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun EditProfilePreview() {
-    BeneficioJuventudTheme {
-        val nav = rememberNavController()
-        EditProfile(nav = nav)
-    }
 }

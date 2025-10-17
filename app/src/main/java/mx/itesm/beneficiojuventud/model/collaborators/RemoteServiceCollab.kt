@@ -13,7 +13,7 @@ object RemoteServiceCollab {
     }
     private val collabApiService by lazy { retrofit.create(CollabApiService::class.java) }
 
-    suspend fun getCollaboratorById(id: Int): Collaborator {
+    suspend fun getCollaboratorById(id: String): Collaborator {
         val response = collabApiService.getCollaboratorById(id)
         return response.body() ?: throw Exception("No se pudo obtener el colaborador")
     }
@@ -25,11 +25,11 @@ object RemoteServiceCollab {
         val response = collabApiService.createCollaborator(collaborator)
         return response.body() ?: throw Exception("No se pudo crear el colaborador")
     }
-    suspend fun updateCollaborator(id: Int, update: Collaborator): Collaborator {
+    suspend fun updateCollaborator(id: String, update: Collaborator): Collaborator {
         val response = collabApiService.updateCollaborator(id, update)
         return response.body() ?: throw Exception("No se pudo actualizar el colaborador")
     }
-    suspend fun deleteCollaborator(id: Int) {
+    suspend fun deleteCollaborator(id: String) {
         val response = collabApiService.deleteCollaborator(id)
         if (!response.isSuccessful) {
             throw Exception("No se pudo eliminar el colaborador")

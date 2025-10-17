@@ -3,6 +3,10 @@ package mx.itesm.beneficiojuventud.view
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,14 +37,18 @@ import mx.itesm.beneficiojuventud.components.BJTab
 import mx.itesm.beneficiojuventud.components.BJTopHeader
 import mx.itesm.beneficiojuventud.components.PromoImageBannerFav
 import mx.itesm.beneficiojuventud.components.SectionTitle
-import mx.itesm.beneficiojuventud.model.PromoTheme
+import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
+import mx.itesm.beneficiojuventud.model.promos.PromoTheme
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 
+// 🚩 IMPORTA la card horizontal (la del screenshot)
+import mx.itesm.beneficiojuventud.components.MerchantCardHorizontalFav
+
 // ------------------------------------------------------------
-// Ahora con id de colaborador para poder togglear favorito
+// Ahora con cognitoId (String) como ID del colaborador
 data class FavoriteMerchant(
-    val id: Int,                 // <--- ID del colaborador
+    val cognitoId: String, // ID del colaborador (Cognito)
     val imageRes: Int,
     val name: String,
     val category: String,
@@ -65,8 +73,12 @@ fun Favorites(
 
     val user by userViewModel.userState.collectAsState()
     val favoritePromos by userViewModel.favoritePromotions.collectAsState()
-    val favoriteCollabIds by userViewModel.favoriteCollabs.collectAsState()
-    val errorMsg by userViewModel.error.collectAsState()
+    val favoriteCollabs by userViewModel.favoriteCollabs.collectAsState()
+
+    // Normaliza IDs favoritos de colaboradores a Set<String> para lookup O(1)
+    val favoriteCollabIds: Set<String> = remember(favoriteCollabs) {
+        favoriteCollabs.mapNotNull { it.cognitoId?.takeIf(String::isNotBlank) }.toSet()
+    }
 
     val scope = rememberCoroutineScope()
     val cognitoId = user.cognitoId.orEmpty()
@@ -122,7 +134,7 @@ fun Favorites(
                 Spacer(Modifier.height(12.dp))
             }
 
-            // Título con conteo (usa listas reales)
+            // Título con conteo
             item {
                 val count = when (mode) {
                     FavoriteMode.Businesses -> favoriteCollabIds.size
@@ -148,35 +160,60 @@ fun Favorites(
             // Contenido según modo
             when (mode) {
                 FavoriteMode.Businesses -> {
-                    val shownMerchants = favoriteMerchants.filter { favoriteCollabIds.contains(it.id) }
-                    if (shownMerchants.isEmpty()) {
-                        item { EmptyState("Sin negocios favoritos", "Cuando marques un negocio como favorito aparecerá aquí.") }
+                    if (favoriteCollabs.isEmpty()) {
+                        item {
+                            EmptyState(
+                                title = "Sin negocios favoritos",
+                                body = "Cuando marques un negocio como favorito aparecerá aquí."
+                            )
+                        }
                     } else {
-                        items(shownMerchants) { merchant ->
-                            FavoriteCard(
-                                merchant = merchant,
-                                onClick = { /* TODO nav detalle negocio */ },
-                                onToggleFavorite = {
-                                    scope.launch { userViewModel.toggleFavoriteCollaborator(merchant.id, cognitoId) }
+                        items(
+                            items = favoriteCollabs,
+                            key = { it.cognitoId ?: it.businessName ?: it.email ?: it.hashCode().toString() }
+                        ) { collab: Collaborator ->
+                            val isFav = favoriteCollabIds.contains(collab.cognitoId.orEmpty())
+
+                            MerchantCardHorizontalFav(
+                                collab = collab,
+                                isFavorite = isFav,
+                                onFavoriteClick = {
+                                    collab.cognitoId?.let { collabId ->
+                                        scope.launch {
+                                            userViewModel.unfavoriteCollaborator(collabId, cognitoId)
+                                        }
+                                    }
                                 },
-                                modifier = Modifier.padding(vertical = 6.dp)
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp)
+                                    .padding(vertical = 6.dp),
+                                onClick = {
+                                    collab.cognitoId?.let { id ->
+                                        nav.navigate(Screens.Business.createRoute(id))
+                                    }
+                                }
                             )
                         }
                     }
                 }
+
                 FavoriteMode.Coupons -> {
                     if (favoritePromos.isEmpty()) {
-                        item { EmptyState("Sin cupones favoritos", "Guarda cupones para verlos aquí y canjéalos más tarde.") }
+                        item {
+                            EmptyState(
+                                title = "Sin cupones favoritos",
+                                body = "Guarda cupones para verlos aquí y canjéalos más tarde."
+                            )
+                        }
                     } else {
                         items(favoritePromos, key = { it.promotionId ?: it.hashCode() }) { promo ->
                             PromoImageBannerFav(
                                 promo = promo,
-                                isFavorite = true, // en esta pantalla son favoritos
+                                isFavorite = true,
                                 onFavoriteClick = { p ->
                                     val id = p.promotionId ?: return@PromoImageBannerFav
-                                    scope.launch {
-                                        userViewModel.unfavoritePromotion(id, cognitoId)
-                                    }
+                                    scope.launch { userViewModel.unfavoritePromotion(id, cognitoId) }
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -184,10 +221,9 @@ fun Favorites(
                                     .padding(vertical = 6.dp),
                                 onClick = {
                                     val id = promo.promotionId ?: return@PromoImageBannerFav
-                                    // TODO: nav a detalle del cupón
-                                    // nav.navigate("${Screens.PromoDetail.route}/$id")
+                                    nav.navigate(Screens.PromoQR.createRoute(id))
                                 },
-                                themeResolver = { PromoTheme.LIGHT }
+                                themeResolver = { it.theme ?: PromoTheme.light }
                             )
                         }
                     }
@@ -270,7 +306,7 @@ private fun TogglePill(
 }
 
 @Composable
-private fun FavoriteCard(
+private fun FavoriteCard( // <- la puedes borrar si ya no la usas
     merchant: FavoriteMerchant,
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit,
@@ -343,7 +379,7 @@ private fun FavoriteCard(
             }
 
             IconButton(onClick = onToggleFavorite) {
-                val isFav = true // por diseño de esta tarjeta
+                val isFav = merchant.isFavorite
                 Icon(
                     imageVector = if (isFav) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                     contentDescription = if (isFav) "Quitar de favoritos" else "Agregar a favoritos",
@@ -351,23 +387,6 @@ private fun FavoriteCard(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun EmptyState(
-    title: String,
-    body: String
-) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(title, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161))
-        Spacer(Modifier.height(6.dp))
-        Text(body, fontSize = 12.sp, color = Color(0xFF9E9E9E))
     }
 }
 

@@ -30,8 +30,9 @@ import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.*
 import mx.itesm.beneficiojuventud.model.webhook.PromotionData
-import mx.itesm.beneficiojuventud.model.webhook.Category
+import mx.itesm.beneficiojuventud.model.webhook.WebhookCategory
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -660,7 +661,7 @@ private fun EditPromotionPreview() {
             limitPerUser = 4,
             dailyLimitPerUser = 1,
             promotionState = "activa",
-            categories = listOf(Category(1, "Entretenimiento"))
+            categories = listOf(WebhookCategory(1, "Entretenimiento"))
         )
         EditPromotion(nav = nav, promotionData = samplePromotion)
     }

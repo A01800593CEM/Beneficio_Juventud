@@ -8,6 +8,7 @@ import { Notification } from '../notifications/entities/notification.entity';
 import { NotificationType } from '../notifications/enums/notification-type.enums';
 import { NotificationStatus } from '../notifications/enums/notification-status.enum';
 import { RecipientType } from '../notifications/enums/recipient-type.enums';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ExpirationsService {
@@ -20,6 +21,7 @@ export class ExpirationsService {
     private readonly bookingRepo: Repository<Booking>,
     @InjectRepository(Notification)
     private readonly notifRepo: Repository<Notification>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ⚠️ Para pruebas: cada minuto. En producción vuelve a: CronExpression.EVERY_HOUR
@@ -159,6 +161,13 @@ export class ExpirationsService {
     }
 
     this.logger.log('🎯 Revisión completada.');
+
+    // Enviar notificaciones push para todas las notificaciones pendientes
+    try {
+      await this.notificationsService.sendPendingNotifications();
+    } catch (error) {
+      this.logger.error('❌ Error sending pending notifications:', error);
+    }
 
     // Respuesta detallada solo para el endpoint manual
     if (opts.collectResults) {

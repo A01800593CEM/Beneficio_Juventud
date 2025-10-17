@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.users.RemoteServiceUser
 import mx.itesm.beneficiojuventud.model.users.UserProfile
@@ -27,8 +28,9 @@ class UserViewModel : ViewModel() {
     private val _favoritePromotions = MutableStateFlow<List<Promotions>>(emptyList())
     val favoritePromotions: StateFlow<List<Promotions>> = _favoritePromotions
 
-    private val _favoriteCollabs = MutableStateFlow<List<Int>>(emptyList())
-    val favoriteCollabs: StateFlow<List<Int>> = _favoriteCollabs
+    // AHORA: lista de objetos Collaborator (antes List<Int>)
+    private val _favoriteCollabs = MutableStateFlow<List<Collaborator>>(emptyList())
+    val favoriteCollabs: StateFlow<List<Collaborator>> = _favoriteCollabs
 
     /** Token para invalidar respuestas tardías cuando cambia de cuenta o se hace clear. */
     private var loadToken: Int = 0
@@ -183,7 +185,7 @@ class UserViewModel : ViewModel() {
             if (myToken != loadToken) return@launch
 
             result.fold(
-                onSuccess = { ids -> _favoriteCollabs.value = ids },
+                onSuccess = { list -> _favoriteCollabs.value = list }, // ahora es List<Collaborator>
                 onFailure = { e -> _error.value = e.message ?: "Error al obtener colaboradores favoritos" }
             )
             _isLoading.value = false
@@ -200,7 +202,7 @@ class UserViewModel : ViewModel() {
             }.onSuccess { _favoritePromotions.value = it }
                 .onFailure { e -> _error.value = e.message ?: "Error al refrescar promociones favoritas" }
 
-            // Collabs
+            // Collabs (List<Collaborator>)
             runCatching {
                 withContext(Dispatchers.IO) { model.getFavoriteCollabs(cognitoId) }
             }.onSuccess { _favoriteCollabs.value = it }
@@ -210,7 +212,8 @@ class UserViewModel : ViewModel() {
 
     // --- COLLABORATORS FAVORITES ---
 
-    fun favoriteCollaborator(collaboratorId: Int, cognitoId: String) {
+    // AHORA: collaboratorId es String (cognitoId), no Int
+    fun favoriteCollaborator(collaboratorId: String, cognitoId: String) {
         _error.value = null
         viewModelScope.launch {
             val result = runCatching {
@@ -225,7 +228,7 @@ class UserViewModel : ViewModel() {
         }
     }
 
-    fun unfavoriteCollaborator(collaboratorId: Int, cognitoId: String) {
+    fun unfavoriteCollaborator(collaboratorId: String, cognitoId: String) {
         _error.value = null
         viewModelScope.launch {
             val result = runCatching {
@@ -240,11 +243,10 @@ class UserViewModel : ViewModel() {
         }
     }
 
-    fun toggleFavoriteCollaborator(collaboratorId: Int, cognitoId: String) {
-        val isFav = _favoriteCollabs.value.contains(collaboratorId)
+    fun toggleFavoriteCollaborator(collaboratorId: String, cognitoId: String) {
+        // Como ahora _favoriteCollabs es List<Collaborator>, comparamos por cognitoId
+        val isFav = _favoriteCollabs.value.any { it.cognitoId == collaboratorId }
         if (isFav) unfavoriteCollaborator(collaboratorId, cognitoId)
         else favoriteCollaborator(collaboratorId, cognitoId)
     }
-
-
 }

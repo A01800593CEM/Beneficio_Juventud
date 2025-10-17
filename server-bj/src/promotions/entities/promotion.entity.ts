@@ -1,4 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToMany, JoinTable, ManyToOne, JoinColumn, } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+  ManyToMany,
+  JoinTable,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { PromotionType } from '../enums/promotion-type.enums';
 import { PromotionState } from '../enums/promotion-state.enums';
 import { Booking } from '../../bookings/entities/booking.entity';
@@ -15,22 +26,22 @@ export class Promotion {
   @PrimaryGeneratedColumn({ name: 'promocion_id' })
   promotionId: number;
 
-  @Column({name: 'colaborador_id'})
-  collaboratorId: string
+  @Column({ name: 'colaborador_id' })
+  collaboratorId: string;
 
   @Column({ name: 'titulo' })
   title: string;
 
-  @Column({ name: 'descripcion'})
+  @Column({ name: 'descripcion' })
   description: string;
 
-  @Column({ name: 'imagen_url'})
+  @Column({ name: 'imagen_url' })
   imageUrl: string;
 
-  @Column({ name: 'fecha_inicio'})
+  @Column({ name: 'fecha_inicio' })
   initialDate: Date;
 
-  @Column({ name: 'fecha_fin'})
+  @Column({ name: 'fecha_fin' })
   endDate: Date;
 
   @Column({
@@ -41,19 +52,19 @@ export class Promotion {
   })
   promotionType: PromotionType;
 
-  @Column({ name: 'promocion_string'})
+  @Column({ name: 'promocion_string' })
   promotionString: string;
 
-  @Column({ name: 'stock_total'})
+  @Column({ name: 'stock_total' })
   totalStock: number;
 
-  @Column({ name: 'stock_disponible'})
+  @Column({ name: 'stock_disponible' })
   availableStock: number;
 
-  @Column({ name: 'limite_por_usuario'})
+  @Column({ name: 'limite_por_usuario' })
   limitPerUser: number;
 
-  @Column({ name: 'limite_diario_por_usuario'})
+  @Column({ name: 'limite_diario_por_usuario' })
   dailyLimitPerUser: number;
 
   @Column({
@@ -75,40 +86,44 @@ export class Promotion {
     enum: PromotionTheme,
     enumName: 'tema',
     name: 'theme',
+    default: PromotionTheme.LIGHT, // default recomendado
   })
+  theme: PromotionTheme;
 
-  @Column({name: 'es_reservable'})
+  @Column({ name: 'es_reservable' })
   is_bookable: boolean;
-  
-  //Relations
-  @OneToMany(() => Booking, bookings => bookings.promotion)
-    bookings: Relation<Booking>;
 
-  @OneToMany(() => Redeemedcoupon, redeemedcoupons => redeemedcoupons.promotion)
-    redeemedcoupon: Relation<Redeemedcoupon>
+  // Relations
+  @OneToMany(() => Booking, (bookings) => bookings.promotion)
+  bookings: Relation<Booking>;
 
-  @ManyToMany(() => User, user => user.favoritePromos)
-    favoritedBy: Relation<User[]>;
+  @OneToMany(() => Redeemedcoupon, (redeemedcoupons) => redeemedcoupons.promotion)
+  redeemedcoupon: Relation<Redeemedcoupon>;
 
-  @ManyToMany(() => Category, category => category.promotions)
+  @ManyToMany(() => User, (user) => user.favoritePromos)
+  favoritedBy: Relation<User[]>;
+
+  @ManyToMany(() => Category, (category) => category.promotions)
   @JoinTable({
     name: 'promocion_categoria',
     joinColumn: {
-    name: 'promocion_id',
-    referencedColumnName: 'promotionId',
-  },
+      name: 'promocion_id',
+      referencedColumnName: 'promotionId',
+    },
     inverseJoinColumn: {
-    name: 'categoria_id',
-    referencedColumnName: 'id'
-  },
-    })
-        categories: Category[];
-  @ManyToOne(() => Collaborator, collaborator => collaborator.promotions)
+      name: 'categoria_id',
+      referencedColumnName: 'id',
+    },
+  })
+  categories: Category[];
+
+  @ManyToOne(() => Collaborator, (collaborator) => collaborator.promotions)
   @JoinColumn({
     name: 'colaborador_id',
-    referencedColumnName: 'cognitoId'})
+    referencedColumnName: 'cognitoId',
+  })
   collaborator: Relation<Collaborator>;
 
-  @OneToMany(() => Notification, notifications => notifications.promotions)
-    notifications: Relation<Notification>;
+  @OneToMany(() => Notification, (notifications) => notifications.promotions)
+  notifications: Relation<Notification>;
 }
