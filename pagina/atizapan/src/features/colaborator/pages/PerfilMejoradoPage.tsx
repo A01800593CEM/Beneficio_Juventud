@@ -16,12 +16,12 @@ import {
   EyeIcon,
   TrophyIcon,
   CalendarIcon,
-  UserGroupIcon,
   CameraIcon,
   ShareIcon,
-  PrinterIcon,
-  DocumentDuplicateIcon
+  PrinterIcon
 } from '@heroicons/react/24/outline';
+import { promotionApiService } from '../promociones/services/api';
+import { ApiCollaborator, ApiPromotion } from '../promociones/types';
 
 interface BusinessProfile {
   id: string;
@@ -73,7 +73,7 @@ const mockBusiness: BusinessProfile = {
   description: "Restaurante familiar especializado en cocina mexicana tradicional con un toque contemporáneo. Ofrecemos platillos auténticos preparados con ingredientes frescos y de la mejor calidad.",
   category: "COMIDA",
   logo: "",
-  coverImage: "",
+  coverImage: "https://media.istockphoto.com/id/2177167995/es/vector/mitolog%C3%ADa-griega-edificios-de-la-puerta-del-olimpo-vista-frontal-vector.jpg?s=612x612&w=0&k=20&c=inC7HrwYgfKitYzpBofWEkuvLUxvS_xtwPpYmeRRnGU=",
   isVerified: true,
   rating: 4.7,
   totalReviews: 156,
@@ -128,29 +128,168 @@ const mockBusiness: BusinessProfile = {
 
 export default function PerfilMejoradoPage() {
   const { data: session } = useSession();
-  const [business, setBusiness] = useState<BusinessProfile>(mockBusiness);
+  const [business, setBusiness] = useState<BusinessProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState<BusinessProfile>(mockBusiness);
+  const [editData, setEditData] = useState<BusinessProfile | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'gallery' | 'achievements'>('general');
 
+  // Cargar datos del colaborador
+  useEffect(() => {
+    loadCollaboratorProfile();
+  }, [session]);
+
+  const loadCollaboratorProfile = async () => {
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const sessionData = session as any;
+      const cognitoUsername = sessionData.cognitoUsername || sessionData.sub || sessionData.user?.id || sessionData.user?.sub;
+
+      if (cognitoUsername) {
+        console.log('🔄 Loading collaborator profile...');
+
+        // Cargar datos del colaborador
+        const collaboratorData = await promotionApiService.getCollaboratorByCognitoId(cognitoUsername);
+
+        // Cargar promociones del colaborador
+        const promotionsData = await promotionApiService.getPromotions(cognitoUsername);
+
+        // Calcular estadísticas de achievements
+        const totalRedemptions = promotionsData.reduce((sum, p) => sum + ((p.totalStock || 0) - (p.availableStock || 0)), 0);
+        const rating = 4.7; // Simulado - el servidor no tiene ratings aún
+
+        // Generar achievements basados en datos reales
+        const achievements = [];
+
+        // Achievement por verificación
+        achievements.push({
+          id: "verified",
+          title: "Negocio Verificado",
+          description: "Tu negocio ha sido verificado en la plataforma",
+          icon: "🏆",
+          earnedDate: collaboratorData.registrationDate
+        });
+
+        // Achievement por número de promociones
+        if (promotionsData.length >= 5) {
+          achievements.push({
+            id: "promotions",
+            title: `${promotionsData.length} Promociones`,
+            description: `Has creado ${promotionsData.length} promociones exitosas`,
+            icon: "🎯",
+            earnedDate: promotionsData[4]?.created_at || collaboratorData.registrationDate
+          });
+        }
+
+        // Achievement por canjes
+        if (totalRedemptions >= 10) {
+          achievements.push({
+            id: "redemptions",
+            title: `${totalRedemptions} Canjes`,
+            description: `Tus promociones han sido canjeadas ${totalRedemptions} veces`,
+            icon: "⭐",
+            earnedDate: new Date().toISOString()
+          });
+        }
+
+        // Achievement por rating alto
+        if (rating >= 4.5) {
+          achievements.push({
+            id: "rating",
+            title: "Excelente Rating",
+            description: "Mantienes un rating superior a 4.5 estrellas",
+            icon: "🌟",
+            earnedDate: new Date().toISOString()
+          });
+        }
+
+        // Mapear datos del colaborador al perfil de negocio
+        const businessProfile: BusinessProfile = {
+          id: collaboratorData.id.toString(),
+          name: collaboratorData.businessName,
+          owner: collaboratorData.representativeName,
+          email: collaboratorData.email,
+          phone: collaboratorData.phone,
+          address: collaboratorData.address,
+          website: "",
+          description: collaboratorData.description || "Descripción no disponible",
+          category: collaboratorData.categories?.[0]?.name || "GENERAL",
+          logo: collaboratorData.logoUrl || "",
+          coverImage: "https://t4.ftcdn.net/jpg/00/53/45/31/360_F_53453175_hVgYVz0WmvOXPd9CNzaUcwcibiGao3CL.jpg",
+          isVerified: true, // Asumir que están verificados
+          rating: rating,
+          totalReviews: Math.floor(totalRedemptions * 0.3), // Simulación
+          totalPromotions: promotionsData.length,
+          activePromotions: promotionsData.filter(p => p.promotionState === 'activa').length,
+          totalRedemptions: totalRedemptions,
+          memberSince: collaboratorData.registrationDate,
+          socialMedia: {
+            facebook: "",
+            instagram: "",
+            whatsapp: collaboratorData.phone
+          },
+          schedule: {
+            monday: { isOpen: true, openTime: "09:00", closeTime: "22:00" },
+            tuesday: { isOpen: true, openTime: "09:00", closeTime: "22:00" },
+            wednesday: { isOpen: true, openTime: "09:00", closeTime: "22:00" },
+            thursday: { isOpen: true, openTime: "09:00", closeTime: "22:00" },
+            friday: { isOpen: true, openTime: "09:00", closeTime: "23:00" },
+            saturday: { isOpen: true, openTime: "10:00", closeTime: "23:00" },
+            sunday: { isOpen: true, openTime: "10:00", closeTime: "21:00" }
+          },
+          gallery: promotionsData.slice(0, 3).map(p => p.imageUrl).filter(Boolean) as string[],
+          tags: collaboratorData.categories?.map(c => c.name) || [],
+          achievements: achievements
+        };
+
+        setBusiness(businessProfile);
+        setEditData(businessProfile);
+        console.log('✅ Profile loaded for:', collaboratorData.businessName);
+      }
+    } catch (err) {
+      console.error('❌ Error loading profile:', err);
+      setError('Error al cargar el perfil del colaborador');
+      // Usar datos mock en caso de error
+      setBusiness(mockBusiness);
+      setEditData(mockBusiness);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleEdit = () => {
-    setIsEditing(true);
-    setEditData({ ...business });
+    if (business) {
+      setIsEditing(true);
+      setEditData({ ...business });
+    }
   };
 
   const handleSave = () => {
-    setBusiness(editData);
-    setIsEditing(false);
-    console.log("Business profile updated:", editData);
+    if (editData) {
+      setBusiness(editData);
+      setIsEditing(false);
+      console.log("Business profile updated:", editData);
+      // Aquí iría la llamada al servidor para guardar los cambios
+    }
   };
 
   const handleCancel = () => {
-    setEditData({ ...business });
-    setIsEditing(false);
+    if (business) {
+      setEditData({ ...business });
+      setIsEditing(false);
+    }
   };
 
   const handleShare = () => {
-    if (navigator.share) {
+    if (business && navigator.share) {
       navigator.share({
         title: business.name,
         text: business.description,
@@ -177,6 +316,10 @@ export default function PerfilMejoradoPage() {
   };
 
   const currentData = isEditing ? editData : business;
+
+  if (!currentData) {
+    return null; // Este caso ya se maneja en los checks anteriores, pero agregamos por seguridad
+  }
 
   const headerActions = (
     <div className="flex items-center space-x-3">
@@ -221,6 +364,32 @@ export default function PerfilMejoradoPage() {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="py-8">
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#008D96]"></div>
+            <div className="text-[#969696] mt-2">Cargando perfil...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!business) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="py-8">
+          <div className="text-center py-12">
+            <div className="text-gray-500">No se pudo cargar el perfil del negocio</div>
+            {error && <div className="text-red-500 mt-2">{error}</div>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="py-8 space-y-8">
@@ -228,8 +397,18 @@ export default function PerfilMejoradoPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Perfil del Negocio</h1>
-            <p className="text-gray-600">Gestiona la información de tu negocio</p>
+            <p className="text-gray-600">
+              {business.name} - Gestiona la información de tu negocio
+            </p>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              {error}
+            </div>
+          )}
+
           {headerActions}
         </div>
 
@@ -259,7 +438,7 @@ export default function PerfilMejoradoPage() {
                 <div className="relative">
                   <div className="h-32 w-32 rounded-full overflow-hidden bg-white border-4 border-white shadow-lg">
                     <Image
-                      src={currentData.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentData.name)}&background=008D96&color=fff&size=128`}
+                      src={currentData.logo || `https://t4.ftcdn.net/jpg/00/53/45/31/360_F_53453175_hVgYVz0WmvOXPd9CNzaUcwcibiGao3CL.jpg`}
                       alt={currentData.name}
                       width={128}
                       height={128}
@@ -280,7 +459,7 @@ export default function PerfilMejoradoPage() {
                       <input
                         type="text"
                         value={currentData.name}
-                        onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
+                        onChange={(e) => setEditData(prev => prev ? ({ ...prev, name: e.target.value }) : null)}
                         className="text-2xl font-bold text-gray-900 bg-transparent border-b-2 border-[#008D96] focus:outline-none"
                       />
                     ) : (
@@ -371,7 +550,7 @@ export default function PerfilMejoradoPage() {
                   {isEditing ? (
                     <textarea
                       value={currentData.description}
-                      onChange={(e) => setEditData(prev => ({ ...prev, description: e.target.value }))}
+                      onChange={(e) => setEditData(prev => prev ? ({ ...prev, description: e.target.value }) : null)}
                       rows={4}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#008D96] focus:border-transparent"
                     />

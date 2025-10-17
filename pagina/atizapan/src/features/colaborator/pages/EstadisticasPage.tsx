@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession } from 'next-auth/react';
 import {
   ArrowUpIcon,
   ArrowDownIcon,
@@ -8,6 +9,8 @@ import {
   DocumentArrowDownIcon
 } from "@heroicons/react/24/outline";
 import { SimpleBarChart, SimpleDonutChart } from "../components/SimpleChart";
+import { promotionApiService } from '../promociones/services/api';
+import { ApiCollaborator, ApiPromotion } from '../promociones/types';
 
 // Mock data for statistics
 const mockStats = {
@@ -41,12 +44,106 @@ const mockStats = {
 };
 
 export default function EstadisticasPage() {
+  const { data: session } = useSession();
   const [timeRange, setTimeRange] = useState("month");
+  const [stats, setStats] = useState(mockStats);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [collaborator, setCollaborator] = useState<ApiCollaborator | null>(null);
+
+  // Cargar datos del colaborador y generar estadísticas
+  useEffect(() => {
+    loadCollaboratorStats();
+  }, [session, timeRange]);
+
+  const loadCollaboratorStats = async () => {
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const sessionData = session as any;
+      const cognitoUsername = sessionData.cognitoUsername || sessionData.sub || sessionData.user?.id || sessionData.user?.sub;
+
+      if (cognitoUsername) {
+        console.log('🔄 Loading collaborator stats...');
+
+        // Cargar datos del colaborador
+        const collaboratorData = await promotionApiService.getCollaboratorByCognitoId(cognitoUsername);
+        setCollaborator(collaboratorData);
+
+        // Cargar promociones del colaborador
+        const promotionsData = await promotionApiService.getPromotions(cognitoUsername);
+
+        // Calcular estadísticas reales
+        const totalRedemptions = promotionsData.reduce((sum, p) => sum + ((p.totalStock || 0) - (p.availableStock || 0)), 0);
+        const activePromotions = promotionsData.filter(p => p.promotionState === 'activa').length;
+        const totalViews = totalRedemptions * 15; // Simulación: 15 vistas por canje
+        const conversionRate = totalViews > 0 ? (totalRedemptions / totalViews) * 100 : 0;
+
+        // Generar datos simulados para gráficos basados en datos reales
+        const dailyRedemptions = [
+          { label: "Lun", value: Math.floor(totalRedemptions * 0.12) },
+          { label: "Mar", value: Math.floor(totalRedemptions * 0.15) },
+          { label: "Mié", value: Math.floor(totalRedemptions * 0.10) },
+          { label: "Jue", value: Math.floor(totalRedemptions * 0.18) },
+          { label: "Vie", value: Math.floor(totalRedemptions * 0.20) },
+          { label: "Sáb", value: Math.floor(totalRedemptions * 0.25) },
+          { label: "Dom", value: Math.floor(totalRedemptions * 0.15) }
+        ];
+
+        const topPromotions = promotionsData
+          .map((promo, index) => ({
+            label: promo.title.length > 20 ? promo.title.substring(0, 20) + '...' : promo.title,
+            value: (promo.totalStock || 0) - (promo.availableStock || 0),
+            color: ['#008D96', '#00C0CC', '#015463', '#4B4C7E'][index % 4]
+          }))
+          .filter(p => p.value > 0)
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 4);
+
+        const calculatedStats = {
+          currentMonth: {
+            couponsRedeemed: totalRedemptions,
+            conversionRate: Number(conversionRate.toFixed(1)),
+            totalViews: totalViews,
+            activePromotions: activePromotions
+          },
+          previousMonth: {
+            couponsRedeemed: Math.floor(totalRedemptions * 0.85), // Simulación: 15% menos el mes pasado
+            conversionRate: Number((conversionRate * 0.9).toFixed(1)),
+            totalViews: Math.floor(totalViews * 0.9),
+            activePromotions: Math.max(1, activePromotions - 1)
+          },
+          dailyRedemptions: dailyRedemptions,
+          topPromotions: topPromotions.length > 0 ? topPromotions : mockStats.topPromotions
+        };
+
+        setStats(calculatedStats);
+        console.log('✅ Stats calculated for:', collaboratorData.businessName);
+      }
+    } catch (err) {
+      console.error('❌ Error loading stats:', err);
+      setError('Error al cargar las estadísticas');
+      // Usar datos mock en caso de error
+      setStats(mockStats);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Calculate changes from previous period
-  const couponsChange = ((mockStats.currentMonth.couponsRedeemed - mockStats.previousMonth.couponsRedeemed) / mockStats.previousMonth.couponsRedeemed) * 100;
-  const conversionChange = mockStats.currentMonth.conversionRate - mockStats.previousMonth.conversionRate;
-  const viewsChange = ((mockStats.currentMonth.totalViews - mockStats.previousMonth.totalViews) / mockStats.previousMonth.totalViews) * 100;
+  const couponsChange = stats.previousMonth.couponsRedeemed > 0
+    ? ((stats.currentMonth.couponsRedeemed - stats.previousMonth.couponsRedeemed) / stats.previousMonth.couponsRedeemed) * 100
+    : 0;
+  const conversionChange = stats.currentMonth.conversionRate - stats.previousMonth.conversionRate;
+  const viewsChange = stats.previousMonth.totalViews > 0
+    ? ((stats.currentMonth.totalViews - stats.previousMonth.totalViews) / stats.previousMonth.totalViews) * 100
+    : 0;
 
   const handleExport = () => {
     console.log("Exporting statistics...");
@@ -80,14 +177,35 @@ export default function EstadisticasPage() {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#008D96]"></div>
+          <div className="text-[#969696] mt-2">Cargando estadísticas...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 space-y-4 sm:space-y-0">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Estadísticas y Análisis</h1>
-          <p className="text-gray-600">Analiza el rendimiento de tus promociones</p>
+          <p className="text-gray-600">
+            {collaborator ? `${collaborator.businessName} - Analiza el rendimiento de tus promociones` : "Analiza el rendimiento de tus promociones"}
+          </p>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
+
         {actions}
       </div>
         {/* KPI Cards */}

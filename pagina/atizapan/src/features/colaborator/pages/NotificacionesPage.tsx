@@ -15,6 +15,8 @@ import {
   MagnifyingGlassIcon,
   FunnelIcon
 } from '@heroicons/react/24/outline';
+import { promotionApiService } from '../promociones/services/api';
+import { ApiCollaborator, ApiPromotion } from '../promociones/types';
 
 interface Notification {
   id: string;
@@ -95,10 +97,136 @@ const mockNotifications: Notification[] = [
 
 export default function NotificacionesPage() {
   const { data: session } = useSession();
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [collaborator, setCollaborator] = useState<ApiCollaborator | null>(null);
   const [filter, setFilter] = useState<'all' | 'unread' | 'promotion' | 'redemption' | 'review' | 'system' | 'payment'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedNotifications, setSelectedNotifications] = useState<string[]>([]);
+
+  // Cargar datos del colaborador y generar notificaciones
+  useEffect(() => {
+    loadCollaboratorAndNotifications();
+  }, [session]);
+
+  const loadCollaboratorAndNotifications = async () => {
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const sessionData = session as any;
+      const cognitoUsername = sessionData.cognitoUsername || sessionData.sub || sessionData.user?.id || sessionData.user?.sub;
+
+      if (cognitoUsername) {
+        console.log('🔄 Loading collaborator notifications...');
+
+        // Cargar datos del colaborador
+        const collaboratorData = await promotionApiService.getCollaboratorByCognitoId(cognitoUsername);
+        setCollaborator(collaboratorData);
+
+        // Cargar promociones del colaborador
+        const promotionsData = await promotionApiService.getPromotions(cognitoUsername);
+
+        // Generar notificaciones basadas en los datos reales
+        const generatedNotifications: Notification[] = [];
+
+        // Notificaciones para promociones activas
+        promotionsData.forEach((promotion, index) => {
+          if (promotion.promotionState === 'activa') {
+            generatedNotifications.push({
+              id: `promo_${promotion.promotionId}`,
+              type: 'success',
+              title: 'Promoción activa',
+              message: `Tu promoción "${promotion.title}" está activa y recibiendo visualizaciones.`,
+              timestamp: promotion.created_at || new Date().toISOString(),
+              isRead: Math.random() > 0.7, // Algunas leídas, otras no
+              category: 'promotion',
+              actionUrl: '/colaborator/promociones',
+              metadata: { promotionId: promotion.promotionId.toString() }
+            });
+          }
+
+          // Simular notificaciones de canjes basadas en stock usado
+          const stockUsed = (promotion.totalStock || 0) - (promotion.availableStock || 0);
+          if (stockUsed > 0) {
+            const canjesCount = Math.floor(stockUsed / 3); // Simular múltiples canjes
+            for (let i = 0; i < Math.min(canjesCount, 2); i++) {
+              generatedNotifications.push({
+                id: `redemption_${promotion.promotionId}_${i}`,
+                type: 'info',
+                title: 'Promoción canjeada',
+                message: `Un cliente ha canjeado tu promoción "${promotion.title}".`,
+                timestamp: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(), // Últimos 7 días
+                isRead: Math.random() > 0.5,
+                category: 'redemption',
+                metadata: { promotionId: promotion.promotionId.toString(), userId: `user_${Math.floor(Math.random() * 1000)}` }
+              });
+            }
+          }
+
+          // Advertencias para promociones que vencen pronto
+          const endDate = new Date(promotion.endDate);
+          const now = new Date();
+          const daysUntilEnd = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (daysUntilEnd <= 3 && daysUntilEnd > 0) {
+            generatedNotifications.push({
+              id: `warning_${promotion.promotionId}`,
+              type: 'warning',
+              title: 'Promoción por vencer',
+              message: `Tu promoción "${promotion.title}" vence en ${daysUntilEnd} día${daysUntilEnd === 1 ? '' : 's'}.`,
+              timestamp: new Date().toISOString(),
+              isRead: false,
+              category: 'promotion'
+            });
+          }
+        });
+
+        // Notificación de bienvenida
+        generatedNotifications.push({
+          id: 'welcome',
+          type: 'info',
+          title: '¡Bienvenido a tu panel!',
+          message: `Hola ${collaboratorData.businessName}, aquí podrás gestionar todas tus promociones y ver el rendimiento de tu negocio.`,
+          timestamp: collaboratorData.registrationDate,
+          isRead: true,
+          category: 'system'
+        });
+
+        // Notificación de sistema sobre estadísticas
+        if (promotionsData.length > 0) {
+          generatedNotifications.push({
+            id: 'stats_update',
+            type: 'success',
+            title: 'Estadísticas actualizadas',
+            message: `Tienes ${promotionsData.length} promociones activas. ¡Revisa tus estadísticas detalladas!`,
+            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // Hace 2 horas
+            isRead: false,
+            category: 'system'
+          });
+        }
+
+        // Ordenar por fecha más reciente
+        generatedNotifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+        setNotifications(generatedNotifications);
+        console.log('✅ Notifications generated for:', collaboratorData.businessName);
+      }
+    } catch (err) {
+      console.error('❌ Error loading notifications:', err);
+      setError('Error al cargar las notificaciones');
+      // Usar notificaciones mock en caso de error
+      setNotifications(mockNotifications);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getIcon = (type: Notification['type']) => {
     switch (type) {
@@ -228,6 +356,19 @@ export default function NotificacionesPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="py-8">
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#008D96]"></div>
+            <div className="text-[#969696] mt-2">Cargando notificaciones...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="py-8">
@@ -243,8 +384,17 @@ export default function NotificacionesPage() {
                 </span>
               )}
             </h1>
-            <p className="text-gray-600">Mantente al día con las actividades de tu negocio</p>
+            <p className="text-gray-600">
+              {collaborator ? `${collaborator.businessName} - Mantente al día con las actividades` : "Mantente al día con las actividades de tu negocio"}
+            </p>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              {error}
+            </div>
+          )}
 
             <div className="flex items-center space-x-3">
               {selectedNotifications.length > 0 && (

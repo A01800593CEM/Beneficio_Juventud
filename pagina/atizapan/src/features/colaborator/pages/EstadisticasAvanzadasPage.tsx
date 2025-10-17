@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import KPICard from '@/features/admin/components/KPICard';
 import {
   ChartBarIcon,
@@ -10,6 +11,8 @@ import {
   TicketIcon,
   StarIcon
 } from '@heroicons/react/24/outline';
+import { promotionApiService } from '../promociones/services/api';
+import { ApiCollaborator, ApiPromotion } from '../promociones/types';
 
 interface CollaboratorStats {
   totalPromotions: number;
@@ -34,47 +37,76 @@ interface MonthlyData {
 }
 
 export default function EstadisticasAvanzadasPage() {
+  const { data: session } = useSession();
   const [stats, setStats] = useState<CollaboratorStats | null>(null);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [collaborator, setCollaborator] = useState<ApiCollaborator | null>(null);
+  const [promotions, setPromotions] = useState<ApiPromotion[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('month');
 
   useEffect(() => {
-    loadStats();
-  }, [selectedPeriod]);
+    loadCollaboratorAndStats();
+  }, [session, selectedPeriod]);
 
-  const loadStats = async () => {
+  const loadCollaboratorAndStats = async () => {
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
+    setError(null);
+
     try {
-      // Simular datos de estadísticas (reemplazar con API real)
-      const mockStats: CollaboratorStats = {
-        totalPromotions: 24,
-        activePromotions: 8,
-        totalRedemptions: 156,
-        monthlyRedemptions: 42,
-        totalRevenue: 15420.50,
-        monthlyRevenue: 3240.80,
-        averageRating: 4.7,
-        totalViews: 2340,
-        conversionRate: 6.7,
-        topPromotion: "Descuento 50% en Pizzas",
-        peakHours: ["12:00-14:00", "19:00-21:00"],
-        topCategories: ["COMIDA", "ENTRETENIMIENTO"]
-      };
+      const sessionData = session as any;
+      const cognitoUsername = sessionData.cognitoUsername || sessionData.sub || sessionData.user?.id || sessionData.user?.sub;
 
-      const mockMonthlyData: MonthlyData[] = [
-        { month: "Ene", promotions: 3, redemptions: 45, revenue: 2100 },
-        { month: "Feb", promotions: 4, redemptions: 38, revenue: 1890 },
-        { month: "Mar", promotions: 2, redemptions: 52, revenue: 2650 },
-        { month: "Abr", promotions: 5, redemptions: 61, revenue: 3240 },
-        { month: "May", promotions: 3, redemptions: 39, revenue: 2180 },
-        { month: "Jun", promotions: 4, redemptions: 48, revenue: 2840 }
-      ];
+      if (cognitoUsername) {
+        console.log('🔄 Loading collaborator stats...');
 
-      setStats(mockStats);
-      setMonthlyData(mockMonthlyData);
-    } catch (error) {
-      console.error('Error loading stats:', error);
+        // Cargar datos del colaborador
+        const collaboratorData = await promotionApiService.getCollaboratorByCognitoId(cognitoUsername);
+        setCollaborator(collaboratorData);
+
+        // Cargar promociones del colaborador
+        const promotionsData = await promotionApiService.getPromotions(cognitoUsername);
+        setPromotions(promotionsData);
+
+        // Calcular estadísticas basadas en datos reales
+        const calculatedStats: CollaboratorStats = {
+          totalPromotions: promotionsData.length,
+          activePromotions: promotionsData.filter(p => p.promotionState === 'activa').length,
+          totalRedemptions: promotionsData.reduce((sum, p) => sum + ((p.totalStock || 0) - (p.availableStock || 0)), 0),
+          monthlyRedemptions: Math.floor(promotionsData.reduce((sum, p) => sum + ((p.totalStock || 0) - (p.availableStock || 0)), 0) * 0.3), // Simulación
+          totalRevenue: promotionsData.reduce((sum, p) => sum + ((p.totalStock || 0) - (p.availableStock || 0)), 0) * 75, // Simulación de precio promedio
+          monthlyRevenue: promotionsData.reduce((sum, p) => sum + ((p.totalStock || 0) - (p.availableStock || 0)), 0) * 75 * 0.3, // Simulación
+          averageRating: 4.7, // Simulación - el servidor no tiene ratings aún
+          totalViews: promotionsData.reduce((sum, p) => sum + ((p.totalStock || 0) - (p.availableStock || 0)), 0) * 15, // Simulación
+          conversionRate: promotionsData.length > 0 ? ((promotionsData.reduce((sum, p) => sum + ((p.totalStock || 0) - (p.availableStock || 0)), 0) / promotionsData.reduce((sum, p) => sum + (p.totalStock || 0), 0)) * 100) : 0,
+          topPromotion: promotionsData.length > 0 ? promotionsData[0].title : "Sin promociones",
+          peakHours: ["12:00-14:00", "19:00-21:00"], // Simulación
+          topCategories: collaboratorData.categories?.map(c => c.name) || ["COMIDA"]
+        };
+
+        // Datos mensuales simulados basados en las promociones reales
+        const mockMonthlyData: MonthlyData[] = [
+          { month: "Ene", promotions: Math.floor(promotionsData.length * 0.15), redemptions: calculatedStats.monthlyRedemptions * 0.8, revenue: calculatedStats.monthlyRevenue * 0.8 },
+          { month: "Feb", promotions: Math.floor(promotionsData.length * 0.12), redemptions: calculatedStats.monthlyRedemptions * 0.9, revenue: calculatedStats.monthlyRevenue * 0.9 },
+          { month: "Mar", promotions: Math.floor(promotionsData.length * 0.18), redemptions: calculatedStats.monthlyRedemptions * 1.2, revenue: calculatedStats.monthlyRevenue * 1.2 },
+          { month: "Abr", promotions: Math.floor(promotionsData.length * 0.20), redemptions: calculatedStats.monthlyRedemptions * 1.4, revenue: calculatedStats.monthlyRevenue * 1.4 },
+          { month: "May", promotions: Math.floor(promotionsData.length * 0.15), redemptions: calculatedStats.monthlyRedemptions * 0.95, revenue: calculatedStats.monthlyRevenue * 0.95 },
+          { month: "Jun", promotions: Math.floor(promotionsData.length * 0.20), redemptions: calculatedStats.monthlyRedemptions, revenue: calculatedStats.monthlyRevenue }
+        ];
+
+        setStats(calculatedStats);
+        setMonthlyData(mockMonthlyData);
+        console.log('✅ Stats loaded for:', collaboratorData.businessName);
+      }
+    } catch (err) {
+      console.error('❌ Error loading stats:', err);
+      setError('Error al cargar las estadísticas');
     } finally {
       setLoading(false);
     }
@@ -131,7 +163,17 @@ export default function EstadisticasAvanzadasPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Estadísticas Avanzadas</h1>
+        <p className="text-gray-600">
+          {collaborator ? `${collaborator.businessName} - Análisis detallado de rendimiento` : "Análisis detallado de rendimiento"}
+        </p>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
       <div className="space-y-6 px-16">
         {/* Period Selector */}
         <div className="flex items-center justify-between">

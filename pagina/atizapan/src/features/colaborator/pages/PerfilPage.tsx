@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession } from 'next-auth/react';
 import Image from "next/image";
 import {
   PencilIcon,
@@ -13,6 +14,8 @@ import {
   ClockIcon
 } from "@heroicons/react/24/outline";
 import { BusinessProfile } from "../types/business";
+import { promotionApiService } from '../promociones/services/api';
+import { ApiCollaborator } from '../promociones/types';
 
 // Mock business data
 const mockBusiness: BusinessProfile = {
@@ -44,9 +47,82 @@ const mockBusiness: BusinessProfile = {
 };
 
 export default function PerfilPage() {
-  const [business, setBusiness] = useState<BusinessProfile>(mockBusiness);
+  const { data: session } = useSession();
+  const [business, setBusiness] = useState<BusinessProfile | null>(null);
+  const [collaborator, setCollaborator] = useState<ApiCollaborator | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState<BusinessProfile>(mockBusiness);
+  const [editData, setEditData] = useState<BusinessProfile | null>(null);
+
+  // Cargar datos del colaborador
+  useEffect(() => {
+    loadCollaboratorProfile();
+  }, [session]);
+
+  const loadCollaboratorProfile = async () => {
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const sessionData = session as any;
+      const cognitoUsername = sessionData.cognitoUsername || sessionData.sub || sessionData.user?.id || sessionData.user?.sub;
+
+      if (cognitoUsername) {
+        console.log('🔄 Loading collaborator profile...');
+
+        // Cargar datos del colaborador
+        const collaboratorData = await promotionApiService.getCollaboratorByCognitoId(cognitoUsername);
+        setCollaborator(collaboratorData);
+
+        // Mapear datos del colaborador al perfil de negocio
+        const businessProfile: BusinessProfile = {
+          id: collaboratorData.id.toString(),
+          name: collaboratorData.businessName,
+          owner: collaboratorData.representativeName,
+          email: collaboratorData.email,
+          phone: collaboratorData.phone,
+          address: collaboratorData.address,
+          website: "",
+          description: collaboratorData.description || "Descripción no disponible",
+          category: collaboratorData.categories?.[0]?.name || "GENERAL",
+          logo: collaboratorData.logoUrl || "",
+          isVerified: true, // Asumir que están verificados
+          socialMedia: {
+            facebook: "",
+            instagram: "",
+            whatsapp: collaboratorData.phone
+          },
+          schedule: {
+            lunes: { isOpen: true, openTime: "09:00", closeTime: "22:00" },
+            martes: { isOpen: true, openTime: "09:00", closeTime: "22:00" },
+            miércoles: { isOpen: true, openTime: "09:00", closeTime: "22:00" },
+            jueves: { isOpen: true, openTime: "09:00", closeTime: "22:00" },
+            viernes: { isOpen: true, openTime: "09:00", closeTime: "23:00" },
+            sábado: { isOpen: true, openTime: "10:00", closeTime: "23:00" },
+            domingo: { isOpen: true, openTime: "10:00", closeTime: "21:00" }
+          }
+        };
+
+        setBusiness(businessProfile);
+        setEditData(businessProfile);
+        console.log('✅ Profile loaded for:', collaboratorData.businessName);
+      }
+    } catch (err) {
+      console.error('❌ Error loading profile:', err);
+      setError('Error al cargar el perfil del colaborador');
+      // Usar datos mock en caso de error
+      setBusiness(mockBusiness);
+      setEditData(mockBusiness);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -124,6 +200,28 @@ export default function PerfilPage() {
     </button>
   );
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#008D96]"></div>
+          <div className="text-[#969696] mt-2">Cargando perfil...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!business) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="text-gray-500">No se pudo cargar el perfil del negocio</div>
+          {error && <div className="text-red-500 mt-2">{error}</div>}
+        </div>
+      </div>
+    );
+  }
+
   const currentData = isEditing ? editData : business;
 
   return (
@@ -132,8 +230,18 @@ export default function PerfilPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Perfil del Negocio</h1>
-          <p className="text-gray-600">Gestiona la información de tu negocio</p>
+          <p className="text-gray-600">
+            {business.name} - Gestiona la información de tu negocio
+          </p>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
+
         {actions}
       </div>
         {/* Header Card */}

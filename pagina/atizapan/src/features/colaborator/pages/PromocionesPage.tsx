@@ -408,7 +408,7 @@ export default function PromocionesPage() {
         return;
       }
 
-      // Estructura de datos según documentación
+      // Estructura de datos según lo que acepta el servidor
       const promotionData: CreatePromotionData = {
         collaboratorId: collaborator.cognitoId,
         title: formData.title,
@@ -423,8 +423,7 @@ export default function PromocionesPage() {
         limitPerUser: parseInt(formData.limitPerUser) || 1,
         dailyLimitPerUser: parseInt(formData.dailyLimit) || 1,
         promotionState: 'activa',
-        categories: formData.categories || ['COMIDA'],
-        promotionTheme: formData.promotionTheme || 'light',
+        theme: (formData.promotionTheme as 'light' | 'dark') || 'light',
         is_bookable: formData.isBookable || false
       };
 
@@ -679,7 +678,7 @@ function PromotionFormModal({
       ? (promotion.dailyLimitPerUser?.toString() || '1')
       : (promotion?.dailyLimit || '1'),
     categories: isExistingPromotion ? (promotion.categories || ['COMIDA']) : (promotion?.categories || ['COMIDA']),
-    promotionTheme: isExistingPromotion ? (promotion.promotionTheme || 'light') : (promotion?.promotionTheme || 'light'),
+    promotionTheme: isExistingPromotion ? (promotion.theme || 'light') : (promotion?.promotionTheme || 'light'),
     isBookable: isExistingPromotion ? (promotion.is_bookable || false) : (promotion?.isBookable || false),
   });
 

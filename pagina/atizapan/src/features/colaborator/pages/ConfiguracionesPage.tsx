@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import {
   BellIcon,
   EyeIcon,
@@ -11,6 +12,8 @@ import {
   ChevronRightIcon,
   CheckIcon
 } from '@heroicons/react/24/outline';
+import { promotionApiService } from '../promociones/services/api';
+import { ApiCollaborator } from '../promociones/types';
 
 interface NotificationSettings {
   emailPromotions: boolean;
@@ -48,7 +51,12 @@ interface BusinessSettings {
 }
 
 export default function ConfiguracionesPage() {
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState<'notifications' | 'privacy' | 'business' | 'billing'>('notifications');
+  const [collaborator, setCollaborator] = useState<ApiCollaborator | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [notifications, setNotifications] = useState<NotificationSettings>({
     emailPromotions: true,
     emailRedemptions: true,
@@ -67,8 +75,8 @@ export default function ConfiguracionesPage() {
   });
 
   const [business, setBusiness] = useState<BusinessSettings>({
-    businessName: "Restaurante Luna",
-    businessDescription: "Restaurante familiar con comida mexicana tradicional",
+    businessName: "",
+    businessDescription: "",
     businessCategory: "COMIDA",
     businessHours: {
       monday: { open: "09:00", close: "22:00", closed: false },
@@ -79,29 +87,112 @@ export default function ConfiguracionesPage() {
       saturday: { open: "10:00", close: "23:00", closed: false },
       sunday: { open: "10:00", close: "21:00", closed: false }
     },
-    businessAddress: "Av. Constitución 123, Atizapán",
-    businessPhone: "+52 55 1234 5678",
-    businessEmail: "contacto@restauranteluna.com",
-    businessWebsite: "www.restauranteluna.com",
+    businessAddress: "",
+    businessPhone: "",
+    businessEmail: "",
+    businessWebsite: "",
     socialMedia: {
-      facebook: "@restauranteluna",
-      instagram: "@luna_restaurant",
-      twitter: "@restauranteluna"
+      facebook: "",
+      instagram: "",
+      twitter: ""
     }
   });
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Cargar datos del colaborador
+  useEffect(() => {
+    const loadCollaboratorData = async () => {
+      if (!session) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const sessionData = session as any;
+        const cognitoUsername = sessionData.cognitoUsername || sessionData.sub || sessionData.user?.id || sessionData.user?.sub;
+
+        if (cognitoUsername) {
+          console.log('🔄 Loading collaborator data...');
+          const collaboratorData = await promotionApiService.getCollaboratorByCognitoId(cognitoUsername);
+          setCollaborator(collaboratorData);
+
+          // Mapear datos del servidor al estado local
+          setBusiness({
+            businessName: collaboratorData.businessName || "",
+            businessDescription: collaboratorData.description || "",
+            businessCategory: collaboratorData.categories?.[0]?.name || "COMIDA",
+            businessHours: {
+              monday: { open: "09:00", close: "22:00", closed: false },
+              tuesday: { open: "09:00", close: "22:00", closed: false },
+              wednesday: { open: "09:00", close: "22:00", closed: false },
+              thursday: { open: "09:00", close: "22:00", closed: false },
+              friday: { open: "09:00", close: "23:00", closed: false },
+              saturday: { open: "10:00", close: "23:00", closed: false },
+              sunday: { open: "10:00", close: "21:00", closed: false }
+            },
+            businessAddress: collaboratorData.address || "",
+            businessPhone: collaboratorData.phone || "",
+            businessEmail: collaboratorData.email || "",
+            businessWebsite: "",
+            socialMedia: {
+              facebook: "",
+              instagram: "",
+              twitter: ""
+            }
+          });
+
+          console.log('✅ Collaborator data loaded:', collaboratorData.businessName);
+        }
+      } catch (err) {
+        console.error('❌ Error loading collaborator data:', err);
+        setError('Error al cargar los datos del colaborador');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (session !== undefined) {
+      loadCollaboratorData();
+    }
+  }, [session]);
+
   const handleSave = async () => {
+    if (!collaborator) {
+      setError('No hay datos de colaborador para guardar');
+      return;
+    }
+
     setSaving(true);
+    setError(null);
+
     try {
-      // Simular guardado (aquí iría la llamada a la API)
+      console.log('💾 Saving collaborator settings...');
+
+      // Crear objeto con los datos actualizados
+      const updateData = {
+        businessName: business.businessName,
+        description: business.businessDescription,
+        phone: business.businessPhone,
+        email: business.businessEmail,
+        address: business.businessAddress,
+        // Nota: El servidor podría no tener endpoint de actualización todavía
+        // Por ahora simularemos el guardado
+      };
+
+      console.log('📦 Data to save:', updateData);
+
+      // Simular guardado por ahora - aquí iría la llamada real al servidor
+      // await promotionApiService.updateCollaborator(collaborator.id, updateData);
       await new Promise(resolve => setTimeout(resolve, 1000));
+
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+      console.log('✅ Settings saved successfully');
     } catch (error) {
-      console.error('Error saving settings:', error);
+      console.error('❌ Error saving settings:', error);
+      setError('Error al guardar la configuración');
     } finally {
       setSaving(false);
     }
@@ -124,14 +215,36 @@ export default function ConfiguracionesPage() {
     sunday: 'Domingo'
   };
 
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="py-8">
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#008D96]"></div>
+            <div className="text-[#969696] mt-2">Cargando configuraciones...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="py-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Configuraciones</h1>
-          <p className="text-gray-600">Gestiona tu cuenta y preferencias del negocio</p>
+          <p className="text-gray-600">
+            {collaborator ? `${collaborator.businessName} - Gestiona tu cuenta y preferencias` : "Gestiona tu cuenta y preferencias del negocio"}
+          </p>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Sidebar */}

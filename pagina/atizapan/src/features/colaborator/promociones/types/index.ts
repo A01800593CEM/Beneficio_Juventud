@@ -2,16 +2,15 @@
 // TYPES & INTERFACES - Promociones
 // ============================================================================
 
-// Estructura exacta según la documentación de la API
+// Estructura exacta según la respuesta real del servidor
 export interface ApiPromotion {
   promotionId: number;
-  collaboratorId: number;
+  collaboratorId: string; // Es un cognitoId string, no un número
   title: string;
   description: string;
   imageUrl?: string;
   initialDate: string; // ISO date
   endDate: string; // ISO date
-  categoryId?: number;
   promotionType: 'descuento' | 'multicompra' | 'regalo' | 'otro';
   promotionString?: string;
   totalStock?: number;
@@ -19,12 +18,18 @@ export interface ApiPromotion {
   limitPerUser?: number;
   dailyLimitPerUser?: number;
   promotionState: 'activa' | 'inactiva' | 'finalizada';
-  categoryIds?: number[];
   created_at?: string;
   updated_at?: string;
+  theme?: 'light' | 'dark'; // Campo adicional del servidor
+  is_bookable?: boolean; // Campo adicional del servidor
+  categories?: Array<{ // Categorías incluidas en la respuesta
+    id: number;
+    name: string;
+  }>;
+  businessName?: string; // Nombre del negocio incluido en la respuesta
 }
 
-// Estructura para crear promoción según documentación
+// Estructura para crear promoción según lo que acepta el servidor
 export interface CreatePromotionData {
   collaboratorId: string; // cognitoId del colaborador
   title: string;
@@ -39,9 +44,9 @@ export interface CreatePromotionData {
   limitPerUser?: number;
   dailyLimitPerUser?: number;
   promotionState: 'activa' | 'inactiva' | 'finalizada';
-  categories: string[];
-  promotionTheme: 'light' | 'dark';
-  is_bookable: boolean;
+  theme: 'light' | 'dark'; // Campo que acepta el servidor
+  is_bookable: boolean; // Campo que acepta el servidor
+  categories?: Array<{ id: number; name: string }>; // Opcional para creación
 }
 
 // Estructura para respuesta del webhook IA
