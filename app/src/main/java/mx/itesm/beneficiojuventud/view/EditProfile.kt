@@ -66,7 +66,7 @@ fun EditProfile(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel,
-    userViewModel: UserViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    userViewModel: UserViewModel
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Profile) }
     val snackbarHostState = remember { SnackbarHostState() }

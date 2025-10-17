@@ -1,8 +1,10 @@
+// mx/itesm/beneficiojuventud/view/PromoQR.kt
 package mx.itesm.beneficiojuventud.view
 
 import android.graphics.Bitmap
-import android.util.Log // LOG: import
+import android.util.Log
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -37,16 +39,18 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import coil.request.ImageRequest
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.*
-import mx.itesm.beneficiojuventud.model.PromoTheme
+import mx.itesm.beneficiojuventud.model.promos.PromoTheme        // <- IMPORT CORRECTO
 import mx.itesm.beneficiojuventud.model.promos.PromotionState
 import mx.itesm.beneficiojuventud.model.promos.PromotionType
 import mx.itesm.beneficiojuventud.model.promos.Promotions
@@ -59,10 +63,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.IconToggleButton
 
-// LOG: etiqueta global para Logcat
+// ---------- Log
 private const val TAG = "PromoQR"
 
-// ---------- Mappers de texto ----------
+// ---------- Mappers de enums a display ----------
 private val PromotionType.displayName: String
     get() = when (this) {
         PromotionType.descuento   -> "Descuento"
@@ -78,7 +82,7 @@ private val PromotionState.displayName: String
         PromotionState.finalizada -> "Finalizada"
     }
 
-// ---------- Modelo solo para QR visual ----------
+// ---------- Modelo UI para la pantalla ----------
 data class PromoDetailUi(
     val bannerUrlOrRes: Any, // String URL o @DrawableRes Int
     val title: String,
@@ -88,9 +92,56 @@ data class PromoDetailUi(
     val description: String,
     val terms: String,
     val stockLabel: String,
-    val theme: PromoTheme = PromoTheme.LIGHT
+    val theme: PromoTheme = PromoTheme.light,
+    val accentColor: Color = Color(0xFF008D96) // puedes cambiar si agregas accent en backend
 )
 
+// ---------- Paletas/gradiente (idéntico a PromoComponents) ----------
+private data class PromoTextColors(
+    val titleColor: Color,
+    val subtitleColor: Color,
+    val bodyColor: Color
+)
+
+private val LightTextTheme = PromoTextColors(
+    titleColor = Color(0xFFFFFFFF),
+    subtitleColor = Color(0xFFD3D3D3),
+    bodyColor = Color(0xFFC3C3C3)
+)
+
+private val DarkTextTheme = PromoTextColors(
+    titleColor = Color(0xFF505050),
+    subtitleColor = Color(0xFF616161),
+    bodyColor = Color(0xFF636363)
+)
+
+private fun textColorsFor(theme: PromoTheme) =
+    when (theme) {
+        PromoTheme.light -> LightTextTheme
+        PromoTheme.dark  -> DarkTextTheme
+    }
+
+private fun bannerGradient(theme: PromoTheme) =
+    when (theme) {
+        PromoTheme.light -> Brush.horizontalGradient(
+            0.00f to Color(0xFF2B2B2B).copy(alpha = 1f),
+            0.15f to Color(0xFF2B2B2B).copy(alpha = .95f),
+            0.30f to Color(0xFF2B2B2B).copy(alpha = .70f),
+            0.45f to Color(0xFF2B2B2B).copy(alpha = .40f),
+            0.60f to Color(0xFF2B2B2B).copy(alpha = .25f),
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+        PromoTheme.dark -> Brush.horizontalGradient(
+            0.00f to Color.White.copy(alpha = 1f),
+            0.15f to Color.White.copy(alpha = .95f),
+            0.30f to Color.White.copy(alpha = .70f),
+            0.45f to Color.White.copy(alpha = .40f),
+            0.60f to Color.White.copy(alpha = .25f),
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+    }
 
 // ---------- Helpers ----------
 private fun formatDate(date: Date?): String {
@@ -98,6 +149,13 @@ private fun formatDate(date: Date?): String {
     val fmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     return fmt.format(date)
 }
+
+private fun parseDate(iso: String?): Date? = runCatching {
+    if (iso.isNullOrBlank()) return null
+    val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+    sdf.timeZone = TimeZone.getTimeZone("UTC")
+    sdf.parse(iso)
+}.getOrNull()
 
 private fun buildDiscountLabel(p: Promotions): String {
     p.promotionString?.takeIf { it.isNotBlank() }?.let { return it }
@@ -108,7 +166,7 @@ private fun toUi(p: Promotions): PromoDetailUi {
     val banner = p.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.bolos
     val title  = p.title ?: "Promoción"
     val merch  = p.businessName ?: "Sin Nombre Negocio"
-    val valid = formatDate(parseDate(p.endDate))
+    val valid  = formatDate(parseDate(p.endDate))
     val desc   = p.description ?: "Sin descripción."
     val terms  = buildString {
         append("Tipo: ${p.promotionType?.displayName ?: "—"}")
@@ -117,6 +175,8 @@ private fun toUi(p: Promotions): PromoDetailUi {
     val stock  = if (p.totalStock != null && p.availableStock != null) {
         "Stock: ${p.availableStock} / ${p.totalStock}"
     } else "Stock: —"
+
+    val themeMode = p.theme ?: PromoTheme.light // <- MISMO PATRÓN QUE EN COMPONENTES/COUPONS
 
     return PromoDetailUi(
         bannerUrlOrRes = banner,
@@ -127,11 +187,12 @@ private fun toUi(p: Promotions): PromoDetailUi {
         description = desc,
         terms = terms,
         stockLabel = stock,
-        theme = PromoTheme.LIGHT
+        theme = themeMode,
+        accentColor = if (themeMode == PromoTheme.dark) Color(0xFF00A3A3) else Color(0xFF008D96)
     )
 }
 
-// ----- QR payload & encoding (ZXing) -----
+// ---------- QR (ZXing) ----------
 private fun buildQrPayload(
     promotionId: Int,
     userId: String,
@@ -142,17 +203,6 @@ private fun buildQrPayload(
     val nonce = UUID.randomUUID().toString().substring(0, 8)
     val lpu = limitPerUser ?: -1
     return "bj|v=$version|pid=$promotionId|uid=$userId|lpu=$lpu|ts=$ts|n=$nonce"
-}
-
-private fun parseDate(isoDate: String?): Date? {
-    if (isoDate.isNullOrBlank()) return null
-    return try {
-        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-        sdf.timeZone = TimeZone.getTimeZone("UTC")
-        sdf.parse(isoDate)
-    } catch (e: Exception) {
-        null
-    }
 }
 
 private fun bitMatrixToBitmap(matrix: BitMatrix): Bitmap {
@@ -167,25 +217,23 @@ private fun bitMatrixToBitmap(matrix: BitMatrix): Bitmap {
     return bmp
 }
 
-private fun generateQrImageBitmap(data: String, sizePx: Int = 900): ImageBitmap? {
-    return try {
-        val hints = mapOf(
-            EncodeHintType.MARGIN to 1,
-            EncodeHintType.CHARACTER_SET to "UTF-8",
-            EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M
-        )
-        val matrix = MultiFormatWriter().encode(
-            data,
-            BarcodeFormat.QR_CODE,
-            sizePx,
-            sizePx,
-            hints
-        )
-        bitMatrixToBitmap(matrix).asImageBitmap()
-    } catch (e: Exception) {
-        Log.e(TAG, "Error generando imagen de QR", e) // LOG
-        null
-    }
+private fun generateQrImageBitmap(data: String, sizePx: Int = 900): ImageBitmap? = runCatching {
+    val hints = mapOf(
+        EncodeHintType.MARGIN to 1,
+        EncodeHintType.CHARACTER_SET to "UTF-8",
+        EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M
+    )
+    val matrix = MultiFormatWriter().encode(
+        data,
+        BarcodeFormat.QR_CODE,
+        sizePx,
+        sizePx,
+        hints
+    )
+    bitMatrixToBitmap(matrix).asImageBitmap()
+}.getOrElse {
+    Log.e(TAG, "Error generando imagen de QR", it)
+    null
 }
 
 // ---------- Pantalla ----------
@@ -196,162 +244,72 @@ fun PromoQR(
     cognitoId: String,
     modifier: Modifier = Modifier,
     viewModel: PromoViewModel = viewModel(),
-    userViewModel: UserViewModel = viewModel() // <- USANDO BACKEND
+    userViewModel: UserViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
     var showQrDialog by rememberSaveable { mutableStateOf(false) }
     var isRedeemed by rememberSaveable { mutableStateOf(false) }
 
     val promo by viewModel.promoState.collectAsState()
+    val favPromos by userViewModel.favoritePromotions.collectAsState()
+    val userError by userViewModel.error.collectAsState()
 
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    // Snackbar para feedback
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Cargar promo
     LaunchedEffect(promotionId) {
         isLoading = true
         error = null
-        Log.d(TAG, "API:getPromotionById START promotionId=$promotionId") // LOG
         try {
             viewModel.getPromotionById(promotionId)
-            Log.d(TAG, "API:getPromotionById DONE promotionId=$promotionId") // LOG
         } catch (e: Exception) {
-            Log.e(TAG, "API:getPromotionById ERROR promotionId=$promotionId", e) // LOG
             error = e.message ?: "Error al cargar la promoción."
         } finally {
             isLoading = false
         }
     }
 
-    // Cargar favoritos del usuario desde backend
-    val favPromos by userViewModel.favoritePromotions.collectAsState()
-    val userError by userViewModel.error.collectAsState()
-
+    // Cargar favoritos del usuario
     LaunchedEffect(cognitoId) {
-        Log.d(TAG, "API:getFavoritePromotions START user=$cognitoId") // LOG
-        try {
-            userViewModel.getFavoritePromotions(cognitoId)
-            Log.d(TAG, "API:getFavoritePromotions DONE user=$cognitoId") // LOG
-        } catch (e: Exception) {
-            Log.e(TAG, "API:getFavoritePromotions ERROR user=$cognitoId", e) // LOG
-        }
+        try { userViewModel.getFavoritePromotions(cognitoId) } catch (_: Exception) {}
     }
-
-    // Mostrar errores del backend en snackbar
     LaunchedEffect(userError) {
-        userError?.let { msg ->
-            Log.w(TAG, "API:UserViewModel ERROR message=$msg") // LOG
-            snackbarHostState.showSnackbar(message = msg)
-        }
+        userError?.let { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
     }
 
-    // Logs cuando cambia promo (respuesta de getPromotionById)
-    LaunchedEffect(promo) {
-        Log.d(TAG, "DEBUG businessName=${promo.businessName}, collaboratorId=${promo.collaboratorId}")
-        if ((promo.title != null) || (promo.description != null) || (promo.imageUrl != null)) {
-            Log.d(
-                TAG,
-                "STATE:promo UPDATED id=$promotionId title=${promo.title} type=${promo.promotionType} state=${promo.promotionState}"
-            )
-        }
-    }
-
-    // Logs cuando cambian favoritos (respuesta de getFavoritePromotions / refreshFavorites)
-    LaunchedEffect(favPromos) {
-        Log.d(TAG, "STATE:favorites UPDATED user=$cognitoId count=${favPromos.size}") // LOG
-    }
-
+    // Model UI
     val detail: PromoDetailUi? = remember(promo) {
         val hasData = (promo.title != null) || (promo.description != null) || (promo.imageUrl != null)
         if (hasData) toUi(promo) else null
     }
 
+    // QR
     val qrPayload = remember(promotionId, cognitoId, promo.limitPerUser) {
-        val payload = buildQrPayload(
-            promotionId = promotionId,
-            userId = cognitoId,
-            limitPerUser = promo.limitPerUser
-        )
-        // LOG: evita exponer completo el UID en logs
-        Log.d(
-            TAG,
-            "QR:payload BUILT pid=$promotionId uidPrefix=${cognitoId.take(6)} lpu=${promo.limitPerUser} length=${payload.length}"
-        )
-        payload
+        buildQrPayload(promotionId, cognitoId, promo.limitPerUser)
     }
     var qrImage by remember(promotionId, cognitoId, promo.limitPerUser) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(qrPayload) {
-        Log.d(TAG, "QR:image GENERATE START") // LOG
-        qrImage = generateQrImageBitmap(qrPayload, sizePx = 900)
-        Log.d(TAG, "QR:image GENERATE DONE success=${qrImage != null}") // LOG
-    }
+    LaunchedEffect(qrPayload) { qrImage = generateQrImageBitmap(qrPayload, sizePx = 900) }
 
-    // ======= Favorito (derivado del backend) + UI optimista =======
-    val isFavoriteRemote = remember(favPromos, promotionId) {
-        favPromos.any { it.promotionId == promotionId }
-    }
+    // Favoritos (optimista)
+    val isFavoriteRemote = remember(favPromos, promotionId) { favPromos.any { it.promotionId == promotionId } }
     var isFavoriteLocal by remember(promotionId, isFavoriteRemote) { mutableStateOf(isFavoriteRemote) }
-
     fun toggleFavorite() {
         val newValue = !isFavoriteLocal
-        Log.d(
-            TAG,
-            "UI:toggleFavorite CLICK promotionId=$promotionId user=$cognitoId from=$isFavoriteLocal to=$newValue"
-        )
-        // Optimista
         isFavoriteLocal = newValue
-
-        // Llamadas reales
         try {
-            if (newValue) {
-                Log.d(TAG, "API:favoritePromotion START pid=$promotionId user=$cognitoId")
-                userViewModel.favoritePromotion(promotionId, cognitoId)
-                Log.d(TAG, "API:favoritePromotion DONE pid=$promotionId user=$cognitoId")
-            } else {
-                Log.d(TAG, "API:unfavoritePromotion START pid=$promotionId user=$cognitoId")
-                userViewModel.unfavoritePromotion(promotionId, cognitoId)
-                Log.d(TAG, "API:unfavoritePromotion DONE pid=$promotionId user=$cognitoId")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "API:favorite/unfavorite ERROR pid=$promotionId user=$cognitoId", e)
-        }
-
-        // Refrescar lista
-        try {
-            Log.d(TAG, "API:refreshFavorites START user=$cognitoId")
+            if (newValue) userViewModel.favoritePromotion(promotionId, cognitoId)
+            else userViewModel.unfavoritePromotion(promotionId, cognitoId)
             userViewModel.refreshFavorites(cognitoId)
-            Log.d(TAG, "API:refreshFavorites DONE user=$cognitoId")
-        } catch (e: Exception) {
-            Log.e(TAG, "API:refreshFavorites ERROR user=$cognitoId", e)
-        }
+        } catch (_: Exception) {}
     }
 
-    val theme = detail?.theme ?: PromoTheme.LIGHT
-    val titleColor    = if (theme == PromoTheme.LIGHT) Color(0xFFFFFFFF) else Color(0xFF505050)
-    val subtitleColor = if (theme == PromoTheme.LIGHT) Color(0xFFD3D3D3) else Color(0xFF616161)
-    val gradientBrush = when (theme) {
-        PromoTheme.LIGHT -> Brush.horizontalGradient(
-            0.00f to Color(0xFF2B2B2B).copy(alpha = 1f),
-            0.15f to Color(0xFF2B2B2B).copy(alpha = .95f),
-            0.30f to Color(0xFF2B2B2B).copy(alpha = .70f),
-            0.45f to Color(0xFF2B2B2B).copy(alpha = .40f),
-            0.60f to Color(0xFF2B2B2B).copy(alpha = .25f),
-            0.75f to Color.Transparent,
-            1.00f to Color.Transparent
-        )
-        PromoTheme.DARK -> Brush.horizontalGradient(
-            0.00f to Color.White.copy(alpha = 1f),
-            0.15f to Color.White.copy(alpha = .95f),
-            0.30f to Color.White.copy(alpha = .70f),
-            0.45f to Color.White.copy(alpha = .40f),
-            0.60f to Color.White.copy(alpha = .25f),
-            0.75f to Color.Transparent,
-            1.00f to Color.Transparent
-        )
-    }
+    // Theme
+    val currentTheme = detail?.theme ?: PromoTheme.light
+    val texts = textColorsFor(currentTheme)
+    val gradientBrush = bannerGradient(currentTheme)
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -373,29 +331,22 @@ fun PromoQR(
             )
         }
     ) { innerPadding ->
-
         when {
             isLoading -> {
                 Box(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
+                    Modifier.fillMaxSize().padding(innerPadding),
                     contentAlignment = Alignment.Center
                 ) { CircularProgressIndicator() }
             }
             error != null -> {
                 Box(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
+                    Modifier.fillMaxSize().padding(innerPadding),
                     contentAlignment = Alignment.Center
                 ) { Text(text = error!!, color = Color.Red) }
             }
             detail != null -> {
                 LazyColumn(
-                    modifier = modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
+                    modifier = modifier.fillMaxSize().padding(innerPadding),
                     contentPadding = PaddingValues(bottom = 96.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -408,33 +359,35 @@ fun PromoQR(
                             shape = RoundedCornerShape(20.dp)
                         ) {
                             Box(Modifier.fillMaxSize()) {
-                                // Banner desde URL o drawable
-                                if (detail.bannerUrlOrRes is String) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(LocalContext.current)
-                                            .data(detail.bannerUrlOrRes)
-                                            .crossfade(true)
-                                            .placeholder(R.drawable.bolos)
-                                            .error(R.drawable.bolos)
-                                            .build(),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .graphicsLayer(alpha = 0.92f)
-                                    )
-                                } else {
-                                    Image(
-                                        painter = painterResource(id = detail.bannerUrlOrRes as Int),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .graphicsLayer(alpha = 0.92f)
-                                    )
-                                }
+                                // Banner + loader con color según theme (como en PromoComponents)
+                                val dataToLoad = if (detail.bannerUrlOrRes is String)
+                                    detail.bannerUrlOrRes else (detail.bannerUrlOrRes as Int)
 
-                                // Overlay de gradiente
+                                SubcomposeAsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(dataToLoad)
+                                        .crossfade(true)
+                                        .error(R.drawable.bolos)
+                                        .build(),
+                                    contentDescription = detail.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer(alpha = 0.92f),
+                                    loading = {
+                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            CircularProgressIndicator(
+                                                strokeWidth = 2.dp,
+                                                color = if (currentTheme == PromoTheme.light)
+                                                    Color.White.copy(alpha = 0.85f) else Color(0xFF505050)
+                                            )
+                                        }
+                                    },
+                                    success = { SubcomposeAsyncImageContent() },
+                                    error = { SubcomposeAsyncImageContent() }
+                                )
+
+                                // Overlay de gradiente según theme (idéntico a componentes)
                                 Box(
                                     modifier = Modifier
                                         .matchParentSize()
@@ -446,13 +399,13 @@ fun PromoQR(
                                         }
                                 )
 
-                                // Etiqueta de descuento (arriba-derecha)
+                                // Chip de descuento (puedes cambiar a accent desde backend si agregas campo)
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
                                         .padding(12.dp)
                                         .clip(RoundedCornerShape(16.dp))
-                                        .background(Color(0xFF008D96))
+                                        .background(detail.accentColor)
                                         .padding(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
                                     Text(
@@ -463,33 +416,29 @@ fun PromoQR(
                                     )
                                 }
 
-                                // Corazón flotante (abajo-derecha) con backend
-                                Box(
+                                // Favorito con surface blanca para contraste (como en PromoImageBannerFav)
+                                Surface(
+                                    shape = RoundedCornerShape(24.dp),
+                                    color = Color.White.copy(alpha = 0.92f),
+                                    border = BorderStroke(1.dp, Color(0xFFE5E5E5)),
                                     modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .padding(end = 18.dp, bottom = 18.dp)
+                                        .align(Alignment.TopEnd)
+                                        .padding(8.dp)
                                 ) {
-                                    Surface(
-                                        shape = RoundedCornerShape(24.dp),
-                                        color = Color.Black.copy(alpha = 0.25f)
+                                    IconToggleButton(
+                                        checked = isFavoriteLocal,
+                                        onCheckedChange = { toggleFavorite() }
                                     ) {
-                                        IconToggleButton(
-                                            checked = isFavoriteLocal,
-                                            onCheckedChange = { toggleFavorite() }
-                                        ) {
-                                            Icon(
-                                                imageVector = if (isFavoriteLocal) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                                contentDescription = if (isFavoriteLocal) "Quitar de favoritos" else "Agregar a favoritos",
-                                                tint = if (isFavoriteLocal) Color(0xFFFF3B3B) else Color.White,
-                                                modifier = Modifier
-                                                    .size(34.dp)
-                                                    .padding(horizontal = 5.dp, vertical = 3.dp)
-                                            )
-                                        }
+                                        Icon(
+                                            imageVector = if (isFavoriteLocal) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                            contentDescription = if (isFavoriteLocal) "Quitar de favoritos" else "Agregar a favoritos",
+                                            tint = if (isFavoriteLocal) Color(0xFFE53935) else Color(0xFF505050),
+                                            modifier = Modifier.size(24.dp)
+                                        )
                                     }
                                 }
 
-                                // Textos (abajo-izquierda)
+                                // Textos
                                 Column(
                                     modifier = Modifier
                                         .align(Alignment.BottomStart)
@@ -497,26 +446,28 @@ fun PromoQR(
                                 ) {
                                     Text(
                                         text = detail.merchant,
-                                        color = subtitleColor.copy(alpha = 0.95f),
+                                        color = texts.subtitleColor.copy(alpha = 0.95f),
                                         fontSize = 16.sp,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                     Spacer(Modifier.height(6.dp))
                                     Text(
                                         text = detail.title,
-                                        color = titleColor,
+                                        color = texts.titleColor,
                                         fontWeight = FontWeight.ExtraBold,
                                         fontSize = 28.sp,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.fillMaxWidth(0.70f) // 70% ancho
+                                        modifier = Modifier.fillMaxWidth(0.70f)
                                     )
                                 }
                             }
                         }
                     }
 
-                    item { InfoCardApi(detail) }
+                    item { InfoCardApi(detail, texts) }
 
                     item {
                         Spacer(Modifier.height(16.dp))
@@ -588,17 +539,11 @@ fun PromoQR(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Crossfade(
-                            targetState = isRedeemed,
-                            label = "redeem_overlay_xfade"
-                        ) { redeemed ->
+                        Crossfade(targetState = isRedeemed, label = "redeem_overlay_xfade") { redeemed ->
                             if (redeemed) {
                                 RedeemedCardInner()
                             } else {
-                                QRCardInner(
-                                    detail = detail ?: return@Crossfade,
-                                    qrBitmap = qrImage
-                                )
+                                QRCardInner(detail = detail ?: return@Crossfade, qrBitmap = qrImage)
                             }
                         }
                     }
@@ -617,9 +562,7 @@ fun PromoQR(
 
                         MainButton(
                             text = "Cerrar",
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(52.dp),
+                            modifier = Modifier.weight(1f).height(52.dp),
                             onClick = { showQrDialog = false }
                         )
                     }
@@ -629,13 +572,11 @@ fun PromoQR(
     }
 }
 
-// ---------- Secciones reutilizadas ----------
+// ---------- Subsecciones ----------
 @Composable
-private fun InfoCardApi(detail: PromoDetailUi) {
+private fun InfoCardApi(detail: PromoDetailUi, texts: PromoTextColors) {
     Card(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .fillMaxWidth(),
+        modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F7F7))
     ) {
@@ -648,14 +589,12 @@ private fun InfoCardApi(detail: PromoDetailUi) {
             )
             Text(
                 text = detail.description,
-                color = Color.Gray,
+                color = texts.bodyColor,
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
                 modifier = Modifier.padding(top = 4.dp)
             )
-
             Spacer(Modifier.height(16.dp))
-
             Text(
                 text = "Términos y condiciones",
                 fontWeight = FontWeight.Bold,
@@ -664,13 +603,13 @@ private fun InfoCardApi(detail: PromoDetailUi) {
             )
             Text(
                 text = "Vigencia: ${detail.validUntil}",
-                color = Color(0xFF6B7280),
+                color = texts.subtitleColor,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 4.dp)
             )
             Text(
                 text = detail.terms,
-                color = Color.Gray,
+                color = texts.bodyColor,
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
                 modifier = Modifier.padding(top = 4.dp)
@@ -691,17 +630,11 @@ private fun QRCardInner(
             elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
         ) {
             Box(
-                modifier = Modifier
-                    .size(220.dp)
-                    .padding(16.dp),
+                modifier = Modifier.size(220.dp).padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (qrBitmap != null) {
-                    Image(
-                        bitmap = qrBitmap,
-                        contentDescription = "QR",
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    Image(bitmap = qrBitmap, contentDescription = "QR", modifier = Modifier.fillMaxSize())
                 } else {
                     CircularProgressIndicator()
                 }
@@ -714,9 +647,7 @@ private fun QRCardInner(
             fontSize = 12.sp,
             lineHeight = 16.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier
-                .widthIn(max = 340.dp)
-                .padding(horizontal = 8.dp),
+            modifier = Modifier.widthIn(max = 340.dp).padding(horizontal = 8.dp),
             maxLines = 3,
             overflow = TextOverflow.Ellipsis
         )
@@ -733,10 +664,7 @@ private fun RedeemedCardInner() {
                 val strokeWidth = 2.dp.toPx()
                 drawRoundRect(
                     color = Color(0xFFDFE3E6),
-                    style = Stroke(
-                        width = strokeWidth,
-                        pathEffect = dash
-                    ),
+                    style = Stroke(width = strokeWidth, pathEffect = dash),
                     cornerRadius = CornerRadius(16.dp.toPx())
                 )
             }
@@ -750,31 +678,18 @@ private fun RedeemedCardInner() {
             modifier = Modifier.size(56.dp)
         )
         Spacer(Modifier.height(8.dp))
-        Text(
-            text = "¡Cupón Canjeado!",
-            color = Color(0xFF22C55E),
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 16.sp
-        )
+        Text("¡Cupón Canjeado!", color = Color(0xFF22C55E), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
         Spacer(Modifier.height(4.dp))
-        Text(
-            text = "Gracias por usar nuestros servicios",
-            color = Color.Gray,
-            fontSize = 12.sp
-        )
+        Text("Gracias por usar nuestros servicios", color = Color.Gray, fontSize = 12.sp)
     }
 }
 
-// Preview local (usa una promo dummy)
+// ---------- Preview ----------
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun PromoQRPreview() {
     BeneficioJuventudTheme {
         val nav = rememberNavController()
-        PromoQR(
-            nav = nav,
-            promotionId = 123,
-            cognitoId = "a1fbe500-a091-70e3-5a7b-3b1f4537f10f"
-        )
+        PromoQR(nav = nav, promotionId = 123, cognitoId = "a1fbe500-a091-70e3-5a7b-3b1f4537f10f")
     }
 }
