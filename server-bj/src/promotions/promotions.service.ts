@@ -6,183 +6,150 @@ import { Repository, In } from 'typeorm';
 import { Promotion } from './entities/promotion.entity';
 import { Category } from 'src/categories/entities/category.entity';
 import { PromotionState } from './enums/promotion-state.enums';
-import { sendNotification } from 'src/enviar';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { PromotionTheme } from './enums/promotion-theme.enum';
 
-/**
- * Servicio responsable de la lógica de negocio para promociones.
- *
- * @remarks
- * Este servicio encapsula la creación, lectura, actualización y eliminación
- * de promociones, además de consultas filtradas por categoría.
- */
 @Injectable()
 export class PromotionsService {
-  /**
-   * Crea una instancia del servicio, inyectando los repositorios necesarios.
-   * @param promotionsRepository Repositorio TypeORM para {@link Promotion}.
-   * @param categoriesRepository Repositorio TypeORM para {@link Category}.
-   */
   constructor(
     @InjectRepository(Promotion)
     private promotionsRepository: Repository<Promotion>,
-
     @InjectRepository(Category)
     private categoriesRepository: Repository<Category>,
-    private readonly notificationsService: NotificationsService
+    private readonly notificationsService: NotificationsService,
   ) {}
 
-  /**
-   * Crea una nueva promoción y asocia categorías opcionales.
-   *
-   * @param createPromotionDto DTO con los datos de la promoción.
-   * @returns La promoción creada.
-   *
-   * @example
-   * await promotionsService.create({ title: '2x1', categoryIds: [1, 2], ... });
-   */
   async create(createPromotionDto: CreatePromotionDto): Promise<Promotion> {
-      const { categoryIds, ...data } = createPromotionDto;
-      // Ensure categoryIds is never undefined
-      const safeCategoryIds = categoryIds ?? [];
-      const categories = await this.categoriesRepository.findBy({
-        id: In(safeCategoryIds),
-      });
-      const promotion = this.promotionsRepository.create({
-        ...data,
-        categories,
-      });
-      this.notificationsService.newPromoNotif(promotion);
-      return this.promotionsRepository.save(promotion);
+    const { categoryIds, ...data } = createPromotionDto;
+
+    const safeIds = categoryIds ?? [];
+    const categories = await this.categoriesRepository.findBy({ id: In(safeIds) });
+
+    // Cambia a false si quieres ignorar categorías inexistentes en vez de fallar
+    const strictMissingCategories = true;
+    if (safeIds.length !== categories.length && strictMissingCategories) {
+      const found = new Set(categories.map((c) => c.id));
+      const missing = safeIds.filter((id) => !found.has(id));
+      throw new NotFoundException(`Some categories were not found: [${missing.join(', ')}]`);
     }
 
-    /**
-   * Obtiene todas las promociones, incluyendo sus categorías.
-   * @returns Arreglo de promociones.
-   */
-    async findAll(): Promise<Promotion[]> {
-        return this.promotionsRepository.find({ 
-          relations: ['categories'] });
-      }
+    const promotion = this.promotionsRepository.create({
+      ...data,
+      // aceptar ambos (theme y promotionTheme), priorizando "theme"
+      theme: data.theme ?? data.promotionTheme ?? PromotionTheme.LIGHT,
+      categories,
+    });
 
-    /**
-   * Obtiene una promoción activa por ID.
-   *
-   * @param id Identificador de la promoción.
-   * @throws {NotFoundException} Si no existe una promoción activa con ese ID.
-   * @returns La promoción encontrada.
-   */
-    async findOne(id: number): Promise<Promotion | null> {
-      const promotion = this.promotionsRepository.findOne({ 
-        where: { promotionId: id,
-                 promotionState: PromotionState.ACTIVE
-         },
-        relations: ['categories'] });
-          
-      if (!promotion) {
-        throw new NotFoundException(`Promotion with id ${id} not found`);
-      }
-      return promotion
-    }
-  
-    // Finds in all the database
-    /**
-   * Obtiene una promoción (consulta "real") por ID.
-   *
-   * @remarks
-   * Actualmente filtra por {@link PromotionState.ACTIVE} igual que `findOne`.
-   * Útil si solo deben exponerse promociones activas en cualquier flujo.
-   *
-   * @param id Identificador de la promoción.
-   * @returns La promoción encontrada o `null`.
-   */
-    async trueFindOne(id: number): Promise<Promotion | null> {
-      return this.promotionsRepository.findOne({ 
-        where: { promotionId: id,
-                 promotionState: PromotionState.ACTIVE
-         },
-        relations: ['categories'] });
-    }
+    this.notificationsService.newPromoNotif(promotion);
+    return this.promotionsRepository.save(promotion);
+  }
 
-  /**
-   * Actualiza una promoción existente y, si se especifica, sus categorías asociadas.
-   *
-   * @param id ID de la promoción a actualizar.
-   * @param updatePromotionDto DTO con las propiedades a actualizar.
-   * @throws {NotFoundException} Si la promoción no existe.
-   * @returns La promoción actualizada.
-   */
+  async findAll(): Promise<any[]> {
+    const promotions = await this.promotionsRepository.find({
+      relations: ['categories', 'collaborator'],
+    });
+
+    return promotions.map((promo: any) => {
+      const { collaborator, ...rest } = promo;
+      return {
+        ...rest,
+        businessName: collaborator?.businessName ?? null,
+      };
+    });
+  }
+
+  async findOne(id: number): Promise<any> {
+    const promo = await this.promotionsRepository
+      .createQueryBuilder('promotion')
+      .leftJoinAndSelect('promotion.categories', 'category')
+      .leftJoin('promotion.collaborator', 'collaborator')
+      .addSelect(['collaborator.businessName'])
+      .addSelect('promotion.theme')
+      .where('promotion.promotionId = :id', { id })
+      .andWhere('promotion.promotionState = :state', { state: PromotionState.ACTIVE })
+      .getOne();
+
+    if (!promo) throw new NotFoundException(`Promotion with id ${id} not found`);
+
+    const { collaborator, ...rest } = promo as any;
+    return {
+      ...rest,
+      businessName: collaborator?.businessName ?? null,
+    };
+  }
+
+  async trueFindOne(id: number): Promise<any> {
+    const promo = await this.promotionsRepository
+      .createQueryBuilder('promotion')
+      .leftJoinAndSelect('promotion.categories', 'category')
+      .leftJoin('promotion.collaborator', 'collaborator')
+      .addSelect(['collaborator.businessName'])
+      .addSelect('promotion.theme')
+      .where('promotion.promotionId = :id', { id })
+      .andWhere('promotion.promotionState = :state', { state: PromotionState.ACTIVE })
+      .getOne();
+
+    if (!promo) return null;
+
+    const { collaborator, ...rest } = promo as any;
+    return {
+      ...rest,
+      businessName: collaborator?.businessName ?? null,
+    };
+  }
+
   async update(id: number, updatePromotionDto: UpdatePromotionDto): Promise<Promotion> {
-      const promotion = await this.promotionsRepository.findOne({
-        where: { promotionId: id },
-        relations: ['categories'],
-      });
-  
-      if (!promotion) {
-        throw new NotFoundException(`Promotion with ID ${id} not found`);
-      }
-  
-      const { categoryIds, ...updateData } = updatePromotionDto;
-  
-      
-      Object.assign(promotion, updateData);
-  
-      
-      if (categoryIds && categoryIds.length > 0) {
-        const categories = await this.categoriesRepository.findBy({ id: In(categoryIds) });
-        promotion.categories = categories;
-      }
-  
-      return this.promotionsRepository.save(promotion);
+    const promotion = await this.promotionsRepository.findOne({
+      where: { promotionId: id },
+      relations: ['categories'],
+    });
+    if (!promotion) throw new NotFoundException(`Promotion with ID ${id} not found`);
+
+    const { categoryIds, ...updateData } = updatePromotionDto;
+
+    Object.assign(promotion, updateData, {
+      theme: updateData.theme ?? (updateData as any).promotionTheme ?? promotion.theme,
+    });
+
+    if (categoryIds && categoryIds.length > 0) {
+      const categories = await this.categoriesRepository.findBy({ id: In(categoryIds) });
+      promotion.categories = categories;
     }
 
-  /**
-   * Elimina una promoción por su ID.
-   * @param id ID de la promoción a eliminar.
-   * @returns Promesa vacía cuando la operación concluye.
-   */
+    return this.promotionsRepository.save(promotion);
+  }
+
   async remove(id: number): Promise<void> {
     await this.promotionsRepository.delete(id);
   }
 
-  //Promotions per Category
-  /**
-   * Obtiene promociones filtrando por categoría (por ID numérico o por nombre).
-   *
-   * @param category ID numérico (como string) o nombre de la categoría.
-   * @returns Arreglo de promociones que pertenecen a la categoría indicada.
-   *
-   * @example
-   * await promotionsService.promotionPerCategory('3');      // por ID
-   * await promotionsService.promotionPerCategory('food');   // por nombre
-   */
-  
-  async promotionPerCategory(category: string): Promise<Promotion[]> {
-  const qb = this.promotionsRepository
-    .createQueryBuilder('promotion')
-    .leftJoin('promotion.categories', 'category')
-    .addSelect(['category.id', 'category.name']);
+  async promotionPerCategory(category: string): Promise<any[]> {
+    const qb = this.promotionsRepository
+      .createQueryBuilder('promotion')
+      .leftJoinAndSelect('promotion.categories', 'category')
+      .leftJoin('promotion.collaborator', 'collaborator')
+      .addSelect(['collaborator.businessName'])
+      .addSelect('promotion.theme')
+      .andWhere('promotion.promotionState = :state', { state: PromotionState.ACTIVE });
 
-  const asNumber = Number(category);
-  if (!Number.isNaN(asNumber)) {
-    qb.where('category.id = :id', { id: asNumber });
-  } else {
-    qb.where('category.name = :name', { name: category });
+    const asNumber = Number(category);
+    if (!Number.isNaN(asNumber)) {
+      qb.andWhere('category.id = :id', { id: asNumber });
+    } else {
+      qb.andWhere('LOWER(category.name) = :name', { name: category.toLowerCase() });
+    }
+
+    const promos = await qb.getMany();
+
+    return promos.map((p: any) => ({
+      ...p,
+      businessName: p?.collaborator?.businessName ?? null,
+    }));
   }
 
-  return qb.getMany();
-}
-//Promotions by Collaborator
-  /**
-   * Obtiene promociones asociadas a un colaborador específico usando su Cognito ID.
-   * @param cognitoId ID de Cognito del colaborador
-   * @returns Arreglo de promociones del colaborador
-   */
   async promotionsByCollaborator(collaboratorId: string): Promise<Promotion[]> {
     return this.promotionsRepository.find({
-      where: {collaboratorId}
-    })
+      where: { collaboratorId },
+    });
   }
-
-  
 }

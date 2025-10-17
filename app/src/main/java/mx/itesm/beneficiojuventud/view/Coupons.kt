@@ -22,7 +22,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.components.*
-import mx.itesm.beneficiojuventud.model.PromoTheme
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
@@ -34,13 +33,14 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.only
+import mx.itesm.beneficiojuventud.model.promos.PromoTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Coupons(
     nav: NavHostController,
     modifier: Modifier = Modifier,
-    vm: CategoryViewModel = viewModel(),          // VM de categorías (el mismo que ya usas)
+    vm: CategoryViewModel = viewModel(),          // VM de categorías
     promoVm: PromoViewModel = viewModel()         // VM de promociones reales
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(BJTab.Coupons) }
@@ -187,8 +187,11 @@ fun Coupons(
                                 val id = c.id ?: return@items
                                 val name = c.name ?: "Categoría"
 
+                                // Usa tu función de ícono dinámico
+                                val icon = iconForCategoryName(name)
+
                                 CategoryPill(
-                                    icon = Icons.Outlined.NotificationsNone, // reemplaza con tu ícono cuando lo tengas
+                                    icon = icon,
                                     label = name,
                                     selected = selectedCategoryId == id,
                                     onClick = {
@@ -293,14 +296,9 @@ fun Coupons(
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                             onClick = {
                                 val id = promo.promotionId ?: return@PromoImageBanner
-                                // Navegación por id (ajusta a tu NavGraph real)
-                                // nav.navigate("${Screens.PromoQR.route}?id=$id")
-                                nav.navigate("${Screens.PromoQR.route}/$id")
+                                nav.navigate("promoQR/$id")
                             },
-                            themeResolver = { _: Promotions ->
-                                // Si más adelante guardas un flag en BD para tema, resuélvelo aquí
-                                PromoTheme.LIGHT
-                            }
+                            themeResolver = { p -> p.theme ?: PromoTheme.light }
                         )
                     }
                 }
@@ -321,8 +319,9 @@ fun Coupons(
     }
 }
 
+
 @Composable
-private fun EmptyState(
+fun EmptyState(
     title: String,
     body: String
 ) {

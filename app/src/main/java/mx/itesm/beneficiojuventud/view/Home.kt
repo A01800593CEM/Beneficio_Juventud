@@ -33,16 +33,12 @@ import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJSearchBar
 import mx.itesm.beneficiojuventud.components.CategoryPill
 import mx.itesm.beneficiojuventud.components.GradientDivider
-import mx.itesm.beneficiojuventud.components.MerchantRow
 import mx.itesm.beneficiojuventud.components.PromoCarousel
 import mx.itesm.beneficiojuventud.components.SectionTitle
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
-// ✨ NUEVO: usamos Collaborator del backend
-import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
-// ✨ NUEVO: ViewModel de colaboradores
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 
 // Insets
@@ -52,7 +48,22 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.ui.text.style.TextOverflow
 import mx.itesm.beneficiojuventud.components.BJTab
+
+// Nuevos imports para foto de perfil (igual que en Profile.kt)
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import com.amplifyframework.core.Amplify
+import com.amplifyframework.storage.StoragePath
+import java.io.File
+import android.util.Log
+
+// 👇 NUEVOS imports: diseño “Poster” con fav
+import mx.itesm.beneficiojuventud.components.MerchantRowSelectable
+import mx.itesm.beneficiojuventud.components.MerchantDesign
+import mx.itesm.beneficiojuventud.components.iconForCategoryName
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +73,7 @@ fun Home(
     categoryViewModel: CategoryViewModel = viewModel(), // mismo VM que Onboarding
     userViewModel: UserViewModel,
     promoViewModel: PromoViewModel = viewModel(),        // VM de promos (backend)
-    // ✨ NUEVO: VM colaboradores (backend)
+    // VM colaboradores (backend)
     collabViewModel: CollabViewModel = viewModel()
 ) {
     // ▶ Suscripciones
@@ -74,8 +85,18 @@ fun Home(
 
     val promoList by promoViewModel.promoListState.collectAsState()
 
-    // ✨ NUEVO: lista de colaboradores del backend
+    // lista de colaboradores del backend
     val collaborators by collabViewModel.collabListState.collectAsState()
+
+    // ❤️ favoritos de colaboradores (para que funcione el corazón)
+    val favoriteCollabs by userViewModel.favoriteCollabs.collectAsState()
+    val favoriteCollabIds: Set<String> = remember(favoriteCollabs) {
+        favoriteCollabs.mapNotNull { it.cognitoId?.takeIf(String::isNotBlank) }.toSet()
+    }
+    val cognitoId = user.cognitoId.orEmpty()
+    LaunchedEffect(cognitoId) {
+        if (cognitoId.isNotBlank()) userViewModel.refreshFavorites(cognitoId)
+    }
 
     // Estado de UI
     var selectedTab by remember { mutableStateOf(BJTab.Home) }
@@ -86,9 +107,33 @@ fun Home(
     var promoLoading by remember { mutableStateOf(false) }
     var promoError by remember { mutableStateOf<String?>(null) }
 
-    // ✨ NUEVO: Loading/Error locales para colaboradores
+    // Loading/Error locales para colaboradores
     var collabLoading by remember { mutableStateOf(false) }
     var collabError by remember { mutableStateOf<String?>(null) }
+
+    // ⬇️ Estado e imagen de perfil (igual que en Profile.kt)
+    val context = LocalContext.current
+    var profileImageUrl by remember { mutableStateOf<String?>(null) }
+    var isLoadingImage by remember { mutableStateOf(false) }
+
+    LaunchedEffect(cognitoId) {
+        if (cognitoId.isBlank()) {
+            profileImageUrl = null
+            isLoadingImage = false
+            return@LaunchedEffect
+        }
+        try {
+            downloadProfileImageForDisplay(
+                context = context,
+                userId = cognitoId,
+                onSuccess = { url -> profileImageUrl = url },
+                onError = { /* si falla, dejamos el fallback */ },
+                onLoading = { loading -> isLoadingImage = loading }
+            )
+        } catch (_: Exception) {
+            // Storage no configurado aún, ignoramos
+        }
+    }
 
     // Carga inicial de TODAS las promos
     LaunchedEffect(Unit) {
@@ -99,7 +144,7 @@ fun Home(
         promoLoading = false
     }
 
-    // ✨ NUEVO: Carga inicial de colaboradores usando 1ra categoría si no hay selección
+    // Carga inicial de colaboradores usando 1ra categoría si no hay selección
     LaunchedEffect(categories) {
         if (categories.isNotEmpty() && selectedCategoryName == null) {
             val firstCat = categories.first().name ?: return@LaunchedEffect
@@ -121,7 +166,7 @@ fun Home(
         promoLoading = false
     }
 
-    // ✨ NUEVO: Carga de colaboradores cuando cambia el filtro de categoría
+    // Carga de colaboradores cuando cambia el filtro de categoría
     LaunchedEffect(selectedCategoryName) {
         val cat = selectedCategoryName ?: return@LaunchedEffect
         collabError = null
@@ -136,7 +181,7 @@ fun Home(
         user.name?.trim()?.takeIf { it.isNotEmpty() }?.split(" ")?.firstOrNull() ?: "Usuario"
     }
 
-    // Lista final para el carrusel (si hay categoría elegida mostramos el state actual del VM)
+    // Lista final para el carrusel
     val uiPromos: List<Promotions> = remember(promoList) { promoList }
 
     Scaffold(
@@ -147,7 +192,9 @@ fun Home(
             TopBar(
                 displayName = displayName,
                 search = search,
-                onSearchChange = { search = it }
+                onSearchChange = { search = it },
+                profileImageUrl = profileImageUrl,
+                isLoadingImage = isLoadingImage
             )
         },
         bottomBar = {
@@ -226,7 +273,7 @@ fun Home(
                         ) {
                             categories.forEach { c ->
                                 val name = c.name ?: return@forEach
-                                val icon = Icons.Outlined.NotificationsNone // placeholder si API no trae icono
+                                val icon = iconForCategoryName(name)
                                 CategoryPill(
                                     icon = icon,
                                     label = name,
@@ -247,7 +294,7 @@ fun Home(
                                             }.onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
                                             promoLoading = false
 
-                                            // ✨ COLABORADORES
+                                            // COLABORADORES
                                             collabError = null
                                             collabLoading = true
                                             runCatching {
@@ -282,7 +329,7 @@ fun Home(
                                         .onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
                                     promoLoading = false
 
-                                    // ✨ COLABORADORES: vuelve a 1ra categoría como “default”
+                                    // COLABORADORES: vuelve a 1ra categoría como “default”
                                     if (categories.isNotEmpty()) {
                                         collabError = null
                                         collabLoading = true
@@ -297,9 +344,12 @@ fun Home(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "Filtrando por: $selectedCategoryName",
+                            text = "Filtrando por: ${selectedCategoryName ?: ""}",
                             color = Color(0xFF8C8C8C),
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f) // ⇦ ocupa el resto y corta
                         )
                     }
                 }
@@ -361,7 +411,7 @@ fun Home(
                         }
                     }
                     else -> {
-                        // 👉 Usa el carrusel con nombres originales: PromoCarousel + PromoImageBanner
+                        // Carrusel de promos
                         PromoCarousel(
                             promos = uiPromos,
                             onItemClick = { promo ->
@@ -427,26 +477,38 @@ fun Home(
                         }
                     }
                     else -> {
-                        // 👉 Nuevo MerchantRow que consume List<Collaborator> (backend)
-                        MerchantRow(
+                        // 👉 USAMOS EL OTRO DISEÑO (POSTER) con corazón
+                        MerchantRowSelectable(
                             collaborators = collaborators,
+                            design = MerchantDesign.Poster,
+                            isFavorite = { c -> favoriteCollabIds.contains(c.cognitoId.orEmpty()) },
+                            onFavoriteClick = { c ->
+                                val id = c.cognitoId ?: return@MerchantRowSelectable
+                                scope.launch {
+                                    if (favoriteCollabIds.contains(id)) {
+                                        userViewModel.unfavoriteCollaborator(id, cognitoId)
+                                    } else {
+                                        // si tu VM expone esta función:
+                                        userViewModel.favoriteCollaborator(id, cognitoId)
+                                    }
+                                }
+                            },
                             onItemClick = { collab ->
-                                val id = collab.collaboratorId ?: collab.rfc ?: collab.email ?: collab.businessName.orEmpty()
-                                nav.navigate("business/${java.net.URLEncoder.encode(id, "UTF-8")}")
+                                collab.cognitoId?.let { id ->
+                                    nav.navigate(Screens.Business.createRoute(id))
+                                }
                             }
                         )
                     }
                 }
             }
 
-            // ─── Lo nuevo (puedes mantener misma fuente de colaboradores) ───────
+            // ─── Lo nuevo ───────────────────────────────────────────────────────
             item {
                 SectionTitle(
                     "Lo Nuevo",
                     Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 6.dp)
                 )
-                // Reutilizamos los mismos collaborators; si luego creas endpoint “recent”,
-                // aquí cambias la carga sin tocar la UI.
                 when {
                     collabLoading -> {
                         Row(
@@ -490,9 +552,26 @@ fun Home(
                         }
                     }
                     else -> {
-                        MerchantRow(
+                        // 👉 También aquí, el diseño Poster
+                        MerchantRowSelectable(
                             collaborators = collaborators,
-                            onItemClick = { _ -> nav.navigate(Screens.Business.route) }
+                            design = MerchantDesign.Poster,
+                            isFavorite = { c -> favoriteCollabIds.contains(c.cognitoId.orEmpty()) },
+                            onFavoriteClick = { c ->
+                                val id = c.cognitoId ?: return@MerchantRowSelectable
+                                scope.launch {
+                                    if (favoriteCollabIds.contains(id)) {
+                                        userViewModel.unfavoriteCollaborator(id, cognitoId)
+                                    } else {
+                                        userViewModel.favoriteCollaborator(id, cognitoId)
+                                    }
+                                }
+                            },
+                            onItemClick = { collab ->
+                                collab.cognitoId?.let { id ->
+                                    nav.navigate(Screens.Business.createRoute(id))
+                                }
+                            }
                         )
                     }
                 }
@@ -509,12 +588,14 @@ fun Home(
     }
 }
 
-/** TopBar segura (solo Top + Horizontal). */
+/** TopBar segura (solo Top + Horizontal) con avatar que carga igual que Profile.kt. */
 @Composable
 private fun TopBar(
     displayName: String,
     search: String,
-    onSearchChange: (String) -> Unit
+    onSearchChange: (String) -> Unit,
+    profileImageUrl: String?,
+    isLoadingImage: Boolean
 ) {
     Column(
         Modifier
@@ -543,16 +624,37 @@ private fun TopBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                         .background(Color(0xFFD7F2F3)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Person,
-                        contentDescription = null,
-                        tint = Color(0xFF008D96)
-                    )
+                    when {
+                        isLoadingImage -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color(0xFF008D96)
+                            )
+                        }
+                        profileImageUrl != null -> {
+                            AsyncImage(
+                                model = profileImageUrl,
+                                contentDescription = "Foto de perfil",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(CircleShape)
+                            )
+                        }
+                        else -> {
+                            Icon(
+                                imageVector = Icons.Outlined.Person,
+                                contentDescription = null,
+                                tint = Color(0xFF008D96)
+                            )
+                        }
+                    }
                 }
                 Spacer(Modifier.width(8.dp))
                 Column {
@@ -603,3 +705,4 @@ private fun HomePreview() {
         Home(nav = nav, userViewModel = UserViewModel())
     }
 }
+

@@ -8,7 +8,7 @@ data class WebhookRequest(
     val text: String
 )
 
-data class Category(
+data class WebhookCategory(
     val id: Int,
     val name: String
 )
@@ -23,7 +23,7 @@ data class PromotionData(
     val limitPerUser: Int,
     val dailyLimitPerUser: Int,
     val promotionState: String,
-    val categories: List<Category>
+    val categories: List<WebhookCategory>
 )
 
 data class WebhookResponse(

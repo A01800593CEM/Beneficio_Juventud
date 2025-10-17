@@ -28,7 +28,12 @@ sealed class Screens(val route: String) {
     data object Help : Screens("help")
     data object Favorites : Screens("favorites")
     data object Coupons : Screens("coupons")
-    data object Business : Screens("business")
+    data object Business : Screens("business/{collabId}") {
+        fun createRoute(collabId: String) =
+            "business/${java.net.URLEncoder.encode(collabId, "UTF-8")}"
+        val arguments = listOf(navArgument("collabId") { type = NavType.StringType })
+    }
+
     data object PromoQR: Screens("promoQR/{promotionId}") {
         fun createRoute(promotionId: Int) = "promoQR/$promotionId"
         val arguments = listOf(navArgument("promotionId") { type = NavType.IntType })

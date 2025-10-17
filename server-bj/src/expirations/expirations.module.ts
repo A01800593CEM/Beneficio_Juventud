@@ -5,10 +5,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Promotion } from '../promotions/entities/promotion.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { Notification } from '../notifications/entities/notification.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Promotion, Booking, Notification])],
+  imports: [
+    TypeOrmModule.forFeature([Promotion, Booking, Notification]),
+    NotificationsModule
+  ],
   providers: [ExpirationsService],
-  controllers: [ExpirationsController], // 👈 importante
+  controllers: [ExpirationsController],
 })
 export class ExpirationsModule {}
