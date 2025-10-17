@@ -190,7 +190,7 @@ fun Favorites(
                                     .padding(vertical = 6.dp),
                                 onClick = {
                                     collab.cognitoId?.let { id ->
-                                        nav.navigate("${Screens.Business.route}/$id")
+                                        nav.navigate(Screens.Business.createRoute(id))
                                     }
                                 }
                             )
@@ -221,7 +221,7 @@ fun Favorites(
                                     .padding(vertical = 6.dp),
                                 onClick = {
                                     val id = promo.promotionId ?: return@PromoImageBannerFav
-                                    // nav.navigate("${Screens.PromoDetail.route}/$id")
+                                    nav.navigate(Screens.PromoQR.createRoute(id))
                                 },
                                 themeResolver = { it.theme ?: PromoTheme.light }
                             )

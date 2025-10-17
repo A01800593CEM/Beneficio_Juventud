@@ -8,8 +8,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -201,6 +204,26 @@ private fun AppNav(
             val json = nav.previousBackStackEntry?.savedStateHandle?.get<String>("promotion_data")
             val promo = json?.let { parsePromotionDataFromJson(it) }
             EditPromotion(nav, promo)
+        }
+
+        composable(
+            route = Screens.Business.route,
+            arguments = Screens.Business.arguments
+        ) { backStackEntry ->
+            val encoded = backStackEntry.arguments?.getString("collabId") ?: return@composable
+            val collabId = remember(encoded) { java.net.URLDecoder.decode(encoded, "UTF-8") }
+            val cognitoId by authViewModel.currentUserId.collectAsState()
+            if (cognitoId.isNullOrBlank()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                Business(
+                    nav = nav,
+                    collabId = collabId,
+                    userCognitoId = cognitoId!!
+                )
+            }
         }
 
         composable(
