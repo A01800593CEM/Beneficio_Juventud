@@ -42,4 +42,8 @@ sealed class Screens(val route: String) {
     data object GenerarPromocionIA : Screens("generar_promocion_ia")
     data object EditPromotion : Screens("edit_promotion")
 
+    // Panel de Colaboradres
+    data object RegisterCollab : Screens("register_collab")
+    data object HomeCollab : Screens("home_collab")
+
 }
