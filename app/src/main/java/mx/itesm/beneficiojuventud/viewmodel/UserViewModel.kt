@@ -123,6 +123,14 @@ class UserViewModel : ViewModel() {
         }
     }
 
+    suspend fun emailExists(email: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            runCatching { model.emailExists(email) }
+                .getOrElse { throw it } // deja que el UI muestre error si falla
+        }
+    }
+
+
     fun favoritePromotion(promotionId: Int, cognitoId: String) {
         _error.value = null
         // No activamos el loading global para no bloquear la UI por una acción rápida.

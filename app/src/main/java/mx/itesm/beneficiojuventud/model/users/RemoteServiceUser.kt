@@ -98,4 +98,14 @@ object RemoteServiceUser {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
         }
     }
+
+    suspend fun emailExists(email: String): Boolean {
+        val response = userApiService.getEmailExists(email.trim())
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        val body = response.body() ?: throw Exception("Respuesta vacía al verificar email")
+        return body.exists
+    }
+
 }

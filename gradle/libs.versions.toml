@@ -32,6 +32,7 @@ ui = "1.9.3"
 googleGmsGoogleServices = "4.4.4"
 firebaseMessaging = "25.0.1"
 litertSupportApi = "1.4.0"
+foundationLayoutVersion = "1.9.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -79,6 +80,7 @@ ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiTe
 ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" }
 litert-support-api = { group = "com.google.ai.edge.litert", name = "litert-support-api", version.ref = "litertSupportApi" }
+foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayoutVersion" }
 
 
 [plugins]

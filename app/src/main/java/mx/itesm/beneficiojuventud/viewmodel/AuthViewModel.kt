@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mx.itesm.beneficiojuventud.model.auth.AuthRepository
@@ -99,32 +100,59 @@ class AuthViewModel : ViewModel() {
     // ========        FLUJO DE AUTENTICACIÓN          ========
     // =========================================================
 
-    fun signUp(email: String, password: String, telefono: String? = null) {
+    /**
+     * SignUp: usa AuthRepository.signUp(email, password) que devuelve Result<AuthSignUpResult>.
+     * Desempaquetamos con getOrThrow() y tomamos result.userId como cognitoSub.
+     */
+    fun signUp(
+        email: String,
+        password: String,
+        attributes: Map<String, String> = emptyMap() // se mantiene para compatibilidad, no se usa aquí
+    ) {
         viewModelScope.launch {
+            _authState.update { it.copy(isLoading = true, error = null) }
             try {
-                Log.d("AuthViewModel", "Iniciando signUp para: $email")
-                _authState.value = AuthState(isLoading = true)
+                // El repo devuelve Result<AuthSignUpResult>
+                val result = authRepository.signUp(email, password)
+                    .getOrThrow() // 👈 desempaquetar
 
-                val result = authRepository.signUp(email, password, telefono)
-                result.fold(
-                    onSuccess = { r ->
-                        Log.d("AuthViewModel", "SignUp exitoso: needsConfirmation=${!r.isSignUpComplete}")
-                        val sub = r.userId // sub de Cognito (cognitoId)
-                        _currentUserId.value = sub
-                        _authState.value = AuthState(
-                            isSuccess = r.isSignUpComplete,
-                            needsConfirmation = !r.isSignUpComplete,
-                            cognitoSub = sub
+                // Amplify.Auth.signUp() -> AuthSignUpResult
+                // En tu repo ya logueas: isSignUpComplete, userId, nextStep
+                val requiresConfirm = !result.isSignUpComplete
+
+                if (requiresConfirm) {
+                    _authState.update {
+                        it.copy(
+                            isLoading = false,
+                            needsConfirmation = true,
+                            error = null,
+                            cognitoSub = result.userId // 👈 userSub correcto
                         )
-                    },
-                    onFailure = { e ->
-                        Log.e("AuthViewModel", "SignUp falló: ${e.message}", e)
-                        _authState.value = AuthState(error = e.message ?: "Error desconocido al registrar")
                     }
-                )
+                } else {
+                    // Auto-confirm sin OTP
+                    _authState.update {
+                        it.copy(
+                            isLoading = false,
+                            isSuccess = true,
+                            needsConfirmation = false,
+                            error = null,
+                            cognitoSub = result.userId // 👈 userSub correcto
+                        )
+                    }
+                }
             } catch (e: Exception) {
-                Log.e("AuthViewModel", "Error inesperado en signUp: ${e.message}", e)
-                _authState.value = AuthState(error = "Error de conexión. Verifica tu internet e intenta de nuevo.")
+                val msg = (e.message ?: e.toString())
+                val looksLikeExists = msg.contains("UsernameExistsException", true) ||
+                        msg.contains("Username already exists", true) ||
+                        msg.contains("User already exists", true)
+
+                if (looksLikeExists) {
+                    // Si UNCONFIRMED → resend; si ya confirmado → error claro.
+                    handleUsernameExists(email)
+                } else {
+                    _authState.update { it.copy(isLoading = false, error = msg) }
+                }
             }
         }
     }
@@ -349,5 +377,112 @@ class AuthViewModel : ViewModel() {
         _currentUserId.value = null
         _pendingUserProfile = null
         Log.d("AuthViewModel", "State cleared")
+    }
+
+    fun clearError() {
+        _authState.update { it.copy(error = null) }
+    }
+
+    /** Intenta distinguir si el email existe como UNCONFIRMED o CONFIRMED. */
+    private fun resolveExistingAccountOnSignUp(email: String) {
+        val pw = _pendingPlainPassword
+
+        // Sin password: fallback → reenviamos código y navegamos a confirm.
+        if (pw.isNullOrBlank()) {
+            resendSignUpCode(email)
+            _authState.value = AuthState(needsConfirmation = true)
+            return
+        }
+
+        viewModelScope.launch {
+            val signInAttempt = authRepository.signIn(email, pw)
+            signInAttempt.fold(
+                onSuccess = { r ->
+                    if (r.isSignedIn) {
+                        // Confirmado y la contraseña coincide
+                        _authState.value = AuthState(
+                            isSuccess = false,
+                            error = "Esta cuenta ya está confirmada. Inicia sesión."
+                        )
+                    } else {
+                        // Estado intermedio (MFA/challenge) → tratamos como confirmado
+                        _authState.value = AuthState(
+                            isSuccess = false,
+                            error = "Esta cuenta ya está confirmada. Inicia sesión."
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    val msg = e.message?.lowercase().orEmpty()
+                    when {
+                        "usernotconfirmed" in msg || "not confirmed" in msg -> {
+                            // UNCONFIRMED → reenviar código y mandar a Confirm
+                            resendSignUpCode(email)
+                            _authState.value = AuthState(needsConfirmation = true)
+                        }
+                        "notauthorized" in msg || "incorrect username or password" in msg -> {
+                            _authState.value = AuthState(
+                                isSuccess = false,
+                                error = "La cuenta ya existe y está confirmada. Inicia sesión o restablece tu contraseña."
+                            )
+                        }
+                        else -> {
+                            _authState.value = AuthState(
+                                isSuccess = false,
+                                error = e.message ?: "La cuenta ya existe. Intenta iniciar sesión."
+                            )
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    /** Marca el estado de autenticación como inactivo (detiene spinners). */
+    fun markIdle() {
+        _authState.update { it.copy(isLoading = false) }
+    }
+
+
+    /**
+     * Maneja UsernameExistsException: intenta resend (si UNCONFIRMED) y setea needsConfirmation=true.
+     * Si ya está confirmado, devolverá error claro.
+     */
+    private fun handleUsernameExists(email: String) {
+        viewModelScope.launch {
+            _authState.update { it.copy(needsConfirmation = false) }
+            try {
+                // Si el usuario está UNCONFIRMED, esto funciona y envía el código
+                authRepository.resendSignUpCode(email).getOrThrow()
+
+                _authState.update {
+                    it.copy(
+                        isLoading = true,
+                        error = null,
+                        // 👇 evita que se “pegue” de intentos anteriores
+                        needsConfirmation = false,
+                        isSuccess = false
+                    )
+                }
+            } catch (ex: Exception) {
+                val t = (ex.message ?: ex.toString()).lowercase()
+                val alreadyConfirmed =
+                    "already confirmed" in t ||
+                            "invalidparameter" in t ||
+                            "code delivery failure" in t ||
+                            "cannot resend" in t
+
+                _authState.update {
+                    it.copy(
+                        isLoading = false,
+                        // 👇 MUY IMPORTANTE: no navegues a Confirm
+                        needsConfirmation = false,
+                        error = if (alreadyConfirmed)
+                            "Esta cuenta ya está confirmada. Inicia sesión o restablece tu contraseña."
+                        else ex.message ?: "No fue posible reenviar el código de confirmación."
+                    )
+                }
+            }
+        }
     }
 }

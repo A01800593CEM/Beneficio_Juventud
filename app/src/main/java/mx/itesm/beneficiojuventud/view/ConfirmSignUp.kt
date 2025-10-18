@@ -148,6 +148,7 @@ fun ConfirmSignUp(
                     BackButton(nav = nav)
                 }
             )
+
         },
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
