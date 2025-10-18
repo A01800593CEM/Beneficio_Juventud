@@ -145,5 +145,9 @@ export class UsersService {
     .remove(promotionId); // refers to promotion.promotionId
 }
 
+  async emailExists(email: string): Promise<boolean> {
+    const user =  await this.usersRepository.findOne({ where: { email } });
+    return !!user;
+  }
 
 }
