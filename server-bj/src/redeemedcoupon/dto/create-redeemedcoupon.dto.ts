@@ -1,4 +1,4 @@
-import { IsInt,} from 'class-validator';
+import { IsInt, IsString,} from 'class-validator';
 
 /**
  * DTO representing the data required to register a redeemed coupon.
@@ -21,11 +21,8 @@ import { IsInt,} from 'class-validator';
  * ```
  */
 export class CreateRedeemedcouponDto {
-  @IsInt()
+  @IsString()
   userId: string;
-
-  @IsInt()
-  collaboratorId: string;
 
   @IsInt()
   branchId: number;

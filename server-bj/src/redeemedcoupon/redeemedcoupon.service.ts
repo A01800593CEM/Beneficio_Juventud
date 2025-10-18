@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Redeemedcoupon } from './entities/redeemedcoupon.entity';
 import { CreateRedeemedcouponDto } from './dto/create-redeemedcoupon.dto';
 import { UpdateRedeemedcouponDto } from './dto/update-redeemedcoupon.dto';
+import { Promotion } from 'src/promotions/entities/promotion.entity';
 
 /**
  * Service responsible for managing redeemed coupons in the system.
@@ -33,7 +34,6 @@ export class RedeemedcouponService {
    * @example
    * await redeemedcouponService.create({
    *   userId: 5,
-   *   collaboratorId: 2,
    *   branchId: 3,
    *   promotionId: 7
    * });
@@ -50,7 +50,14 @@ export class RedeemedcouponService {
    * @example await redeemedcouponService.findAll();
    */
   async findAll(): Promise<Redeemedcoupon[]> {
-    return this.reedemedcouponsRepository.find({relations: ['user', 'promotion', 'branch', 'collaborators']});
+    return this.reedemedcouponsRepository.find({relations: ['user', 'promotion', 'branch']});
+  }
+
+  async findAllByUser(userId: string): Promise<Redeemedcoupon[]> {
+    return await this.reedemedcouponsRepository.find({
+      where: {userId},
+      relations: ['promotion']
+    })
   }
 
   /**
@@ -63,7 +70,7 @@ export class RedeemedcouponService {
   async findOne(id: number): Promise<Redeemedcoupon | null> {
     return this.reedemedcouponsRepository.findOne({
       where: {usedId: id},
-      relations: ['user', 'promotion', 'branch', 'collaborators'],
+      relations: ['user', 'promotion', 'branch'],
     });
   }
 
