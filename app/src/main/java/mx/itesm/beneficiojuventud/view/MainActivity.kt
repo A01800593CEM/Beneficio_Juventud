@@ -31,6 +31,7 @@ import kotlinx.coroutines.delay
 import mx.itesm.beneficiojuventud.model.webhook.PromotionData
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 
@@ -90,14 +91,16 @@ class MainActivity : ComponentActivity() {
 private fun AppContent(
     authViewModel: AuthViewModel = viewModel(),
     userViewModel: UserViewModel = viewModel(),
-    collabViewModel: CollabViewModel = viewModel()
+    collabViewModel: CollabViewModel = viewModel(),
+    categoryViewModel: CategoryViewModel = viewModel()
 ) {
     val nav = rememberNavController()
     AppNav(
         nav = nav,
         authViewModel = authViewModel,
         userViewModel = userViewModel,
-        collabViewModel = collabViewModel
+        collabViewModel = collabViewModel,
+        categoryViewModel = categoryViewModel
     )
 }
 
@@ -110,7 +113,8 @@ private fun AppNav(
     nav: NavHostController,
     authViewModel: AuthViewModel,
     userViewModel: UserViewModel,
-    collabViewModel: CollabViewModel
+    collabViewModel: CollabViewModel,
+    categoryViewModel: CategoryViewModel
 ) {
     val appState by authViewModel.appState.collectAsState()
     val currentUserId by authViewModel.currentUserId.collectAsState()
@@ -181,7 +185,7 @@ private fun AppNav(
 
         // --- Onboarding ---
         composable(Screens.Onboarding.route) { Onboarding(nav) }
-        composable(Screens.OnboardingCategories.route) { OnboardingCategories(nav) }
+        composable(Screens.OnboardingCategories.route) { OnboardingCategories(nav, categoryViewModel = categoryViewModel, userViewModel = userViewModel) }
 
         // --- App principal ---
         composable(Screens.Home.route) {
