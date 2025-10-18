@@ -10,7 +10,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.Settings
@@ -57,100 +59,77 @@ fun HomeScreenCollab(
     authViewModel: AuthViewModel = viewModel(),
     collabViewModel: CollabViewModel = viewModel()
 ) {
-    var selectedTab by remember { mutableStateOf<BJTabCollab>(BJTabCollab.Menu) }
     val collabState by collabViewModel.collabState.collectAsState()
     val currentUserId by authViewModel.currentUserId.collectAsState()
 
     LaunchedEffect(currentUserId) {
         if (!currentUserId.isNullOrBlank()) {
-            try {
-                collabViewModel.getCollaboratorById(currentUserId!!)
-            } catch (e: Exception) {
-                println("Error al cargar colaborador: ${e.message}")
-            }
+            runCatching { collabViewModel.getCollaboratorById(currentUserId!!) }
+                .onFailure { println("Error al cargar colaborador: ${it.message}") }
         }
     }
 
     Scaffold(
-        bottomBar = {
-            BJBottomBarCollab(
-                selected = selectedTab,
-                onSelect = { newTab -> selectedTab = newTab },
-                onAddClick = { nav.navigate("qr_scanner") } // 👈 ahora sí navega
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets.safeDrawing
+            .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+        bottomBar = { BJBottomBarCollab(nav = nav) }
+    ) { innerPadding ->
+        val bottomInset = WindowInsets.navigationBars
+            .only(WindowInsetsSides.Bottom)
+            .asPaddingValues()
+            .calculateBottomPadding()
+        val bottomBarHeight = 68.dp
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .background(Color.White)
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.height(16.dp))
+            Image(
+                painter = painterResource(id = R.drawable.logo_beneficio_joven),
+                contentDescription = "Logo de la App",
+                modifier = Modifier.size(width = 45.dp, height = 33.dp)
             )
-        }
-    ) { paddingValues ->
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)) {
-            when (selectedTab) {
-                BJTabCollab.Menu -> CollabMenuContent(
-                    nav = nav,
-                    collaborator = collabState,
-                    onNavigateTo = { tab -> selectedTab = tab }
-                )
-                BJTabCollab.Stats -> CollabStatsScreen()
-                BJTabCollab.Promotions -> CollabPromotionsScreen()
-                BJTabCollab.Profile -> CollabProfileScreen()
-            }
+            Spacer(Modifier.height(24.dp))
+            HeaderSectionCollab(collabState)
+            Spacer(Modifier.height(24.dp))
+            CtaSectionCollab()
+            Spacer(Modifier.height(24.dp))
+            InfoCardCollab(
+                icon = Icons.Outlined.LocalOffer,
+                title = "Promociones Activas",
+                description = "Visualiza, edita o desactiva las ofertas que tienes vigentes.",
+                onClick = { /* La bottom bar ya navega por ruta */ }
+            )
+            Spacer(Modifier.height(16.dp))
+            InfoCardCollab(
+                icon = Icons.Outlined.BarChart,
+                title = "Estadísticas",
+                description = "Analiza el rendimiento y la conversión de tus cupones.",
+                onClick = { /* La bottom bar ya navega por ruta */ }
+            )
+            Spacer(Modifier.height(16.dp))
+            InfoCardCollab(
+                icon = Icons.Default.Person,
+                title = "Perfil",
+                description = "Modifica la información de tu negocio.",
+                onClick = { /* La bottom bar ya navega por ruta */ }
+            )
+
+            // Evita que el último ítem quede oculto detrás de la barra
+            Spacer(Modifier.height(bottomBarHeight + bottomInset + 16.dp))
         }
     }
 }
 
-/**
- * Contenido de la pestaña "Menú" (la pantalla principal).
- */
 @Composable
-private fun CollabMenuContent(
-    nav: NavHostController,
-    collaborator: Collaborator,
-    onNavigateTo: (BJTabCollab) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(Modifier.height(16.dp))
-        Image(
-            painter = painterResource(id = R.drawable.logo_beneficio_joven),
-            contentDescription = "Logo de la App",
-            modifier = Modifier.size(width = 45.dp, height = 33.dp)
-        )
-        Spacer(Modifier.height(24.dp))
-        HeaderSectionCollab(collaborator)
-        Spacer(Modifier.height(24.dp))
-        CtaSectionCollab()
-        Spacer(Modifier.height(24.dp))
-        InfoCardCollab(
-            icon = Icons.Outlined.LocalOffer,
-            title = "Promociones Activas",
-            description = "Visualiza, edita o desactiva las ofertas que tienes vigentes.",
-            onClick = { onNavigateTo(BJTabCollab.Promotions) }
-        )
-        Spacer(Modifier.height(16.dp))
-        InfoCardCollab(
-            icon = Icons.Outlined.BarChart,
-            title = "Estadísticas",
-            description = "Analiza el rendimiento y la conversión de tus cupones.",
-            onClick = { onNavigateTo(BJTabCollab.Stats) }
-        )
-        Spacer(Modifier.height(16.dp))
-        InfoCardCollab(
-            icon = Icons.Default.Person,
-            title = "Perfil",
-            description = "Modifica la información de tu negocio.",
-            onClick = { onNavigateTo(BJTabCollab.Profile) }
-        )
-        Spacer(Modifier.height(16.dp))
-    }
-}
-
-@Composable
-private fun HeaderSectionCollab(collaborator: Collaborator) {
+private fun HeaderSectionCollab(collaborator: Collaborator?) {
     val fallbackRes = R.drawable.logo_beneficio_joven
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -160,7 +139,7 @@ private fun HeaderSectionCollab(collaborator: Collaborator) {
         ) {
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(collaborator.logoUrl.takeIf { !it.isNullOrBlank() } ?: fallbackRes)
+                    .data(collaborator?.logoUrl?.takeIf { it.isNotBlank() } ?: fallbackRes)
                     .crossfade(true)
                     .error(fallbackRes)
                     .build(),
@@ -178,7 +157,9 @@ private fun HeaderSectionCollab(collaborator: Collaborator) {
                 success = { SubcomposeAsyncImageContent() },
                 error = {
                     Box(
-                        modifier = Modifier.fillMaxSize().background(TextGradient),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(TextGradient),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -193,8 +174,12 @@ private fun HeaderSectionCollab(collaborator: Collaborator) {
 
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
+                val firstName = collaborator?.representativeName
+                    ?.split(" ")
+                    ?.firstOrNull()
+                    ?: "..."
                 Text(
-                    text = "Hola, ${collaborator.representativeName?.split(" ")?.get(0) ?: "..."}",
+                    text = "Hola, $firstName",
                     style = TextStyle(
                         brush = TextGradient,
                         fontSize = 30.sp,
@@ -203,7 +188,7 @@ private fun HeaderSectionCollab(collaborator: Collaborator) {
                     maxLines = 1
                 )
                 Text(
-                    text = collaborator.businessName ?: "Colaborador",
+                    text = collaborator?.businessName ?: "Colaborador",
                     fontSize = 14.sp,
                     color = TextGrey,
                     fontWeight = FontWeight.Bold,
@@ -213,7 +198,9 @@ private fun HeaderSectionCollab(collaborator: Collaborator) {
             Icon(
                 imageVector = Icons.Outlined.Settings,
                 contentDescription = "Settings",
-                modifier = Modifier.size(32.dp).clickable { /* TODO: Nav a Ajustes Collab */ },
+                modifier = Modifier
+                    .size(32.dp)
+                    .clickable { /* TODO: Ajustes */ },
                 tint = TextGrey
             )
         }
@@ -260,7 +247,10 @@ private fun InfoCardCollab(icon: ImageVector, title: String, description: String
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
-                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(CardBorderGradient),
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(CardBorderGradient),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(imageVector = icon, contentDescription = title, tint = Color.White)
@@ -273,7 +263,12 @@ private fun InfoCardCollab(icon: ImageVector, title: String, description: String
                     color = TextGrey,
                     modifier = Modifier.weight(1f)
                 )
-                Icon(imageVector = Icons.Default.ArrowForwardIos, contentDescription = null, tint = Teal, modifier = Modifier.size(20.dp))
+                Icon(
+                    imageVector = Icons.Filled.ArrowForwardIos,
+                    contentDescription = null,
+                    tint = Teal,
+                    modifier = Modifier.size(20.dp)
+                )
             }
             Spacer(Modifier.height(16.dp))
             Text(
@@ -286,27 +281,6 @@ private fun InfoCardCollab(icon: ImageVector, title: String, description: String
         }
     }
 }
-
-// Pantallas Placeholder
-@Composable
-fun CollabStatsScreen() {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Stats Screen", fontSize = 24.sp, color = TextGrey)
-    }
-}
-@Composable
-fun CollabPromotionsScreen() {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Promotions Screen", fontSize = 24.sp, color = TextGrey)
-    }
-}
-@Composable
-fun CollabProfileScreen() {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Profile Screen", fontSize = 24.sp, color = TextGrey)
-    }
-}
-
 
 @Preview(showBackground = true, widthDp = 411, heightDp = 891)
 @Composable

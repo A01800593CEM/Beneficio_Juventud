@@ -1,6 +1,6 @@
 package mx.itesm.beneficiojuventud.view
 
-import android.annotation.SuppressLint
+import mx.itesm.beneficiojuventud.components.ProfileTextField
 import android.app.DatePickerDialog
 import android.content.Context
 import android.net.Uri
@@ -397,53 +397,7 @@ fun EditProfile(
 
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ProfileTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    leadingIcon: ImageVector,
-    keyboardType: KeyboardType = KeyboardType.Text
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = {
-            Text(
-                text = label,
-                color = Color(0xFFAEAEAE),
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 12.sp
-            )
-        },
-        leadingIcon = {
-            Icon(
-                imageVector = leadingIcon,
-                contentDescription = null,
-                tint = Color(0xFF616161),
-                modifier = Modifier.size(35.dp)
-            )
-        },
-        singleLine = true,
-        shape = RoundedCornerShape(12.dp),
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color(0xFF008D96),
-            unfocusedBorderColor = Color(0xFFD3D3D3),
-            cursorColor = Color(0xFF008D96),
-            focusedLabelColor = Color(0xFF008D96)
-        ),
-        textStyle = LocalTextStyle.current.copy(
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF616161)
-        )
-    )
-}
+
 
 // =================== Campo de Fecha con DatePicker del sistema ===================
 

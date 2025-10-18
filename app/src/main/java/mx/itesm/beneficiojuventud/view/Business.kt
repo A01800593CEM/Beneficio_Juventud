@@ -42,12 +42,12 @@ private const val TAG = "Business"
 @Composable
 fun Business(
     nav: NavHostController,
-    collabId: String,          // cognitoId del colaborador
-    userCognitoId: String,     // cognitoId del usuario logueado
+    collabId: String,
+    userCognitoId: String,
     modifier: Modifier = Modifier,
-    promoViewModel: PromoViewModel = viewModel(),
-    collabViewModel: CollabViewModel = viewModel(),
-    userViewModel: UserViewModel = viewModel()
+    promoViewModel: PromoViewModel,
+    collabViewModel: CollabViewModel,
+    userViewModel: UserViewModel
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Home) }
 

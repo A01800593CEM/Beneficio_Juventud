@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,7 +34,6 @@ private val TextGrey = Color(0xFF616161)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GeneratePromotionScreen(nav: NavHostController) {
-    var selectedTab by remember { mutableStateOf<BJTabCollab>(BJTabCollab.Promotions) }
 
     val sheetStateManual = rememberModalBottomSheetState()
     var showBottomSheetManual by remember { mutableStateOf(false) }
@@ -47,11 +47,7 @@ fun GeneratePromotionScreen(nav: NavHostController) {
 
     Scaffold(
         bottomBar = {
-            BJBottomBarCollab(
-                selected = selectedTab,
-                onSelect = { newTab -> selectedTab = newTab },
-                onAddClick = { }
-            )
+            BJBottomBarCollab(nav)
         }
     ) { paddingValues ->
         Column(

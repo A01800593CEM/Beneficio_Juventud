@@ -30,12 +30,17 @@ import com.google.gson.Gson
 import kotlinx.coroutines.delay
 import mx.itesm.beneficiojuventud.model.webhook.PromotionData
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewcollab.EditProfileCollab
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import mx.itesm.beneficiojuventud.viewcollab.HomeScreenCollab
+import mx.itesm.beneficiojuventud.viewcollab.ProfileCollab
 import mx.itesm.beneficiojuventud.viewcollab.RegisterCollab
+import mx.itesm.beneficiojuventud.viewcollab.StatsScreen
+import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
+import mx.itesm.beneficiojuventud.viewcollab.PromotionsScreenCollab
 
 
 /**
@@ -95,7 +100,8 @@ private fun AppContent(
     authViewModel: AuthViewModel = viewModel(),
     userViewModel: UserViewModel = viewModel(),
     collabViewModel: CollabViewModel = viewModel(),
-    categoryViewModel: CategoryViewModel = viewModel()
+    categoryViewModel: CategoryViewModel = viewModel(),
+    promoViewModel: PromoViewModel = viewModel()
 ) {
     val nav = rememberNavController()
     AppNav(
@@ -103,7 +109,8 @@ private fun AppContent(
         authViewModel = authViewModel,
         userViewModel = userViewModel,
         collabViewModel = collabViewModel,
-        categoryViewModel = categoryViewModel
+        categoryViewModel = categoryViewModel,
+        promoViewModel = promoViewModel
     )
 }
 
@@ -117,7 +124,8 @@ private fun AppNav(
     authViewModel: AuthViewModel,
     userViewModel: UserViewModel,
     collabViewModel: CollabViewModel,
-    categoryViewModel: CategoryViewModel
+    categoryViewModel: CategoryViewModel,
+    promoViewModel: PromoViewModel
 ) {
     val appState by authViewModel.appState.collectAsState()
     val currentUserId by authViewModel.currentUserId.collectAsState()
@@ -146,6 +154,7 @@ private fun AppNav(
 
     NavHost(navController = nav, startDestination = "splash") {
         composable("splash") {
+            // Usamos la lógica de splash/arranque del primer bloque
             StartupScreen(
                 nav = nav,
                 authViewModel = authViewModel,
@@ -188,9 +197,15 @@ private fun AppNav(
 
         // --- Onboarding ---
         composable(Screens.Onboarding.route) { Onboarding(nav) }
-        composable(Screens.OnboardingCategories.route) { OnboardingCategories(nav, categoryViewModel = categoryViewModel, userViewModel = userViewModel) }
+        composable(Screens.OnboardingCategories.route) {
+            OnboardingCategories(
+                nav,
+                categoryViewModel = categoryViewModel,
+                userViewModel = userViewModel
+            )
+        }
 
-        // --- App principal ---
+        // --- App principal (Usuario) ---
         composable(Screens.Home.route) {
             Home(nav, userViewModel = userViewModel, collabViewModel = collabViewModel)
         }
@@ -220,6 +235,7 @@ private fun AppNav(
             val encoded = backStackEntry.arguments?.getString("collabId") ?: return@composable
             val collabId = remember(encoded) { java.net.URLDecoder.decode(encoded, "UTF-8") }
             val cognitoId by authViewModel.currentUserId.collectAsState()
+
             if (cognitoId.isNullOrBlank()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -228,19 +244,21 @@ private fun AppNav(
                 Business(
                     nav = nav,
                     collabId = collabId,
-                    userCognitoId = cognitoId!!
+                    userCognitoId = cognitoId!!,
+                    promoViewModel = promoViewModel,
+                    collabViewModel = collabViewModel,
+                    userViewModel = userViewModel
                 )
+
             }
         }
 
+
         composable(
             route = Screens.PromoQR.route, // "promoQR/{promotionId}"
-            arguments = listOf(
-                navArgument("promotionId") { type = NavType.IntType }
-            )
+            arguments = listOf(navArgument("promotionId") { type = NavType.IntType })
         ) { backStackEntry ->
             val promotionId = backStackEntry.arguments?.getInt("promotionId") ?: return@composable
-
             val cognitoId by authViewModel.currentUserId.collectAsState()
             if (!cognitoId.isNullOrBlank()) {
                 PromoQR(nav, promotionId, cognitoId!!)
@@ -249,7 +267,7 @@ private fun AppNav(
             }
         }
 
-        // App Colaborador
+        // --- App Colaborador ---
         composable(Screens.RegisterCollab.route) {
             RegisterCollab(
                 nav = nav,
@@ -257,14 +275,18 @@ private fun AppNav(
                 collabViewModel = collabViewModel
             )
         }
-        composable(Screens.HomeCollab.route) {
+        composable(Screens.HomeScreenCollab.route) {
             HomeScreenCollab(
                 nav = nav,
                 authViewModel = authViewModel,
                 collabViewModel = collabViewModel
             )
         }
+        composable(Screens.ProfileCollab.route) {
+            ProfileCollab(nav = nav, collabViewModel = collabViewModel)
+        }
 
+        // --- Utilidades ---
         composable(Screens.QrScanner.route) {
             QrScannerScreen(
                 onClose = { nav.popBackStack() },
@@ -276,6 +298,21 @@ private fun AppNav(
                 }
             )
         }
+        composable(Screens.StatsScreen.route) { StatsScreen(nav) }
+        composable(Screens.PromotionsScreen.route) {
+            // Tomamos el cognitoId actual del colaborador para filtrar sus promos
+            val collabId by authViewModel.currentUserId.collectAsState()
+
+            PromotionsScreenCollab(
+                nav = nav,
+                collabId = collabId.orEmpty(),
+                promoViewModel = promoViewModel,
+                onEditPromotion = { id -> nav.navigate(Screens.EditPromotion.route) },
+                onCreatePromotion = { nav.navigate(Screens.GenerarPromocion.route) }
+            )
+        }
+
+        composable(Screens.EditProfileCollab.route) { EditProfileCollab(nav) }
     }
 }
 
@@ -326,8 +363,7 @@ private fun StartupScreen(
             while (System.currentTimeMillis() < deadline && !isUserLoaded) {
                 delay(120)
             }
-            // Aquí deberiamos determinar si es un Colaborador o Usuario para navegar a Screens.Home.route o Screens.HomeCollab.route.
-            // Por ahora, la lógica de `RegisterCollab` navega directo a `HomeCollab`, pero el login normal necesita esta lógica.
+            // TODO: Determinar si es Colaborador o Usuario para navegar a Home u HomeCollab.
             Screens.Home.route
         }
 

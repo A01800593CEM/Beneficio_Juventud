@@ -44,7 +44,15 @@ sealed class Screens(val route: String) {
 
     // Panel de Colaboradres
     data object RegisterCollab : Screens("register_collab")
-    data object HomeCollab : Screens("home_collab")
+    data object HomeScreenCollab : Screens("home_screen_collab")
     data object QrScanner : Screens("qr_scanner")
+    data object ProfileCollab : Screens("profile_collab")
+    data object StatsScreen : Screens("stats_screen")
+    data object PromotionsScreen : Screens("promotions_screen/{collabId}") {
+        fun createRoute(collabId: String) =
+            "promotions_screen/${java.net.URLEncoder.encode(collabId, "UTF-8")}"
+        val arg = "collabId"
+    }
+    data object EditProfileCollab : Screens("edit_profile_collab")
 
 }

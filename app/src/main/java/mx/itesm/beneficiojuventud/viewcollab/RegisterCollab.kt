@@ -120,7 +120,7 @@ fun RegisterCollab(
                     authViewModel.clearPendingCredentials()
 
                     // Navega a la Home del Colaborador
-                    nav.navigate(Screens.HomeCollab.route) {
+                    nav.navigate(Screens.HomeScreenCollab.route) {
                         popUpTo(Screens.LoginRegister.route) { inclusive = true }
                         launchSingleTop = true
                     }

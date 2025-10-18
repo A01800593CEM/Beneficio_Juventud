@@ -29,8 +29,6 @@ data class Promotions(
 
     val theme: PromoTheme? = null,
     val businessName: String? = null,
-
-    // ¡Importante! Lista de objetos, NO de strings
     val categories: List<Category> = emptyList()
 )
 
