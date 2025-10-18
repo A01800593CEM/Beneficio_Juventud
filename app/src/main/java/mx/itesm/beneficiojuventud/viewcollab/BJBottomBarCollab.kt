@@ -5,8 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.QrCodeScanner
+// import androidx.compose.material.icons.filled.Add
+// import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.outlined.DocumentScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -129,8 +130,8 @@ fun BJBottomBarCollab(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.QrCodeScanner,
-                    contentDescription = "Escanear QR",
+                    imageVector = Icons.Outlined.DocumentScanner,
+                    contentDescription = "Escanear Documento",
                     tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
