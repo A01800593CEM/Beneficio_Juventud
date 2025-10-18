@@ -33,6 +33,9 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import mx.itesm.beneficiojuventud.viewcollab.HomeScreenCollab
+import mx.itesm.beneficiojuventud.viewcollab.RegisterCollab
+
 
 /**
  * MainActivity
@@ -241,6 +244,22 @@ private fun AppNav(
                 Startup()
             }
         }
+
+        // App Colaborador
+        composable(Screens.RegisterCollab.route) {
+            RegisterCollab(
+                nav = nav,
+                authViewModel = authViewModel,
+                collabViewModel = collabViewModel
+            )
+        }
+        composable(Screens.HomeCollab.route) {
+            HomeScreenCollab(
+                nav = nav,
+                authViewModel = authViewModel,
+                collabViewModel = collabViewModel
+            )
+        }
     }
 }
 
@@ -291,6 +310,8 @@ private fun StartupScreen(
             while (System.currentTimeMillis() < deadline && !isUserLoaded) {
                 delay(120)
             }
+            // Aquí deberiamos determinar si es un Colaborador o Usuario para navegar a Screens.Home.route o Screens.HomeCollab.route.
+            // Por ahora, la lógica de `RegisterCollab` navega directo a `HomeCollab`, pero el login normal necesita esta lógica.
             Screens.Home.route
         }
 
