@@ -14,8 +14,8 @@ interface PromotionDao {
     suspend fun findById(promotionId: Int): PromotionEntity
 
     @Insert
-    suspend fun insertPromotions(vararg promotions: PromotionEntity)
+    fun insertPromotions(promotion: PromotionEntity)
 
     @Delete
-    suspend fun deletePromotions(promotion: PromotionEntity)
+    fun deletePromotions(promotion: PromotionEntity)
 }

@@ -23,6 +23,6 @@ data class PromotionEntity(
     val isBookable: Boolean?,
     val theme: PromoTheme?,
     val businessName: String?,
-    val categories: List<String>?
+
 
 )
