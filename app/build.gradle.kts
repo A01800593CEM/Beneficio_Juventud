@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
+    alias(libs.plugins.google.devtools.ksp)
 }
 
 android {
@@ -133,6 +134,10 @@ dependencies {
 
     implementation("androidx.compose.material:material-icons-extended")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.8.1")
+    // RoomDB Dependencies
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     // OPTIONAL: LiteRT / TFLite (solo descomenta si realmente lo usas para ML local)
     // implementation(libs.litert.support.api)                 // ADD (opcional)
