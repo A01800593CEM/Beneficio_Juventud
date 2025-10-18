@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -44,7 +45,6 @@ fun BJBottomBarCollab(
             .navigationBarsPadding(),
         contentAlignment = Alignment.BottomCenter
     ) {
-        // El resto del contenido se anidará dentro de este Box con padding.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -129,8 +129,8 @@ fun BJBottomBarCollab(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Agregar",
+                    imageVector = Icons.Default.QrCodeScanner,
+                    contentDescription = "Escanear QR",
                     tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
