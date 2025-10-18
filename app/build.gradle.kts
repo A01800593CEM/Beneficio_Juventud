@@ -1,4 +1,4 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget // Add this import
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
@@ -11,25 +11,20 @@ android {
     namespace = "mx.itesm.beneficiojuventud"
     compileSdk = 36
 
-
     defaultConfig {
         applicationId = "mx.itesm.beneficiojuventud"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     packaging {
         resources {
             excludes += setOf(
-                // Los que ya causaban el error
                 "META-INF/INDEX.LIST",
-                // El nuevo que reportaste de Netty
                 "META-INF/io.netty.versions.properties",
-                // Opcionales comunes para evitar más choques
                 "META-INF/DEPENDENCIES",
                 "META-INF/AL2.0",
                 "META-INF/LGPL2.1",
@@ -49,17 +44,19 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
         isCoreLibraryDesugaringEnabled = true
     }
-    // Correctly structured kotlin compiler options
+
     kotlin {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
+
     buildFeatures {
         compose = true
     }
@@ -80,6 +77,7 @@ dependencies {
     implementation(libs.foundation.layout)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
+    // 🔹 Core y Compose
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -88,31 +86,58 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.ui.graphics)
-    implementation(libs.material3)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.ui.text)
+
+    // ADD: módulos granulares seguros (solo exponen APIs; no rompen nada si no se usan)
+    implementation(libs.androidx.compose.foundation)          // ADD
+    implementation(libs.androidx.material.icons.core)          // ADD
+    implementation(libs.androidx.runtime.saveable)             // ADD
+    implementation(libs.androidx.navigation.runtime.ktx)       // ADD
+
+    implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("androidx.compose.material:material:1.6.8")
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
+    // 🔹 Amplify
     implementation(libs.amplify.core)
     implementation(libs.amplify.auth)
     implementation(libs.amplify.datastore)
     implementation(libs.amplify.api)
     implementation(libs.amplify.storage)
 
+    // 🔹 Firebase
+    implementation(libs.firebase.messaging)
+    implementation(libs.firebase.appdistribution.gradle)
+
+    // 🔹 Retrofit
     implementation(libs.retrofit.lib)
     implementation(libs.converter.lib)
-    implementation(libs.androidx.material.icons.core)
-    implementation(libs.androidx.material.icons.extended)
-    implementation(libs.androidx.foundation)
-    implementation(libs.androidx.ui.unit)
-    implementation("io.coil-kt:coil-compose:2.7.0")
-    implementation("androidx.compose.material:material:1.6.8")
+
+    // 🔹 CameraX y ML Kit
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("com.google.mlkit:barcode-scanning:17.2.0")
+    implementation("com.google.zxing:core:3.5.3")
+
+    // 🔹 Permisos en Compose
+    implementation("com.google.accompanist:accompanist-permissions:0.36.0")
+
+    // 🔹 Otras librerías del proyecto
     implementation(libs.vico.core)
     implementation(libs.vico.compose)
-    implementation("com.google.zxing:core:3.5.3")
-    implementation("androidx.core:core-splashscreen:1.0.1")
 
+    // 🔹 Desugaring (para funciones modernas de Java)
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.8.1")
 
+    // OPTIONAL: LiteRT / TFLite (solo descomenta si realmente lo usas para ML local)
+    // implementation(libs.litert.support.api)                 // ADD (opcional)
+
+    // 🔹 Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mx.itesm.beneficiojuventud.model.auth.AuthRepository
 import mx.itesm.beneficiojuventud.model.auth.AuthState
+import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.users.UserProfile
 import java.util.UUID
 
@@ -47,6 +48,11 @@ class AuthViewModel : ViewModel() {
     // ===== Datos temporales durante registro =====
     private var _pendingUserProfile: UserProfile? = null
     val pendingUserProfile: UserProfile? get() = _pendingUserProfile
+
+    // Datos temporales durante registro de colaboradores
+    private var _pendingCollabProfile: Collaborator? = null
+    val pendingCollabProfile: Collaborator? get() = _pendingCollabProfile
+
 
     // Credenciales temporales SOLO en memoria (no BD)
     private var _pendingEmail: String? = null
@@ -95,6 +101,22 @@ class AuthViewModel : ViewModel() {
     fun clearPendingUserProfile() {
         _pendingUserProfile = null
     }
+
+    // Gestión del perfil de colaborador pendiente durante el registro
+    fun savePendingCollabProfile(collab: Collaborator) {
+        _pendingCollabProfile = collab
+    }
+
+    fun consumePendingCollabProfile(): Collaborator? {
+        val profile = _pendingCollabProfile
+        _pendingCollabProfile = null
+        return profile
+    }
+
+    fun clearPendingCollabProfile() {
+        _pendingCollabProfile = null
+    }
+
 
     // =========================================================
     // ========        FLUJO DE AUTENTICACIÓN          ========
@@ -293,6 +315,7 @@ class AuthViewModel : ViewModel() {
                     _sessionKey.value = UUID.randomUUID().toString()
                     _authState.value = AuthState(isLoading = false)
                     refreshAuthState()
+                    clearPendingCollabProfile() // <-- MODIFICACIÓN
                 },
                 onFailure = { e ->
                     val msg = e.message.orEmpty()
@@ -308,6 +331,7 @@ class AuthViewModel : ViewModel() {
                         _sessionKey.value = UUID.randomUUID().toString()
                         _authState.value = AuthState(isLoading = false)
                         refreshAuthState()
+                        clearPendingCollabProfile() // <-- MODIFICACIÓN
                     } else {
                         _authState.value = AuthState(
                             isLoading = false,
@@ -392,6 +416,7 @@ class AuthViewModel : ViewModel() {
         _currentUser.value = null
         _currentUserId.value = null
         _pendingUserProfile = null
+        clearPendingCollabProfile() // <-- MODIFICACIÓN
         Log.d("AuthViewModel", "State cleared")
     }
 
