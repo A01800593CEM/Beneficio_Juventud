@@ -48,7 +48,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
-import kotlinx.coroutines.coroutineScope
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
@@ -106,12 +105,10 @@ fun Register(
 
     var isCheckingEmail by rememberSaveable { mutableStateOf(false) }
 
-
-    // Parche: al volver del ConfirmSignUp, aseguramos que no quede en "Registrando..."
+    // Parche: al volver del ConfirmSignUp, aseguramos que no quede en "Registrando."
     LaunchedEffect(Unit) {
         authViewModel.markIdle()
     }
-
 
     // Navegación a Confirm (idempotente por intento)
     LaunchedEffect(authState.needsConfirmation, didNavigateToConfirm) {
@@ -202,22 +199,35 @@ fun Register(
             ) {
                 MainButton(
                     text = when {
-                        authState.isLoading -> "Registrando..."
-                        isCheckingEmail     -> "Verificando correo..."
+                        authState.isLoading -> "Registrando."
+                        isCheckingEmail     -> "Verificando correo."
                         else                -> "Continuar"
                     },
                     enabled = !authState.isLoading && !isCheckingEmail && isFormValid,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (!isAgeValid) { /* ... */ return@MainButton }
+                    if (!isAgeValid) {
+                        showError = true
+                        errorMessage = birthDateErrorMessage ?: "Para registrarte debes tener entre 12 y 29 años."
+                        return@MainButton
+                    }
 
-                    // 👇 FIX: resetea el latch para este nuevo intento
+                    // 👇 FIX: nuevo intento → resetea el latch para permitir re-navegar a Confirm
                     didNavigateToConfirm = false
 
-                    val userProfile = UserProfile(/* ... */)
+                    // Guardar datos temporales como ya lo haces
+                    val userProfile = UserProfile(
+                        name = nombre,
+                        lastNamePaternal = apPaterno,
+                        lastNameMaternal = apMaterno,
+                        birthDate = fechaNacDb,
+                        phoneNumber = phone,
+                        email = email
+                    )
                     authViewModel.savePendingUserProfile(userProfile)
                     authViewModel.setPendingCredentials(email, password)
 
+                    // Pre-checar si el correo ya existe en la BD
                     scope.launch {
                         showError = false
                         isCheckingEmail = true
@@ -235,12 +245,11 @@ fun Register(
                         } finally {
                             isCheckingEmail = false
                         }
-                        // Si no existe → Cognito: si el usuario ya estaba UNCONFIRMED en Cognito,
-                        // tu VM reenvía código y setea needsConfirmation=true (volverá a navegar).
+
+                        // Si no existe → continuar con registro Cognito
                         authViewModel.signUp(email, password)
                     }
                 }
-
 
                 Row(
                     modifier = Modifier
@@ -672,7 +681,6 @@ private fun BirthDateField(
     }
 }
 
-
 /** Locale ES-MX para formateo. */
 private val localeEsMx: Locale = Locale.Builder().setLanguage("es").setRegion("MX").build()
 
@@ -700,9 +708,7 @@ private fun computeAgeFromIso(isoDate: String, today: LocalDate = LocalDate.now(
 private fun mapAuthErrorToFriendly(raw: String): String {
     val lower = raw.lowercase()
     return when {
-        "invalid from email address arn" in lower ||
-                ("invalidparameterexception" in lower && "email" in lower && "arn" in lower) ->
-            "No se pudo enviar el correo de verificación. El remitente no está configurado. Intenta más tarde."
+        // Ignorado aquí: lo resuelve el VM (UNCONFIRMED vs CONFIRMED)
         "usernameexistsexception" in lower || "already exists" in lower || ("email" in lower && "exists" in lower) ->
             raw
         "invalidpassword" in lower || ("password" in lower && ("invalid" in lower || "weak" in lower)) ->
@@ -710,6 +716,7 @@ private fun mapAuthErrorToFriendly(raw: String): String {
         else -> raw
     }
 }
+
 @Composable
 private fun Label(text: String, top: Dp = 0.dp) {
     Text(
