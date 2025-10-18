@@ -173,25 +173,6 @@ class UserViewModel : ViewModel() {
         }
     }
 
-    fun getFavoriteCollabs(cognitoId: String) {
-        val myToken = ++loadToken
-        _error.value = null
-        _isLoading.value = true
-
-        viewModelScope.launch {
-            val result = runCatching {
-                withContext(Dispatchers.IO) { model.getFavoriteCollabs(cognitoId) }
-            }
-            if (myToken != loadToken) return@launch
-
-            result.fold(
-                onSuccess = { list -> _favoriteCollabs.value = list }, // ahora es List<Collaborator>
-                onFailure = { e -> _error.value = e.message ?: "Error al obtener colaboradores favoritos" }
-            )
-            _isLoading.value = false
-        }
-    }
-
     /** Conveniencia para refrescar ambas listas de favoritos sin pelear con el token global. */
     fun refreshFavorites(cognitoId: String) {
         // No tocamos loadToken aquí para no invalidar otras cargas largas.

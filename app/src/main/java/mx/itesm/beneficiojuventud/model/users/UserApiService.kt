@@ -68,4 +68,5 @@ interface UserApiService {
     suspend fun getFavoriteCollabs(
         @Path("cognitoId") cognitoId: String
     ): Response<List<Collaborator>>
+
 }

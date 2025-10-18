@@ -126,21 +126,34 @@ fun Home(
             downloadProfileImageForDisplay(
                 context = context,
                 userId = cognitoId,
-                onSuccess = { url -> profileImageUrl = url },
-                onError = { /* si falla, dejamos el fallback */ },
-                onLoading = { loading -> isLoadingImage = loading }
+                onSuccess = { url: String -> profileImageUrl = url },
+                onError = { _: Throwable? -> /* si falla, dejamos el fallback */ },
+                onLoading = { loading: Boolean -> isLoadingImage = loading }
             )
         } catch (_: Exception) {
             // Storage no configurado aún, ignoramos
         }
+
     }
 
-    // Carga inicial de TODAS las promos
-    LaunchedEffect(Unit) {
+    // ─────────────────────────────────────────────────────────────────────────────
+    // PROMOS: carga inicial → favoritas intercaladas (si hay), si no → todas
+    // ─────────────────────────────────────────────────────────────────────────────
+    LaunchedEffect(user.categories) {
         promoError = null
         promoLoading = true
-        runCatching { promoViewModel.getAllPromotions() }
-            .onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
+        runCatching {
+            val favNames = user.categories
+                ?.mapNotNull { it.name }
+                ?.filter { it.isNotBlank() }
+                .orEmpty()
+
+            if (favNames.isNotEmpty()) {
+                promoViewModel.getRecommendedInterleaved(favNames)
+            } else {
+                promoViewModel.getAllPromotions()
+            }
+        }.onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
         promoLoading = false
     }
 
@@ -287,7 +300,16 @@ fun Home(
                                             promoLoading = true
                                             runCatching {
                                                 if (selectedCategoryName == null) {
-                                                    promoViewModel.getAllPromotions()
+                                                    val favNames = user.categories
+                                                        ?.mapNotNull { it.name }
+                                                        ?.filter { it.isNotBlank() }
+                                                        .orEmpty()
+
+                                                    if (favNames.isNotEmpty()) {
+                                                        promoViewModel.getRecommendedInterleaved(favNames)
+                                                    } else {
+                                                        promoViewModel.getAllPromotions()
+                                                    }
                                                 } else {
                                                     promoViewModel.getPromotionByCategory(selectedCategoryName!!)
                                                 }
@@ -322,11 +344,21 @@ fun Home(
                             onClick = {
                                 selectedCategoryName = null
                                 scope.launch {
-                                    // PROMOS
+                                    // PROMOS (favoritas intercaladas si existen, si no todas)
                                     promoError = null
                                     promoLoading = true
-                                    runCatching { promoViewModel.getAllPromotions() }
-                                        .onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
+                                    runCatching {
+                                        val favNames = user.categories
+                                            ?.mapNotNull { it.name }
+                                            ?.filter { it.isNotBlank() }
+                                            .orEmpty()
+
+                                        if (favNames.isNotEmpty()) {
+                                            promoViewModel.getRecommendedInterleaved(favNames)
+                                        } else {
+                                            promoViewModel.getAllPromotions()
+                                        }
+                                    }.onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
                                     promoLoading = false
 
                                     // COLABORADORES: vuelve a 1ra categoría como “default”
@@ -706,3 +738,36 @@ private fun HomePreview() {
     }
 }
 
+// ————————————————————————————————————————————————————————————————
+// Helper: descarga imagen de perfil (igual que en Profile.kt)
+// (Si ya lo tienes en un utils, puedes borrar esto y usar el tuyo.)
+// ————————————————————————————————————————————————————————————————
+private fun downloadProfileImageForDisplay(
+    context: android.content.Context,
+    userId: String,
+    onSuccess: (String) -> Unit,
+    onError: (Throwable?) -> Unit,
+    onLoading: (Boolean) -> Unit
+) {
+    val key = StoragePath.fromString("public/profile/$userId.jpg")
+    try {
+        onLoading(true)
+        val localFile = File(context.cacheDir, "avatar_$userId.jpg")
+        Amplify.Storage.downloadFile(
+            key,
+            localFile,
+            { result ->
+                onLoading(false)
+                onSuccess(result.file.absolutePath)
+            },
+            { error ->
+                onLoading(false)
+                Log.e("Home", "Error descargando avatar", error)
+                onError(error)
+            }
+        )
+    } catch (e: Exception) {
+        onLoading(false)
+        onError(e)
+    }
+}
