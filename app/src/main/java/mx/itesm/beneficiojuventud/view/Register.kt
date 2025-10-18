@@ -48,6 +48,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import kotlinx.coroutines.coroutineScope
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
@@ -208,25 +209,15 @@ fun Register(
                     enabled = !authState.isLoading && !isCheckingEmail && isFormValid,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (!isAgeValid) {
-                        showError = true
-                        errorMessage = birthDateErrorMessage ?: "Para registrarte debes tener entre 12 y 29 años."
-                        return@MainButton
-                    }
+                    if (!isAgeValid) { /* ... */ return@MainButton }
 
-                    // Guardar datos temporales como ya lo haces
-                    val userProfile = UserProfile(
-                        name = nombre,
-                        lastNamePaternal = apPaterno,
-                        lastNameMaternal = apMaterno,
-                        birthDate = fechaNacDb,
-                        phoneNumber = phone,
-                        email = email
-                    )
+                    // 👇 FIX: resetea el latch para este nuevo intento
+                    didNavigateToConfirm = false
+
+                    val userProfile = UserProfile(/* ... */)
                     authViewModel.savePendingUserProfile(userProfile)
                     authViewModel.setPendingCredentials(email, password)
 
-                    // Nuevo: pre-checar si el correo ya existe en la BD
                     scope.launch {
                         showError = false
                         isCheckingEmail = true
@@ -244,11 +235,12 @@ fun Register(
                         } finally {
                             isCheckingEmail = false
                         }
-
-                        // Si no existe → continuar con registro Cognito
+                        // Si no existe → Cognito: si el usuario ya estaba UNCONFIRMED en Cognito,
+                        // tu VM reenvía código y setea needsConfirmation=true (volverá a navegar).
                         authViewModel.signUp(email, password)
                     }
                 }
+
 
                 Row(
                     modifier = Modifier
@@ -708,7 +700,9 @@ private fun computeAgeFromIso(isoDate: String, today: LocalDate = LocalDate.now(
 private fun mapAuthErrorToFriendly(raw: String): String {
     val lower = raw.lowercase()
     return when {
-        // Ignorado aquí: lo resuelve el VM (UNCONFIRMED vs CONFIRMED)
+        "invalid from email address arn" in lower ||
+                ("invalidparameterexception" in lower && "email" in lower && "arn" in lower) ->
+            "No se pudo enviar el correo de verificación. El remitente no está configurado. Intenta más tarde."
         "usernameexistsexception" in lower || "already exists" in lower || ("email" in lower && "exists" in lower) ->
             raw
         "invalidpassword" in lower || ("password" in lower && ("invalid" in lower || "weak" in lower)) ->
@@ -716,7 +710,6 @@ private fun mapAuthErrorToFriendly(raw: String): String {
         else -> raw
     }
 }
-
 @Composable
 private fun Label(text: String, top: Dp = 0.dp) {
     Text(

@@ -292,7 +292,7 @@ fun ConfirmSignUp(
 }
 
 /** Captura taps sin ripple, útil para "Reenviar código". */
-@Composable
+// ConfirmSignUp.kt
 private fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier =
     this.then(Modifier.pointerInput(Unit) {
         detectTapGestures(onTap = { onClick() })

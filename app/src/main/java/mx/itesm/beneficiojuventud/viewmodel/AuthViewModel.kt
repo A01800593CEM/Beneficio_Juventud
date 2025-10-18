@@ -214,18 +214,34 @@ class AuthViewModel : ViewModel() {
 
     fun resendSignUpCode(email: String) {
         viewModelScope.launch {
-            _authState.value = AuthState(isLoading = true)
+            val priorSub = _authState.value.cognitoSub
+            _authState.update { it.copy(isLoading = true, error = null) }
+
             val result = authRepository.resendSignUpCode(email)
             result.fold(
                 onSuccess = {
-                    _authState.value = AuthState(needsConfirmation = true)
+                    _authState.update {
+                        it.copy(
+                            isLoading = false,
+                            needsConfirmation = true,
+                            error = null,
+                            cognitoSub = priorSub // 👈 conservar sub
+                        )
+                    }
                 },
                 onFailure = { e ->
-                    _authState.value = AuthState(error = e.message ?: "No se pudo reenviar el código")
+                    _authState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = e.message ?: "No se pudo reenviar el código",
+                            cognitoSub = priorSub // 👈 conservar sub aunque falle
+                        )
+                    }
                 }
             )
         }
     }
+
 
     fun signIn(email: String, password: String) {
         viewModelScope.launch {
@@ -455,13 +471,13 @@ class AuthViewModel : ViewModel() {
                 // Si el usuario está UNCONFIRMED, esto funciona y envía el código
                 authRepository.resendSignUpCode(email).getOrThrow()
 
+                // 👇 Estado correcto para que Register navegue a Confirm
                 _authState.update {
                     it.copy(
-                        isLoading = true,
-                        error = null,
-                        // 👇 evita que se “pegue” de intentos anteriores
-                        needsConfirmation = false,
-                        isSuccess = false
+                        isLoading = false,
+                        needsConfirmation = true, // <- CLAVE
+                        isSuccess = false,
+                        error = null
                     )
                 }
             } catch (ex: Exception) {
@@ -475,8 +491,8 @@ class AuthViewModel : ViewModel() {
                 _authState.update {
                     it.copy(
                         isLoading = false,
-                        // 👇 MUY IMPORTANTE: no navegues a Confirm
                         needsConfirmation = false,
+                        cognitoSub = it.cognitoSub,
                         error = if (alreadyConfirmed)
                             "Esta cuenta ya está confirmada. Inicia sesión o restablece tu contraseña."
                         else ex.message ?: "No fue posible reenviar el código de confirmación."
@@ -485,4 +501,5 @@ class AuthViewModel : ViewModel() {
             }
         }
     }
+
 }
