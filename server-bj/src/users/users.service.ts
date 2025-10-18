@@ -66,7 +66,8 @@ export class UsersService {
     const user = await this.usersRepository.findOne({ 
       where: { 
         cognitoId, 
-        accountState: UserState.ACTIVE }});
+        accountState: UserState.ACTIVE },
+      relations: ['categories']});
     if (!user) {
       throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
