@@ -45,5 +45,6 @@ sealed class Screens(val route: String) {
     // Panel de Colaboradres
     data object RegisterCollab : Screens("register_collab")
     data object HomeCollab : Screens("home_collab")
+    data object QrScanner : Screens("qr_scanner")
 
 }

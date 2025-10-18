@@ -76,7 +76,7 @@ fun HomeScreenCollab(
             BJBottomBarCollab(
                 selected = selectedTab,
                 onSelect = { newTab -> selectedTab = newTab },
-                onAddClick = { /* TODO: Navegar a crear promoción */ }
+                onAddClick = { nav.navigate("qr_scanner") } // 👈 ahora sí navega
             )
         }
     ) { paddingValues ->

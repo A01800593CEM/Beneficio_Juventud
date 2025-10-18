@@ -264,6 +264,18 @@ private fun AppNav(
                 collabViewModel = collabViewModel
             )
         }
+
+        composable(Screens.QrScanner.route) {
+            QrScannerScreen(
+                onClose = { nav.popBackStack() },
+                onResult = { text ->
+                    nav.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("qr_result", text)
+                    nav.popBackStack()
+                }
+            )
+        }
     }
 }
 

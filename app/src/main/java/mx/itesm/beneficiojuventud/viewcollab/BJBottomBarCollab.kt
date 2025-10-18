@@ -5,8 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-// import androidx.compose.material.icons.filled.Add
-// import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.outlined.DocumentScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -23,10 +21,6 @@ import androidx.compose.ui.unit.sp
 import mx.itesm.beneficiojuventud.view.GradientIcon
 import mx.itesm.beneficiojuventud.components.GradientText
 
-/**
- * Menú inferior para el Colaborador.
- * Utiliza BJTabCollab para construir dinámicamente sus elementos.
- */
 @Composable
 fun BJBottomBarCollab(
     selected: BJTabCollab,
@@ -74,7 +68,6 @@ fun BJBottomBarCollab(
                         Text(text, color = inactiveTextColor, modifier = mod, fontSize = 10.sp)
                 }
 
-                // Ítem de Menú
                 NavigationBarItem(
                     selected = selected == tabs[0],
                     onClick = { onSelect(tabs[0]) },
@@ -84,7 +77,6 @@ fun BJBottomBarCollab(
                     colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
                 )
 
-                // Ítem de Estadísticas
                 NavigationBarItem(
                     selected = selected == tabs[1],
                     onClick = { onSelect(tabs[1]) },
@@ -96,7 +88,6 @@ fun BJBottomBarCollab(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // Ítem de Promociones
                 NavigationBarItem(
                     selected = selected == tabs[2],
                     onClick = { onSelect(tabs[2]) },
@@ -106,7 +97,6 @@ fun BJBottomBarCollab(
                     colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
                 )
 
-                // Ítem de Perfil
                 NavigationBarItem(
                     selected = selected == tabs[3],
                     onClick = { onSelect(tabs[3]) },
