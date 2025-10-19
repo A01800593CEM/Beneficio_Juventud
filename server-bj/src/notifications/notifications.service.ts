@@ -1,20 +1,17 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import admin from 'firebase-admin';
-
+import { Repository } from 'typeorm';
+import admin from "firebase-admin";
 import { Promotion } from 'src/promotions/entities/promotion.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Favorite } from 'src/favorites/entities/favorite.entity';
 import { Notification } from './entities/notification.entity';
-
 import { NotificationType } from './enums/notification-type.enums';
 import { NotificationStatus } from './enums/notification-status.enum';
 import { RecipientType } from './enums/recipient-type.enums';
 
-import { Booking } from 'src/bookings/entities/booking.entity';
-import { BookStatus } from 'src/bookings/enums/book-status.enum';
+
+const token = "feK8ozTcTd-5KsB5EqKxLS:APA91bFGQQAr2-OwmfhjCF3s78A-YG3Tb2HDuA82JYdoKxL7ndYy7I3wwE8TK6SRzaFBcqmFkjEUvX54VTzCJhr5_5-ZQTCNHcxBTky8gPnsJXflOHU3_CM";
 
 @Injectable()
 export class NotificationsService {
@@ -22,44 +19,35 @@ export class NotificationsService {
 
   constructor(
     @Inject('FIREBASE_ADMIN') private admin: admin.app.App,
-
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-
     @InjectRepository(Favorite)
     private readonly favoriteRepository: Repository<Favorite>,
-
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
-
-    @InjectRepository(Booking)
-    private readonly bookingRepository: Repository<Booking>,
   ) {}
 
-  // =========================
-  // 🔔 Promoción nueva
-  // =========================
   async newPromoNotif(newPromo: Promotion) {
     try {
       this.logger.log(`🔔 Sending notifications for new promotion: ${newPromo.title}`);
 
-      // 1. Enviar al topic general del colaborador
+      // 1. Enviar al topic general del colaborador (mantener funcionalidad existente)
       await admin.messaging().send({
         topic: newPromo.collaboratorId,
         notification: {
           title: newPromo.title,
-          body: newPromo.description,
+          body: newPromo.description
         },
         data: {
           promotion: String(newPromo.promotionId),
-          action: 'openPromoDetail',
-        },
+          action: 'openPromoDetail'
+        }
       });
 
       // 2. Buscar usuarios que tienen este colaborador como favorito
       const usersWithFavorite = await this.favoriteRepository.find({
         where: { collaboratorId: newPromo.collaboratorId },
-        relations: ['user'],
+        relations: ['user']
       });
 
       this.logger.log(`👥 Found ${usersWithFavorite.length} users with this collaborator as favorite`);
@@ -68,19 +56,21 @@ export class NotificationsService {
       for (const favorite of usersWithFavorite) {
         if (favorite.user?.notificationToken) {
           try {
+            // Enviar push notification
             await admin.messaging().send({
               token: favorite.user.notificationToken,
               notification: {
                 title: `🎉 Nueva promoción de tu favorito`,
-                body: `${newPromo.title} - ${newPromo.description}`,
+                body: `${newPromo.title} - ${newPromo.description}`
               },
               data: {
                 promotion: String(newPromo.promotionId),
                 collaborator: newPromo.collaboratorId,
-                action: 'openPromoDetail',
-              },
+                action: 'openPromoDetail'
+              }
             });
 
+            // Guardar registro en BD
             await this.notificationRepository.save(
               this.notificationRepository.create({
                 title: '🎉 Nueva promoción de tu favorito',
@@ -91,7 +81,7 @@ export class NotificationsService {
                 status: NotificationStatus.PENDING,
                 segmentCriteria: { kind: 'favorite-promotion', collaboratorId: newPromo.collaboratorId },
                 promotions: newPromo,
-              }),
+              })
             );
 
             this.logger.log(`✅ Notification sent to user ${favorite.user.id}`);
@@ -108,94 +98,75 @@ export class NotificationsService {
     }
   }
 
-  // =========================
-  // 🧩 Función de prueba basada en tu código original (token obtenido de BD)
-  // =========================
   async sendNotification() {
-    this.logger.log('🔍 Buscando primer usuario con token_notificacion...');
-
-    // 1️⃣ Buscar el primer usuario con token_notificacion no nulo
-    const user = await this.userRepository
-      .createQueryBuilder('u')
-      .where('u.token_notificacion IS NOT NULL')
-      .orderBy('u.usuario_id', 'ASC')
-      .getOne();
-
-    if (!user?.notificationToken) {
-      this.logger.warn('⚠️ No se encontró ningún usuario con token_notificacion');
-      return;
-    }
-
-    this.logger.log(`📱 Se usará el token del usuario ID=${user.id}`);
-
-    // 2️⃣ Envío directo a su token (igual que tu versión original)
     await admin.messaging().send({
-      token: user.notificationToken,
-      notification: {
-        title: '¡Hola!',
-        body: 'Esta es una notificación de prueba desde el servidor NestJS.',
-      },
-      data: {
-        key1: 'value1',
-        key2: 'value2',
-      },
+        token: token,
+        notification: {
+            title: '¡Hola!',
+            body: 'Esta es una notificación de prueba desde Javascript.'
+        },
+        data: { // Opcional: datos personalizados
+            key1: 'value1',
+            key2: 'value2'
+        }
     });
+    console.log("Termina el envío");
 
-    this.logger.log('✅ Notificación enviada por token');
-    console.log('Termina el envío');
-
-    // 3️⃣ Envío a un tópico (manteniendo tu comportamiento original)
+    // Tema
     await admin.messaging().send({
       topic: 'TarjetaJoven',
       notification: {
         title: '¡Noticia del día!',
-        body: '¡Mira lo nuevo en nuestras promociones!',
+        body: '¡Mira lo nuevo en nuestras promociones!'
       },
-      data: {
+      data: { // Opcional: datos personalizados
         key1: 'Ropa y accesorios para la familia',
-        key2: 'value2',
-      },
+        key2: 'value2'
+      }
     });
+}
 
-    this.logger.log('✅ Notificación enviada al tópico TarjetaJoven');
-  }
 
-  // =========================
-  // 📨 Envío de pendientes (BD → FCM)
-  // =========================
+  /**
+   * Envía notificaciones push basadas en registros de notificación pendientes
+   * Usado principalmente por el sistema de expiraciones
+   */
   async sendPendingNotifications() {
     try {
       this.logger.log('🔍 Looking for pending notifications to send...');
 
       const pendingNotifications = await this.notificationRepository.find({
         where: { status: NotificationStatus.PENDING },
-        relations: ['promotions'],
+        relations: ['promotions']
       });
 
       this.logger.log(`📋 Found ${pendingNotifications.length} pending notifications`);
 
       for (const notification of pendingNotifications) {
         try {
+          // Buscar el usuario destinatario (solo si recipientId existe)
           if (!notification.recipientId) continue;
 
           const user = await this.userRepository.findOne({
-            where: { id: notification.recipientId },
+            where: { id: notification.recipientId }
           });
 
           if (user?.notificationToken) {
+            // Enviar push notification
             await admin.messaging().send({
               token: user.notificationToken,
               notification: {
                 title: notification.title,
-                body: notification.message,
+                body: notification.message
               },
               data: {
                 notificationId: String(notification.notificationId),
                 promotion: notification.promotions ? String(notification.promotions.promotionId) : '',
-                action: 'openNotification',
-              },
+                action: 'openNotification'
+              }
             });
 
+            // Marcar como enviada
             notification.status = NotificationStatus.SENT;
             await this.notificationRepository.save(notification);
 
@@ -215,68 +186,28 @@ export class NotificationsService {
     }
   }
 
-  // =========================
-  // ⏳ Escaneo de reservas por expirar (crea PENDING)
-  // =========================
-  async checkExpiringBookings(hoursBefore = 24) {
+  /**
+   * Envía una notificación push específica a un usuario
+   */
+  async sendPushNotification(
+    userToken: string,
+    title: string,
+    body: string,
+    data: Record<string, string> = {}
+  ) {
     try {
-      this.logger.log(`⏰ Buscando reservas que expiran en las próximas ${hoursBefore} h...`);
-
-      const now = new Date();
-      const limit = new Date(now.getTime() + hoursBefore * 60 * 60 * 1000);
-
-      const expiring = await this.bookingRepository.find({
-        where: {
-          status: BookStatus.PENDING,
-          limitUseDate: Between(now, limit),
-        },
-        relations: ['user', 'promotion'],
+      await admin.messaging().send({
+        token: userToken,
+        notification: { title, body },
+        data
       });
 
-      this.logger.log(`📋 Encontradas ${expiring.length} reservas próximas a expirar`);
-
-      for (const booking of expiring) {
-        const user = booking.user;
-        if (!user?.notificationToken) continue;
-
-        const title = '⏳ Tu reservación está por expirar';
-        const body = booking.promotion
-          ? `La promoción "${booking.promotion.title}" vence el ${new Date(booking.limitUseDate!).toLocaleString()}`
-          : `Tu reservación vence el ${new Date(booking.limitUseDate!).toLocaleString()}`;
-
-        await this.notificationRepository.save(
-          this.notificationRepository.create({
-            title,
-            message: body,
-            type: NotificationType.ALERT, // Usa tu enum; si no existe ALERT, usa PROMOTION o agrega EXPIRATION
-            recipientType: RecipientType.USER,
-            recipientId: user.id,
-            status: NotificationStatus.PENDING,
-            segmentCriteria: {
-              kind: 'booking-expiration',
-              bookingId: booking.bookingId,
-              limitUseDate: booking.limitUseDate?.toISOString() ?? '',
-            },
-          }),
-        );
-
-        this.logger.log(`📝 Notificación creada para reserva ${booking.bookingId}`);
-      }
-
-      this.logger.log('✅ checkExpiringBookings() completado');
+      this.logger.log(`✅ Push notification sent: ${title}`);
     } catch (error) {
-      this.logger.error('❌ Error en checkExpiringBookings():', error);
+      this.logger.error(`❌ Failed to send push notification: ${title}`, error);
       throw error;
     }
   }
-
-  // ==========================================================
-  // ⏱️ CRON DENTRO DEL MISMO SERVICE (cada 30 minutos)
-  // ==========================================================
-  @Cron(CronExpression.EVERY_30_MINUTES)
-  async cronScanAndSend() {
-    this.logger.log('🕒 CRON: Escaneo de expiraciones y envío de pendientes...');
-    await this.checkExpiringBookings(24);
-    await this.sendPendingNotifications();
-  }
 }
+
+//sendNotification().catch(console.error);
