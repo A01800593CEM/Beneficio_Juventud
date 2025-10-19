@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import admin from 'firebase-admin';
 
 import { Promotion } from 'src/promotions/entities/promotion.entity';
@@ -108,7 +109,7 @@ export class NotificationsService {
   }
 
   // =========================
-  // 🧩 Función de prueba basada en tu código original
+  // 🧩 Función de prueba basada en tu código original (token obtenido de BD)
   // =========================
   async sendNotification() {
     this.logger.log('🔍 Buscando primer usuario con token_notificacion...');
@@ -247,7 +248,7 @@ export class NotificationsService {
           this.notificationRepository.create({
             title,
             message: body,
-            type: NotificationType.ALERT,
+            type: NotificationType.ALERT, // Usa tu enum; si no existe ALERT, usa PROMOTION o agrega EXPIRATION
             recipientType: RecipientType.USER,
             recipientId: user.id,
             status: NotificationStatus.PENDING,
@@ -267,5 +268,15 @@ export class NotificationsService {
       this.logger.error('❌ Error en checkExpiringBookings():', error);
       throw error;
     }
+  }
+
+  // ==========================================================
+  // ⏱️ CRON DENTRO DEL MISMO SERVICE (cada 30 minutos)
+  // ==========================================================
+  @Cron(CronExpression.EVERY_30_MINUTES)
+  async cronScanAndSend() {
+    this.logger.log('🕒 CRON: Escaneo de expiraciones y envío de pendientes...');
+    await this.checkExpiringBookings(24);
+    await this.sendPendingNotifications();
   }
 }
