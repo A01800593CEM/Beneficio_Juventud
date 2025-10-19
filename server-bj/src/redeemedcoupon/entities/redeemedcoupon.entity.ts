@@ -22,9 +22,6 @@ export class Redeemedcoupon {
   @Column({name: 'usuario_id'})
   userId: string;
 
-  @Column({name: 'colaborador_id'})
-  collaboratorId: string;
-
   @Column({name: 'sucursal_id'})
   branchId: number
 
@@ -35,10 +32,6 @@ export class Redeemedcoupon {
   @ManyToOne(() => User, users => users.redeemedcoupon)
   @JoinColumn({ name: 'usuario_id', referencedColumnName: 'cognitoId' })
   user: Relation<User>;
-
-  @ManyToOne(() => Collaborator, collaborators => collaborators.redeemedcoupon)
-  @JoinColumn({ name: 'colaborador_id', referencedColumnName: 'cognitoId' })
-  collaborator: Relation<Collaborator>;
 
   @ManyToOne(() => Branch, branches => branches.redeemedcoupon)
   @JoinColumn({ name: 'sucursal_id' })

@@ -36,7 +36,8 @@ export class NotificationsService {
         topic: newPromo.collaboratorId,
         notification: {
           title: newPromo.title,
-          body: newPromo.description
+          body: newPromo.description,
+          imageUrl: newPromo.imageUrl
         },
         data: {
           promotion: String(newPromo.promotionId),
@@ -104,6 +105,7 @@ export class NotificationsService {
         notification: {
             title: '¡Hola!',
             body: 'Esta es una notificación de prueba desde Javascript.'
+
         },
         data: { // Opcional: datos personalizados
             key1: 'value1',

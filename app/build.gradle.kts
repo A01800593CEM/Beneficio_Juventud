@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
+    alias(libs.plugins.google.devtools.ksp)
 }
 
 android {
@@ -110,7 +111,10 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
     implementation("androidx.core:core-splashscreen:1.0.1")
 
-
+    // RoomDB Dependencies
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

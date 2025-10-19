@@ -1,5 +1,7 @@
 package mx.itesm.beneficiojuventud.model.users
 
+import com.google.firebase.Firebase
+import com.google.firebase.messaging.messaging
 import com.google.gson.GsonBuilder
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.Promotions
@@ -59,6 +61,7 @@ object RemoteServiceUser {
         if (!response.isSuccessful) {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
         }
+
     }
 
     suspend fun unfavoritePromotion(promotionId: Int, cognitoId: String) {
@@ -90,6 +93,11 @@ object RemoteServiceUser {
         if (!response.isSuccessful) {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
         }
+        Firebase.messaging.subscribeToTopic(collaboratorId)
+            .addOnCompleteListener { t ->
+                val msg = if (t.isSuccessful) "Subscribed" else "Subscribe failed"
+                println(msg)
+            }
     }
 
     suspend fun unfavoriteCollaborator(collaboratorId: String, cognitoId: String) {
@@ -97,5 +105,10 @@ object RemoteServiceUser {
         if (!response.isSuccessful) {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
         }
+        Firebase.messaging.unsubscribeFromTopic(collaboratorId)
+            .addOnCompleteListener { task ->
+                val msg = if (task.isSuccessful) "Unsubscribed" else "Unsubscribe failed"
+                println(msg)
+            }
     }
 }
