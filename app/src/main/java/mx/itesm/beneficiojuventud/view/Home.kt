@@ -70,11 +70,11 @@ import mx.itesm.beneficiojuventud.components.iconForCategoryName
 fun Home(
     nav: NavHostController,
     modifier: Modifier = Modifier,
-    categoryViewModel: CategoryViewModel = viewModel(), // mismo VM que Onboarding
+    categoryViewModel: CategoryViewModel, // mismo VM que Onboarding
     userViewModel: UserViewModel,
-    promoViewModel: PromoViewModel = viewModel(),        // VM de promos (backend)
+    promoViewModel: PromoViewModel,        // VM de promos (backend)
     // VM colaboradores (backend)
-    collabViewModel: CollabViewModel = viewModel()
+    collabViewModel: CollabViewModel
 ) {
     // ▶ Suscripciones
     val user by userViewModel.userState.collectAsState()
@@ -727,16 +727,6 @@ private fun TopBar(
     }
 }
 
-/** Vista previa de [Home]. */
-@SuppressLint("ViewModelConstructorInComposable")
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun HomePreview() {
-    BeneficioJuventudTheme {
-        val nav = rememberNavController()
-        Home(nav = nav, userViewModel = UserViewModel())
-    }
-}
 
 // ————————————————————————————————————————————————————————————————
 // Helper: descarga imagen de perfil (igual que en Profile.kt)

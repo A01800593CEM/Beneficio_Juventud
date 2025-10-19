@@ -1,7 +1,8 @@
 package mx.itesm.beneficiojuventud.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import android.content.Context
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import kotlinx.coroutines.Dispatchers
@@ -16,29 +17,10 @@ import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.users.RemoteServiceUser
 import mx.itesm.beneficiojuventud.model.users.UserProfile
 
-class UserViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val model = RemoteServiceUser
-
-    // Database and Repository
-    private val database: LocalDatabase by lazy {
-        Room.databaseBuilder(
-            application,
-            LocalDatabase::class.java,
-            "beneficio_juventud_db"
-        )
-            .fallbackToDestructiveMigration()
-            .build()
-    }
-
-    private val repository: SavedCouponRepository by lazy {
-        SavedCouponRepository(
-            promotionDao = database.promotionDao(),
-            categoryDao = database.categoryDao(),
-            promotionCategoriesDao = database.promotionCategoriesDao(),
-            bookingDao = database.bookingDao()
-        )
-    }
+class UserViewModel(
+    private val repository: SavedCouponRepository,
+    private val model: RemoteServiceUser = RemoteServiceUser, // sigue siendo tu singleton
+) : ViewModel() {
 
     private val _userState = MutableStateFlow(UserProfile())
     val userState: StateFlow<UserProfile> = _userState
@@ -52,7 +34,6 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     private val _favoritePromotions = MutableStateFlow<List<Promotions>>(emptyList())
     val favoritePromotions: StateFlow<List<Promotions>> = _favoritePromotions
 
-    // AHORA: lista de objetos Collaborator (antes List<Int>)
     private val _favoriteCollabs = MutableStateFlow<List<Collaborator>>(emptyList())
     val favoriteCollabs: StateFlow<List<Collaborator>> = _favoriteCollabs
 
@@ -61,7 +42,7 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Limpia el perfil y **anula** cualquier request en curso. */
     fun clearUser() {
-        loadToken++                 // invalida todas las respuestas pendientes
+        loadToken++ // invalida todas las respuestas pendientes
         _error.value = null
         _userState.value = UserProfile()
         _isLoading.value = false
@@ -126,7 +107,6 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteUser(cognitoId: String) {
-        // Borrar no necesita tomar ownership del token; pero limpiamos estado local si aplica.
         _error.value = null
         _isLoading.value = true
 
@@ -135,10 +115,7 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
                 withContext(Dispatchers.IO) { model.deleteUser(cognitoId) }
             }
             result.fold(
-                onSuccess = {
-                    // Si borraste el usuario actual, deja el state limpio
-                    clearUser()
-                },
+                onSuccess = { clearUser() },
                 onFailure = { e ->
                     _error.value = e.message ?: "Error al eliminar usuario"
                     _isLoading.value = false
@@ -150,14 +127,14 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun emailExists(email: String): Boolean {
         return withContext(Dispatchers.IO) {
             runCatching { model.emailExists(email) }
-                .getOrElse { throw it } // deja que el UI muestre error si falla
+                .getOrElse { throw it }
         }
     }
 
+    // --- PROMOTIONS FAVORITES ---
 
     fun favoritePromotion(promotionId: Int, cognitoId: String) {
         _error.value = null
-        // No activamos el loading global para no bloquear la UI por una acción rápida.
         viewModelScope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) { repository.favoriteCoupon(promotionId, cognitoId) }
@@ -165,7 +142,6 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
             result.onFailure { e ->
                 _error.value = e.message ?: "Error al marcar favorito"
             }.onSuccess {
-                // Refrescamos listas para mantener consistencia
                 refreshFavorites(cognitoId)
             }
         }
@@ -180,7 +156,6 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
             result.onFailure { e ->
                 _error.value = e.message ?: "Error al quitar favorito"
             }.onSuccess {
-                // Refrescamos listas para mantener consistencia
                 refreshFavorites(cognitoId)
             }
         }
@@ -207,15 +182,12 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Conveniencia para refrescar ambas listas de favoritos sin pelear con el token global. */
     fun refreshFavorites(cognitoId: String) {
-        // No tocamos loadToken aquí para no invalidar otras cargas largas.
         viewModelScope.launch {
-            // Promos - usar repository
             runCatching {
                 withContext(Dispatchers.IO) { repository.getFavoriteCoupons(cognitoId) }
             }.onSuccess { _favoritePromotions.value = it }
                 .onFailure { e -> _error.value = e.message ?: "Error al refrescar promociones favoritas" }
 
-            // Collabs (List<Collaborator>)
             runCatching {
                 withContext(Dispatchers.IO) { model.getFavoriteCollabs(cognitoId) }
             }.onSuccess { _favoriteCollabs.value = it }
@@ -225,7 +197,6 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- COLLABORATORS FAVORITES ---
 
-    // AHORA: collaboratorId es String (cognitoId), no Int
     fun favoriteCollaborator(collaboratorId: String, cognitoId: String) {
         _error.value = null
         viewModelScope.launch {
@@ -235,7 +206,6 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
             result.onFailure { e ->
                 _error.value = e.message ?: "Error al marcar colaborador como favorito"
             }.onSuccess {
-                // Mantén el estado consistente
                 refreshFavorites(cognitoId)
             }
         }
@@ -250,16 +220,39 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
             result.onFailure { e ->
                 _error.value = e.message ?: "Error al quitar colaborador de favoritos"
             }.onSuccess {
-                // Mantén el estado consistente
                 refreshFavorites(cognitoId)
             }
         }
     }
 
     fun toggleFavoriteCollaborator(collaboratorId: String, cognitoId: String) {
-        // Como ahora _favoriteCollabs es List<Collaborator>, comparamos por cognitoId
         val isFav = _favoriteCollabs.value.any { it.cognitoId == collaboratorId }
         if (isFav) unfavoriteCollaborator(collaboratorId, cognitoId)
         else favoriteCollaborator(collaboratorId, cognitoId)
+    }
+
+    // ---------- Factory sin Hilt (para Compose viewModel()) ----------
+    companion object {
+        fun provideFactory(appContext: Context): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    val db = Room.databaseBuilder(
+                        appContext.applicationContext,
+                        LocalDatabase::class.java,
+                        "beneficio_juventud_db"
+                    )
+                        .fallbackToDestructiveMigration()
+                        .build()
+
+                    val repo = SavedCouponRepository(
+                        promotionDao = db.promotionDao(),
+                        categoryDao = db.categoryDao(),
+                        promotionCategoriesDao = db.promotionCategoriesDao(),
+                        bookingDao = db.bookingDao()
+                    )
+                    return UserViewModel(repo) as T
+                }
+            }
     }
 }

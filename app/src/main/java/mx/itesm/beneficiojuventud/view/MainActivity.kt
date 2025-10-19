@@ -14,6 +14,7 @@ import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -99,11 +100,15 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppContent(
     authViewModel: AuthViewModel = viewModel(),
-    userViewModel: UserViewModel = viewModel(),
     collabViewModel: CollabViewModel = viewModel(),
     categoryViewModel: CategoryViewModel = viewModel(),
     promoViewModel: PromoViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val userViewModel: UserViewModel = viewModel(
+        factory = UserViewModel.provideFactory(context)
+    )
+
     val nav = rememberNavController()
     AppNav(
         nav = nav,
@@ -114,6 +119,8 @@ private fun AppContent(
         promoViewModel = promoViewModel
     )
 }
+
+
 
 @Composable
 private fun AppNav(

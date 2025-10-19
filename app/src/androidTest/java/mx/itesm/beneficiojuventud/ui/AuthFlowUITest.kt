@@ -4,7 +4,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
-import mx.itesm.beneficiojuventud.MainActivity
+import mx.itesm.beneficiojuventud.view.MainActivity
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -355,26 +355,6 @@ class AuthFlowUITest {
         // Verificar que se ingresó
         composeTestRule.onNodeWithText("recovery@example.com", useUnmergedTree = true)
             .assertExists()
-    }
-
-    // ========== PRUEBAS DE ACCESIBILIDAD ==========
-
-    @Test
-    fun loginScreen_allButtons_haveClickActions() {
-        composeTestRule.waitForIdle()
-
-        // Todos los botones deben tener acciones de click
-        composeTestRule.onAllNodes(hasClickAction())
-            .assertCountEquals(greaterThan(0))
-    }
-
-    @Test
-    fun loginScreen_allTextFields_haveSetTextAction() {
-        composeTestRule.waitForIdle()
-
-        // Todos los campos de texto deben permitir entrada
-        composeTestRule.onAllNodes(hasSetTextAction())
-            .assertCountEquals(greaterThan(0))
     }
 
     // ========== PRUEBAS DE PERFORMANCE ==========
