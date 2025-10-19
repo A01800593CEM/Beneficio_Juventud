@@ -17,6 +17,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 //Notificaciones con schedule
 import { ScheduleModule } from '@nestjs/schedule';
 import { ExpirationsModule } from './expirations/expirations.module';
+import { PlacesModule } from './config/places.module';
 
 
 @Module({
@@ -55,7 +56,8 @@ import { ExpirationsModule } from './expirations/expirations.module';
     NotificationsModule,
     //Schedule
     ScheduleModule.forRoot(),
-    ExpirationsModule
+    ExpirationsModule,
+    PlacesModule
   ],
   controllers: [AppController],
   providers: [AppService],
