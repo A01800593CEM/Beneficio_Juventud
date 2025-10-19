@@ -11,6 +11,8 @@ import {
 import { PromotionsService } from './promotions.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
+import { CategoriesByNamePipe } from 'src/common/pipes/transform-to-id.pipe';
+import { Category } from 'src/categories/entities/category.entity';
 
 @Controller('promotions')
 export class PromotionsController {
@@ -18,10 +20,13 @@ export class PromotionsController {
 
   @Post()
   create(
+    @Body('categories', CategoriesByNamePipe) categories: Category[],
     @Body(new ValidationPipe({ whitelist: true, transform: true }))
     dto: CreatePromotionDto,
   ) {
-    return this.promotionsService.create(dto);
+    return this.promotionsService.create({
+      ...dto,
+      categoryIds: categories.map(category => category.id)});
   }
 
   @Get()

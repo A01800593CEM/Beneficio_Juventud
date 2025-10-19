@@ -11,7 +11,7 @@ import { NotificationStatus } from './enums/notification-status.enum';
 import { RecipientType } from './enums/recipient-type.enums';
 
 
-const token = "d6pkRCOgTVCX4CezhHXNvh:APA91bFtNzHwDJOhmWdU6ZaTiyC5bce3H00knep7lcGgn5qTprmBtsGJamSGwmQmLWuq4utjMaEwFyNmimJuEKMCfoy36FIaRbJE7kEx4z-GZhMgndcJVxg";
+const token = "feK8ozTcTd-5KsB5EqKxLS:APA91bFGQQAr2-OwmfhjCF3s78A-YG3Tb2HDuA82JYdoKxL7ndYy7I3wwE8TK6SRzaFBcqmFkjEUvX54VTzCJhr5_5-ZQTCNHcxBTky8gPnsJXflOHU3_CM";
 
 @Injectable()
 export class NotificationsService {
@@ -28,76 +28,89 @@ export class NotificationsService {
   ) {}
 
   async newPromoNotif(newPromo: Promotion) {
-    try {
-      this.logger.log(`🔔 Sending notifications for new promotion: ${newPromo.title}`);
+  try {
+    this.logger.log(`🔔 Sending notifications for new promotion: ${newPromo.title}`);
 
-      // 1. Enviar al topic general del colaborador (mantener funcionalidad existente)
-      await admin.messaging().send({
-        topic: newPromo.collaboratorId,
-        notification: {
-          title: newPromo.title,
-          body: newPromo.description,
-          imageUrl: newPromo.imageUrl
-        },
-        data: {
-          promotion: String(newPromo.promotionId),
-          action: 'openPromoDetail'
+    // --- TOPIC BROADCAST (usa la instancia inyectada) ---
+    await this.admin.messaging().send({
+      topic: newPromo.collaboratorId,
+      notification: {
+        title: newPromo.title,
+        body: newPromo.description,
+        imageUrl: newPromo.imageUrl,
+      },
+      data: {
+        promotion: String(newPromo.promotionId),
+        action: 'openPromoDetail',
+      },
+    });
+
+    // --- USUARIOS QUE TIENEN FAVORITO AL COLABORADOR ---
+    const usersWithFavorite = await this.favoriteRepository.find({
+      where: { collaboratorId: newPromo.collaboratorId },
+      relations: ['user'],
+    });
+
+    this.logger.log(`👥 Found ${usersWithFavorite.length} users with this collaborator as favorite`);
+
+    for (const favorite of usersWithFavorite) {
+      const user = favorite.user;
+      if (!user?.notificationToken) continue;
+
+      try {
+        // (Opcional) DEDUPE: ¿ya existe una notificación por esta promo para este user?
+        const existing = await this.notificationRepository.findOne({
+          where: {
+            recipientId: user.id,
+            promotions: { promotionId: newPromo.promotionId },
+          },
+          relations: ['promotions'],
+        });
+        if (existing) {
+          this.logger.log(`↩️ Skipping duplicate notif for user ${user.id} & promo ${newPromo.promotionId}`);
+          continue;
         }
-      });
 
-      // 2. Buscar usuarios que tienen este colaborador como favorito
-      const usersWithFavorite = await this.favoriteRepository.find({
-        where: { collaboratorId: newPromo.collaboratorId },
-        relations: ['user']
-      });
+        // Enviar push inmediato
+        await this.admin.messaging().send({
+          token: user.notificationToken,
+          notification: {
+            title: '🎉 Nueva promoción de tu favorito',
+            body: `${newPromo.title} - ${newPromo.description}`,
+          },
+          data: {
+            promotion: String(newPromo.promotionId),
+            collaborator: newPromo.collaboratorId,
+            action: 'openPromoDetail',
+          },
+        });
 
-      this.logger.log(`👥 Found ${usersWithFavorite.length} users with this collaborator as favorite`);
+        // Guardar en BD ya como SENT (porque ya se envió)
+        await this.notificationRepository.save(
+          this.notificationRepository.create({
+            title: '🎉 Nueva promoción de tu favorito',
+            message: `${newPromo.title} - ${newPromo.description}`,
+            type: NotificationType.PROMOTION,
+            recipientType: RecipientType.USER,
+            recipientId: user.id,
+            status: NotificationStatus.SENT, // <<< antes estaba PENDING
+            segmentCriteria: { kind: 'favorite-promotion', collaboratorId: newPromo.collaboratorId },
+            promotions: newPromo,
+          }),
+        );
 
-      // 3. Enviar notificaciones personalizadas a cada usuario
-      for (const favorite of usersWithFavorite) {
-        if (favorite.user?.notificationToken) {
-          try {
-            // Enviar push notification
-            await admin.messaging().send({
-              token: favorite.user.notificationToken,
-              notification: {
-                title: `🎉 Nueva promoción de tu favorito`,
-                body: `${newPromo.title} - ${newPromo.description}`
-              },
-              data: {
-                promotion: String(newPromo.promotionId),
-                collaborator: newPromo.collaboratorId,
-                action: 'openPromoDetail'
-              }
-            });
-
-            // Guardar registro en BD
-            await this.notificationRepository.save(
-              this.notificationRepository.create({
-                title: '🎉 Nueva promoción de tu favorito',
-                message: `${newPromo.title} - ${newPromo.description}`,
-                type: NotificationType.PROMOTION,
-                recipientType: RecipientType.USER,
-                recipientId: favorite.user.id,
-                status: NotificationStatus.PENDING,
-                segmentCriteria: { kind: 'favorite-promotion', collaboratorId: newPromo.collaboratorId },
-                promotions: newPromo,
-              })
-            );
-
-            this.logger.log(`✅ Notification sent to user ${favorite.user.id}`);
-          } catch (error) {
-            this.logger.error(`❌ Failed to send notification to user ${favorite.user.id}:`, error);
-          }
-        }
+        this.logger.log(`✅ Notification sent to user ${user.id}`);
+      } catch (error) {
+        this.logger.error(`❌ Failed to send notification to user ${favorite.user.id}:`, error);
       }
-
-      this.logger.log(`🎯 Promotion notifications completed`);
-    } catch (error) {
-      this.logger.error('❌ Error in newPromoNotif:', error);
-      throw error;
     }
+
+    this.logger.log(`🎯 Promotion notifications completed`);
+  } catch (error) {
+    this.logger.error('❌ Error in newPromoNotif:', error);
+    throw error;
   }
+}
 
   async sendNotification() {
     await admin.messaging().send({
