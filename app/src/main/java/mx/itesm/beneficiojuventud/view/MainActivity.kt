@@ -139,10 +139,15 @@ private fun AppNav(
     LaunchedEffect(sessionKey) {
         if (appState.isAuthenticated) {
             userViewModel.clearUser()
+            collabViewModel.clearCollaborator()
             val id = authViewModel.currentUserId.value
-            if (!id.isNullOrBlank()) userViewModel.getUserById(id)
+            if (!id.isNullOrBlank()) {
+                userViewModel.getUserById(id)
+                try { collabViewModel.getCollaboratorById(id) } catch (_: Exception) {}
+            }
         } else {
             userViewModel.clearUser()
+            collabViewModel.clearCollaborator()
         }
     }
     LaunchedEffect(currentUserId) {
@@ -353,11 +358,15 @@ private fun StartupScreen(
     LaunchedEffect(currentUserId) {
         val id = currentUserId
         if (!id.isNullOrBlank()) {
+            // Limpiar ambos estados primero
+            userViewModel.clearUser()
+            collabViewModel.clearCollaborator()
             // Cargar ambos perfiles en paralelo
             userViewModel.getUserById(id)
             try { collabViewModel.getCollaboratorById(id) } catch (_: Exception) {}
         } else {
             userViewModel.clearUser()
+            collabViewModel.clearCollaborator()
         }
     }
 

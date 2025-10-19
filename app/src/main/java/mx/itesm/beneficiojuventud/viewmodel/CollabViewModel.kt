@@ -35,4 +35,8 @@ class CollabViewModel : ViewModel() {
     suspend fun deleteCollaborator(id: String) {
         model.deleteCollaborator(id)
     }
+
+    fun clearCollaborator() {
+        _collabState.value = Collaborator()
+    }
 }
