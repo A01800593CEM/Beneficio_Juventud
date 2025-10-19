@@ -50,7 +50,8 @@ fun HomeScreenCollab(nav: NavHostController) {
         bottomBar = {
             BJBottomBarCollab(
                 selected = selectedTab,
-                onSelect = { newTab -> selectedTab = newTab },
+                onSelect = { newTab ->
+                    selectedTab = newTab },
                 onAddClick = { /* TODO */ }
             )
         }
@@ -78,19 +79,22 @@ fun HomeScreenCollab(nav: NavHostController) {
             InfoCardCollab(
                 icon = Icons.Outlined.LocalOffer,
                 title = "Promociones Activas",
-                description = "Visualiza, edita o desactiva las ofertas que tienes vigentes."
+                description = "Visualiza, edita o desactiva las ofertas que tienes vigentes.",
+                onClick = { nav.navigate(BJTabCollab.Promotions)}
             )
             Spacer(Modifier.height(16.dp))
             InfoCardCollab(
                 icon = Icons.Outlined.BarChart,
                 title = "Estadísticas",
-                description = "Analiza el rendimiento y la conversión de tus cupones."
+                description = "Analiza el rendimiento y la conversión de tus cupones.",
+                onClick = { nav.navigate(BJTabCollab.Stats) }
             )
             Spacer(Modifier.height(16.dp))
             InfoCardCollab(
                 icon = Icons.Default.Person,
                 title = "Perfil",
-                description = "Modifica la información de tu negocio."
+                description = "Modifica la información de tu negocio.",
+                onClick = { nav.navigate(BJTabCollab.Profile) }
             )
             Spacer(Modifier.height(16.dp))
         }

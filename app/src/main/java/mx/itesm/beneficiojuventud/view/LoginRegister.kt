@@ -25,6 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.model.TestRemote
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewcollab.BJTabCollab
 
 /**
  * Pantalla inicial con opciones para iniciar sesión o registrarse.
@@ -130,7 +131,7 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
                         color = Color(0xFF7D7A7A)
                     )
                 )
-                TextButton(onClick = { /* nav.navigate("colabora") */ }) {
+                TextButton(onClick = {  }) {
                     Text(
                         "Ver más",
                         style = TextStyle(
