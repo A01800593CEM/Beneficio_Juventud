@@ -131,7 +131,7 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
                     )
                 )
                 // Panel de Colaboradres Registro
-                TextButton(onClick = { nav.navigate(Screens.HomeScreenCollab.route) }) {
+                TextButton(onClick = { nav.navigate(Screens.RegisterCollab.route) }) {
                     Text(
                         "Ver más",
                         style = TextStyle(

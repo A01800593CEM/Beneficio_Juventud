@@ -315,7 +315,7 @@ fun PromoImageBannerFav(
             if (isReserved) {
                 Box(
                     modifier = Modifier
-                        .align(Alignment.TopStart)
+                        .align(Alignment.BottomEnd)
                         .padding(8.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color(0xFF4CAF50))
