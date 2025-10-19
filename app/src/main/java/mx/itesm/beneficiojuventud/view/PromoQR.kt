@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -55,6 +56,7 @@ import mx.itesm.beneficiojuventud.model.promos.PromotionState
 import mx.itesm.beneficiojuventud.model.promos.PromotionType
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import java.text.SimpleDateFormat
@@ -254,7 +256,8 @@ fun PromoQR(
     cognitoId: String,
     modifier: Modifier = Modifier,
     viewModel: PromoViewModel = viewModel(),
-    userViewModel: UserViewModel = viewModel()
+    userViewModel: UserViewModel = viewModel(),
+    bookingViewModel: BookingViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
     var showQrDialog by rememberSaveable { mutableStateOf(false) }
@@ -263,6 +266,12 @@ fun PromoQR(
     val promo by viewModel.promoState.collectAsState()
     val favPromos by userViewModel.favoritePromotions.collectAsState()
     val userError by userViewModel.error.collectAsState()
+
+    // Booking states
+    val bookingSuccess by bookingViewModel.bookingSuccess.collectAsState()
+    val bookingError by bookingViewModel.error.collectAsState()
+    val bookingLoading by bookingViewModel.isLoading.collectAsState()
+    val bookingMessage by bookingViewModel.message.collectAsState()
 
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -288,6 +297,46 @@ fun PromoQR(
     }
     LaunchedEffect(userError) {
         userError?.let { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
+    }
+
+    // Manejar éxito de reservación
+    LaunchedEffect(bookingSuccess) {
+        if (bookingSuccess) {
+            // Navegar a pantalla de éxito
+            nav.navigate(
+                Screens.Status.createRoute(
+                    StatusType.COUPON_RESERVATION_SUCCESS,
+                    Screens.Favorites.route
+                )
+            ) {
+                popUpTo(Screens.PromoQR.route) { inclusive = true }
+            }
+            bookingViewModel.resetBookingSuccess()
+        }
+    }
+
+    // Mostrar errores de reservación
+    LaunchedEffect(bookingError) {
+        bookingError?.let { msg ->
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = msg,
+                    actionLabel = "OK",
+                    duration = SnackbarDuration.Long
+                )
+            }
+            bookingViewModel.clearError()
+        }
+    }
+
+    // Mostrar mensajes de reservación
+    LaunchedEffect(bookingMessage) {
+        bookingMessage?.let { msg ->
+            scope.launch {
+                snackbarHostState.showSnackbar(msg)
+            }
+            bookingViewModel.clearMessage()
+        }
     }
 
     // Model UI
@@ -504,21 +553,46 @@ fun PromoQR(
                     item {
                         if (detail.isBookable) {
                             Spacer(Modifier.height(8.dp))
-                            MainButton(
-                                text = "Reservar Cupón",
+
+                            // Botón con estado de carga
+                            Box(
                                 modifier = Modifier
-                                    .padding(horizontal = 16.dp),
-                                onClick = {
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                            ) {
+                                MainButton(
+                                    text = if (bookingLoading) "Reservando..." else "Reservar Cupón",
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        // Verificar que hay stock disponible
+                                        val available = promo.availableStock ?: 0
+                                        if (available <= 0) {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    message = "No hay stock disponible",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
+                                            return@MainButton
+                                        }
 
-                                    nav.navigate(
+                                        // Reservar cupón
+                                        bookingViewModel.reserveCoupon(promo, cognitoId)
+                                    }
+                                )
 
-                                        Screens.Status.createRoute(
-                                            StatusType.COUPON_SAVE_SUCCESS,
-                                            Screens.Favorites.route
-                                        )
+                                // Mostrar loading spinner si está cargando
+                                if (bookingLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier
+                                            .align(Alignment.CenterEnd)
+                                            .padding(end = 16.dp)
+                                            .size(24.dp),
+                                        strokeWidth = 2.dp,
+                                        color = Color.White
                                     )
                                 }
-                            )
+                            }
                         }
                     }
                     item {

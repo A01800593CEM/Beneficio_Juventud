@@ -45,6 +45,11 @@ enum class StatusType(
         title = "¡Cupón guardado!",
         subtitle = "Lo encontrarás en tu sección de cupones"
     ),
+    COUPON_RESERVATION_SUCCESS(
+        isSuccess = true,
+        title = "¡Cupón reservado exitosamente!",
+        subtitle = "Lo encontrarás en tu sección de favoritos"
+    ),
     COUPON_USE_SUCCESS(
         isSuccess = true,
         title = "¡Has usado tu cupón!",
@@ -59,6 +64,11 @@ enum class StatusType(
         isSuccess = false,
         title = "Error al guardar",
         subtitle = "No se pudo guardar el cupón, intenta de nuevo"
+    ),
+    COUPON_RESERVATION_ERROR(
+        isSuccess = false,
+        title = "Error al reservar",
+        subtitle = "No se pudo reservar el cupón, intenta de nuevo"
     ),
     COUPON_USE_ERROR(
         isSuccess = false,
