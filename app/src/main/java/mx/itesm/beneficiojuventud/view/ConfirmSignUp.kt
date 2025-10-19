@@ -95,9 +95,9 @@ fun ConfirmSignUp(
         }
 
         if (!authState.isLoading && authState.isSuccess) {
-            // Detectar si es usuario o colaborador
-            val pendingUser = authViewModel.getPendingUserProfile()
-            val pendingCollab = authViewModel.getPendingCollabProfile()
+            // Detectar si es usuario o colaborador (usando las propiedades públicas)
+            val pendingUser = authViewModel.pendingUserProfile
+            val pendingCollab = authViewModel.pendingCollabProfile
             val sub = currentSub ?: authState.cognitoSub
 
             if (pendingUser == null && pendingCollab == null) {

@@ -101,10 +101,6 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
         _pendingUserProfile = userProfile
     }
 
-    fun getPendingUserProfile(): UserProfile? {
-        return _pendingUserProfile
-    }
-
     fun consumePendingUserProfile(): UserProfile? {
         val profile = _pendingUserProfile
         _pendingUserProfile = null
@@ -118,10 +114,6 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
     // Gestión del perfil de colaborador pendiente durante el registro
     fun savePendingCollabProfile(collab: Collaborator) {
         _pendingCollabProfile = collab
-    }
-
-    fun getPendingCollabProfile(): Collaborator? {
-        return _pendingCollabProfile
     }
 
     fun consumePendingCollabProfile(): Collaborator? {
