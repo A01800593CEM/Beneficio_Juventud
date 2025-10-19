@@ -266,6 +266,7 @@ fun PromoQR(
     val promo by viewModel.promoState.collectAsState()
     val favPromos by userViewModel.favoritePromotions.collectAsState()
     val userError by userViewModel.error.collectAsState()
+    val userBookings by userViewModel.userBookings.collectAsState()
 
     // Booking states
     val bookingSuccess by bookingViewModel.bookingSuccess.collectAsState()
@@ -291,9 +292,12 @@ fun PromoQR(
         }
     }
 
-    // Cargar favoritos del usuario
+    // Cargar favoritos y reservaciones del usuario
     LaunchedEffect(cognitoId) {
-        try { userViewModel.getFavoritePromotions(cognitoId) } catch (_: Exception) {}
+        try {
+            userViewModel.getFavoritePromotions(cognitoId)
+            userViewModel.getUserBookings(cognitoId)
+        } catch (_: Exception) {}
     }
     LaunchedEffect(userError) {
         userError?.let { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
@@ -302,6 +306,9 @@ fun PromoQR(
     // Manejar éxito de reservación
     LaunchedEffect(bookingSuccess) {
         if (bookingSuccess) {
+            // Recargar reservaciones después de crear/cancelar
+            userViewModel.getUserBookings(cognitoId)
+
             // Navegar a pantalla de éxito
             nav.navigate(
                 Screens.Status.createRoute(
@@ -554,6 +561,12 @@ fun PromoQR(
                         if (detail.isBookable) {
                             Spacer(Modifier.height(8.dp))
 
+                            // Verificar si la promoción ya está reservada
+                            val currentBooking = remember(userBookings, promotionId) {
+                                userBookings.find { it.promotionId == promotionId }
+                            }
+                            val isReserved = currentBooking != null
+
                             // Botón con estado de carga
                             Box(
                                 modifier = Modifier
@@ -561,23 +574,34 @@ fun PromoQR(
                                     .padding(horizontal = 16.dp)
                             ) {
                                 MainButton(
-                                    text = if (bookingLoading) "Reservando..." else "Reservar Cupón",
+                                    text = when {
+                                        bookingLoading -> if (isReserved) "Cancelando..." else "Reservando..."
+                                        isReserved -> "Cancelar Reservación"
+                                        else -> "Reservar Cupón"
+                                    },
                                     modifier = Modifier.fillMaxWidth(),
                                     onClick = {
-                                        // Verificar que hay stock disponible
-                                        val available = promo.availableStock ?: 0
-                                        if (available <= 0) {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar(
-                                                    message = "No hay stock disponible",
-                                                    duration = SnackbarDuration.Short
-                                                )
+                                        if (isReserved) {
+                                            // Cancelar reservación
+                                            currentBooking?.let { booking ->
+                                                bookingViewModel.cancelBooking(booking)
                                             }
-                                            return@MainButton
-                                        }
+                                        } else {
+                                            // Verificar que hay stock disponible
+                                            val available = promo.availableStock ?: 0
+                                            if (available <= 0) {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar(
+                                                        message = "No hay stock disponible",
+                                                        duration = SnackbarDuration.Short
+                                                    )
+                                                }
+                                                return@MainButton
+                                            }
 
-                                        // Reservar cupón
-                                        bookingViewModel.reserveCoupon(promo, cognitoId)
+                                            // Reservar cupón
+                                            bookingViewModel.reserveCoupon(promo, cognitoId)
+                                        }
                                     }
                                 )
 

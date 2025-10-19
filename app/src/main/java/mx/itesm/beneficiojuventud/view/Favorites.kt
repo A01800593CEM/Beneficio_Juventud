@@ -74,10 +74,17 @@ fun Favorites(
     val user by userViewModel.userState.collectAsState()
     val favoritePromos by userViewModel.favoritePromotions.collectAsState()
     val favoriteCollabs by userViewModel.favoriteCollabs.collectAsState()
+    val reservedPromos by userViewModel.reservedPromotions.collectAsState()
+    val userBookings by userViewModel.userBookings.collectAsState()
 
     // Normaliza IDs favoritos de colaboradores a Set<String> para lookup O(1)
     val favoriteCollabIds: Set<String> = remember(favoriteCollabs) {
         favoriteCollabs.mapNotNull { it.cognitoId?.takeIf(String::isNotBlank) }.toSet()
+    }
+
+    // Set de IDs de promociones reservadas para lookup rápido
+    val reservedPromoIds: Set<Int> = remember(userBookings) {
+        userBookings.mapNotNull { it.promotionId }.toSet()
     }
 
     val scope = rememberCoroutineScope()
@@ -138,7 +145,7 @@ fun Favorites(
             item {
                 val count = when (mode) {
                     FavoriteMode.Businesses -> favoriteCollabIds.size
-                    FavoriteMode.Coupons    -> favoritePromos.size
+                    FavoriteMode.Coupons    -> favoritePromos.size + reservedPromos.size
                 }
                 val label = if (mode == FavoriteMode.Businesses)
                     "$count Negocios Guardados" else "$count Cupones Guardados"
@@ -199,7 +206,18 @@ fun Favorites(
                 }
 
                 FavoriteMode.Coupons -> {
-                    if (favoritePromos.isEmpty()) {
+                    // Combinar cupones reservados y favoritos, reservados primero
+                    val allCoupons = remember(reservedPromos, favoritePromos, reservedPromoIds) {
+                        // Primero los reservados
+                        val reserved = reservedPromos.toList()
+                        // Luego los favoritos que NO están reservados
+                        val favoritesOnly = favoritePromos.filter { promo ->
+                            promo.promotionId?.let { it !in reservedPromoIds } ?: true
+                        }
+                        reserved + favoritesOnly
+                    }
+
+                    if (allCoupons.isEmpty()) {
                         item {
                             EmptyState(
                                 title = "Sin cupones favoritos",
@@ -207,10 +225,13 @@ fun Favorites(
                             )
                         }
                     } else {
-                        items(favoritePromos, key = { it.promotionId ?: it.hashCode() }) { promo ->
+                        items(allCoupons, key = { it.promotionId ?: it.hashCode() }) { promo ->
+                            val isReserved = promo.promotionId?.let { it in reservedPromoIds } ?: false
+
                             PromoImageBannerFav(
                                 promo = promo,
                                 isFavorite = true,
+                                isReserved = isReserved,
                                 onFavoriteClick = { p ->
                                     val id = p.promotionId ?: return@PromoImageBannerFav
                                     scope.launch { userViewModel.unfavoritePromotion(id, cognitoId) }
