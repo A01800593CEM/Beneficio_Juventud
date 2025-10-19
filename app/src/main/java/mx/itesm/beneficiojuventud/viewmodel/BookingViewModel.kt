@@ -75,7 +75,7 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
                     promotionId = promotion.promotionId,
                     bookingDate = getCurrentDateISO(),
                     limitUseDate = promotion.endDate ?: getDefaultLimitDate(),
-                    status = BookingStatus.ACTIVE
+                    status = BookingStatus.PENDING
                 )
 
                 // Crear reservación usando el repositorio
