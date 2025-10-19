@@ -263,23 +263,6 @@ fun Favorites(
 }
 
 @Composable
-private fun EmptyState(
-    title: String,
-    body: String
-) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(title, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161))
-        Spacer(Modifier.height(6.dp))
-        Text(body, fontSize = 12.sp, color = Color(0xFF9E9E9E))
-    }
-}
-
-@Composable
 private fun TogglePill(
     left: String,
     right: String,
