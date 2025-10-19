@@ -39,4 +39,8 @@ class CollabViewModel : ViewModel() {
     fun clearCollaborator() {
         _collabState.value = Collaborator()
     }
+
+    suspend fun emailExists(email: String): Boolean {
+        return model.emailExists(email)
+    }
 }

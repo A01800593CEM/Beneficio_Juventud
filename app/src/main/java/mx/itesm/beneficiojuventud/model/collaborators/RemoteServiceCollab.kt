@@ -35,4 +35,9 @@ object RemoteServiceCollab {
             throw Exception("No se pudo eliminar el colaborador")
         }
     }
+
+    suspend fun emailExists(email: String): Boolean {
+        val response = collabApiService.emailExists(email)
+        return response.body() ?: false
+    }
 }

@@ -63,17 +63,17 @@ fun RegisterCollab(
     authViewModel: AuthViewModel = viewModel(),
     collabViewModel: CollabViewModel = viewModel()
 ) {
-    // Campos del formulario
-    var businessName by remember { mutableStateOf("") }
-    var rfc by remember { mutableStateOf("") }
-    var representativeName by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var address by remember { mutableStateOf("") }
-    var postalCode by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var acceptTerms by remember { mutableStateOf(false) }
+    // Campos del formulario - usando rememberSaveable para persistir en rotaciones
+    var businessName by rememberSaveable { mutableStateOf("") }
+    var rfc by rememberSaveable { mutableStateOf("") }
+    var representativeName by rememberSaveable { mutableStateOf("") }
+    var phone by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    var address by rememberSaveable { mutableStateOf("") }
+    var postalCode by rememberSaveable { mutableStateOf("") }
+    var description by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var acceptTerms by rememberSaveable { mutableStateOf(false) }
 
     var showError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
@@ -81,45 +81,57 @@ fun RegisterCollab(
     val authState by authViewModel.authState.collectAsState()
     val scope = rememberCoroutineScope()
 
+    // Latch: evita re-navegar automáticamente al volver de Confirm
+    var didNavigateToConfirm by rememberSaveable { mutableStateOf(false) }
+
+    // Parche: si Cognito crea y confirma sin OTP
     var didCreateDirect by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(authState.needsConfirmation) {
-        if (authState.needsConfirmation) {
+    // Estado de verificación de email
+    var isCheckingEmail by rememberSaveable { mutableStateOf(false) }
+
+    // Parche: al volver del ConfirmSignUp, aseguramos que no quede en "Registrando."
+    LaunchedEffect(Unit) {
+        authViewModel.markIdle()
+    }
+
+    // Navegación a Confirm (idempotente por intento)
+    LaunchedEffect(authState.needsConfirmation, didNavigateToConfirm) {
+        if (authState.needsConfirmation && !didNavigateToConfirm) {
+            didNavigateToConfirm = true
             nav.navigate(Screens.confirmSignUpWithEmail(email)) {
-                popUpTo(Screens.LoginRegister.route) { inclusive = true }
+                // Mantener RegisterCollab en el back stack para poder regresar
+                popUpTo(Screens.RegisterCollab.route) { inclusive = false }
+                launchSingleTop = true
             }
         }
     }
 
+    // SignUp completo sin confirmación (auto sign-in, crear colaborador y navegar)
     LaunchedEffect(authState.isSuccess, authState.needsConfirmation) {
         if (didCreateDirect) return@LaunchedEffect
         if (authState.isSuccess && !authState.needsConfirmation) {
             val pending = authViewModel.consumePendingCollabProfile()
             val sub = authState.cognitoSub
 
-            if (pending == null || sub.isNullOrBlank()) {
-                return@LaunchedEffect
-            }
+            if (pending == null || sub.isNullOrBlank()) return@LaunchedEffect
 
             didCreateDirect = true
 
+            // Auto sign-in con lo que está en pantalla
             authViewModel.signIn(email.trim(), password)
 
-            // Crea el Colaborador en la BD
             scope.launch {
                 try {
                     collabViewModel.createCollaborator(
                         pending.copy(
-                            cognitoId = sub, // Vincula el cognitoId
+                            cognitoId = sub,
                             email = email.trim(),
-                            state = CollaboratorsState.activo, // Estado inicial
+                            state = CollaboratorsState.activo,
                             registrationDate = Instant.now().toString()
                         )
                     )
-
                     authViewModel.clearPendingCredentials()
-
-                    // Navega a la Home del Colaborador
                     nav.navigate(Screens.HomeScreenCollab.route) {
                         popUpTo(Screens.LoginRegister.route) { inclusive = true }
                         launchSingleTop = true
@@ -128,16 +140,24 @@ fun RegisterCollab(
                     didCreateDirect = false
                     showError = true
                     errorMessage = e.message ?: "No se pudo crear el perfil del colaborador en la BD."
-                    authViewModel.signOut() // Deshace el auto-login si falla la creación en BD
                 }
             }
         }
     }
 
-    // Manejo de errores de registro (ej. email ya existe)
+    // Errores: deja que el VM resuelva UsernameExists (UNCONFIRMED vs CONFIRMED)
     LaunchedEffect(authState.error) {
-        authState.error?.let { error ->
-            errorMessage = error
+        authState.error?.let { raw ->
+            val lower = raw.lowercase()
+            val looksLikeExists =
+                "usernameexistsexception" in lower ||
+                        "already exists" in lower ||
+                        ("email" in lower && "exists" in lower)
+
+            if (looksLikeExists) return@LaunchedEffect // VM hará resend + needsConfirmation o error confirmado
+
+            val friendly = mapAuthErrorToFriendly(raw)
+            errorMessage = friendly
             showError = true
         }
     }
@@ -165,11 +185,18 @@ fun RegisterCollab(
                     .padding(horizontal = 24.dp, vertical = 8.dp)
             ) {
                 MainButton(
-                    text = if (authState.isLoading) "Registrando..." else "Continuar",
-                    enabled = !authState.isLoading && isFormValid,
+                    text = when {
+                        authState.isLoading -> "Registrando."
+                        isCheckingEmail     -> "Verificando correo."
+                        else                -> "Continuar"
+                    },
+                    enabled = !authState.isLoading && !isCheckingEmail && isFormValid,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    showError = false
+                    // Nuevo intento → resetea el latch para permitir re-navegar a Confirm
+                    didNavigateToConfirm = false
+
+                    // Guardar datos temporales
                     val collabProfile = Collaborator(
                         businessName = businessName.trim(),
                         rfc = rfc.trim(),
@@ -180,10 +207,31 @@ fun RegisterCollab(
                         postalCode = postalCode.trim(),
                         description = description.trim(),
                     )
-
                     authViewModel.savePendingCollabProfile(collabProfile)
                     authViewModel.setPendingCredentials(email.trim(), password)
-                    authViewModel.signUp(email.trim(), password)
+
+                    // Pre-checar si el correo ya existe en la BD
+                    scope.launch {
+                        showError = false
+                        isCheckingEmail = true
+                        try {
+                            val exists = collabViewModel.emailExists(email.trim())
+                            if (exists) {
+                                showError = true
+                                errorMessage = "Este correo ya está registrado. Inicia sesión o restablece tu contraseña."
+                                return@launch
+                            }
+                        } catch (e: Exception) {
+                            showError = true
+                            errorMessage = "No se pudo verificar el correo. Revisa tu conexión e inténtalo de nuevo."
+                            return@launch
+                        } finally {
+                            isCheckingEmail = false
+                        }
+
+                        // Si no existe → continuar con registro Cognito
+                        authViewModel.signUp(email.trim(), password)
+                    }
                 }
 
                 Row(
@@ -552,3 +600,16 @@ private fun textFieldColors() = TextFieldDefaults.colors(
     focusedPlaceholderColor = Color(0xFF616161),
     unfocusedPlaceholderColor = Color(0xFF616161),
 )
+
+/** Mapea errores de Auth a mensajes amigables. */
+private fun mapAuthErrorToFriendly(raw: String): String {
+    val lower = raw.lowercase()
+    return when {
+        // Ignorado aquí: lo resuelve el VM (UNCONFIRMED vs CONFIRMED)
+        "usernameexistsexception" in lower || "already exists" in lower || ("email" in lower && "exists" in lower) ->
+            raw
+        "invalidpassword" in lower || ("password" in lower && ("invalid" in lower || "weak" in lower)) ->
+            "La contraseña no cumple los requisitos. Prueba con una más fuerte."
+        else -> raw
+    }
+}
