@@ -42,11 +42,6 @@ import mx.itesm.beneficiojuventud.viewcollab.StatsScreen
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewcollab.PromotionsScreenCollab
 
-
-/**
- * MainActivity
- * Siempre inicia en "splash" y rutea limpio a LoginRegister o Home.
- */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,7 +89,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** Arranque del árbol Compose con viewmodels compartidos */
 @Composable
 private fun AppContent(
     authViewModel: AuthViewModel = viewModel(),
@@ -114,10 +108,6 @@ private fun AppContent(
     )
 }
 
-/**
- * Nav principal: siempre inicia en "splash".
- * No calcules startDestination dinámico; la lógica vive en StartupScreen().
- */
 @Composable
 private fun AppNav(
     nav: NavHostController,
@@ -137,7 +127,6 @@ private fun AppNav(
     LaunchedEffect(appState.isAuthenticated, sessionKey) {
         if (appState.isAuthenticated) authViewModel.getCurrentUser()
     }
-
     LaunchedEffect(sessionKey) {
         if (appState.isAuthenticated) {
             userViewModel.clearUser()
@@ -147,22 +136,21 @@ private fun AppNav(
             userViewModel.clearUser()
         }
     }
-
     LaunchedEffect(currentUserId) {
         if (!currentUserId.isNullOrBlank()) userViewModel.getUserById(currentUserId!!)
     }
 
     NavHost(navController = nav, startDestination = "splash") {
         composable("splash") {
-            // Usamos la lógica de splash/arranque del primer bloque
             StartupScreen(
                 nav = nav,
                 authViewModel = authViewModel,
-                userViewModel = userViewModel
+                userViewModel = userViewModel,
+                collabViewModel = collabViewModel
             )
         }
 
-        // --- Autenticación ---
+        // --- Auth ---
         composable(Screens.LoginRegister.route) { LoginRegister(nav) }
         composable(Screens.Login.route) { Login(nav, authViewModel = authViewModel) }
         composable(Screens.Register.route) { Register(nav, authViewModel = authViewModel) }
@@ -205,7 +193,7 @@ private fun AppNav(
             )
         }
 
-        // --- App principal (Usuario) ---
+        // --- App Usuario ---
         composable(Screens.Home.route) {
             Home(nav, userViewModel = userViewModel, collabViewModel = collabViewModel)
         }
@@ -221,7 +209,6 @@ private fun AppNav(
 
         composable(Screens.GenerarPromocion.route) { GenerarPromocion(nav) }
         composable(Screens.GenerarPromocionIA.route) { GenerarPromocionIA(nav) }
-
         composable(Screens.EditPromotion.route) {
             val json = nav.previousBackStackEntry?.savedStateHandle?.get<String>("promotion_data")
             val promo = json?.let { parsePromotionDataFromJson(it) }
@@ -249,13 +236,11 @@ private fun AppNav(
                     collabViewModel = collabViewModel,
                     userViewModel = userViewModel
                 )
-
             }
         }
 
-
         composable(
-            route = Screens.PromoQR.route, // "promoQR/{promotionId}"
+            route = Screens.PromoQR.route,
             arguments = listOf(navArgument("promotionId") { type = NavType.IntType })
         ) { backStackEntry ->
             val promotionId = backStackEntry.arguments?.getInt("promotionId") ?: return@composable
@@ -266,26 +251,6 @@ private fun AppNav(
                 Startup()
             }
         }
-
-        composable(Screens.Terms.route) { TermsAndConditionsScreen(nav) }
-        composable(
-            route = Screens.Status.route,
-            arguments = Screens.Status.arguments
-        ) { backStackEntry ->
-            val typeName = backStackEntry.arguments?.getString("type") ?: StatusType.VERIFICATION_ERROR.name
-            val destination = java.net.URLDecoder.decode(
-                backStackEntry.arguments?.getString("destination") ?: Screens.Home.route,
-                "UTF-8"
-            )
-
-            val statusType = StatusType.valueOf(typeName)
-            StatusScreen(
-                nav = nav,
-                statusType = statusType,
-                destinationRoute = destination
-            )
-        }
-
 
         // --- App Colaborador ---
         composable(Screens.RegisterCollab.route) {
@@ -302,27 +267,19 @@ private fun AppNav(
                 collabViewModel = collabViewModel
             )
         }
-        composable(Screens.ProfileCollab.route) {
-            ProfileCollab(nav = nav, collabViewModel = collabViewModel)
-        }
-
-        // --- Utilidades ---
+        composable(Screens.ProfileCollab.route) { ProfileCollab(nav = nav, collabViewModel = collabViewModel) }
         composable(Screens.QrScanner.route) {
             QrScannerScreen(
                 onClose = { nav.popBackStack() },
                 onResult = { text ->
-                    nav.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("qr_result", text)
+                    nav.previousBackStackEntry?.savedStateHandle?.set("qr_result", text)
                     nav.popBackStack()
                 }
             )
         }
         composable(Screens.StatsScreen.route) { StatsScreen(nav) }
         composable(Screens.PromotionsScreen.route) {
-            // Tomamos el cognitoId actual del colaborador para filtrar sus promos
             val collabId by authViewModel.currentUserId.collectAsState()
-
             PromotionsScreenCollab(
                 nav = nav,
                 collabId = collabId.orEmpty(),
@@ -331,42 +288,46 @@ private fun AppNav(
                 onCreatePromotion = { nav.navigate(Screens.GenerarPromocion.route) }
             )
         }
-
         composable(Screens.EditProfileCollab.route) { EditProfileCollab(nav) }
     }
 }
 
-/**
- * Usa la pantalla Startup existente como splash durante la verificación de sesión.
- */
 @Composable
 private fun StartupScreen(
     nav: NavHostController,
     authViewModel: AuthViewModel,
-    userViewModel: UserViewModel
+    userViewModel: UserViewModel,
+    collabViewModel: CollabViewModel
 ) {
     val appState by authViewModel.appState.collectAsState()
     val currentUserId by authViewModel.currentUserId.collectAsState()
+
     val userState by userViewModel.userState.collectAsState()
-    val isLoading by userViewModel.isLoading.collectAsState()
+    val isLoadingUser by userViewModel.isLoading.collectAsState()
+
+    val collabState by collabViewModel.collabState.collectAsState()
 
     // refrescos
     LaunchedEffect(appState.isAuthenticated) {
         if (appState.isAuthenticated) authViewModel.getCurrentUser()
     }
     LaunchedEffect(currentUserId) {
-        if (!currentUserId.isNullOrBlank()) userViewModel.getUserById(currentUserId!!)
+        val id = currentUserId
+        if (!id.isNullOrBlank()) {
+            // Cargar ambos perfiles en paralelo
+            userViewModel.getUserById(id)
+            try { collabViewModel.getCollaboratorById(id) } catch (_: Exception) {}
+        } else {
+            userViewModel.clearUser()
+        }
     }
 
-    val isUserLoaded = remember(userState, isLoading, currentUserId) {
-        !isLoading && !currentUserId.isNullOrBlank() && userState.cognitoId == currentUserId
-    }
+    val isUser = !userState.cognitoId.isNullOrBlank()
+    val isCollab = !collabState.cognitoId.isNullOrBlank()
 
-    // Muestra tu pantalla de inicio (ya con logo y degradado)
     Startup(Modifier.fillMaxSize())
 
-    // Lógica de espera/navegación
-    LaunchedEffect(appState.hasCheckedAuth, appState.isAuthenticated, isUserLoaded) {
+    LaunchedEffect(appState.hasCheckedAuth, appState.isAuthenticated, isUser, isCollab, isLoadingUser) {
         val minSplash = 900L
         val maxWaitIfAuthed = 2500L
         val absoluteTimeout = 3500L
@@ -380,11 +341,14 @@ private fun StartupScreen(
             Screens.LoginRegister.route
         } else {
             val deadline = start + maxWaitIfAuthed
-            while (System.currentTimeMillis() < deadline && !isUserLoaded) {
+            while (System.currentTimeMillis() < deadline && !(isUser || isCollab || !isLoadingUser)) {
                 delay(120)
             }
-            // TODO: Determinar si es Colaborador o Usuario para navegar a Home u HomeCollab.
-            Screens.Home.route
+            when {
+                isCollab -> Screens.HomeScreenCollab.route
+                isUser   -> Screens.Home.route
+                else     -> Screens.Home.route
+            }
         }
 
         val elapsed = System.currentTimeMillis() - start
@@ -397,6 +361,5 @@ private fun StartupScreen(
     }
 }
 
-/** Utilidad: JSON -> PromotionData */
-private fun parsePromotionDataFromJson(json: String): PromotionData =
+private fun parsePromotionDataFromJson(json: String): mx.itesm.beneficiojuventud.model.webhook.PromotionData =
     Gson().fromJson(json, PromotionData::class.java)
