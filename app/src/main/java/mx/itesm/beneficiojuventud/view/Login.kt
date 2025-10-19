@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -44,6 +45,7 @@ fun Login(
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
@@ -223,7 +225,7 @@ fun Login(
                             .padding(horizontal = 6.dp, vertical = 12.dp)
                     ) {
                         showError = false
-                        authViewModel.signIn(email, password)
+                        authViewModel.signIn(email, password, rememberMe)
                     }
                 }
 

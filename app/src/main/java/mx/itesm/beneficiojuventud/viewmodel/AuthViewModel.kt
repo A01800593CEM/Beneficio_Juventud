@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.viewmodel
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,6 +15,7 @@ import mx.itesm.beneficiojuventud.model.auth.AuthRepository
 import mx.itesm.beneficiojuventud.model.auth.AuthState
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.users.UserProfile
+import mx.itesm.beneficiojuventud.utils.UserPreferencesManager
 import java.util.UUID
 
 /** Estado global de la app. */
@@ -24,9 +26,10 @@ data class AppState(
 )
 
 /** ViewModel unificado para autenticación y estado global de sesión. */
-class AuthViewModel : ViewModel() {
+class AuthViewModel(private val context: Context? = null) : ViewModel() {
 
     private val authRepository = AuthRepository()
+    private var preferencesManager: UserPreferencesManager? = null
 
     // ===== Estado global de la app =====
     private val _appState = MutableStateFlow(AppState())
@@ -68,6 +71,9 @@ class AuthViewModel : ViewModel() {
     }
 
     init {
+        context?.let {
+            preferencesManager = UserPreferencesManager(it)
+        }
         refreshAuthState()
     }
 
@@ -265,7 +271,7 @@ class AuthViewModel : ViewModel() {
     }
 
 
-    fun signIn(email: String, password: String) {
+    fun signIn(email: String, password: String, rememberMe: Boolean = false) {
         viewModelScope.launch {
             try {
                 Log.d("AuthViewModel", "Iniciando signIn para: $email")
@@ -276,6 +282,15 @@ class AuthViewModel : ViewModel() {
                     onSuccess = { r ->
                         Log.d("AuthViewModel", "SignIn exitoso: isSignedIn=${r.isSignedIn}")
                         if (r.isSignedIn) {
+                            // Guardar credenciales si el usuario marcó "Recuérdame"
+                            if (rememberMe) {
+                                preferencesManager?.saveCredentials(email, password)
+                                Log.d("AuthViewModel", "Credenciales guardadas para 'Recuérdame'")
+                            } else {
+                                // Limpiar credenciales si no marcó "Recuérdame"
+                                preferencesManager?.clearCredentials()
+                            }
+
                             _authState.value = AuthState(isSuccess = true)
                             _sessionKey.value = UUID.randomUUID().toString() // nueva sesión
                             refreshAuthState()
@@ -292,6 +307,23 @@ class AuthViewModel : ViewModel() {
                 Log.e("AuthViewModel", "Error inesperado en signIn: ${e.message}", e)
                 _authState.value = AuthState(error = "Error de conexión. Verifica tu internet e intenta de nuevo.")
             }
+        }
+    }
+
+    /**
+     * Intenta hacer login automático si el usuario tiene habilitado "Recuérdame".
+     * @return true si se intentó el auto-login, false si no hay credenciales guardadas
+     */
+    fun tryAutoLogin(): Boolean {
+        val credentials = preferencesManager?.getCredentials()
+        return if (credentials != null) {
+            val (email, password) = credentials
+            Log.d("AuthViewModel", "Intentando auto-login con credenciales guardadas")
+            signIn(email, password, rememberMe = true)
+            true
+        } else {
+            Log.d("AuthViewModel", "No hay credenciales guardadas para auto-login")
+            false
         }
     }
 
@@ -312,6 +344,7 @@ class AuthViewModel : ViewModel() {
                     _currentUserId.value = null
                     _pendingUserProfile = null
                     clearPendingCredentials()
+                    preferencesManager?.clearCredentials() // Limpiar credenciales guardadas
                     _sessionKey.value = UUID.randomUUID().toString()
                     _authState.value = AuthState(isLoading = false)
                     refreshAuthState()
@@ -328,6 +361,7 @@ class AuthViewModel : ViewModel() {
                         _currentUserId.value = null
                         _pendingUserProfile = null
                         clearPendingCredentials()
+                        preferencesManager?.clearCredentials() // Limpiar credenciales guardadas
                         _sessionKey.value = UUID.randomUUID().toString()
                         _authState.value = AuthState(isLoading = false)
                         refreshAuthState()
