@@ -296,6 +296,27 @@ private fun AppNav(
             )
         }
         composable(Screens.EditProfileCollab.route) { EditProfileCollab(nav) }
+
+        // Status Screen
+        composable(
+            route = Screens.Status.route,
+            arguments = Screens.Status.arguments
+        ) { backStackEntry ->
+            val typeString = backStackEntry.arguments?.getString("type") ?: return@composable
+            val destination = backStackEntry.arguments?.getString("destination") ?: return@composable
+
+            val statusType = try {
+                StatusType.valueOf(typeString)
+            } catch (e: IllegalArgumentException) {
+                StatusType.VERIFICATION_ERROR
+            }
+
+            StatusScreen(
+                nav = nav,
+                statusType = statusType,
+                destinationRoute = java.net.URLDecoder.decode(destination, "UTF-8")
+            )
+        }
     }
 }
 
