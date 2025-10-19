@@ -96,6 +96,17 @@ fun Favorites(
         }
     }
 
+    // ✅ MOVER ESTE CÁLCULO FUERA DEL BLOQUE DE LazyColumn
+    val allCoupons = remember(reservedPromos, favoritePromos, reservedPromoIds) {
+        // Primero los reservados
+        val reserved = reservedPromos.toList()
+        // Luego los favoritos que NO están reservados
+        val favoritesOnly = favoritePromos.filter { promo ->
+            promo.promotionId?.let { it !in reservedPromoIds } ?: true
+        }
+        reserved + favoritesOnly
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
@@ -206,17 +217,6 @@ fun Favorites(
                 }
 
                 FavoriteMode.Coupons -> {
-                    // Combinar cupones reservados y favoritos, reservados primero
-                    val allCoupons = remember(reservedPromos, favoritePromos, reservedPromoIds) {
-                        // Primero los reservados
-                        val reserved = reservedPromos.toList()
-                        // Luego los favoritos que NO están reservados
-                        val favoritesOnly = favoritePromos.filter { promo ->
-                            promo.promotionId?.let { it !in reservedPromoIds } ?: true
-                        }
-                        reserved + favoritesOnly
-                    }
-
                     if (allCoupons.isEmpty()) {
                         item {
                             EmptyState(
