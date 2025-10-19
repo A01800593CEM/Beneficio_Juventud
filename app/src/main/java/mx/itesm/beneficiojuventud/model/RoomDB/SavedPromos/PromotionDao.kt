@@ -21,11 +21,26 @@ interface PromotionDao {
 
     @Transaction
     @Query("SELECT * FROM promotion WHERE promotionId = :promotionId")
-    suspend fun findById(promotionId: Int): PromotionWithCategories
+    suspend fun findById(promotionId: Int): PromotionWithCategories?
 
-    @Insert
+    @Query("SELECT EXISTS(SELECT 1 FROM promotion WHERE promotionId = :promotionId)")
+    suspend fun exists(promotionId: Int): Boolean
+
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
     suspend fun insertPromotions(vararg promotions: PromotionEntity)
+
+    @androidx.room.Update
+    suspend fun updatePromotion(promotion: PromotionEntity)
 
     @Delete
     suspend fun deletePromotions(promotion: PromotionEntity)
+
+    @Query("DELETE FROM promotion WHERE promotionId = :promotionId")
+    suspend fun deleteById(promotionId: Int)
+
+    @Query("DELETE FROM promotion WHERE isReserved = 0")
+    suspend fun deleteAllFavorites()
+
+    @Query("DELETE FROM promotion WHERE isReserved = 1")
+    suspend fun deleteAllReserved()
 }
