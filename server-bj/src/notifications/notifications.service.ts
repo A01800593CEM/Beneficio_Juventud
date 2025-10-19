@@ -11,7 +11,7 @@ import { NotificationStatus } from './enums/notification-status.enum';
 import { RecipientType } from './enums/recipient-type.enums';
 
 
-const token = "d6pkRCOgTVCX4CezhHXNvh:APA91bFtNzHwDJOhmWdU6ZaTiyC5bce3H00knep7lcGgn5qTprmBtsGJamSGwmQmLWuq4utjMaEwFyNmimJuEKMCfoy36FIaRbJE7kEx4z-GZhMgndcJVxg";
+const token = "feK8ozTcTd-5KsB5EqKxLS:APA91bFGQQAr2-OwmfhjCF3s78A-YG3Tb2HDuA82JYdoKxL7ndYy7I3wwE8TK6SRzaFBcqmFkjEUvX54VTzCJhr5_5-ZQTCNHcxBTky8gPnsJXflOHU3_CM";
 
 @Injectable()
 export class NotificationsService {
