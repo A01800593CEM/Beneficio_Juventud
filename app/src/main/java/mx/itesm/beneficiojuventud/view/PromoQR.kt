@@ -272,11 +272,17 @@ fun PromoQR(
     val bookingError by bookingViewModel.error.collectAsState()
     val bookingLoading by bookingViewModel.isLoading.collectAsState()
     val bookingMessage by bookingViewModel.message.collectAsState()
+    val reservedPromotions by bookingViewModel.reservedPromotions.collectAsState()
 
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Verificar si este cupón está reservado
+    val isReserved = remember(reservedPromotions, promotionId) {
+        reservedPromotions.any { it.promotionId == promotionId }
+    }
 
     // Cargar promo
     LaunchedEffect(promotionId) {
@@ -291,9 +297,12 @@ fun PromoQR(
         }
     }
 
-    // Cargar favoritos del usuario
+    // Cargar favoritos del usuario y reservaciones
     LaunchedEffect(cognitoId) {
-        try { userViewModel.getFavoritePromotions(cognitoId) } catch (_: Exception) {}
+        try {
+            userViewModel.getFavoritePromotions(cognitoId)
+            bookingViewModel.loadReservedPromotions(cognitoId)
+        } catch (_: Exception) {}
     }
     LaunchedEffect(userError) {
         userError?.let { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
@@ -554,43 +563,72 @@ fun PromoQR(
                         if (detail.isBookable) {
                             Spacer(Modifier.height(8.dp))
 
-                            // Botón con estado de carga
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp)
-                            ) {
-                                MainButton(
-                                    text = if (bookingLoading) "Reservando..." else "Reservar Cupón",
-                                    modifier = Modifier.fillMaxWidth(),
+                            if (isReserved) {
+                                // Botón cuando ya está reservado
+                                OutlinedButton(
                                     onClick = {
-                                        // Verificar que hay stock disponible
-                                        val available = promo.availableStock ?: 0
-                                        if (available <= 0) {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar(
-                                                    message = "No hay stock disponible",
-                                                    duration = SnackbarDuration.Short
-                                                )
-                                            }
-                                            return@MainButton
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                message = "Ya tienes una reservación activa. Ve a Favoritos para verla.",
+                                                duration = SnackbarDuration.Long
+                                            )
                                         }
-
-                                        // Reservar cupón
-                                        bookingViewModel.reserveCoupon(promo, cognitoId)
-                                    }
-                                )
-
-                                // Mostrar loading spinner si está cargando
-                                if (bookingLoading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier
-                                            .align(Alignment.CenterEnd)
-                                            .padding(end = 16.dp)
-                                            .size(24.dp),
-                                        strokeWidth = 2.dp,
-                                        color = Color.White
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp)
+                                        .height(52.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = Color(0xFFE53935)
+                                    ),
+                                    border = BorderStroke(2.dp, Color(0xFFE53935))
+                                ) {
+                                    Text(
+                                        text = "Reservación Activa",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
                                     )
+                                }
+                            } else {
+                                // Botón con estado de carga para reservar
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp)
+                                ) {
+                                    MainButton(
+                                        text = if (bookingLoading) "Reservando..." else "Reservar Cupón",
+                                        modifier = Modifier.fillMaxWidth(),
+                                        onClick = {
+                                            // Verificar que hay stock disponible
+                                            val available = promo.availableStock ?: 0
+                                            if (available <= 0) {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar(
+                                                        message = "No hay stock disponible",
+                                                        duration = SnackbarDuration.Short
+                                                    )
+                                                }
+                                                return@MainButton
+                                            }
+
+                                            // Reservar cupón
+                                            bookingViewModel.reserveCoupon(promo, cognitoId)
+                                        }
+                                    )
+
+                                    // Mostrar loading spinner si está cargando
+                                    if (bookingLoading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier
+                                                .align(Alignment.CenterEnd)
+                                                .padding(end = 16.dp)
+                                                .size(24.dp),
+                                            strokeWidth = 2.dp,
+                                            color = Color.White
+                                        )
+                                    }
                                 }
                             }
                         }

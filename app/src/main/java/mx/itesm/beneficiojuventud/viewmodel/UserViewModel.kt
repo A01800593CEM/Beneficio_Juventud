@@ -1,20 +1,44 @@
 package mx.itesm.beneficiojuventud.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.room.Room
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import mx.itesm.beneficiojuventud.model.RoomDB.LocalDatabase
+import mx.itesm.beneficiojuventud.model.SavedCouponRepository
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.users.RemoteServiceUser
 import mx.itesm.beneficiojuventud.model.users.UserProfile
 
-class UserViewModel : ViewModel() {
+class UserViewModel(application: Application) : AndroidViewModel(application) {
 
     private val model = RemoteServiceUser
+
+    // Database and Repository
+    private val database: LocalDatabase by lazy {
+        Room.databaseBuilder(
+            application,
+            LocalDatabase::class.java,
+            "beneficio_juventud_db"
+        )
+            .fallbackToDestructiveMigration()
+            .build()
+    }
+
+    private val repository: SavedCouponRepository by lazy {
+        SavedCouponRepository(
+            promotionDao = database.promotionDao(),
+            categoryDao = database.categoryDao(),
+            promotionCategoriesDao = database.promotionCategoriesDao(),
+            bookingDao = database.bookingDao()
+        )
+    }
 
     private val _userState = MutableStateFlow(UserProfile())
     val userState: StateFlow<UserProfile> = _userState
@@ -136,7 +160,7 @@ class UserViewModel : ViewModel() {
         // No activamos el loading global para no bloquear la UI por una acción rápida.
         viewModelScope.launch {
             val result = runCatching {
-                withContext(Dispatchers.IO) { model.favoritePromotion(promotionId, cognitoId) }
+                withContext(Dispatchers.IO) { repository.favoriteCoupon(promotionId, cognitoId) }
             }
             result.onFailure { e ->
                 _error.value = e.message ?: "Error al marcar favorito"
@@ -151,7 +175,7 @@ class UserViewModel : ViewModel() {
         _error.value = null
         viewModelScope.launch {
             val result = runCatching {
-                withContext(Dispatchers.IO) { model.unfavoritePromotion(promotionId, cognitoId) }
+                withContext(Dispatchers.IO) { repository.unfavoriteCoupon(promotionId, cognitoId) }
             }
             result.onFailure { e ->
                 _error.value = e.message ?: "Error al quitar favorito"
@@ -169,7 +193,7 @@ class UserViewModel : ViewModel() {
 
         viewModelScope.launch {
             val result = runCatching {
-                withContext(Dispatchers.IO) { model.getFavoritePromotions(cognitoId) }
+                withContext(Dispatchers.IO) { repository.getFavoriteCoupons(cognitoId) }
             }
             if (myToken != loadToken) return@launch
 
@@ -185,9 +209,9 @@ class UserViewModel : ViewModel() {
     fun refreshFavorites(cognitoId: String) {
         // No tocamos loadToken aquí para no invalidar otras cargas largas.
         viewModelScope.launch {
-            // Promos
+            // Promos - usar repository
             runCatching {
-                withContext(Dispatchers.IO) { model.getFavoritePromotions(cognitoId) }
+                withContext(Dispatchers.IO) { repository.getFavoriteCoupons(cognitoId) }
             }.onSuccess { _favoritePromotions.value = it }
                 .onFailure { e -> _error.value = e.message ?: "Error al refrescar promociones favoritas" }
 

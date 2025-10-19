@@ -40,6 +40,7 @@ import mx.itesm.beneficiojuventud.components.SectionTitle
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.PromoTheme
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 
 // 🚩 IMPORTA la card horizontal (la del screenshot)
@@ -58,7 +59,7 @@ data class FavoriteMerchant(
 )
 // ------------------------------------------------------------
 
-private enum class FavoriteMode { Coupons, Businesses }
+private enum class FavoriteMode { Coupons, Reserved, Businesses }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,7 +67,8 @@ fun Favorites(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     favoriteMerchants: List<FavoriteMerchant> = emptyList(),
-    userViewModel: UserViewModel = viewModel()
+    userViewModel: UserViewModel = viewModel(),
+    bookingViewModel: BookingViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Favorites) }
     var mode by remember { mutableStateOf(FavoriteMode.Coupons) }
@@ -74,6 +76,7 @@ fun Favorites(
     val user by userViewModel.userState.collectAsState()
     val favoritePromos by userViewModel.favoritePromotions.collectAsState()
     val favoriteCollabs by userViewModel.favoriteCollabs.collectAsState()
+    val reservedPromotions by bookingViewModel.reservedPromotions.collectAsState()
 
     // Normaliza IDs favoritos de colaboradores a Set<String> para lookup O(1)
     val favoriteCollabIds: Set<String> = remember(favoriteCollabs) {
@@ -86,6 +89,7 @@ fun Favorites(
     LaunchedEffect(cognitoId) {
         if (cognitoId.isNotBlank()) {
             userViewModel.refreshFavorites(cognitoId)
+            bookingViewModel.loadReservedPromotions(cognitoId)
         }
     }
 
@@ -94,7 +98,11 @@ fun Favorites(
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         topBar = {
             BJTopHeader(
-                title = if (mode == FavoriteMode.Coupons) "Cupones Favoritos" else "Negocios Favoritos",
+                title = when (mode) {
+                    FavoriteMode.Coupons -> "Cupones Favoritos"
+                    FavoriteMode.Reserved -> "Cupones Reservados"
+                    FavoriteMode.Businesses -> "Negocios Favoritos"
+                },
                 nav = nav
             )
         },
@@ -120,15 +128,23 @@ fun Favorites(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)
         ) {
 
-            // Toggle modo
+            // Toggle modo (3 opciones)
             item {
                 Spacer(Modifier.height(8.dp))
-                TogglePill(
-                    left = "Cupones",
-                    right = "Negocios",
-                    selectedLeft = (mode == FavoriteMode.Coupons),
-                    onSelectLeft = { mode = FavoriteMode.Coupons },
-                    onSelectRight = { mode = FavoriteMode.Businesses },
+                TogglePillTriple(
+                    options = listOf("Favoritos", "Reservados", "Negocios"),
+                    selectedIndex = when (mode) {
+                        FavoriteMode.Coupons -> 0
+                        FavoriteMode.Reserved -> 1
+                        FavoriteMode.Businesses -> 2
+                    },
+                    onSelectIndex = { index ->
+                        mode = when (index) {
+                            0 -> FavoriteMode.Coupons
+                            1 -> FavoriteMode.Reserved
+                            else -> FavoriteMode.Businesses
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(12.dp))
@@ -139,9 +155,13 @@ fun Favorites(
                 val count = when (mode) {
                     FavoriteMode.Businesses -> favoriteCollabIds.size
                     FavoriteMode.Coupons    -> favoritePromos.size
+                    FavoriteMode.Reserved   -> reservedPromotions.size
                 }
-                val label = if (mode == FavoriteMode.Businesses)
-                    "$count Negocios Guardados" else "$count Cupones Guardados"
+                val label = when (mode) {
+                    FavoriteMode.Businesses -> "$count Negocios Guardados"
+                    FavoriteMode.Coupons    -> "$count Cupones Guardados"
+                    FavoriteMode.Reserved   -> "$count Cupones Reservados"
+                }
 
                 SectionTitle(label, Modifier.padding(top = 6.dp, bottom = 8.dp))
             }
@@ -228,12 +248,82 @@ fun Favorites(
                         }
                     }
                 }
+
+                FavoriteMode.Reserved -> {
+                    if (reservedPromotions.isEmpty()) {
+                        item {
+                            EmptyState(
+                                title = "Sin cupones reservados",
+                                body = "Tus cupones reservados aparecerán aquí."
+                            )
+                        }
+                    } else {
+                        items(reservedPromotions, key = { it.promotionId ?: it.hashCode() }) { promo ->
+                            PromoImageBannerFav(
+                                promo = promo,
+                                isFavorite = false,
+                                onFavoriteClick = {}, // No mostrar botón favorito en reservados
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(150.dp)
+                                    .padding(vertical = 6.dp),
+                                onClick = {
+                                    val id = promo.promotionId ?: return@PromoImageBannerFav
+                                    nav.navigate(Screens.PromoQR.createRoute(id))
+                                },
+                                themeResolver = { it.theme ?: PromoTheme.light }
+                            )
+                        }
+                    }
+                }
             }
 
             item {
                 Spacer(Modifier.height(8.dp))
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text("Versión 1.0.01", color = Color(0xFFAEAEAE), fontSize = 10.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TogglePillTriple(
+    options: List<String>,
+    selectedIndex: Int,
+    onSelectIndex: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val bg = Color(0xFFD3D3D3)
+
+    Surface(
+        color = bg,
+        shape = RoundedCornerShape(24.dp),
+        modifier = modifier.height(40.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            options.forEachIndexed { index, text ->
+                Surface(
+                    color = if (selectedIndex == index) Color(0xFFFFFFFF) else bg,
+                    shape = RoundedCornerShape(24.dp),
+                    tonalElevation = if (selectedIndex == index) 1.dp else 0.dp,
+                    shadowElevation = 0.dp,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(1.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .clickable { onSelectIndex(index) }
+                ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF616161)
+                        )
+                    }
                 }
             }
         }
