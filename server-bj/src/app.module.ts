@@ -17,7 +17,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 //Notificaciones con schedule
 import { ScheduleModule } from '@nestjs/schedule';
 import { ExpirationsModule } from './expirations/expirations.module';
-import { PlacesModule } from './config/places.module';
+import { PlacesModule } from './places/places.module';
 
 
 @Module({
