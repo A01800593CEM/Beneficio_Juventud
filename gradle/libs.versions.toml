@@ -34,7 +34,7 @@ firebaseMessaging = "25.0.1"
 litertSupportApi = "1.4.0"
 foundationLayoutVersion = "1.9.3"
 ksp = "2.2.20-2.0.4"
-room = "2.6.1"
+room = "2.8.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
