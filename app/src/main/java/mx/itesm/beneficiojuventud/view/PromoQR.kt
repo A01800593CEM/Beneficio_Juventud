@@ -7,6 +7,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -93,7 +94,9 @@ data class PromoDetailUi(
     val terms: String,
     val stockLabel: String,
     val theme: PromoTheme = PromoTheme.light,
-    val accentColor: Color = Color(0xFF008D96) // puedes cambiar si agregas accent en backend
+    val accentColor: Color = Color(0xFF008D96), // puedes cambiar si agregas accent en backend
+    val isBookable: Boolean = false,
+    val dailyLimitPerUser: Int? = null
 )
 
 // ---------- Paletas/gradiente (idéntico a PromoComponents) ----------
@@ -172,9 +175,14 @@ private fun toUi(p: Promotions): PromoDetailUi {
         append("Tipo: ${p.promotionType?.displayName ?: "—"}")
         p.promotionState?.let { append(" • Estado: ${it.displayName}") }
     }
-    val stock  = if (p.totalStock != null && p.availableStock != null) {
-        "Stock: ${p.availableStock} / ${p.totalStock}"
-    } else "Stock: —"
+
+    // --- NUEVO: texto de stock/uso según bookable ---
+    val isBookable = p.isBookable == true
+    val stockText = if (isBookable) {
+        "Disponibles: ${p.availableStock ?: "—"}"
+    } else {
+        "Usos disponibles: ${p.limitPerUser ?: "—"}"
+    }
 
     val themeMode = p.theme ?: PromoTheme.light // <- MISMO PATRÓN QUE EN COMPONENTES/COUPONS
 
@@ -186,9 +194,11 @@ private fun toUi(p: Promotions): PromoDetailUi {
         validUntil = valid,
         description = desc,
         terms = terms,
-        stockLabel = stock,
+        stockLabel = stockText,                     // <- usa el nuevo texto
         theme = themeMode,
-        accentColor = if (themeMode == PromoTheme.dark) Color(0xFF00A3A3) else Color(0xFF008D96)
+        accentColor = if (themeMode == PromoTheme.dark) Color(0xFF00A3A3) else Color(0xFF008D96),
+        isBookable = isBookable,
+        dailyLimitPerUser = p.dailyLimitPerUser
     )
 }
 
@@ -399,21 +409,24 @@ fun PromoQR(
                                         }
                                 )
 
-                                // Chip de descuento (puedes cambiar a accent desde backend si agregas campo)
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(12.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(detail.accentColor)
-                                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = detail.discountLabel,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
-                                    )
+                                // NUEVO: chip “Stock limitado” cuando es bookable
+                                if (detail.isBookable) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(12.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(Color(0xFFFFF3CD)) // amarillo suave
+                                            .border(BorderStroke(1.dp, Color(0xFFFFEEA8)), RoundedCornerShape(16.dp))
+                                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = "Stock limitado",
+                                            color = Color(0xFF8A6D3B),
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 12.sp
+                                        )
+                                    }
                                 }
 
                                 // Favorito con surface blanca para contraste (como en PromoImageBannerFav)
@@ -472,7 +485,7 @@ fun PromoQR(
                     item {
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            text = detail.stockLabel,
+                            text = detail.stockLabel,            // ahora muestra “Usos disponibles” si no es bookable
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFF3C3C3C),
@@ -488,7 +501,21 @@ fun PromoQR(
                             onClick = { showQrDialog = true }
                         )
                     }
-
+                    item {
+                        if (detail.isBookable) {
+                            Spacer(Modifier.height(8.dp))
+                            MainButton(
+                                text = "Reservar Cupón",
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp),
+                                onClick = {
+                                    // TODO: navega a tu flujo de reservas
+                                    // ej.: nav.navigate(Screens.Booking.createRoute(promotionId))
+                                    scope.launch { snackbarHostState.showSnackbar("Ir a reservar…") }
+                                }
+                            )
+                        }
+                    }
                     item {
                         Spacer(Modifier.height(20.dp))
                         Text(
@@ -562,7 +589,9 @@ fun PromoQR(
 
                         MainButton(
                             text = "Cerrar",
-                            modifier = Modifier.weight(1f).height(52.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp),
                             onClick = { showQrDialog = false }
                         )
                     }
@@ -576,7 +605,9 @@ fun PromoQR(
 @Composable
 private fun InfoCardApi(detail: PromoDetailUi, texts: PromoTextColors) {
     Card(
-        modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F7F7))
     ) {
@@ -589,7 +620,7 @@ private fun InfoCardApi(detail: PromoDetailUi, texts: PromoTextColors) {
             )
             Text(
                 text = detail.description,
-                color = texts.bodyColor,
+                color = Color(0xFF616161),
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
                 modifier = Modifier.padding(top = 4.dp)
@@ -601,15 +632,23 @@ private fun InfoCardApi(detail: PromoDetailUi, texts: PromoTextColors) {
                 color = Color(0xFF454545),
                 fontSize = 14.sp
             )
+            // 👇 Campos fijos (no dependen del theme)
             Text(
                 text = "Vigencia: ${detail.validUntil}",
-                color = texts.subtitleColor,
+                color = Color(0xFF616161),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 4.dp)
             )
+            // ⭐ NUEVO: Usos diarios
+            Text(
+                text = "Usos diarios: ${detail.dailyLimitPerUser ?: "—"}",
+                color = Color(0xFF616161),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 2.dp)
+            )
             Text(
                 text = detail.terms,
-                color = texts.bodyColor,
+                color = Color(0xFF616161),
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
                 modifier = Modifier.padding(top = 4.dp)
@@ -630,7 +669,9 @@ private fun QRCardInner(
             elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
         ) {
             Box(
-                modifier = Modifier.size(220.dp).padding(16.dp),
+                modifier = Modifier
+                    .size(220.dp)
+                    .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (qrBitmap != null) {
@@ -647,7 +688,9 @@ private fun QRCardInner(
             fontSize = 12.sp,
             lineHeight = 16.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.widthIn(max = 340.dp).padding(horizontal = 8.dp),
+            modifier = Modifier
+                .widthIn(max = 340.dp)
+                .padding(horizontal = 8.dp),
             maxLines = 3,
             overflow = TextOverflow.Ellipsis
         )
