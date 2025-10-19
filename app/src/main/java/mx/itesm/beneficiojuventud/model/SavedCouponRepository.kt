@@ -14,6 +14,7 @@ import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
 import mx.itesm.beneficiojuventud.model.users.RemoteServiceUser
 import mx.itesm.beneficiojuventud.model.users.UserApiService
+import mx.itesm.beneficiojuventud.utils.toBooking
 import mx.itesm.beneficiojuventud.utils.toBookingList
 import mx.itesm.beneficiojuventud.utils.toCategoryEntityList
 import mx.itesm.beneficiojuventud.utils.toEntity
@@ -41,7 +42,7 @@ class SavedCouponRepository(
 
                 // Insertar relaciones en la tabla junction
                 categories.forEach { category ->
-                    category.categoryId?.let { catId ->
+                    category.id?.let { catId ->
                         promotionCategoriesDao.insertPromotionCategory(
                             PromotionCategories(
                                 promotionId = couponId,
@@ -99,7 +100,7 @@ class SavedCouponRepository(
 
                 // Insertar relaciones en la tabla junction
                 categories.forEach { category ->
-                    category.categoryId?.let { catId ->
+                    category.id?.let { catId ->
                         promotionCategoriesDao.insertPromotionCategory(
                             PromotionCategories(
                                 promotionId = booking.promotionId,

@@ -51,4 +51,12 @@ object RemoteServiceBooking {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
         }
     }
+
+    suspend fun getOneBooking(bookingId: Int): Booking {
+        val response = bookingApiService.getOneBooking(bookingId)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        return response.body() ?: throw Exception("Respuesta vacía al obtener reservacion")
+    }
 }
