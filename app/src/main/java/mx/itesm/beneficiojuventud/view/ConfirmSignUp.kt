@@ -137,7 +137,8 @@ fun ConfirmSignUp(
                                 cognitoId = sub,
                                 email = email.trim(),
                                 state = CollaboratorsState.activo,
-                                registrationDate = Instant.now().toString()
+                                registrationDate = Instant.now().toString(),
+                                categoryIds = listOf(1) // TODO: Permitir seleccionar categorías en el registro
                             )
                         )
                         authViewModel.consumePendingCollabProfile()
@@ -155,7 +156,8 @@ fun ConfirmSignUp(
                 } catch (e: Exception) {
                     didCreate = false // permitir reintento si quieres
                     showError = true
-                    errorMessage = e.message ?: "No se pudo crear el perfil en la BD."
+                    errorMessage = "Error al crear perfil: ${e.message ?: "desconocido"}\n${e.cause?.message ?: ""}"
+                    e.printStackTrace()
                 }
             }
         }

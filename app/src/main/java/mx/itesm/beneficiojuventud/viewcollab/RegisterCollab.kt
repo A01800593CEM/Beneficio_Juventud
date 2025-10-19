@@ -128,7 +128,8 @@ fun RegisterCollab(
                             cognitoId = sub,
                             email = email.trim(),
                             state = CollaboratorsState.activo,
-                            registrationDate = Instant.now().toString()
+                            registrationDate = Instant.now().toString(),
+                            categoryIds = listOf(1) // TODO: Permitir seleccionar categorías en el registro
                         )
                     )
                     authViewModel.clearPendingCredentials()
@@ -139,7 +140,8 @@ fun RegisterCollab(
                 } catch (e: Exception) {
                     didCreateDirect = false
                     showError = true
-                    errorMessage = e.message ?: "No se pudo crear el perfil del colaborador en la BD."
+                    errorMessage = "Error al crear colaborador: ${e.message ?: "desconocido"}\n${e.cause?.message ?: ""}"
+                    e.printStackTrace()
                 }
             }
         }
