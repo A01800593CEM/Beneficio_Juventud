@@ -63,24 +63,6 @@ fun ConfirmSignUp(
     // Parche 1: one-shot latch para evitar doble creación
     var didCreate by rememberSaveable { mutableStateOf(false) }
 
-    // Estado para almacenar la primera categoría disponible (para colaboradores)
-    var defaultCategoryId by rememberSaveable { mutableIntStateOf(1) }
-
-    // Cargar categorías disponibles al iniciar
-    LaunchedEffect(Unit) {
-        scope.launch {
-            try {
-                val categories = collabViewModel.getCategories()
-                if (categories.isNotEmpty() && categories.first().id != null) {
-                    defaultCategoryId = categories.first().id!!
-                }
-            } catch (e: Exception) {
-                // Si falla, usar 1 como fallback
-                defaultCategoryId = 1
-            }
-        }
-    }
-
     // ----- Temporizador Reenviar -----
     var seconds by remember { mutableIntStateOf(60) }
     var canResend by remember { mutableStateOf(false) }
@@ -160,8 +142,8 @@ fun ConfirmSignUp(
                             cognitoId = sub,
                             email = email.trim(),
                             state = CollaboratorsState.activo,
-                            registrationDate = Instant.now().toString(),
-                            categoryIds = listOf(defaultCategoryId) // TODO: Permitir seleccionar categorías en el registro
+                            registrationDate = Instant.now().toString()
+                            // categoryIds se puede agregar después mediante actualización
                         )
 
                         Log.d("ConfirmSignUp", "  collabToCreate: $collabToCreate")

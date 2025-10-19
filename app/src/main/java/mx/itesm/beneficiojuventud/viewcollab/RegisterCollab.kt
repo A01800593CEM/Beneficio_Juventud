@@ -90,29 +90,9 @@ fun RegisterCollab(
     // Estado de verificación de email
     var isCheckingEmail by rememberSaveable { mutableStateOf(false) }
 
-    // Estado para almacenar la primera categoría disponible
-    var defaultCategoryId by rememberSaveable { mutableIntStateOf(1) }
-    var isLoadingCategories by remember { mutableStateOf(true) }
-
     // Parche: al volver del ConfirmSignUp, aseguramos que no quede en "Registrando."
-    // También cargamos las categorías disponibles
     LaunchedEffect(Unit) {
         authViewModel.markIdle()
-
-        // Cargar categorías disponibles
-        scope.launch {
-            try {
-                val categories = collabViewModel.getCategories()
-                if (categories.isNotEmpty() && categories.first().id != null) {
-                    defaultCategoryId = categories.first().id!!
-                }
-            } catch (e: Exception) {
-                // Si falla, usar 1 como fallback
-                defaultCategoryId = 1
-            } finally {
-                isLoadingCategories = false
-            }
-        }
     }
 
     // Navegación a Confirm (idempotente por intento)
@@ -148,8 +128,8 @@ fun RegisterCollab(
                             cognitoId = sub,
                             email = email.trim(),
                             state = CollaboratorsState.activo,
-                            registrationDate = Instant.now().toString(),
-                            categoryIds = listOf(defaultCategoryId) // TODO: Permitir seleccionar categorías en el registro
+                            registrationDate = Instant.now().toString()
+                            // categoryIds se puede agregar después mediante actualización
                         )
                     )
                     authViewModel.clearPendingCredentials()
