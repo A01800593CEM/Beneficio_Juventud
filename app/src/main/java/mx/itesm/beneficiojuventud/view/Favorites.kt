@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Favorite
@@ -226,7 +227,13 @@ fun Favorites(
                             )
                         }
                     } else {
-                        items(allCoupons, key = { it.promotionId ?: it.hashCode() }) { promo ->
+                        itemsIndexed(
+                            items = allCoupons,
+                            key = { index, promo ->
+                                // Usar índice + promotionId para garantizar unicidad
+                                "${index}_${promo.promotionId ?: promo.hashCode()}"
+                            }
+                        ) { index, promo ->
                             val isReserved = promo.promotionId?.let { it in reservedPromoIds } ?: false
 
                             PromoImageBannerFav(
