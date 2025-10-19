@@ -2,6 +2,7 @@
 package mx.itesm.beneficiojuventud.model.promos
 
 import com.google.gson.annotations.SerializedName
+import mx.itesm.beneficiojuventud.model.categories.Category
 
 data class Promotions(
     val promotionId: Int? = null,
@@ -32,10 +33,6 @@ data class Promotions(
     val categories: List<Category> = emptyList()
 )
 
-data class Category(
-    val id: Int? = null,
-    val name: String? = null
-)
 
 enum class PromotionType {
     @SerializedName("descuento") descuento,

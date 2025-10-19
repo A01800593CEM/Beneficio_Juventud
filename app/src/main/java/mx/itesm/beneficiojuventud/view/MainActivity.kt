@@ -22,12 +22,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.room.Room
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.Firebase
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.messaging
 import com.google.gson.Gson
 import kotlinx.coroutines.delay
+import mx.itesm.beneficiojuventud.model.RoomDB.LocalDatabase
 import mx.itesm.beneficiojuventud.model.webhook.PromotionData
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewcollab.EditProfileCollab
@@ -45,6 +47,11 @@ import mx.itesm.beneficiojuventud.viewcollab.PromotionsScreenCollab
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val localDatabase = Room.databaseBuilder(
+            applicationContext,
+            LocalDatabase::class.java,
+            "beneficio-joven-db"
+        ).build()
         enableEdgeToEdge()
         solicitarPermiso()
         obtenerToken()
