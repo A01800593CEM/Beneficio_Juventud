@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.view
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -132,15 +133,22 @@ fun ConfirmSignUp(
                             launchSingleTop = true
                         }
                     } else if (pendingCollab != null) {
-                        collabViewModel.createCollaborator(
-                            pendingCollab.copy(
-                                cognitoId = sub,
-                                email = email.trim(),
-                                state = CollaboratorsState.activo,
-                                registrationDate = Instant.now().toString(),
-                                categoryIds = listOf(1) // TODO: Permitir seleccionar categorías en el registro
-                            )
+                        Log.d("ConfirmSignUp", "Creando colaborador con datos:")
+                        Log.d("ConfirmSignUp", "  pendingCollab: $pendingCollab")
+                        Log.d("ConfirmSignUp", "  sub (cognitoId): $sub")
+                        Log.d("ConfirmSignUp", "  email: ${email.trim()}")
+
+                        val collabToCreate = pendingCollab.copy(
+                            cognitoId = sub,
+                            email = email.trim(),
+                            state = CollaboratorsState.activo,
+                            registrationDate = Instant.now().toString(),
+                            categoryIds = listOf(1) // TODO: Permitir seleccionar categorías en el registro
                         )
+
+                        Log.d("ConfirmSignUp", "  collabToCreate: $collabToCreate")
+
+                        collabViewModel.createCollaborator(collabToCreate)
                         authViewModel.consumePendingCollabProfile()
                         authViewModel.clearPendingCredentials()
 

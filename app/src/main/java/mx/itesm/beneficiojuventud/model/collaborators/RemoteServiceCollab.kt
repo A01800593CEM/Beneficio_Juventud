@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.model.collaborators
 
+import android.util.Log
 import mx.itesm.beneficiojuventud.utils.Constants
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -22,8 +23,35 @@ object RemoteServiceCollab {
         return response.body() ?: throw Exception("No se pudo obtener los colaboradores")
     }
     suspend fun createCollaborator(collaborator: Collaborator): Collaborator {
+        Log.d("RemoteServiceCollab", "Creando colaborador:")
+        Log.d("RemoteServiceCollab", "  cognitoId: ${collaborator.cognitoId}")
+        Log.d("RemoteServiceCollab", "  businessName: ${collaborator.businessName}")
+        Log.d("RemoteServiceCollab", "  rfc: ${collaborator.rfc}")
+        Log.d("RemoteServiceCollab", "  representativeName: ${collaborator.representativeName}")
+        Log.d("RemoteServiceCollab", "  phone: ${collaborator.phone}")
+        Log.d("RemoteServiceCollab", "  email: ${collaborator.email}")
+        Log.d("RemoteServiceCollab", "  address: ${collaborator.address}")
+        Log.d("RemoteServiceCollab", "  postalCode: ${collaborator.postalCode}")
+        Log.d("RemoteServiceCollab", "  description: ${collaborator.description}")
+        Log.d("RemoteServiceCollab", "  state: ${collaborator.state}")
+        Log.d("RemoteServiceCollab", "  categoryIds: ${collaborator.categoryIds}")
+
         val response = collabApiService.createCollaborator(collaborator)
-        return response.body() ?: throw Exception("No se pudo crear el colaborador")
+
+        Log.d("RemoteServiceCollab", "Respuesta HTTP: ${response.code()}")
+
+        if (!response.isSuccessful) {
+            val errorBody = response.errorBody()?.string()
+            Log.e("RemoteServiceCollab", "Error body: $errorBody")
+            throw Exception(
+                "Error HTTP ${response.code()}: ${response.message()}. " +
+                "Detalles: ${errorBody ?: "sin detalles"}"
+            )
+        }
+
+        return response.body() ?: throw Exception(
+            "Respuesta exitosa pero body vacío (código ${response.code()})"
+        )
     }
     suspend fun updateCollaborator(id: String, update: Collaborator): Collaborator {
         val response = collabApiService.updateCollaborator(id, update)
