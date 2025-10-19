@@ -3,6 +3,7 @@ package mx.itesm.beneficiojuventud.view
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
@@ -156,7 +157,7 @@ fun Favorites(
             item {
                 val count = when (mode) {
                     FavoriteMode.Businesses -> favoriteCollabIds.size
-                    FavoriteMode.Coupons    -> favoritePromos.size + reservedPromos.size
+                    FavoriteMode.Coupons    -> allCoupons.size
                 }
                 val label = if (mode == FavoriteMode.Businesses)
                     "$count Negocios Guardados" else "$count Cupones Guardados"
@@ -262,6 +263,23 @@ fun Favorites(
 }
 
 @Composable
+private fun EmptyState(
+    title: String,
+    body: String
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(title, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161))
+        Spacer(Modifier.height(6.dp))
+        Text(body, fontSize = 12.sp, color = Color(0xFF9E9E9E))
+    }
+}
+
+@Composable
 private fun TogglePill(
     left: String,
     right: String,
@@ -326,8 +344,10 @@ private fun TogglePill(
     }
 }
 
+// Función deprecated - ya no se usa, se usa MerchantCardHorizontalFav
+/*
 @Composable
-private fun FavoriteCard( // <- la puedes borrar si ya no la usas
+private fun FavoriteCard(
     merchant: FavoriteMerchant,
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit,
@@ -410,6 +430,7 @@ private fun FavoriteCard( // <- la puedes borrar si ya no la usas
         }
     }
 }
+*/
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
