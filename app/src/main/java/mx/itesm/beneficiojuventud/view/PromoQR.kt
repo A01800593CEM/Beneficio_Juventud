@@ -184,7 +184,7 @@ private fun toUi(p: Promotions): PromoDetailUi {
         "Usos disponibles: ${p.limitPerUser ?: "—"}"
     }
 
-    val themeMode = p.theme ?: PromoTheme.light // <- MISMO PATRÓN QUE EN COMPONENTES/COUPONS
+    val themeMode = p.theme ?: PromoTheme.light
 
     return PromoDetailUi(
         bannerUrlOrRes = banner,
@@ -194,7 +194,7 @@ private fun toUi(p: Promotions): PromoDetailUi {
         validUntil = valid,
         description = desc,
         terms = terms,
-        stockLabel = stockText,                     // <- usa el nuevo texto
+        stockLabel = stockText,
         theme = themeMode,
         accentColor = if (themeMode == PromoTheme.dark) Color(0xFF00A3A3) else Color(0xFF008D96),
         isBookable = isBookable,
@@ -509,9 +509,14 @@ fun PromoQR(
                                 modifier = Modifier
                                     .padding(horizontal = 16.dp),
                                 onClick = {
-                                    // TODO: navega a tu flujo de reservas
-                                    // ej.: nav.navigate(Screens.Booking.createRoute(promotionId))
-                                    scope.launch { snackbarHostState.showSnackbar("Ir a reservar…") }
+
+                                    nav.navigate(
+
+                                        Screens.Status.createRoute(
+                                            StatusType.COUPON_SAVE_SUCCESS,
+                                            Screens.Favorites.route
+                                        )
+                                    )
                                 }
                             )
                         }

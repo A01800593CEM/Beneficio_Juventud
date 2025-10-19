@@ -53,6 +53,16 @@ sealed class Screens(val route: String) {
             "promotions_screen/${java.net.URLEncoder.encode(collabId, "UTF-8")}"
         val arg = "collabId"
     }
+    data object Terms : Screens("terms")
+    data object Status : Screens("status/{type}/{destination}") {
+        fun createRoute(type: StatusType, destination: String): String =
+            "status/${type.name}/${java.net.URLEncoder.encode(destination, "UTF-8")}"
+        val arguments = listOf(
+            navArgument("type") { type = NavType.StringType },
+            navArgument("destination") { type = NavType.StringType }
+        )
+    }
+
     data object EditProfileCollab : Screens("edit_profile_collab")
 
 }

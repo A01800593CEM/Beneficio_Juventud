@@ -267,6 +267,26 @@ private fun AppNav(
             }
         }
 
+        composable(Screens.Terms.route) { TermsAndConditionsScreen(nav) }
+        composable(
+            route = Screens.Status.route,
+            arguments = Screens.Status.arguments
+        ) { backStackEntry ->
+            val typeName = backStackEntry.arguments?.getString("type") ?: StatusType.VERIFICATION_ERROR.name
+            val destination = java.net.URLDecoder.decode(
+                backStackEntry.arguments?.getString("destination") ?: Screens.Home.route,
+                "UTF-8"
+            )
+
+            val statusType = StatusType.valueOf(typeName)
+            StatusScreen(
+                nav = nav,
+                statusType = statusType,
+                destinationRoute = destination
+            )
+        }
+
+
         // --- App Colaborador ---
         composable(Screens.RegisterCollab.route) {
             RegisterCollab(
