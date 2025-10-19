@@ -3,6 +3,8 @@ package mx.itesm.beneficiojuventud.viewmodel
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import mx.itesm.beneficiojuventud.model.categories.Category
+import mx.itesm.beneficiojuventud.model.categories.RemoteServiceCategory
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.collaborators.RemoteServiceCollab
 
@@ -42,5 +44,9 @@ class CollabViewModel : ViewModel() {
 
     suspend fun emailExists(email: String): Boolean {
         return model.emailExists(email)
+    }
+
+    suspend fun getCategories(): List<Category> {
+        return RemoteServiceCategory.getCategories()
     }
 }
