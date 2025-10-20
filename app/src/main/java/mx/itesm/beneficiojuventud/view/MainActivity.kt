@@ -52,17 +52,19 @@ import mx.itesm.beneficiojuventud.viewcollab.PromotionsScreenCollab
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val localDatabase = Room.databaseBuilder(
-            applicationContext,
-            LocalDatabase::class.java,
-            "beneficio-joven-db"
-        ).build()
+        val db = LocalDatabase.getDatabase(this)
+        val promotionDao = db.promotionDao()
+        val categoryDao = db.categoryDao()
+
         enableEdgeToEdge()
         solicitarPermiso()
         obtenerToken()
         setContent {
             BeneficioJuventudTheme {
-                AppContent()
+                AppContent(
+                    promotionDao = promotionDao,
+                    categoryDao = categoryDao
+                )
             }
         }
     }
@@ -104,12 +106,23 @@ class MainActivity : ComponentActivity() {
 /** Arranque del árbol Compose con viewmodels compartidos */
 @Composable
 private fun AppContent(
-    authViewModel: AuthViewModel = viewModel(),
-    userViewModel: UserViewModel = viewModel(),
-    collabViewModel: CollabViewModel = viewModel(),
-    categoryViewModel: CategoryViewModel = viewModel(),
-    promoViewModel: PromoViewModel = viewModel()
+    promotionDao: mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionDao,
+    categoryDao: mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryDao
 ) {
+    // Create repository with the DAO
+    val repository = remember(promotionDao) {
+        mx.itesm.beneficiojuventud.model.SavedCouponRepository(promotionDao)
+    }
+
+    // Create ViewModels
+    val authViewModel: AuthViewModel = viewModel()
+    val userViewModel = remember(repository) {
+        UserViewModel(repository = repository)
+    }
+    val collabViewModel: CollabViewModel = viewModel()
+    val categoryViewModel: CategoryViewModel = viewModel()
+    val promoViewModel: PromoViewModel = viewModel()
+
     val nav = rememberNavController()
     AppNav(
         nav = nav,
@@ -268,7 +281,13 @@ private fun AppNav(
             val promotionId = backStackEntry.arguments?.getInt("promotionId") ?: return@composable
             val cognitoId by authViewModel.currentUserId.collectAsState()
             if (!cognitoId.isNullOrBlank()) {
-                PromoQR(nav, promotionId, cognitoId!!)
+                PromoQR(
+                    nav = nav,
+                    promotionId = promotionId,
+                    cognitoId = cognitoId!!,
+                    viewModel = promoViewModel,
+                    userViewModel = userViewModel
+                )
             } else {
                 Startup()
             }

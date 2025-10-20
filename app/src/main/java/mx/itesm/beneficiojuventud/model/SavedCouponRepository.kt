@@ -1,6 +1,7 @@
 package mx.itesm.beneficiojuventud.model
 
 import android.util.Log
+import kotlinx.coroutines.flow.Flow
 import mx.itesm.beneficiojuventud.model.RoomDB.PromotionsCategories.PromotionWithCategories
 import mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionDao
 import mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionEntity
@@ -17,7 +18,8 @@ class SavedCouponRepository(
     private val promotionDao: PromotionDao,
 ) {
 
-    suspend fun favoriteCoupon(couponId: Int, userId: String) {
+
+    suspend fun favoritePromotion(couponId: Int, userId: String) {
         try {
             RemoteServiceUser.favoritePromotion(couponId, userId)
             val promo: Promotions = RemoteServicePromos.getPromotionById(couponId)
@@ -28,7 +30,7 @@ class SavedCouponRepository(
         }
     }
 
-    suspend fun unfavoriteCoupon(couponId: Int, userId: String) {
+    suspend fun unfavoritePromotion(couponId: Int, userId: String) {
         try {
             RemoteServiceUser.unfavoritePromotion(couponId, userId)
             val promo: Promotions = RemoteServicePromos.getPromotionById(couponId)
@@ -39,7 +41,7 @@ class SavedCouponRepository(
         }
     }
 
-    suspend fun getFavoriteCoupons(userId: String): List<Promotions> {
+    suspend fun getFavoritePromotions(userId: String): List<Promotions> {
         try {
             return RemoteServiceUser.getFavoritePromotions(userId)
         } catch (e: Exception) {
@@ -59,11 +61,5 @@ class SavedCouponRepository(
         }
     }
 
-    suspend fun getBookings(userId: String): List<Promotions> {
-        try {
-            return RemoteServiceBooking.getUserBookings(userId)
-        } catch (e: Exception) {
-            return promotionDao.getReservedPromotions().toPromotionList()
-        }
-    }
+
 }

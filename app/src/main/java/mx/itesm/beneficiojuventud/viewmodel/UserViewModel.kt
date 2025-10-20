@@ -7,12 +7,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import mx.itesm.beneficiojuventud.model.SavedCouponRepository
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.users.RemoteServiceUser
 import mx.itesm.beneficiojuventud.model.users.UserProfile
 
-class UserViewModel : ViewModel() {
+class UserViewModel(private val repository: SavedCouponRepository) : ViewModel() {
 
     private val model = RemoteServiceUser
 
@@ -136,7 +137,7 @@ class UserViewModel : ViewModel() {
         // No activamos el loading global para no bloquear la UI por una acción rápida.
         viewModelScope.launch {
             val result = runCatching {
-                withContext(Dispatchers.IO) { model.favoritePromotion(promotionId, cognitoId) }
+                withContext(Dispatchers.IO) { repository.favoritePromotion(promotionId, cognitoId) }
             }
             result.onFailure { e ->
                 _error.value = e.message ?: "Error al marcar favorito"
@@ -151,7 +152,7 @@ class UserViewModel : ViewModel() {
         _error.value = null
         viewModelScope.launch {
             val result = runCatching {
-                withContext(Dispatchers.IO) { model.unfavoritePromotion(promotionId, cognitoId) }
+                withContext(Dispatchers.IO) { repository.unfavoritePromotion(promotionId, cognitoId) }
             }
             result.onFailure { e ->
                 _error.value = e.message ?: "Error al quitar favorito"
@@ -169,7 +170,7 @@ class UserViewModel : ViewModel() {
 
         viewModelScope.launch {
             val result = runCatching {
-                withContext(Dispatchers.IO) { model.getFavoritePromotions(cognitoId) }
+                withContext(Dispatchers.IO) { repository.getFavoritePromotions(cognitoId) }
             }
             if (myToken != loadToken) return@launch
 
@@ -187,7 +188,7 @@ class UserViewModel : ViewModel() {
         viewModelScope.launch {
             // Promos
             runCatching {
-                withContext(Dispatchers.IO) { model.getFavoritePromotions(cognitoId) }
+                withContext(Dispatchers.IO) { repository.getFavoritePromotions(cognitoId) }
             }.onSuccess { _favoritePromotions.value = it }
                 .onFailure { e -> _error.value = e.message ?: "Error al refrescar promociones favoritas" }
 
