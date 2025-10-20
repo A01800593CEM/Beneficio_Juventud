@@ -26,7 +26,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.model.promos.Promotions
+import mx.itesm.beneficiojuventud.model.promos.PromotionType
+import mx.itesm.beneficiojuventud.model.promos.PromotionState
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
+import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
 private val TextGrey = Color(0xFF616161)
 private val LightGrey = Color(0xFFF5F5F5)
@@ -39,10 +42,16 @@ private val Purple = Color(0xFF6200EE)
 fun NewPromotionSheet(
     onClose: () -> Unit,
     viewModel: PromoViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel(),
     initialPromotionData: mx.itesm.beneficiojuventud.model.webhook.PromotionData? = null
 ) {
     val promo by viewModel.promoState.collectAsState()
     val scope = rememberCoroutineScope()
+
+    // Obtener el collaboratorId del usuario autenticado
+    LaunchedEffect(Unit) { authViewModel.getCurrentUser() }
+    val currentUserId by authViewModel.currentUserId.collectAsState()
+    val collaboratorId = currentUserId ?: "anonymous"
 
     var title by rememberSaveable { mutableStateOf(initialPromotionData?.title ?: promo.title.orEmpty()) }
     var description by rememberSaveable { mutableStateOf(initialPromotionData?.description ?: promo.description.orEmpty()) }
@@ -50,7 +59,34 @@ fun NewPromotionSheet(
     var endDate by rememberSaveable { mutableStateOf(initialPromotionData?.endDate ?: promo.endDate.orEmpty()) }
     var totalStock by rememberSaveable { mutableStateOf(initialPromotionData?.totalStock?.toString() ?: promo.totalStock?.toString().orEmpty()) }
     var limitPerUser by rememberSaveable { mutableStateOf(initialPromotionData?.limitPerUser?.toString() ?: promo.limitPerUser?.toString().orEmpty()) }
+    var dailyLimitPerUser by rememberSaveable { mutableStateOf(initialPromotionData?.dailyLimitPerUser?.toString() ?: promo.dailyLimitPerUser?.toString().orEmpty()) }
     var imageUrl by rememberSaveable { mutableStateOf(promo.imageUrl.orEmpty()) }
+
+    // Campos con valores por defecto
+    var promotionType by rememberSaveable {
+        mutableStateOf(
+            initialPromotionData?.promotionType?.let {
+                when(it) {
+                    "descuento" -> PromotionType.descuento
+                    "multicompra" -> PromotionType.multicompra
+                    "regalo" -> PromotionType.regalo
+                    else -> PromotionType.otro
+                }
+            } ?: promo.promotionType ?: PromotionType.descuento
+        )
+    }
+    var promotionState by rememberSaveable {
+        mutableStateOf(
+            initialPromotionData?.promotionState?.let {
+                when(it) {
+                    "activa" -> PromotionState.activa
+                    "inactiva" -> PromotionState.inactiva
+                    "finalizada" -> PromotionState.finalizada
+                    else -> PromotionState.activa
+                }
+            } ?: promo.promotionState ?: PromotionState.activa
+        )
+    }
 
     var showStartPicker by remember { mutableStateOf(false) }
     var showEndPicker by remember { mutableStateOf(false) }
@@ -95,6 +131,9 @@ fun NewPromotionSheet(
                 }
 
                 Spacer(Modifier.height(16.dp))
+                FormTextField(dailyLimitPerUser, { dailyLimitPerUser = it.filter(Char::isDigit) }, "Límite Diario por Usuario (opcional)", "Ej. 1")
+
+                Spacer(Modifier.height(16.dp))
                 Text("Imagen de la promoción (URL opcional)", fontWeight = FontWeight.Bold, color = TextGrey)
                 Spacer(Modifier.height(8.dp))
                 FormTextField(imageUrl, { imageUrl = it }, "URL de imagen", "https://...")
@@ -126,25 +165,44 @@ fun NewPromotionSheet(
         MainButton(
             text = "Crear Nueva Promoción",
             onClick = {
+                // Validar campos obligatorios
+                if (collaboratorId == "anonymous") {
+                    // TODO: mostrar error - usuario no autenticado
+                    return@MainButton
+                }
+
                 val tStock = totalStock.toIntOrNull()
                 val lpu = limitPerUser.toIntOrNull()
-                if (title.isBlank() || description.isBlank() || startDate.isBlank() || endDate.isBlank() || tStock == null || lpu == null)
+                val dlpu = dailyLimitPerUser.toIntOrNull()
+
+                if (title.isBlank() || description.isBlank() || startDate.isBlank() || endDate.isBlank() || tStock == null || lpu == null) {
+                    // TODO: mostrar error - campos requeridos vacíos
                     return@MainButton
+                }
 
                 val newPromo = Promotions(
+                    collaboratorId = collaboratorId,
                     title = title,
                     description = description,
                     imageUrl = imageUrl.ifBlank { null },
                     initialDate = startDate,
                     endDate = endDate,
+                    promotionType = promotionType,
                     totalStock = tStock,
-                    limitPerUser = lpu
+                    availableStock = tStock, // Inicialmente el stock disponible es igual al total
+                    limitPerUser = lpu,
+                    dailyLimitPerUser = dlpu,
+                    promotionState = promotionState,
+                    isBookable = false // Por defecto las promociones no son reservables
                 )
 
                 scope.launch {
                     runCatching { viewModel.createPromotion(newPromo) }
                         .onSuccess { onClose() }
-                        .onFailure { /* TODO: manejar error */ }
+                        .onFailure { error ->
+                            // TODO: mostrar error al usuario
+                            android.util.Log.e("NewPromotionSheet", "Error creating promotion", error)
+                        }
                 }
             }
         )
