@@ -527,16 +527,16 @@ export class AnalyticsService {
       })
       .select('promo.promotionId', 'promotionId')
       .addSelect('promo.title', 'title')
-      .addSelect('COUNT(redeem.usedId)', 'redemptionCount')
+      .addSelect('COUNT(redeem.usedId)', 'redemption_count')
       .groupBy('promo.promotionId')
       .addGroupBy('promo.title')
-      .orderBy('redemptionCount', 'DESC')
+      .orderBy('redemption_count', 'DESC')
       .limit(5)
       .getRawMany();
 
     return topCoupons.map((coupon) => ({
       label: coupon.title,
-      value: parseInt(coupon.redemptionCount),
+      value: parseInt(coupon.redemption_count),
       promotionId: coupon.promotionId,
     }));
   }
@@ -812,7 +812,7 @@ export class AnalyticsService {
       .select('promo.promotionId', 'promotionId')
       .addSelect('promo.title', 'title')
       .addSelect('collab.businessName', 'collaboratorName')
-      .addSelect('COUNT(redeem.usedId)', 'redemptionCount')
+      .addSelect('COUNT(redeem.usedId)', 'redemption_count')
       .groupBy('promo.promotionId')
       .addGroupBy('promo.title')
       .addGroupBy('collab.businessName')
@@ -831,11 +831,11 @@ export class AnalyticsService {
           promotionId: promo.promotionId,
           title: promo.title,
           collaboratorName: promo.collaboratorName,
-          redemptionCount: parseInt(promo.redemptionCount),
+          redemptionCount: parseInt(promo.redemption_count),
           bookingCount,
           conversionRate: this.calculateConversionRate(
             bookingCount,
-            parseInt(promo.redemptionCount),
+            parseInt(promo.redemption_count),
           ),
         };
       }),
