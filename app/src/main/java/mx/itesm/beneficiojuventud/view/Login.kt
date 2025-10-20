@@ -264,13 +264,13 @@ fun Login(
                     )
                 }
                 item {
-                    AltLoginButton(
-                        text = "Continuar con Facebook",
-                        icon = painterResource(id = R.drawable.logo_facebook),
-                        contentDescription = "Continuar con Facebook",
-                        onClick = { /* TODO */ },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+//                    AltLoginButton(
+//                        text = "Continuar con Facebook",
+//                        icon = painterResource(id = R.drawable.logo_facebook),
+//                        contentDescription = "Continuar con Facebook",
+//                        onClick = { /* TODO */ },
+//                        modifier = Modifier.fillMaxWidth()
+//                    )
                 }
             }
         }

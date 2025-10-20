@@ -103,13 +103,13 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
                     "Continuar con Google",
                     onClick = { /* TODO login Google */ }
                 )
-                AltLoginButton(
-                    "Continuar con Facebook",
-                    painterResource(id = R.drawable.logo_facebook),
-                    "Continuar con Facebook",
-                    onClick = { /* TODO login Facebook */ },
-                    modifier = Modifier.padding(top = 16.dp)
-                )
+//                AltLoginButton(
+//                    "Continuar con Facebook",
+//                    painterResource(id = R.drawable.logo_facebook),
+//                    "Continuar con Facebook",
+//                    onClick = { /* TODO login Facebook */ },
+//                    modifier = Modifier.padding(top = 16.dp)
+//                )
             }
 
             Spacer(Modifier.height(32.dp))
