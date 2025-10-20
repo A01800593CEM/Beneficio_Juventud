@@ -91,14 +91,14 @@ fun StatsScreen(
     viewModel: StatsViewModel = viewModel()
 ) {
 
-//    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
      LaunchedEffect(collaboratorId) {
          viewModel.loadAnalytics(collaboratorId, "month")
      }
 
-    // Temporary demo state (remove once ViewModel is integrated)
-    val uiState by remember {
+    // Fallback demo state for preview/testing (when backend is unavailable)
+    val fallbackUiState by remember {
         mutableStateOf(
             StatsUiState(
                 isLoading = false,
@@ -124,7 +124,7 @@ fun StatsScreen(
                     BarChartEntry(label = "20% Ropa", value = 28, promotionId = 4),
                     BarChartEntry(label = "Entrada Gratis Cine", value = 22, promotionId = 5)
                 ),
-                // NEW: Demo data for multi-series line chart
+                // NEW: Demo data for multi-series line chart with date labels
                 redemptionTrendsByPromotion = MultiSeriesLineChartData(
                     type = "multiline",
                     title = "Canjes por Cupón en el Tiempo",
@@ -134,65 +134,65 @@ fun StatsScreen(
                             seriesId = "promo_1",
                             seriesLabel = "50% Pizza",
                             entries = listOf(
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 3),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 5),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 4),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 7),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 6),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 8),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 12)
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 3, "Lun"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 5, "Mar"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 4, "Mié"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 7, "Jue"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 6, "Vie"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 8, "Sáb"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 12, "Dom")
                             )
                         ),
                         mx.itesm.beneficiojuventud.model.analytics.SeriesData(
                             seriesId = "promo_2",
                             seriesLabel = "Café Gratis",
                             entries = listOf(
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 2),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 4),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 3),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 6),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 5),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 9),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 9)
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 2, "Lun"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 4, "Mar"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 3, "Mié"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 6, "Jue"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 5, "Vie"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 9, "Sáb"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 9, "Dom")
                             )
                         ),
                         mx.itesm.beneficiojuventud.model.analytics.SeriesData(
                             seriesId = "promo_3",
                             seriesLabel = "2x1 Hamburguesa",
                             entries = listOf(
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 1),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 3),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 2),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 4),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 5),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 7),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 10)
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 1, "Lun"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 3, "Mar"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 2, "Mié"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 4, "Jue"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 5, "Vie"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 7, "Sáb"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 10, "Dom")
                             )
                         ),
                         mx.itesm.beneficiojuventud.model.analytics.SeriesData(
                             seriesId = "promo_4",
                             seriesLabel = "20% Ropa",
                             entries = listOf(
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 2),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 2),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 3),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 5),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 4),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 6),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 6)
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 2, "Lun"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 2, "Mar"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 3, "Mié"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 5, "Jue"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 4, "Vie"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 6, "Sáb"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 6, "Dom")
                             )
                         ),
                         mx.itesm.beneficiojuventud.model.analytics.SeriesData(
                             seriesId = "promo_5",
                             seriesLabel = "Entrada Gratis Cine",
                             entries = listOf(
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 1),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 2),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 2),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 3),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 4),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 5),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 5)
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 1, "Lun"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 2, "Mar"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 2, "Mié"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 3, "Jue"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 4, "Vie"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 5, "Sáb"),
+                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 5, "Dom")
                             )
                         )
                     ),
@@ -444,16 +444,17 @@ private fun StatsChartCard(
             }
 
             val xAxisData = AxisData.Builder()
-                .axisStepSize(30.dp)
+                .axisStepSize(40.dp)
                 .steps(chartEntries.size - 1)
                 .bottomPadding(8.dp)
+                .axisOffset(16.dp)
                 .labelData { index -> index.toString() }
                 .build()
 
             val yAxisData = AxisData.Builder()
                 .steps(5)
                 .labelAndAxisLinePadding(20.dp)
-                .axisOffset(8.dp)
+                .axisOffset(16.dp)
                 .labelData { index ->
                     val maxValue = (chartEntries.maxOrNull() ?: 0)
                     ((maxValue / 5.0) * index).toInt().toString()
@@ -481,12 +482,13 @@ private fun StatsChartCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
             ) {
                 LineChart(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(150.dp),
+                        .height(180.dp),
                     lineChartData = lineChartData
                 )
             }
@@ -740,8 +742,7 @@ private fun TopRedeemedCouponsChart(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = "Top 5 Cupones Más Canjeados",
@@ -758,6 +759,8 @@ private fun TopRedeemedCouponsChart(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+
+
             // Convert to YCharts BarChart format with custom colors
             val barData = topCoupons.mapIndexed { index, entry ->
                 BarData(
@@ -767,45 +770,63 @@ private fun TopRedeemedCouponsChart(
                 )
             }
 
+            val paddedData = listOf(
+                BarData(Point(-1f, 0f), Color.Transparent, ""), // ghost left
+            ) + barData + listOf(
+                BarData(Point(barData.size.toFloat(), 0f), Color.Transparent, "") // ghost right
+            )
+
+
             val xAxisData = AxisData.Builder()
-                .axisStepSize(50.dp)
-                .steps(topCoupons.size - 1)
+                .axisStepSize(40.dp)
+                .steps(paddedData.size - 1)
                 .bottomPadding(8.dp)
+                .axisOffset(16.dp)
                 .labelData { index ->
-                    if (index < topCoupons.size) (index + 1).toString() else ""
+                    // Skip the ghost bar at position 0 (which is at x=-1)
+                    // Real bars are at indices 1, 2, 3, 4, 5
+                    if (index >= 1 && index <= topCoupons.size) {
+                        index.toString()
+                    } else {
+                        ""
+                    }
                 }
                 .build()
 
             val maxValue = (topCoupons.maxOfOrNull { it.value } ?: 0)
+            val yMax = ((maxValue + 9) / 10) * 10 // round up to nearest 10
             val yAxisData = AxisData.Builder()
                 .steps(5)
                 .labelAndAxisLinePadding(20.dp)
-                .axisOffset(8.dp)
+                .axisOffset(16.dp)
                 .labelData { index ->
-                    ((maxValue / 5.0) * index).toInt().toString()
+                    ((yMax / 5.0) * index).toInt().toString()
                 }
                 .build()
 
+
             val barChartData = BarChartData(
-                chartData = barData,
+                chartData = paddedData,
                 xAxisData = xAxisData,
                 yAxisData = yAxisData,
+                horizontalExtraSpace = 60.dp,  // extra spacing around bars
                 backgroundColor = Color(0xFFFAFAFA)
             )
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp),
+                    .height(240.dp),
                 contentAlignment = Alignment.Center
             ) {
                 BarChart(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp),
+                        .height(220.dp),
                     barChartData = barChartData
                 )
             }
+
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -867,8 +888,7 @@ private fun MultiSeriesLineChartCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = chartData.title,
@@ -891,15 +911,9 @@ private fun MultiSeriesLineChartCard(
                     dataPoints = series.entries.map { entry ->
                         Point(entry.x.toFloat(), entry.y.toFloat())
                     },
-                    lineStyle = LineStyle(
-                        color = lineColors[index % lineColors.size]
-                    ),
-                    intersectionPoint = IntersectionPoint(
-                        color = lineColors[index % lineColors.size]
-                    ),
-                    selectionHighlightPoint = SelectionHighlightPoint(
-                        color = lineColors[index % lineColors.size]
-                    ),
+                    lineStyle = LineStyle(color = lineColors[index % lineColors.size]),
+                    intersectionPoint = IntersectionPoint(color = lineColors[index % lineColors.size]),
+                    selectionHighlightPoint = SelectionHighlightPoint(color = lineColors[index % lineColors.size]),
                     shadowUnderLine = ShadowUnderLine(
                         color = lineColors[index % lineColors.size].copy(alpha = 0.3f)
                     ),
@@ -911,27 +925,32 @@ private fun MultiSeriesLineChartCard(
             val maxX = (allEntries.maxOfOrNull { it.x } ?: 0)
             val maxY = (allEntries.maxOfOrNull { it.y } ?: 0)
 
+            // Use xLabel from first series if available, otherwise use numeric index
+            val xLabels = chartData.series.firstOrNull()?.entries?.associate {
+                it.x to (it.xLabel ?: it.x.toString())
+            } ?: emptyMap()
+
             val xAxisData = AxisData.Builder()
-                .axisStepSize(30.dp)
+                .axisStepSize(40.dp)
                 .steps(maxX)
                 .bottomPadding(8.dp)
-                .labelData { index -> index.toString() }
+                .startPadding(20.dp)  // Add padding at the start
+                .endPadding(20.dp)    // Add padding at the end
                 .axisOffset(16.dp)
+                .labelData { index -> xLabels[index] ?: index.toString() }
                 .build()
 
             val yAxisData = AxisData.Builder()
                 .steps(5)
                 .labelAndAxisLinePadding(20.dp)
-                .axisOffset(8.dp)
+                .axisOffset(16.dp)
                 .labelData { index ->
                     ((maxY / 5.0) * index).toInt().toString()
                 }
                 .build()
 
             val lineChartData = LineChartData(
-                linePlotData = LinePlotData(
-                    lines = lines
-                ),
+                linePlotData = LinePlotData(lines = lines),
                 xAxisData = xAxisData,
                 yAxisData = yAxisData,
                 backgroundColor = Color(0xFFFAFAFA)
@@ -940,13 +959,13 @@ private fun MultiSeriesLineChartCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp),
+                    .height(280.dp),
                 contentAlignment = Alignment.Center
             ) {
                 LineChart(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp),
+                        .height(260.dp),
                     lineChartData = lineChartData
                 )
             }
@@ -957,7 +976,6 @@ private fun MultiSeriesLineChartCard(
             Column {
                 chartData.series.forEachIndexed { index, series ->
                     val lineColor = lineColors[index % lineColors.size]
-
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -982,6 +1000,7 @@ private fun MultiSeriesLineChartCard(
         }
     }
 }
+
 
 @Preview(showSystemUi = true, showBackground = true, widthDp = 411, heightDp = 891)
 @Composable
