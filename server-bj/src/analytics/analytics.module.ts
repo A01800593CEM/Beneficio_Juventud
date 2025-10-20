@@ -6,6 +6,7 @@ import { Promotion } from '../promotions/entities/promotion.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { Redeemedcoupon } from '../redeemedcoupon/entities/redeemedcoupon.entity';
 import { Collaborator } from '../collaborators/entities/collaborator.entity';
+import { Favorite } from '../favorites/entities/favorite.entity';
 
 /**
  * Analytics module for handling statistics and reporting.
@@ -18,6 +19,7 @@ import { Collaborator } from '../collaborators/entities/collaborator.entity';
       Booking,
       Redeemedcoupon,
       Collaborator,
+      Favorite,
     ]),
   ],
   controllers: [AnalyticsController],

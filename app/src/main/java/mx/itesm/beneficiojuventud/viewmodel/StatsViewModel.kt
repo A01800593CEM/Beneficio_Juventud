@@ -1,7 +1,9 @@
-package mx.itesm.beneficiojuventud.viewcollab
+package mx.itesm.beneficiojuventud.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -9,7 +11,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mx.itesm.beneficiojuventud.model.analytics.AnalyticsDashboard
+import mx.itesm.beneficiojuventud.model.analytics.BarChartData
+import mx.itesm.beneficiojuventud.model.analytics.BarChartEntry
+import mx.itesm.beneficiojuventud.model.analytics.MultiSeriesLineChartData
 import mx.itesm.beneficiojuventud.model.analytics.RemoteServiceAnalytics
+import mx.itesm.beneficiojuventud.viewcollab.AnalyticsSummary
+import mx.itesm.beneficiojuventud.viewcollab.PromotionStatItem
 
 /**
  * UI State for Stats/Analytics screen
@@ -21,6 +28,8 @@ data class StatsUiState(
     val redemptionEntries: List<Int> = emptyList(),
     val bookingEntries: List<Int> = emptyList(),
     val promotionStats: List<PromotionStatItem> = emptyList(),
+    val topRedeemedCoupons: List<BarChartEntry> = emptyList(),
+    val redemptionTrendsByPromotion: MultiSeriesLineChartData? = null,
     val error: String? = null,
     val selectedTimeRange: String = "month",
     val dashboard: AnalyticsDashboard? = null
@@ -55,9 +64,52 @@ class StatsViewModel : ViewModel() {
                     remoteService.getCollaboratorDashboard(collaboratorId, timeRange)
                 }
 
+                // Parse the charts from dashboard
+                val gson = Gson()
+
+                // Parse bar chart data for top redeemed coupons
+                val topRedeemedCoupons = try {
+                    val chartData = dashboard.charts["topRedeemedCoupons"]
+                    val json = gson.toJson(chartData)
+                    val barChartData = gson.fromJson(json, BarChartData::class.java)
+                    barChartData.entries
+                } catch (e: Exception) {
+                    emptyList()
+                }
+
+                // Parse multi-series line chart data
+                val redemptionTrendsByPromotion = try {
+                    val chartData = dashboard.charts["redemptionTrendsByPromotion"]
+                    val json = gson.toJson(chartData)
+                    gson.fromJson(json, MultiSeriesLineChartData::class.java)
+                } catch (e: Exception) {
+                    null
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    dashboard = dashboard
+                    dashboard = dashboard,
+                    summary = AnalyticsSummary(
+                        totalPromotions = dashboard.summary.totalPromotions,
+                        activePromotions = dashboard.summary.activePromotions,
+                        totalBookings = dashboard.summary.totalBookings,
+                        redeemedCoupons = dashboard.summary.redeemedCoupons,
+                        totalFavorites = dashboard.summary.totalFavorites,
+                        conversionRate = dashboard.summary.conversionRate
+                    ),
+                    promotionStats = dashboard.promotionStats.map { promo ->
+                        PromotionStatItem(
+                            promotionId = promo.promotionId,
+                            title = promo.title,
+                            type = promo.type,
+                            status = promo.status,
+                            stockRemaining = promo.stockRemaining,
+                            totalStock = promo.totalStock,
+                            stockUtilization = promo.stockUtilization
+                        )
+                    },
+                    topRedeemedCoupons = topRedeemedCoupons,
+                    redemptionTrendsByPromotion = redemptionTrendsByPromotion
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -87,9 +139,52 @@ class StatsViewModel : ViewModel() {
                     )
                 }
 
+                // Parse the charts from dashboard
+                val gson = Gson()
+
+                // Parse bar chart data for top redeemed coupons
+                val topRedeemedCoupons = try {
+                    val chartData = dashboard.charts["topRedeemedCoupons"]
+                    val json = gson.toJson(chartData)
+                    val barChartData = gson.fromJson(json, BarChartData::class.java)
+                    barChartData.entries
+                } catch (e: Exception) {
+                    emptyList()
+                }
+
+                // Parse multi-series line chart data
+                val redemptionTrendsByPromotion = try {
+                    val chartData = dashboard.charts["redemptionTrendsByPromotion"]
+                    val json = gson.toJson(chartData)
+                    gson.fromJson(json, MultiSeriesLineChartData::class.java)
+                } catch (e: Exception) {
+                    null
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isRefreshing = false,
-                    dashboard = dashboard
+                    dashboard = dashboard,
+                    summary = AnalyticsSummary(
+                        totalPromotions = dashboard.summary.totalPromotions,
+                        activePromotions = dashboard.summary.activePromotions,
+                        totalBookings = dashboard.summary.totalBookings,
+                        redeemedCoupons = dashboard.summary.redeemedCoupons,
+                        totalFavorites = dashboard.summary.totalFavorites,
+                        conversionRate = dashboard.summary.conversionRate
+                    ),
+                    promotionStats = dashboard.promotionStats.map { promo ->
+                        PromotionStatItem(
+                            promotionId = promo.promotionId,
+                            title = promo.title,
+                            type = promo.type,
+                            status = promo.status,
+                            stockRemaining = promo.stockRemaining,
+                            totalStock = promo.totalStock,
+                            stockUtilization = promo.stockUtilization
+                        )
+                    },
+                    topRedeemedCoupons = topRedeemedCoupons,
+                    redemptionTrendsByPromotion = redemptionTrendsByPromotion
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

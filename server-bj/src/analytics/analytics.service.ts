@@ -5,11 +5,24 @@ import { Promotion } from '../promotions/entities/promotion.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { Redeemedcoupon } from '../redeemedcoupon/entities/redeemedcoupon.entity';
 import { Collaborator } from '../collaborators/entities/collaborator.entity';
+import { Favorite } from '../favorites/entities/favorite.entity';
 import { PromotionState } from 'src/promotions/enums/promotion-state.enums';
 
 export interface VicoChartEntry {
   x: number;
   y: number;
+}
+
+export interface VicoBarChartEntry {
+  label: string;
+  value: number;
+  promotionId?: number;
+}
+
+export interface VicoMultiSeriesEntry {
+  seriesId: string;
+  seriesLabel: string;
+  entries: VicoChartEntry[];
 }
 
 @Injectable()
@@ -23,6 +36,8 @@ export class AnalyticsService {
     private redeemedcouponRepository: Repository<Redeemedcoupon>,
     @InjectRepository(Collaborator)
     private collaboratorsRepository: Repository<Collaborator>,
+    @InjectRepository(Favorite)
+    private favoritesRepository: Repository<Favorite>,
   ) {}
 
   /**
@@ -47,11 +62,15 @@ export class AnalyticsService {
       bookingTrends,
       promotionStats,
       totalStats,
+      topRedeemedCoupons,
+      redemptionTrendsByPromotion,
     ] = await Promise.all([
       this.getCollaboratorRedemptionTrends(collaboratorId, dateRange),
       this.getCollaboratorBookingTrends(collaboratorId, dateRange),
       this.getCollaboratorPromotionStats(collaboratorId),
       this.getCollaboratorStatistics(collaboratorId, dateRange),
+      this.getTopRedeemedCoupons(collaboratorId, dateRange),
+      this.getRedemptionTrendsByPromotion(collaboratorId, dateRange),
     ]);
 
     return {
@@ -70,11 +89,11 @@ export class AnalyticsService {
         activePromotions: totalStats.activePromotions,
         totalBookings: totalStats.totalBookings,
         redeemedCoupons: totalStats.redeemedCoupons,
+        totalFavorites: totalStats.totalFavorites,
         conversionRate: this.calculateConversionRate(
           totalStats.totalBookings,
           totalStats.redeemedCoupons,
         ),
-        totalRevenueImpact: totalStats.totalRevenueImpact,
       },
       charts: {
         // Redemption trends - Vico Line Chart
@@ -106,6 +125,24 @@ export class AnalyticsService {
           title: 'Active Promotions',
           description: 'Detailed breakdown of promotions',
           data: promotionStats,
+        },
+        // Top 5 most redeemed coupons - Vico Bar Chart
+        topRedeemedCoupons: {
+          type: 'bar',
+          title: 'Top 5 Most Redeemed Coupons',
+          description: 'Most popular coupons by redemption count',
+          entries: topRedeemedCoupons,
+          xAxisLabel: 'Coupons',
+          yAxisLabel: 'Redemptions',
+        },
+        // Multi-series line chart - Redemptions over time by promotion
+        redemptionTrendsByPromotion: {
+          type: 'multiline',
+          title: 'Redemptions Over Time by Coupon',
+          description: 'Track redemption trends for top 5 coupons',
+          series: redemptionTrendsByPromotion,
+          xAxisLabel: 'Days',
+          yAxisLabel: 'Redemptions',
         },
       },
       insights: this.generateCollaboratorInsights(
@@ -378,17 +415,17 @@ export class AnalyticsService {
       })
       .getCount();
 
-    // Calculate revenue impact (estimate based on redemptions)
-    const totalRevenueImpact = await this.calculateCollaboratorRevenueImpact(
-      collaboratorId,
-    );
+    // Count total favorites for this collaborator
+    const totalFavorites = await this.favoritesRepository.count({
+      where: { collaboratorId },
+    });
 
     return {
       totalPromotions,
       activePromotions,
       totalBookings,
       redeemedCoupons,
-      totalRevenueImpact,
+      totalFavorites,
     };
   }
 
@@ -401,29 +438,101 @@ export class AnalyticsService {
   }
 
   /**
-   * Calculate estimated revenue impact from redemptions
-   * This is a placeholder - adjust based on your business logic
+   * Get top 5 most redeemed coupons for a collaborator.
+   * Returns data optimized for Vico bar chart.
    */
-  private async calculateCollaboratorRevenueImpact(
+  private async getTopRedeemedCoupons(
     collaboratorId: string,
-  ): Promise<string> {
-    // Get average promotion discount/value
-    const promotions = await this.promotionsRepository.find({
-      where: { collaboratorId },
-    });
-
-    const avgPromotionValue = 50; // Placeholder value
-    const totalRedemptions = await this.redeemedcouponRepository
+    dateRange: any,
+  ): Promise<VicoBarChartEntry[]> {
+    const topCoupons = await this.redeemedcouponRepository
       .createQueryBuilder('redeem')
       .leftJoinAndSelect('redeem.promotion', 'promo')
       .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
-      .getCount();
+      .andWhere('redeem.usedDate >= :startDate', {
+        startDate: dateRange.startDate,
+      })
+      .andWhere('redeem.usedDate <= :endDate', {
+        endDate: dateRange.endDate,
+      })
+      .select('promo.promotionId', 'promotionId')
+      .addSelect('promo.title', 'title')
+      .addSelect('COUNT(redeem.usedId)', 'redemptionCount')
+      .groupBy('promo.promotionId')
+      .addGroupBy('promo.title')
+      .orderBy('redemptionCount', 'DESC')
+      .limit(5)
+      .getRawMany();
 
-    const impact = totalRedemptions * avgPromotionValue;
-    return `$${impact.toFixed(2)}`;
+    return topCoupons.map((coupon) => ({
+      label: coupon.title,
+      value: parseInt(coupon.redemptionCount),
+      promotionId: coupon.promotionId,
+    }));
   }
 
-    /**
+  /**
+   * Get redemption trends over time for top 5 promotions.
+   * Returns multi-series data optimized for Vico multi-line chart.
+   */
+  private async getRedemptionTrendsByPromotion(
+    collaboratorId: string,
+    dateRange: any,
+  ): Promise<VicoMultiSeriesEntry[]> {
+    const days = this.getDaysBetween(dateRange.startDate, dateRange.endDate);
+
+    // First, get top 5 promotions by redemption count
+    const topPromotions = await this.redeemedcouponRepository
+      .createQueryBuilder('redeem')
+      .leftJoinAndSelect('redeem.promotion', 'promo')
+      .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
+      .andWhere('redeem.usedDate >= :startDate', {
+        startDate: dateRange.startDate,
+      })
+      .andWhere('redeem.usedDate <= :endDate', {
+        endDate: dateRange.endDate,
+      })
+      .select('promo.promotionId', 'promotionId')
+      .addSelect('promo.title', 'title')
+      .addSelect('COUNT(redeem.usedId)', 'count')
+      .groupBy('promo.promotionId')
+      .addGroupBy('promo.title')
+      .orderBy('count', 'DESC')
+      .limit(5)
+      .getRawMany();
+
+    // For each top promotion, get daily redemption trends
+    const seriesPromises = topPromotions.map(async (promo) => {
+      const dailyRedemptions = await this.redeemedcouponRepository
+        .createQueryBuilder('redeem')
+        .where('redeem.promotionId = :promotionId', {
+          promotionId: promo.promotionId,
+        })
+        .andWhere('redeem.usedDate >= :startDate', {
+          startDate: dateRange.startDate,
+        })
+        .andWhere('redeem.usedDate <= :endDate', {
+          endDate: dateRange.endDate,
+        })
+        .select('DATE(redeem.usedDate)', 'date')
+        .addSelect('COUNT(redeem.usedId)', 'count')
+        .groupBy('DATE(redeem.usedDate)')
+        .orderBy('date', 'ASC')
+        .getRawMany();
+
+      const entries = this.convertToVicoEntries(dailyRedemptions, days);
+
+      return {
+        seriesId: `promo_${promo.promotionId}`,
+        seriesLabel: promo.title,
+        entries,
+      };
+    });
+
+    return Promise.all(seriesPromises);
+  }
+
+  /**
    * Generate insights based on collaborator statistics
    */
   private generateCollaboratorInsights(

@@ -15,8 +15,8 @@ data class AnalyticsSummary(
     val activePromotions: Int,
     val totalBookings: Int,
     val redeemedCoupons: Int,
-    val conversionRate: String,
-    val totalRevenueImpact: String
+    val totalFavorites: Int,
+    val conversionRate: String
 )
 
 data class AnalyticsChart(
@@ -82,4 +82,35 @@ data class PromotionPerformance(
     val bookingCount: Int,
     val conversionRate: String,
     val redemptionPercentage: String
+)
+
+// New models for bar chart and multi-series line chart
+data class BarChartEntry(
+    val label: String,
+    val value: Int,
+    val promotionId: Int?
+)
+
+data class BarChartData(
+    val type: String,
+    val title: String,
+    val description: String,
+    val entries: List<BarChartEntry>,
+    val xAxisLabel: String,
+    val yAxisLabel: String
+)
+
+data class MultiSeriesLineChartData(
+    val type: String,
+    val title: String,
+    val description: String,
+    val series: List<SeriesData>,
+    val xAxisLabel: String,
+    val yAxisLabel: String
+)
+
+data class SeriesData(
+    val seriesId: String,
+    val seriesLabel: String,
+    val entries: List<ChartEntry>
 )
