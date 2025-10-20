@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -16,6 +17,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddBox
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -67,7 +70,8 @@ fun PromotionCreationCard(
                 shape = RoundedCornerShape(16.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 20.dp),
+            .padding(horizontal = 24.dp, vertical = 20.dp)
+            .heightIn(min = 110.dp), // 🔹 Altura mínima común
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -80,7 +84,11 @@ fun PromotionCreationCard(
         )
         Spacer(Modifier.width(16.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
             Text(
                 text = title,
                 fontWeight = FontWeight.Black,
@@ -95,18 +103,20 @@ fun PromotionCreationCard(
                 color = DescriptionGrey
             )
         }
+
         Spacer(Modifier.width(16.dp))
 
         Icon(
-            imageVector = Icons.Default.ArrowForward,
+            imageVector = Icons.Outlined.ChevronRight,
             contentDescription = "Continuar",
             tint = Color.Gray,
             modifier = Modifier
-                .size(24.dp)
+                .size(36.dp)
                 .applyGradient(AppGradientBrush)
         )
     }
 }
+
 
 @Preview(showBackground = true, widthDp = 380)
 @Composable

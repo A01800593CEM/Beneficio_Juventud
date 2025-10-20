@@ -80,7 +80,7 @@ fun GeneratePromotionScreen(nav: NavHostController) {
                 PromotionCreationCard(
                     icon = Icons.Default.AutoAwesome,
                     title = "Generar con IA",
-                    description = "¿No sabes qué cupón crear? Deja que la inteligencia artificial cree una promoción personalizada para tu negocio.",
+                    description = "¿No sabes qué cupón crear? Deja que la IA lo haga por ti.",
                     onClick = { showBottomSheetAI = true }
                 )
             }
