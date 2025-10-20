@@ -7,7 +7,7 @@ import { Redeemedcoupon } from '../redeemedcoupon/entities/redeemedcoupon.entity
 import { Collaborator } from '../collaborators/entities/collaborator.entity';
 import { Favorite } from '../favorites/entities/favorite.entity';
 import { User } from '../users/entities/user.entity';
-import { PromotionState } from 'src/promotions/enums/promotion-state.enums';
+import { PromotionState } from '../promotions/enums/promotion-state.enums';
 
 export interface VicoChartEntry {
   x: number;
@@ -78,113 +78,134 @@ export class AnalyticsService {
    * Vico expects chart data as arrays of x,y coordinates for line charts.
    */
   async getCollaboratorDashboard(collaboratorId: string, timeRange: string) {
-    // Verify collaborator exists
-    const collaborator = await this.collaboratorsRepository.findOne({
-      where: { cognitoId: collaboratorId },
-    });
+    try {
+      console.log(`Starting analytics for collaborator: ${collaboratorId}, timeRange: ${timeRange}`);
 
-    if (!collaborator) {
-      throw new NotFoundException('Collaborator not found');
-    }
+      // Verify collaborator exists
+      const collaborator = await this.collaboratorsRepository.findOne({
+        where: { cognitoId: collaboratorId },
+      });
 
-    const dateRange = this.getDateRange(timeRange);
+      if (!collaborator) {
+        console.error(`Collaborator not found: ${collaboratorId}`);
+        throw new NotFoundException('Collaborator not found');
+      }
 
-    // Fetch collaborator-specific data in parallel
-    const [
-      redemptionTrends,
-      bookingTrends,
-      promotionStats,
-      totalStats,
-      topRedeemedCoupons,
-      redemptionTrendsByPromotion,
-    ] = await Promise.all([
-      this.getCollaboratorRedemptionTrends(collaboratorId, dateRange),
-      this.getCollaboratorBookingTrends(collaboratorId, dateRange),
-      this.getCollaboratorPromotionStats(collaboratorId),
-      this.getCollaboratorStatistics(collaboratorId, dateRange),
-      this.getTopRedeemedCoupons(collaboratorId, dateRange),
-      this.getRedemptionTrendsByPromotion(collaboratorId, dateRange),
-    ]);
+      console.log(`Collaborator found: ${collaborator.businessName}`);
 
-    return {
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        collaboratorId: collaboratorId,
-        collaboratorName: collaborator.businessName,
-        timeRange: timeRange,
-        period: {
-          startDate: dateRange.startDate,
-          endDate: dateRange.endDate,
+      const dateRange = this.getDateRange(timeRange);
+      console.log(`Date range: ${dateRange.startDate} to ${dateRange.endDate}`);
+
+      // Fetch collaborator-specific data sequentially for better error tracking
+      console.log('Fetching redemption trends...');
+      const redemptionTrends = await this.getCollaboratorRedemptionTrends(collaboratorId, dateRange);
+
+      console.log('Fetching booking trends...');
+      const bookingTrends = await this.getCollaboratorBookingTrends(collaboratorId, dateRange);
+
+      console.log('Fetching promotion stats...');
+      const promotionStats = await this.getCollaboratorPromotionStats(collaboratorId);
+
+      console.log('Fetching total stats...');
+      const totalStats = await this.getCollaboratorStatistics(collaboratorId, dateRange);
+
+      console.log('Fetching top redeemed coupons...');
+      const topRedeemedCoupons = await this.getTopRedeemedCoupons(collaboratorId, dateRange);
+
+      console.log('Fetching redemption trends by promotion...');
+      const redemptionTrendsByPromotion = await this.getRedemptionTrendsByPromotion(collaboratorId, dateRange);
+
+      console.log('All data fetched successfully, building response...');
+
+      return {
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          collaboratorId: collaboratorId,
+          collaboratorName: collaborator.businessName,
+          timeRange: timeRange,
+          period: {
+            startDate: dateRange.startDate,
+            endDate: dateRange.endDate,
+          },
         },
-      },
-      summary: {
-        totalPromotions: totalStats.totalPromotions,
-        activePromotions: totalStats.activePromotions,
-        totalBookings: totalStats.totalBookings,
-        redeemedCoupons: totalStats.redeemedCoupons,
-        totalFavorites: totalStats.totalFavorites,
-        conversionRate: this.calculateConversionRate(
-          totalStats.totalBookings,
-          totalStats.redeemedCoupons,
+        summary: {
+          totalPromotions: totalStats.totalPromotions,
+          activePromotions: totalStats.activePromotions,
+          totalBookings: totalStats.totalBookings,
+          redeemedCoupons: totalStats.redeemedCoupons,
+          totalFavorites: totalStats.totalFavorites,
+          conversionRate: this.calculateConversionRate(
+            totalStats.totalBookings,
+            totalStats.redeemedCoupons,
+          ),
+        },
+        charts: {
+          // Redemption trends - Vico Line Chart
+          // Format: Array of {x: dayIndex, y: count}
+          redemptionTrends: {
+            type: 'line',
+            title: 'Daily Redemptions',
+            description: 'Coupons redeemed per day',
+            entries: redemptionTrends,
+            xAxisLabel: 'Days',
+            yAxisLabel: 'Redemptions',
+            minY: 0,
+            maxY: Math.max(...redemptionTrends.map((e) => e.y), 1),
+          },
+          // Booking trends - Vico Line Chart
+          bookingTrends: {
+            type: 'line',
+            title: 'Daily Bookings',
+            description: 'Coupons booked/reserved per day',
+            entries: bookingTrends,
+            xAxisLabel: 'Days',
+            yAxisLabel: 'Bookings',
+            minY: 0,
+            maxY: Math.max(...bookingTrends.map((e) => e.y), 1),
+          },
+          // Promotion statistics summary
+          promotionStats: {
+            type: 'summary',
+            title: 'Active Promotions',
+            description: 'Detailed breakdown of promotions',
+            data: promotionStats,
+          },
+          // Top 5 most redeemed coupons - Vico Bar Chart
+          topRedeemedCoupons: {
+            type: 'bar',
+            title: 'Top 5 Most Redeemed Coupons',
+            description: 'Most popular coupons by redemption count',
+            entries: topRedeemedCoupons,
+            xAxisLabel: 'Coupons',
+            yAxisLabel: 'Redemptions',
+          },
+          // Multi-series line chart - Redemptions over time by promotion
+          redemptionTrendsByPromotion: {
+            type: 'multiline',
+            title: 'Redemptions Over Time by Coupon',
+            description: 'Track redemption trends for top 5 coupons',
+            series: redemptionTrendsByPromotion,
+            xAxisLabel: 'Days',
+            yAxisLabel: 'Redemptions',
+          },
+        },
+        insights: this.generateCollaboratorInsights(
+          totalStats,
+          promotionStats,
         ),
-      },
-      charts: {
-        // Redemption trends - Vico Line Chart
-        // Format: Array of {x: dayIndex, y: count}
-        redemptionTrends: {
-          type: 'line',
-          title: 'Daily Redemptions',
-          description: 'Coupons redeemed per day',
-          entries: redemptionTrends,
-          xAxisLabel: 'Days',
-          yAxisLabel: 'Redemptions',
-          minY: 0,
-          maxY: Math.max(...redemptionTrends.map((e) => e.y), 1),
-        },
-        // Booking trends - Vico Line Chart
-        bookingTrends: {
-          type: 'line',
-          title: 'Daily Bookings',
-          description: 'Coupons booked/reserved per day',
-          entries: bookingTrends,
-          xAxisLabel: 'Days',
-          yAxisLabel: 'Bookings',
-          minY: 0,
-          maxY: Math.max(...bookingTrends.map((e) => e.y), 1),
-        },
-        // Promotion statistics summary
-        promotionStats: {
-          type: 'summary',
-          title: 'Active Promotions',
-          description: 'Detailed breakdown of promotions',
-          data: promotionStats,
-        },
-        // Top 5 most redeemed coupons - Vico Bar Chart
-        topRedeemedCoupons: {
-          type: 'bar',
-          title: 'Top 5 Most Redeemed Coupons',
-          description: 'Most popular coupons by redemption count',
-          entries: topRedeemedCoupons,
-          xAxisLabel: 'Coupons',
-          yAxisLabel: 'Redemptions',
-        },
-        // Multi-series line chart - Redemptions over time by promotion
-        redemptionTrendsByPromotion: {
-          type: 'multiline',
-          title: 'Redemptions Over Time by Coupon',
-          description: 'Track redemption trends for top 5 coupons',
-          series: redemptionTrendsByPromotion,
-          xAxisLabel: 'Days',
-          yAxisLabel: 'Redemptions',
-        },
-      },
-      insights: this.generateCollaboratorInsights(
-        totalStats,
-        redemptionTrends,
-        promotionStats,
-      ),
-    };
+      };
+    } catch (error) {
+      console.error('❌ ERROR in getCollaboratorDashboard:', {
+        collaboratorId,
+        timeRange,
+        error: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      throw error; // Re-throw original error to preserve status codes
+    }
   }
+
 
   /**
    * Get promotion-specific analytics for a collaborator.
@@ -862,7 +883,6 @@ export class AnalyticsService {
    */
   private generateCollaboratorInsights(
     totalStats: any,
-    redemptionTrends: VicoChartEntry[],
     promotionStats: any[],
   ): any[] {
     const insights: any[] = [];
