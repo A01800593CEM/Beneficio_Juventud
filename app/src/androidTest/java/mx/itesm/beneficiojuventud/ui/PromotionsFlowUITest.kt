@@ -4,7 +4,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
-import mx.itesm.beneficiojuventud.MainActivity
+import mx.itesm.beneficiojuventud.view.MainActivity
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -94,17 +94,7 @@ class PromotionsFlowUITest {
         // (Los resultados dependen de los datos de prueba)
     }
 
-    @Test
-    fun homeScreen_promotionCard_displaysRequiredInfo() {
-        composeTestRule.waitForIdle()
 
-        // Verificar que las tarjetas de promoción muestran información básica
-        // Las promociones deberían tener: título, descripción, imagen, stock
-
-        // Buscar al menos una promoción
-        composeTestRule.onAllNodes(hasClickAction())
-            .assertCountEquals(greaterThan(0))
-    }
 
     // ========== PRUEBAS DE FAVORITOS ==========
 

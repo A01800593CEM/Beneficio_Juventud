@@ -72,12 +72,11 @@ data class AnalyticsSummary(
 @Composable
 fun StatsScreen(
     nav: NavHostController,
-    collaboratorId: String, // TODO: Get this from navigation arguments when implemented
-    // TODO: Uncomment once ViewModel is created
+    collaboratorId: String,
     viewModel: StatsViewModel = viewModel()
 ) {
 
-    // val uiState by viewModel.uiState.collectAsState()
+//    val uiState by viewModel.uiState.collectAsState()
 
      LaunchedEffect(collaboratorId) {
          viewModel.loadAnalytics(collaboratorId, "month")
@@ -174,26 +173,10 @@ fun StatsScreen(
                     TimeRangeSelector(
                         selectedTimeRange = uiState.selectedTimeRange,
                         onTimeRangeSelected = { newTimeRange ->
-                            // TODO: Call viewModel.changeTimeRange(collaboratorId, newTimeRange)
+                             viewModel.changeTimeRange(collaboratorId, newTimeRange)
                         }
                     )
 
-                    Spacer(Modifier.height(16.dp))
-
-                    // Redemption Trends Chart
-                    StatsChartCard(
-                        title = "Canjes Diarios",
-                        description = "Cupones canjeados por día",
-                        chartEntries = uiState.redemptionEntries
-                    )
-                    Spacer(Modifier.height(16.dp))
-
-                    // Booking Trends Chart
-                    StatsChartCard(
-                        title = "Reservas Diarias",
-                        description = "Cupones reservados por día",
-                        chartEntries = uiState.bookingEntries
-                    )
                     Spacer(Modifier.height(16.dp))
 
                     // Summary Cards
@@ -207,6 +190,24 @@ fun StatsScreen(
                             Spacer(Modifier.height(16.dp))
                         }
                     }
+
+                    // Redemption Trends Chart
+                    StatsChartCard(
+                        title = "Canjes Diarios",
+                        description = "Cupones canjeados por día",
+                        chartEntries = uiState.redemptionEntries
+                    )
+                    Spacer(Modifier.height(16.dp))
+
+                    // Booking Trends Chart
+                    StatsChartCard(
+                        title = "Reservciones Diarias",
+                        description = "Cupones reservados por día",
+                        chartEntries = uiState.bookingEntries
+                    )
+                    Spacer(Modifier.height(16.dp))
+
+
                 }
             }
         }

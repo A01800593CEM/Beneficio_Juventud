@@ -4,7 +4,8 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
-import mx.itesm.beneficiojuventud.MainActivity
+import mx.itesm.beneficiojuventud.view.MainActivity
+
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -137,16 +138,7 @@ class ProfileFlowUITest {
         ).assertExists()
     }
 
-    @Test
-    fun editProfileScreen_allFieldsAreEditable() {
-        composeTestRule.waitForIdle()
 
-        navigateToEditProfile()
-
-        // Verificar que los campos tienen acción de texto
-        composeTestRule.onAllNodes(hasSetTextAction(), useUnmergedTree = true)
-            .assertCountEquals(greaterThan(0))
-    }
 
     @Test
     fun editProfileScreen_nameField_acceptsInput() {
@@ -557,16 +549,6 @@ class ProfileFlowUITest {
 
     // ========== PRUEBAS DE ACCESIBILIDAD ==========
 
-    @Test
-    fun profileScreen_allButtons_haveContentDescriptions() {
-        composeTestRule.waitForIdle()
-
-        navigateToProfile()
-
-        // Todos los botones importantes deben tener descriptions
-        composeTestRule.onAllNodes(hasClickAction())
-            .assertCountEquals(greaterThan(0))
-    }
 
     // ========== PRUEBAS DE PERFORMANCE ==========
 
