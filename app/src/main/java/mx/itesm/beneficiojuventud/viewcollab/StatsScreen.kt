@@ -23,13 +23,22 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.runtime.remember
-import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
-import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
-import com.patrykandpatrick.vico.compose.chart.Chart
-import com.patrykandpatrick.vico.compose.chart.column.columnChart
-import com.patrykandpatrick.vico.compose.chart.line.lineChart
-import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
-import com.patrykandpatrick.vico.core.entry.entriesOf
+import co.yml.charts.axis.AxisData
+import co.yml.charts.common.model.Point
+import co.yml.charts.ui.barchart.BarChart
+import co.yml.charts.ui.barchart.models.BarChartData
+import co.yml.charts.ui.barchart.models.BarData
+import co.yml.charts.ui.linechart.LineChart
+import co.yml.charts.ui.linechart.model.Line
+import co.yml.charts.ui.linechart.model.LineChartData
+import co.yml.charts.ui.linechart.model.LinePlotData
+import co.yml.charts.ui.linechart.model.LineStyle
+import co.yml.charts.ui.linechart.model.IntersectionPoint
+import co.yml.charts.ui.linechart.model.SelectionHighlightPoint
+import co.yml.charts.ui.linechart.model.SelectionHighlightPopUp
+import co.yml.charts.ui.linechart.model.ShadowUnderLine
+import co.yml.charts.common.model.PlotType
+import co.yml.charts.common.utils.DataUtils
 import mx.itesm.beneficiojuventud.model.analytics.BarChartEntry
 import mx.itesm.beneficiojuventud.model.analytics.MultiSeriesLineChartData
 import kotlinx.coroutines.launch
@@ -429,29 +438,56 @@ private fun StatsChartCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Convert chart entries to Vico format
-            val modelProducer = remember(chartEntries) {
-                ChartEntryModelProducer(
-                    entriesOf(*chartEntries.mapIndexed { index, value ->
-                        index.toFloat() to value.toFloat()
-                    }.toTypedArray())
-                )
+            // Convert chart entries to YCharts format
+            val pointsData = chartEntries.mapIndexed { index, value ->
+                Point(index.toFloat(), value.toFloat())
             }
+
+            val xAxisData = AxisData.Builder()
+                .axisStepSize(30.dp)
+                .steps(chartEntries.size - 1)
+                .bottomPadding(8.dp)
+                .labelData { index -> index.toString() }
+                .build()
+
+            val yAxisData = AxisData.Builder()
+                .steps(5)
+                .labelAndAxisLinePadding(20.dp)
+                .axisOffset(8.dp)
+                .labelData { index ->
+                    val maxValue = (chartEntries.maxOrNull() ?: 0)
+                    ((maxValue / 5.0) * index).toInt().toString()
+                }
+                .build()
+
+            val lineChartData = LineChartData(
+                linePlotData = LinePlotData(
+                    lines = listOf(
+                        Line(
+                            dataPoints = pointsData,
+                            lineStyle = LineStyle(color = PrimaryTeal),
+                            intersectionPoint = IntersectionPoint(color = PrimaryTeal),
+                            selectionHighlightPoint = SelectionHighlightPoint(color = PrimaryTeal),
+                            shadowUnderLine = ShadowUnderLine(color = PrimaryTeal.copy(alpha = 0.3f)),
+                            selectionHighlightPopUp = SelectionHighlightPopUp()
+                        )
+                    )
+                ),
+                xAxisData = xAxisData,
+                yAxisData = yAxisData,
+                backgroundColor = Color(0xFFFAFAFA)
+            )
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
             ) {
-                Chart(
-                    chart = lineChart(),
-                    chartModelProducer = modelProducer,
-                    startAxis = rememberStartAxis(),
-                    bottomAxis = rememberBottomAxis(),
+                LineChart(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(150.dp)
-                        .background(Color(0xFFFAFAFA))
+                        .height(150.dp),
+                    lineChartData = lineChartData
                 )
             }
         }
@@ -686,8 +722,7 @@ private fun PromotionStatItemRow(promo: PromotionStatItem) {
 private fun TopRedeemedCouponsChart(
     topCoupons: List<BarChartEntry>
 ) {
-    // Define colors for each bar - using Vico's default color scheme
-    // These match the automatic colors Vico assigns to multi-series charts
+    // Define colors for each bar
     val barColors = listOf(
         Color(0xFF6200EE),  // Purple
         Color(0xFF03DAC5),  // Teal
@@ -722,36 +757,51 @@ private fun TopRedeemedCouponsChart(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Convert to Vico column chart format - separate series for each bar to get different colors
-            val modelProducer = remember(topCoupons) {
-                val allSeries = topCoupons.mapIndexed { index, entry ->
-                    // Create entries with zeroes except for this bar's position
-                    topCoupons.mapIndexed { idx, _ ->
-                        idx.toFloat() to if (idx == index) entry.value.toFloat() else 0f
-                    }.toTypedArray()
-                }
-                ChartEntryModelProducer(
-                    *allSeries.map { seriesData ->
-                        entriesOf(*seriesData)
-                    }.toTypedArray()
+            // Convert to YCharts BarChart format with custom colors
+            val barData = topCoupons.mapIndexed { index, entry ->
+                BarData(
+                    point = Point(index.toFloat(), entry.value.toFloat()),
+                    color = barColors[index % barColors.size],
+                    label = (index + 1).toString()
                 )
             }
+
+            val xAxisData = AxisData.Builder()
+                .axisStepSize(50.dp)
+                .steps(topCoupons.size - 1)
+                .bottomPadding(8.dp)
+                .labelData { index ->
+                    if (index < topCoupons.size) (index + 1).toString() else ""
+                }
+                .build()
+
+            val maxValue = (topCoupons.maxOfOrNull { it.value } ?: 0)
+            val yAxisData = AxisData.Builder()
+                .steps(5)
+                .labelAndAxisLinePadding(20.dp)
+                .axisOffset(8.dp)
+                .labelData { index ->
+                    ((maxValue / 5.0) * index).toInt().toString()
+                }
+                .build()
+
+            val barChartData = BarChartData(
+                chartData = barData,
+                xAxisData = xAxisData,
+                yAxisData = yAxisData,
+                backgroundColor = Color(0xFFFAFAFA)
+            )
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
             ) {
-                // Using multi-series approach - Vico automatically assigns different colors to each series
-                Chart(
-                    chart = columnChart(),
-                    chartModelProducer = modelProducer,
-                    startAxis = rememberStartAxis(),
-                    bottomAxis = rememberBottomAxis(),
+                BarChart(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
-                        .background(Color(0xFFFAFAFA))
+                        .height(180.dp),
+                    barChartData = barChartData
                 )
             }
 
@@ -797,8 +847,7 @@ private fun TopRedeemedCouponsChart(
 private fun MultiSeriesLineChartCard(
     chartData: MultiSeriesLineChartData
 ) {
-    // Define colors for each line - using Vico's default color scheme
-    // These match the automatic colors Vico assigns to multi-series charts
+    // Define colors for each line
     val lineColors = listOf(
         Color(0xFF6200EE),  // Purple
         Color(0xFF03DAC5),  // Teal
@@ -833,36 +882,67 @@ private fun MultiSeriesLineChartCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Convert multi-series data to Vico format
-            val modelProducer = remember(chartData) {
-                val allSeries = chartData.series.map { series ->
-                    series.entries.map { entry ->
-                        entry.x.toFloat() to entry.y.toFloat()
-                    }.toTypedArray()
-                }
-
-                ChartEntryModelProducer(
-                    *allSeries.map { seriesData ->
-                        entriesOf(*seriesData)
-                    }.toTypedArray()
+            // Convert multi-series data to YCharts format
+            val lines = chartData.series.mapIndexed { index, series ->
+                Line(
+                    dataPoints = series.entries.map { entry ->
+                        Point(entry.x.toFloat(), entry.y.toFloat())
+                    },
+                    lineStyle = LineStyle(
+                        color = lineColors[index % lineColors.size]
+                    ),
+                    intersectionPoint = IntersectionPoint(
+                        color = lineColors[index % lineColors.size]
+                    ),
+                    selectionHighlightPoint = SelectionHighlightPoint(
+                        color = lineColors[index % lineColors.size]
+                    ),
+                    shadowUnderLine = ShadowUnderLine(
+                        color = lineColors[index % lineColors.size].copy(alpha = 0.3f)
+                    ),
+                    selectionHighlightPopUp = SelectionHighlightPopUp()
                 )
             }
+
+            val allEntries = chartData.series.flatMap { it.entries }
+            val maxX = (allEntries.maxOfOrNull { it.x } ?: 0)
+            val maxY = (allEntries.maxOfOrNull { it.y } ?: 0)
+
+            val xAxisData = AxisData.Builder()
+                .axisStepSize(30.dp)
+                .steps(maxX)
+                .bottomPadding(8.dp)
+                .labelData { index -> index.toString() }
+                .build()
+
+            val yAxisData = AxisData.Builder()
+                .steps(5)
+                .labelAndAxisLinePadding(20.dp)
+                .axisOffset(8.dp)
+                .labelData { index ->
+                    ((maxY / 5.0) * index).toInt().toString()
+                }
+                .build()
+
+            val lineChartData = LineChartData(
+                linePlotData = LinePlotData(
+                    lines = lines
+                ),
+                xAxisData = xAxisData,
+                yAxisData = yAxisData,
+                backgroundColor = Color(0xFFFAFAFA)
+            )
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
             ) {
-                // Using multi-series approach - Vico automatically assigns different colors to each series
-                Chart(
-                    chart = lineChart(),
-                    chartModelProducer = modelProducer,
-                    startAxis = rememberStartAxis(),
-                    bottomAxis = rememberBottomAxis(),
+                LineChart(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
-                        .background(Color(0xFFFAFAFA))
+                        .height(180.dp),
+                    lineChartData = lineChartData
                 )
             }
 

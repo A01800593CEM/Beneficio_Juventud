@@ -129,8 +129,7 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // 🔹 Otras librerías del proyecto
-    implementation(libs.vico.core)
-    implementation(libs.vico.compose)
+    implementation(libs.ycharts)
 
     // 🔹 Desugaring (para funciones modernas de Java)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
