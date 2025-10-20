@@ -86,7 +86,7 @@ fun Home(
     val promoList by promoViewModel.promoListState.collectAsState()
 
     // lista de colaboradores del backend
-    val collaborators by collabViewModel.collabListState.collectAsState()
+    val collaboratorsRaw by collabViewModel.collabListState.collectAsState()
 
     // ❤️ favoritos de colaboradores (para que funcione el corazón)
     val favoriteCollabs by userViewModel.favoriteCollabs.collectAsState()
@@ -102,6 +102,18 @@ fun Home(
     var selectedTab by remember { mutableStateOf(BJTab.Home) }
     var search by rememberSaveable { mutableStateOf("") }
     var selectedCategoryName by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Filtrado de colaboradores por búsqueda
+    val collaborators = remember(collaboratorsRaw, search) {
+        if (search.isBlank()) {
+            collaboratorsRaw
+        } else {
+            collaboratorsRaw.filter { collab ->
+                collab.businessName?.contains(search, ignoreCase = true) == true ||
+                collab.description?.contains(search, ignoreCase = true) == true
+            }
+        }
+    }
 
     // Loading/Error locales para promos (hasta que el VM los exponga)
     var promoLoading by remember { mutableStateOf(false) }
@@ -194,8 +206,18 @@ fun Home(
         user.name?.trim()?.takeIf { it.isNotEmpty() }?.split(" ")?.firstOrNull() ?: "Usuario"
     }
 
-    // Lista final para el carrusel
-    val uiPromos: List<Promotions> = remember(promoList) { promoList }
+    // Lista final para el carrusel con filtrado por búsqueda
+    val uiPromos: List<Promotions> = remember(promoList, search) {
+        if (search.isBlank()) {
+            promoList
+        } else {
+            promoList.filter { promo ->
+                promo.title?.contains(search, ignoreCase = true) == true ||
+                promo.description?.contains(search, ignoreCase = true) == true ||
+                promo.businessName?.contains(search, ignoreCase = true) == true
+            }
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -391,11 +413,39 @@ fun Home(
 
             // ─── Recomendado / Filtrado ─────────────────────────────────────────
             item {
+                val titleText = when {
+                    search.isNotBlank() -> "Resultados de búsqueda"
+                    !selectedCategoryName.isNullOrBlank() -> "Cupones ($selectedCategoryName)"
+                    else -> "Recomendado para ti"
+                }
+
                 SectionTitle(
-                    if (selectedCategoryName.isNullOrBlank()) "Recomendado para ti"
-                    else "Cupones ($selectedCategoryName)",
+                    titleText,
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
+
+                // Indicador de búsqueda activa
+                if (search.isNotBlank()) {
+                    Row(
+                        Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AssistChip(
+                            onClick = { search = "" },
+                            label = { Text("Limpiar búsqueda") }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Buscando: \"$search\"",
+                            color = Color(0xFF8C8C8C),
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
 
                 when {
                     promoLoading -> {
@@ -433,10 +483,11 @@ fun Home(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                if (selectedCategoryName.isNullOrBlank())
-                                    "Por ahora no hay promociones disponibles."
-                                else
-                                    "No hay cupones para esta categoría.",
+                                when {
+                                    search.isNotBlank() -> "No se encontraron cupones para \"$search\""
+                                    !selectedCategoryName.isNullOrBlank() -> "No hay cupones para esta categoría."
+                                    else -> "Por ahora no hay promociones disponibles."
+                                },
                                 color = Color(0xFF8C8C8C),
                                 fontSize = 13.sp
                             )
@@ -458,11 +509,14 @@ fun Home(
 
             // ─── Ofertas Especiales (BACKEND) ───────────────────────────────────
             item {
+                val commerceTitle = when {
+                    search.isNotBlank() -> "Comercios encontrados"
+                    !selectedCategoryName.isNullOrBlank() -> "Comercios ($selectedCategoryName)"
+                    else -> "Ofertas Especiales"
+                }
+
                 SectionTitle(
-                    if (selectedCategoryName.isNullOrBlank())
-                        "Ofertas Especiales"
-                    else
-                        "Comercios ($selectedCategoryName)",
+                    commerceTitle,
                     Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp, bottom = 6.dp)
                 )
 
@@ -502,7 +556,10 @@ fun Home(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                "No hay comercios para esta categoría.",
+                                when {
+                                    search.isNotBlank() -> "No se encontraron comercios para \"$search\""
+                                    else -> "No hay comercios para esta categoría."
+                                },
                                 color = Color(0xFF8C8C8C),
                                 fontSize = 13.sp
                             )
