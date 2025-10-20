@@ -117,8 +117,8 @@ fun NewPromotionSheet(
             onClick = {
                 val tStock = totalStock.toIntOrNull()
                 val lpu = limitPerUser.toIntOrNull()
-                if (title.isBlank() || description.isBlank() || startDate.isBlank() || endDate.isBlank() || tStock == null || lpu == null)
-                    return@MainButton
+//                if (title.isBlank() || description.isBlank() || startDate.isBlank() || endDate.isBlank() || tStock == null || lpu == null)
+//                    return@MainButton
 
                 val newPromo = Promotions(
                     title = title,
@@ -133,7 +133,7 @@ fun NewPromotionSheet(
                 scope.launch {
                     runCatching { viewModel.createPromotion(newPromo) }
                         .onSuccess { onClose() }
-                        .onFailure { /* TODO: mostrar error */ }
+//                        .onFailure { println("ERROR al crear cupon") }
                 }
             }
         )

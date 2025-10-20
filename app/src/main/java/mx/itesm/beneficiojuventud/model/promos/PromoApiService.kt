@@ -19,7 +19,7 @@ interface PromoApiService {
     suspend fun getPromotionByCategory(@Path("category") category: String): Response<List<Promotions>>
 
     @POST("promotions")
-    suspend fun createPromotion(@Body user: Promotions): Response<Promotions>
+    suspend fun createPromotion(@Body promotion: Promotions): Response<Promotions>
 
     @PATCH("promotions/{id}")
     suspend fun updatePromotion(@Path("id") id: Int, @Body update: Promotions) : Response<Promotions>

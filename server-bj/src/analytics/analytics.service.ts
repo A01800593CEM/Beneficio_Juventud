@@ -1,0 +1,482 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Between } from 'typeorm';
+import { Promotion } from '../promotions/entities/promotion.entity';
+import { Booking } from '../bookings/entities/booking.entity';
+import { Redeemedcoupon } from '../redeemedcoupon/entities/redeemedcoupon.entity';
+import { Collaborator } from '../collaborators/entities/collaborator.entity';
+import { PromotionState } from 'src/promotions/enums/promotion-state.enums';
+
+export interface VicoChartEntry {
+  x: number;
+  y: number;
+}
+
+@Injectable()
+export class AnalyticsService {
+  constructor(
+    @InjectRepository(Promotion)
+    private promotionsRepository: Repository<Promotion>,
+    @InjectRepository(Booking)
+    private bookingsRepository: Repository<Booking>,
+    @InjectRepository(Redeemedcoupon)
+    private redeemedcouponRepository: Repository<Redeemedcoupon>,
+    @InjectRepository(Collaborator)
+    private collaboratorsRepository: Repository<Collaborator>,
+  ) {}
+
+  /**
+   * Get collaborator-specific dashboard optimized for Vico (Android).
+   * Vico expects chart data as arrays of x,y coordinates for line charts.
+   */
+  async getCollaboratorDashboard(collaboratorId: string, timeRange: string) {
+    // Verify collaborator exists
+    const collaborator = await this.collaboratorsRepository.findOne({
+      where: { cognitoId: collaboratorId },
+    });
+
+    if (!collaborator) {
+      throw new NotFoundException('Collaborator not found');
+    }
+
+    const dateRange = this.getDateRange(timeRange);
+
+    // Fetch collaborator-specific data in parallel
+    const [
+      redemptionTrends,
+      bookingTrends,
+      promotionStats,
+      totalStats,
+    ] = await Promise.all([
+      this.getCollaboratorRedemptionTrends(collaboratorId, dateRange),
+      this.getCollaboratorBookingTrends(collaboratorId, dateRange),
+      this.getCollaboratorPromotionStats(collaboratorId),
+      this.getCollaboratorStatistics(collaboratorId, dateRange),
+    ]);
+
+    return {
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        collaboratorId: collaboratorId,
+        collaboratorName: collaborator.businessName,
+        timeRange: timeRange,
+        period: {
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+        },
+      },
+      summary: {
+        totalPromotions: totalStats.totalPromotions,
+        activePromotions: totalStats.activePromotions,
+        totalBookings: totalStats.totalBookings,
+        redeemedCoupons: totalStats.redeemedCoupons,
+        conversionRate: this.calculateConversionRate(
+          totalStats.totalBookings,
+          totalStats.redeemedCoupons,
+        ),
+        totalRevenueImpact: totalStats.totalRevenueImpact,
+      },
+      charts: {
+        // Redemption trends - Vico Line Chart
+        // Format: Array of {x: dayIndex, y: count}
+        redemptionTrends: {
+          type: 'line',
+          title: 'Daily Redemptions',
+          description: 'Coupons redeemed per day',
+          entries: redemptionTrends,
+          xAxisLabel: 'Days',
+          yAxisLabel: 'Redemptions',
+          minY: 0,
+          maxY: Math.max(...redemptionTrends.map((e) => e.y), 1),
+        },
+        // Booking trends - Vico Line Chart
+        bookingTrends: {
+          type: 'line',
+          title: 'Daily Bookings',
+          description: 'Coupons booked/reserved per day',
+          entries: bookingTrends,
+          xAxisLabel: 'Days',
+          yAxisLabel: 'Bookings',
+          minY: 0,
+          maxY: Math.max(...bookingTrends.map((e) => e.y), 1),
+        },
+        // Promotion statistics summary
+        promotionStats: {
+          type: 'summary',
+          title: 'Active Promotions',
+          description: 'Detailed breakdown of promotions',
+          data: promotionStats,
+        },
+      },
+      insights: this.generateCollaboratorInsights(
+        totalStats,
+        redemptionTrends,
+        promotionStats,
+      ),
+    };
+  }
+
+  /**
+   * Get promotion-specific analytics for a collaborator.
+   */
+  async getPromotionAnalytics(collaboratorId: string) {
+    // Verify collaborator exists
+    const collaborator = await this.collaboratorsRepository.findOne({
+      where: { cognitoId: collaboratorId },
+    });
+
+    if (!collaborator) {
+      throw new NotFoundException('Collaborator not found');
+    }
+
+    // Get all promotions for collaborator
+    const promotions = await this.promotionsRepository.find({
+      where: { collaboratorId },
+      relations: ['bookings', 'redeemedcoupon'],
+    });
+
+    const promotionAnalytics = await Promise.all(
+      promotions.map(async (promo) => {
+        const bookings = await this.bookingsRepository.count({
+          where: { promotionId: promo.promotionId },
+        });
+
+        const redemptions = await this.redeemedcouponRepository.count({
+          where: { promotionId: promo.promotionId },
+        });
+
+        return {
+          promotionId: promo.promotionId,
+          title: promo.title,
+          description: promo.description,
+          type: promo.promotionType,
+          status: promo.promotionState,
+          dateRange: {
+            startDate: promo.initialDate,
+            endDate: promo.endDate,
+          },
+          performance: {
+            totalStock: promo.totalStock,
+            availableStock: promo.availableStock,
+            usedStock: promo.totalStock - promo.availableStock,
+            redeemedCount: redemptions,
+            bookingCount: bookings,
+            conversionRate: this.calculateConversionRate(bookings, redemptions),
+            redemptionPercentage: (
+              ((promo.totalStock - promo.availableStock) / (promo.totalStock || 1)) *
+              100
+            ).toFixed(2),
+          },
+        };
+      }),
+    );
+
+    return {
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        collaboratorId: collaboratorId,
+        collaboratorName: collaborator.businessName,
+      },
+      summary: {
+        totalPromotions: promotions.length,
+        activePromotions: promotions.filter(
+          (p) => p.promotionState === 'activa',
+        ).length,
+        totalRedemptions: promotionAnalytics.reduce(
+          (sum, p) => sum + p.performance.redeemedCount,
+          0,
+        ),
+        totalBookings: promotionAnalytics.reduce(
+          (sum, p) => sum + p.performance.bookingCount,
+          0,
+        ),
+      },
+      promotions: promotionAnalytics,
+    };
+  }
+
+  // =================== PRIVATE HELPER METHODS ===================
+
+  /**
+   * Calculate date range based on timeRange parameter
+   */
+  private getDateRange(timeRange: string) {
+    const today = new Date();
+    let startDate: Date;
+    let endDate = new Date(today);
+
+    // Reset time to midnight for consistency
+    endDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    switch (timeRange.toLowerCase()) {
+      case 'week':
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 7);
+        break;
+      case 'year':
+        startDate = new Date(today.getFullYear(), 0, 1);
+        endDate = new Date(today.getFullYear(), 11, 31);
+        break;
+      case 'month':
+      default:
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 30);
+        break;
+    }
+
+    return { startDate, endDate };
+  }
+
+  /**
+   * Get array of days between two dates for Vico chart alignment
+   */
+  private getDaysBetween(startDate: Date, endDate: Date): Date[] {
+    const days: Date[] = [];
+    const current = new Date(startDate);
+
+    while (current <= endDate) {
+      days.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+
+    return days;
+  }
+
+  /**
+   * Convert database trend data to Vico chart entries (x,y format)
+   */
+  private convertToVicoEntries(
+    trendData: any[],
+    days: Date[],
+  ): VicoChartEntry[] {
+    const dataMap = new Map(
+      trendData.map((item) => [
+        new Date(item.date).toISOString().split('T')[0],
+        parseInt(item.count),
+      ]),
+    );
+
+    return days.map((day, index) => ({
+      x: index,
+      y: dataMap.get(day.toISOString().split('T')[0]) || 0,
+    }));
+  }
+
+  /**
+   * Get redemption trends for a specific collaborator
+   */
+  private async getCollaboratorRedemptionTrends(
+    collaboratorId: string,
+    dateRange: any,
+  ): Promise<VicoChartEntry[]> {
+    const days = this.getDaysBetween(dateRange.startDate, dateRange.endDate);
+
+    const redemptions = await this.redeemedcouponRepository
+      .createQueryBuilder('redeem')
+      .leftJoinAndSelect('redeem.promotion', 'promo')
+      .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
+      .andWhere('redeem.usedDate >= :startDate', {
+        startDate: dateRange.startDate,
+      })
+      .andWhere('redeem.usedDate <= :endDate', {
+        endDate: dateRange.endDate,
+      })
+      .select('DATE(redeem.usedDate)', 'date')
+      .addSelect('COUNT(redeem.usedId)', 'count')
+      .groupBy('DATE(redeem.usedDate)')
+      .orderBy('date', 'ASC')
+      .getRawMany();
+
+    return this.convertToVicoEntries(redemptions, days);
+  }
+
+  /**
+   * Get booking trends for a specific collaborator
+   */
+  private async getCollaboratorBookingTrends(
+    collaboratorId: string,
+    dateRange: any,
+  ): Promise<VicoChartEntry[]> {
+    const days = this.getDaysBetween(dateRange.startDate, dateRange.endDate);
+
+    const bookings = await this.bookingsRepository
+      .createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.promotion', 'promo')
+      .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
+      .andWhere('booking.bookingDate >= :startDate', {
+        startDate: dateRange.startDate,
+      })
+      .andWhere('booking.bookingDate <= :endDate', {
+        endDate: dateRange.endDate,
+      })
+      .select('DATE(booking.bookingDate)', 'date')
+      .addSelect('COUNT(booking.bookingId)', 'count')
+      .groupBy('DATE(booking.bookingDate)')
+      .orderBy('date', 'ASC')
+      .getRawMany();
+
+    return this.convertToVicoEntries(bookings, days);
+  }
+
+  /**
+   * Get summary statistics for promotions
+   */
+  private async getCollaboratorPromotionStats(collaboratorId: string) {
+    const promotions = await this.promotionsRepository.find({
+      where: { collaboratorId },
+    });
+
+    return promotions.map((p) => ({
+      promotionId: p.promotionId,
+      title: p.title,
+      type: p.promotionType,
+      status: p.promotionState,
+      stockRemaining: p.availableStock,
+      totalStock: p.totalStock,
+      stockUtilization: (
+        ((p.totalStock - p.availableStock) / p.totalStock) *
+        100
+      ).toFixed(2),
+    }));
+  }
+
+  /**
+   * Get total statistics for collaborator
+   */
+  private async getCollaboratorStatistics(
+    collaboratorId: string,
+    dateRange: any,
+  ) {
+    // Count total promotions
+    const totalPromotions = await this.promotionsRepository.count({
+      where: { collaboratorId },
+    });
+
+    // Count active promotions
+    const activePromotions = await this.promotionsRepository.count({
+      where: { collaboratorId, promotionState: PromotionState.ACTIVE },
+    });
+
+    // Count total bookings for collaborator's promotions
+    const totalBookings = await this.bookingsRepository
+      .createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.promotion', 'promo')
+      .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
+      .getCount();
+
+    // Count redeemed coupons in date range
+    const redeemedCoupons = await this.redeemedcouponRepository
+      .createQueryBuilder('redeem')
+      .leftJoinAndSelect('redeem.promotion', 'promo')
+      .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
+      .andWhere('redeem.usedDate >= :startDate', {
+        startDate: dateRange.startDate,
+      })
+      .andWhere('redeem.usedDate <= :endDate', {
+        endDate: dateRange.endDate,
+      })
+      .getCount();
+
+    // Calculate revenue impact (estimate based on redemptions)
+    const totalRevenueImpact = await this.calculateCollaboratorRevenueImpact(
+      collaboratorId,
+    );
+
+    return {
+      totalPromotions,
+      activePromotions,
+      totalBookings,
+      redeemedCoupons,
+      totalRevenueImpact,
+    };
+  }
+
+  /**
+   * Calculate conversion rate between bookings and redemptions
+   */
+  private calculateConversionRate(bookings: number, redemptions: number): string {
+    if (bookings === 0) return '0%';
+    return ((redemptions / bookings) * 100).toFixed(2) + '%';
+  }
+
+  /**
+   * Calculate estimated revenue impact from redemptions
+   * This is a placeholder - adjust based on your business logic
+   */
+  private async calculateCollaboratorRevenueImpact(
+    collaboratorId: string,
+  ): Promise<string> {
+    // Get average promotion discount/value
+    const promotions = await this.promotionsRepository.find({
+      where: { collaboratorId },
+    });
+
+    const avgPromotionValue = 50; // Placeholder value
+    const totalRedemptions = await this.redeemedcouponRepository
+      .createQueryBuilder('redeem')
+      .leftJoinAndSelect('redeem.promotion', 'promo')
+      .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
+      .getCount();
+
+    const impact = totalRedemptions * avgPromotionValue;
+    return `$${impact.toFixed(2)}`;
+  }
+
+    /**
+   * Generate insights based on collaborator statistics
+   */
+  private generateCollaboratorInsights(
+    totalStats: any,
+    redemptionTrends: VicoChartEntry[],
+    promotionStats: any[],
+  ): any[] {
+    const insights: any[] = [];
+
+    // Check conversion rate
+    const conversionRate = parseFloat(totalStats.conversionRate);
+    if (conversionRate < 50) {
+      insights.push({
+        type: 'warning',
+        title: 'Low Conversion Rate',
+        message: `Your conversion rate is ${totalStats.conversionRate}. Consider reviewing your promotion terms.`,
+        severity: 'medium',
+      });
+    }
+
+    // Check for low redemptions
+    if (totalStats.redeemedCoupons < 10) {
+      insights.push({
+        type: 'info',
+        title: 'Limited Redemptions',
+        message: 'Your promotions have had limited engagement. Try different promotion strategies.',
+        severity: 'low',
+      });
+    }
+
+    // Check stock utilization
+    const lowStockPromos = promotionStats.filter(
+      (p) => parseFloat(p.stockUtilization) < 20,
+    );
+    if (lowStockPromos.length > 0) {
+      insights.push({
+        type: 'info',
+        title: 'Low Stock Utilization',
+        message: `${lowStockPromos.length} promotion(s) have low stock utilization.`,
+        severity: 'low',
+      });
+    }
+
+    // Positive insight for high redemptions
+    if (totalStats.redeemedCoupons > 50) {
+      insights.push({
+        type: 'success',
+        title: 'Great Performance',
+        message: `Excellent engagement with ${totalStats.redeemedCoupons} redemptions!`,
+        severity: 'high',
+      });
+    }
+
+    return insights;
+  }
+}
