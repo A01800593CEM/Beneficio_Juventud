@@ -217,7 +217,16 @@ private fun AppNav(
         composable(Screens.EditProfile.route) {
             EditProfile(nav = nav, authViewModel = authViewModel, userViewModel = userViewModel)
         }
-        composable(Screens.History.route) { History(nav) }
+        composable(Screens.History.route) {
+            val cognitoId by authViewModel.currentUserId.collectAsState()
+            if (cognitoId.isNullOrBlank()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                History(nav = nav, userId = cognitoId!!, userViewModel = userViewModel)
+            }
+        }
         composable(Screens.Settings.route) { Settings(nav) }
         composable(Screens.Help.route) { Help(nav) }
         composable(Screens.Favorites.route) { Favorites(nav, userViewModel = userViewModel) }
