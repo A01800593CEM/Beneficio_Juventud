@@ -67,8 +67,8 @@ object RemoteServicePromos {
         android.util.Log.d("RemoteServicePromos", "promotionState: ${request.promotionState}")
         android.util.Log.d("RemoteServicePromos", "theme: ${request.theme}")
         android.util.Log.d("RemoteServicePromos", "isBookable: ${request.isBookable}")
-        android.util.Log.d("RemoteServicePromos", "categories (names): ${request.categories}")
-
+        android.util.Log.d("RemoteServicePromos", "categoryIds: ${request.categoryIds}")
+        android.util.Log.d("RemoteServicePromos", "branchIds: ${request.branchIds}")
         // Serializar a JSON para ver qué se envía
         val jsonBody = gson.toJson(request)
         android.util.Log.d("RemoteServicePromos", "JSON Body: $jsonBody")
