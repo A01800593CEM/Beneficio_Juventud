@@ -67,51 +67,6 @@ data class AnalyticsSummary(
 )
 
 
-// ========== VIEWMODEL PLACEHOLDER ==========
-// TODO: Create StatsViewModel in viewcollab package with the following structure:
-/*
-class StatsViewModel : ViewModel() {
-    private val _uiState = MutableStateFlow(StatsUiState())
-    val uiState: StateFlow<StatsUiState> = _uiState.asStateFlow()
-
-    private val analyticsRepository = AnalyticsRepository() // TODO: Inject this via Hilt or constructor
-
-    fun loadAnalytics(collaboratorId: String, timeRange: String) {
-        viewModelScope.launch {
-            try {
-                _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-                val response = analyticsRepository.getCollaboratorDashboard(collaboratorId, timeRange)
-
-                // Convert API response to UI state
-                val redemptionEntries = response.charts["redemptionTrends"]?.entries?.map { it.y } ?: emptyList()
-                val bookingEntries = response.charts["bookingTrends"]?.entries?.map { it.y } ?: emptyList()
-
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    summary = response.summary,
-                    redemptionEntries = redemptionEntries,
-                    bookingEntries = bookingEntries,
-                    promotionStats = response.promotionStats,
-                    selectedTimeRange = timeRange
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = e.message ?: "Unknown error"
-                )
-            }
-        }
-    }
-
-    fun refreshAnalytics(collaboratorId: String) {
-        loadAnalytics(collaboratorId, _uiState.value.selectedTimeRange)
-    }
-
-    fun changeTimeRange(collaboratorId: String, timeRange: String) {
-        loadAnalytics(collaboratorId, timeRange)
-    }
-}
-*/
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,14 +74,14 @@ fun StatsScreen(
     nav: NavHostController,
     collaboratorId: String, // TODO: Get this from navigation arguments when implemented
     // TODO: Uncomment once ViewModel is created
-    // viewModel: StatsViewModel = viewModel()
+    viewModel: StatsViewModel = viewModel()
 ) {
 
     // val uiState by viewModel.uiState.collectAsState()
 
-    // LaunchedEffect(collaboratorId) {
-    //     viewModel.loadAnalytics(collaboratorId, "month")
-    // }
+     LaunchedEffect(collaboratorId) {
+         viewModel.loadAnalytics(collaboratorId, "month")
+     }
 
     // Temporary demo state (remove once ViewModel is integrated)
     val uiState by remember {
