@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -13,10 +15,29 @@ import mx.itesm.beneficiojuventud.model.SavedCouponRepository
 import mx.itesm.beneficiojuventud.model.bookings.Booking
 import mx.itesm.beneficiojuventud.model.bookings.BookingStatus
 import mx.itesm.beneficiojuventud.model.promos.Promotions
+import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import android.util.Log
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+
+/**
+ * Eventos de historial para bookings
+ */
+sealed class BookingEvent(
+    val title: String,
+    val businessName: String?,
+    val timestampIso: String
+) {
+    class Reserved(title: String, businessName: String?, timestampIso: String)
+        : BookingEvent(title, businessName, timestampIso)
+
+    class Cancelled(title: String, businessName: String?, timestampIso: String)
+        : BookingEvent(title, businessName, timestampIso)
+}
 
 class BookingViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -59,6 +80,11 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
     private val _bookingSuccess = MutableStateFlow(false)
     val bookingSuccess: StateFlow<Boolean> = _bookingSuccess.asStateFlow()
 
+    // Eventos de historial para bookings
+    // replay = 50 para que History pueda recibir eventos pasados al abrirse
+    private val _bookingEvents = MutableSharedFlow<BookingEvent>(replay = 50, extraBufferCapacity = 50)
+    val bookingEvents: SharedFlow<BookingEvent> = _bookingEvents
+
     /**
      * Reserva un cupón/promoción
      */
@@ -83,6 +109,16 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
 
                 _message.value = "¡Cupón reservado exitosamente!"
                 _bookingSuccess.value = true
+
+                // Emitir evento de historial
+                val event = BookingEvent.Reserved(
+                    title = promotion.title ?: "Cupón",
+                    businessName = promotion.businessName,
+                    timestampIso = getCurrentDateISO()
+                )
+                Log.d("BookingViewModel", "Emitiendo evento Reserved: title=${event.title}, business=${event.businessName}")
+                _bookingEvents.emit(event)
+                Log.d("BookingViewModel", "Evento Reserved emitido exitosamente")
 
             } catch (e: Exception) {
                 _error.value = "Error al reservar: ${e.message}"
@@ -140,12 +176,32 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
             _error.value = null
 
             try {
+                // Obtener los datos de la promoción antes de cancelar
+                val promotionId = booking.promotionId ?: return@launch
+                val promotion = withContext(Dispatchers.IO) {
+                    try {
+                        RemoteServicePromos.getPromotionById(promotionId)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+
                 repository.cancelBooking(
                     bookingId = booking.bookingId ?: return@launch,
-                    promotionId = booking.promotionId ?: return@launch
+                    promotionId = promotionId
                 )
 
                 _message.value = "Reservación cancelada"
+
+                // Emitir evento de historial
+                val event = BookingEvent.Cancelled(
+                    title = promotion?.title ?: "Cupón",
+                    businessName = promotion?.businessName,
+                    timestampIso = getCurrentDateISO()
+                )
+                Log.d("BookingViewModel", "Emitiendo evento Cancelled: title=${event.title}, business=${event.businessName}")
+                _bookingEvents.emit(event)
+                Log.d("BookingViewModel", "Evento Cancelled emitido exitosamente")
 
                 // Recargar bookings después de cancelar
                 booking.userId?.let { loadUserBookings(it) }

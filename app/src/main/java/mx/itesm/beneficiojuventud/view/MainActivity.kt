@@ -37,6 +37,7 @@ import mx.itesm.beneficiojuventud.viewcollab.QRScannerScreen
 import mx.itesm.beneficiojuventud.viewcollab.EditProfileCollab
 import mx.itesm.beneficiojuventud.viewcollab.GeneratePromotionScreen
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
@@ -104,7 +105,8 @@ private fun AppContent(
     userViewModel: UserViewModel = viewModel(),
     collabViewModel: CollabViewModel = viewModel(),
     categoryViewModel: CategoryViewModel = viewModel(),
-    promoViewModel: PromoViewModel = viewModel()
+    promoViewModel: PromoViewModel = viewModel(),
+    bookingViewModel: BookingViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val authViewModel = remember { AuthViewModel(context) }
@@ -115,7 +117,8 @@ private fun AppContent(
         userViewModel = userViewModel,
         collabViewModel = collabViewModel,
         categoryViewModel = categoryViewModel,
-        promoViewModel = promoViewModel
+        promoViewModel = promoViewModel,
+        bookingViewModel = bookingViewModel
     )
 }
 
@@ -126,7 +129,8 @@ private fun AppNav(
     userViewModel: UserViewModel,
     collabViewModel: CollabViewModel,
     categoryViewModel: CategoryViewModel,
-    promoViewModel: PromoViewModel
+    promoViewModel: PromoViewModel,
+    bookingViewModel: BookingViewModel
 ) {
     val appState by authViewModel.appState.collectAsState()
     val currentUserId by authViewModel.currentUserId.collectAsState()
@@ -224,7 +228,12 @@ private fun AppNav(
                     CircularProgressIndicator()
                 }
             } else {
-                History(nav = nav, userId = cognitoId!!, userViewModel = userViewModel)
+                History(
+                    nav = nav,
+                    userId = cognitoId!!,
+                    userViewModel = userViewModel,
+                    bookingVm = bookingViewModel
+                )
             }
         }
         composable(Screens.Settings.route) { Settings(nav) }
@@ -271,7 +280,12 @@ private fun AppNav(
             val promotionId = backStackEntry.arguments?.getInt("promotionId") ?: return@composable
             val cognitoId by authViewModel.currentUserId.collectAsState()
             if (!cognitoId.isNullOrBlank()) {
-                PromoQR(nav, promotionId, cognitoId!!)
+                PromoQR(
+                    nav = nav,
+                    promotionId = promotionId,
+                    cognitoId = cognitoId!!,
+                    bookingViewModel = bookingViewModel
+                )
             } else {
                 Startup()
             }

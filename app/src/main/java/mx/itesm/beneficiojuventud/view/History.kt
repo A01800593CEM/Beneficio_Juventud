@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.view
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,11 +31,19 @@ import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
 import mx.itesm.beneficiojuventud.components.BJTopHeader
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.RedeemedCouponViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import androidx.compose.runtime.mutableStateListOf
 
-enum class HistoryType { CUPON_USADO, CUPON_GUARDADO, FAVORITO_AGREGADO, FAVORITO_QUITADO }
+enum class HistoryType {
+    CUPON_USADO,
+    CUPON_GUARDADO,
+    CUPON_RESERVADO,
+    RESERVA_CANCELADA,
+    FAVORITO_AGREGADO,
+    FAVORITO_QUITADO
+}
 
 data class HistoryEntry(
     val type: HistoryType,
@@ -56,7 +65,8 @@ fun History(
     userId: String,
     userViewModel: UserViewModel,                 // <= compartido
     modifier: Modifier = Modifier,
-    redeemedVm: RedeemedCouponViewModel = viewModel()
+    redeemedVm: RedeemedCouponViewModel = viewModel(),
+    bookingVm: BookingViewModel = viewModel()      // <= para eventos de reservas
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Profile) }
 
@@ -96,6 +106,44 @@ fun History(
         }
     }
 
+    // 2b) Eventos de reservas/cancelaciones – in-memory
+    val bookingEntries = remember { mutableStateListOf<HistoryEntry>() }
+
+    LaunchedEffect(userId, bookingVm) {
+        Log.d("History", "Iniciando escucha de eventos de booking para userId: $userId")
+        bookingVm.bookingEvents.collectLatest { evt ->
+            Log.d("History", "Evento recibido: ${evt::class.simpleName}, title=${evt.title}, business=${evt.businessName}")
+
+            val type = when (evt) {
+                is mx.itesm.beneficiojuventud.viewmodel.BookingEvent.Reserved -> HistoryType.CUPON_RESERVADO
+                is mx.itesm.beneficiojuventud.viewmodel.BookingEvent.Cancelled -> HistoryType.RESERVA_CANCELADA
+            }
+
+            val title = when (type) {
+                HistoryType.CUPON_RESERVADO -> "Cupón reservado"
+                HistoryType.RESERVA_CANCELADA -> "Reservación cancelada"
+                else -> "Evento"
+            }
+
+            val subtitle = buildString {
+                append(evt.title)
+                evt.businessName?.takeIf { it.isNotBlank() }?.let { append(" en $it") }
+            }
+
+            val entry = HistoryEntry(
+                type = type,
+                title = title,
+                subtitle = subtitle,
+                date = formatShort(evt.timestampIso),
+                iso = evt.timestampIso
+            )
+
+            Log.d("History", "Agregando entrada al historial: $entry")
+            bookingEntries.add(entry)
+            Log.d("History", "Total de entradas de booking: ${bookingEntries.size}")
+        }
+    }
+
     // 3) Mapear canjes -> HistoryEntry
     val redeemedEntries: List<HistoryEntry> = remember(redeemedList) {
         redeemedList.map { rc ->
@@ -114,9 +162,14 @@ fun History(
     }
 
     // 4) Fusionar y ordenar por ISO desc
-    val entries: List<HistoryEntry> = remember(redeemedEntries, favoriteEntries) {
-        (redeemedEntries + favoriteEntries).sortedByDescending {
-            parseIso(it.iso) ?: OffsetDateTime.MIN
+    // Usar derivedStateOf para que observe cambios en las listas mutables
+    val entries: List<HistoryEntry> by remember {
+        derivedStateOf {
+            val merged = (redeemedEntries + favoriteEntries + bookingEntries).sortedByDescending {
+                parseIso(it.iso) ?: OffsetDateTime.MIN
+            }
+            Log.d("History", "Entradas totales - Redeemed: ${redeemedEntries.size}, Favorites: ${favoriteEntries.size}, Bookings: ${bookingEntries.size}, Total: ${merged.size}")
+            merged
         }
     }
 
@@ -220,7 +273,9 @@ private fun HistoryCard(
                 HistoryType.FAVORITO_AGREGADO,
                 HistoryType.FAVORITO_QUITADO -> Icons.Outlined.FavoriteBorder
                 HistoryType.CUPON_USADO,
-                HistoryType.CUPON_GUARDADO -> Icons.Outlined.ConfirmationNumber
+                HistoryType.CUPON_GUARDADO,
+                HistoryType.CUPON_RESERVADO,
+                HistoryType.RESERVA_CANCELADA -> Icons.Outlined.ConfirmationNumber
             }
 
             Icon(
@@ -300,13 +355,3 @@ private fun HistoryPreview() {
  * Wrapper para usar EN PRODUCCIÓN dentro de tu NavHost.
  * Ajusta "main_graph" al route del NavGraph padre que contiene tus tabs.
  */
-@Composable
-fun HistoryScreen(
-    nav: NavHostController,
-    userId: String,
-    parentGraphRoute: String = "main_graph"
-) {
-    val parentEntry = remember(nav) { nav.getBackStackEntry(parentGraphRoute) }
-    val sharedUserVm: UserViewModel = viewModel(parentEntry)
-    History(nav = nav, userId = userId, userViewModel = sharedUserVm)
-}
