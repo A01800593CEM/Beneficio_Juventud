@@ -31,7 +31,7 @@ data class ImageGenerationResponse(
     val message: String? = null
 ) {
     // Obtener la URL de imagen independientemente del formato de respuesta
-    fun getImageUrl(): String? {
+    fun extractImageUrl(): String? {
         return imageUrl ?: image_url ?: url
     }
 }
@@ -108,7 +108,7 @@ object ImageGenerationService {
                 ImageGenerationResponse(url = responseBody)
             }
 
-            val imageUrl = imageResponse.getImageUrl()
+            val imageUrl = imageResponse.extractImageUrl()
 
             if (imageUrl.isNullOrBlank()) {
                 return@withContext Result.failure(
