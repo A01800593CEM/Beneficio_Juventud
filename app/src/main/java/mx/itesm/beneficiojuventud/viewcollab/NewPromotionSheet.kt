@@ -52,35 +52,76 @@ fun NewPromotionSheet(
     onClose: () -> Unit,
     viewModel: PromoViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel(),
-    initialPromotionData: mx.itesm.beneficiojuventud.model.webhook.PromotionData? = null
+    initialPromotionData: mx.itesm.beneficiojuventud.model.webhook.PromotionData? = null,
+    existingPromotion: Promotions? = null  // Nuevo parámetro para edición
 ) {
     val promo by viewModel.promoState.collectAsState()
     val scope = rememberCoroutineScope()
+
+    // Determinar si estamos en modo edición
+    val isEditMode = existingPromotion != null
 
     // Obtener el collaboratorId del usuario autenticado
     LaunchedEffect(Unit) { authViewModel.getCurrentUser() }
     val currentUserId by authViewModel.currentUserId.collectAsState()
     val collaboratorId = currentUserId ?: "anonymous"
 
-    // Estados del formulario
-    var title by rememberSaveable { mutableStateOf(initialPromotionData?.title ?: promo.title.orEmpty()) }
-    var description by rememberSaveable { mutableStateOf(initialPromotionData?.description ?: promo.description.orEmpty()) }
-    var startDate by rememberSaveable { mutableStateOf(initialPromotionData?.initialDate ?: promo.initialDate.orEmpty()) }
-    var endDate by rememberSaveable { mutableStateOf(initialPromotionData?.endDate ?: promo.endDate.orEmpty()) }
-    var totalStock by rememberSaveable { mutableStateOf(initialPromotionData?.totalStock?.toString() ?: promo.totalStock?.toString() ?: "100") }
-    var limitPerUser by rememberSaveable { mutableStateOf(initialPromotionData?.limitPerUser?.toString() ?: promo.limitPerUser?.toString() ?: "1") }
-    var dailyLimitPerUser by rememberSaveable { mutableStateOf(initialPromotionData?.dailyLimitPerUser?.toString() ?: promo.dailyLimitPerUser?.toString() ?: "1") }
-    var promotionString by rememberSaveable { mutableStateOf(promo.promotionString.orEmpty()) }
-    var imageUrl by rememberSaveable { mutableStateOf(promo.imageUrl.orEmpty()) }
+    // Estados del formulario (prioritizar existingPromotion si existe)
+    var title by rememberSaveable {
+        mutableStateOf(
+            existingPromotion?.title ?: initialPromotionData?.title ?: promo.title.orEmpty()
+        )
+    }
+    var description by rememberSaveable {
+        mutableStateOf(
+            existingPromotion?.description ?: initialPromotionData?.description ?: promo.description.orEmpty()
+        )
+    }
+    var startDate by rememberSaveable {
+        mutableStateOf(
+            existingPromotion?.initialDate ?: initialPromotionData?.initialDate ?: promo.initialDate.orEmpty()
+        )
+    }
+    var endDate by rememberSaveable {
+        mutableStateOf(
+            existingPromotion?.endDate ?: initialPromotionData?.endDate ?: promo.endDate.orEmpty()
+        )
+    }
+    var totalStock by rememberSaveable {
+        mutableStateOf(
+            existingPromotion?.totalStock?.toString() ?: initialPromotionData?.totalStock?.toString() ?: promo.totalStock?.toString() ?: "100"
+        )
+    }
+    var limitPerUser by rememberSaveable {
+        mutableStateOf(
+            existingPromotion?.limitPerUser?.toString() ?: initialPromotionData?.limitPerUser?.toString() ?: promo.limitPerUser?.toString() ?: "1"
+        )
+    }
+    var dailyLimitPerUser by rememberSaveable {
+        mutableStateOf(
+            existingPromotion?.dailyLimitPerUser?.toString() ?: initialPromotionData?.dailyLimitPerUser?.toString() ?: promo.dailyLimitPerUser?.toString() ?: "1"
+        )
+    }
+    var promotionString by rememberSaveable {
+        mutableStateOf(
+            existingPromotion?.promotionString ?: promo.promotionString.orEmpty()
+        )
+    }
+    var imageUrl by rememberSaveable {
+        mutableStateOf(
+            existingPromotion?.imageUrl ?: promo.imageUrl.orEmpty()
+        )
+    }
 
     // Estados de error y carga
     var errorMessage by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
     var isGeneratingImage by remember { mutableStateOf(false) }
 
-    // Tipo de promoción
+    // Tipo de promoción (prioritizar existingPromotion)
     var promotionType by rememberSaveable {
         mutableStateOf(
+            existingPromotion?.promotionType ?:
             initialPromotionData?.promotionType?.let {
                 when(it) {
                     "descuento" -> PromotionType.descuento
@@ -92,9 +133,10 @@ fun NewPromotionSheet(
         )
     }
 
-    // Estado de la promoción
+    // Estado de la promoción (prioritizar existingPromotion)
     var promotionState by rememberSaveable {
         mutableStateOf(
+            existingPromotion?.promotionState ?:
             initialPromotionData?.promotionState?.let {
                 when(it) {
                     "activa" -> PromotionState.activa
@@ -106,15 +148,22 @@ fun NewPromotionSheet(
         )
     }
 
-    // Tema de la promoción
+    // Tema de la promoción (prioritizar existingPromotion)
     var promoTheme by rememberSaveable {
-        mutableStateOf(promo.theme ?: PromoTheme.light)
+        mutableStateOf(existingPromotion?.theme ?: promo.theme ?: PromoTheme.light)
     }
 
-    // Categorías y reservabilidad
+    // Categorías y reservabilidad (prioritizar existingPromotion)
     var availableCategories by remember { mutableStateOf<List<Category>>(emptyList()) }
-    var selectedCategories by remember { mutableStateOf<Set<Int>>(promo.categories.mapNotNull { it.id }.toSet()) }
-    var isBookable by rememberSaveable { mutableStateOf(promo.isBookable ?: false) }
+    var selectedCategories by remember {
+        mutableStateOf<Set<Int>>(
+            existingPromotion?.categories?.mapNotNull { it.id }?.toSet() ?:
+            promo.categories.mapNotNull { it.id }.toSet()
+        )
+    }
+    var isBookable by rememberSaveable {
+        mutableStateOf(existingPromotion?.isBookable ?: promo.isBookable ?: false)
+    }
 
     // Cargar categorías al iniciar
     LaunchedEffect(Unit) {
@@ -144,7 +193,11 @@ fun NewPromotionSheet(
                 Icon(Icons.Default.ArrowBack, contentDescription = "Regresar")
             }
             Text(
-                text = if (initialPromotionData != null) "Nueva Promoción (IA)" else "Nueva Promoción",
+                text = when {
+                    isEditMode -> "Editar Promoción"
+                    initialPromotionData != null -> "Nueva Promoción (IA)"
+                    else -> "Nueva Promoción"
+                },
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Black
             )
@@ -546,9 +599,9 @@ fun NewPromotionSheet(
             }
         }
 
-        // Botón de crear
+        // Botón de crear/actualizar
         MainButton(
-            text = "Crear Nueva Promoción",
+            text = if (isEditMode) "Guardar Cambios" else "Crear Nueva Promoción",
             onClick = {
                 // Validar campos obligatorios
                 if (collaboratorId == "anonymous") {
@@ -617,8 +670,9 @@ fun NewPromotionSheet(
                     availableCategories.find { it.id == categoryId }
                 }
 
-                // Crear promoción
-                val newPromo = Promotions(
+                // Crear o actualizar promoción
+                val promoData = Promotions(
+                    promotionId = if (isEditMode) existingPromotion?.promotionId else null,
                     collaboratorId = collaboratorId,
                     title = title.trim(),
                     description = description.trim(),
@@ -628,7 +682,7 @@ fun NewPromotionSheet(
                     promotionType = promotionType,
                     promotionString = promotionString.trim().ifBlank { null },
                     totalStock = tStock,
-                    availableStock = tStock,
+                    availableStock = if (isEditMode) existingPromotion?.availableStock else tStock,
                     limitPerUser = lpu,
                     dailyLimitPerUser = dlpu,
                     promotionState = promotionState,
@@ -638,8 +692,13 @@ fun NewPromotionSheet(
                 )
 
                 scope.launch {
-                    runCatching { viewModel.createPromotion(newPromo) }
-                        .onSuccess {
+                    runCatching {
+                        if (isEditMode && existingPromotion?.promotionId != null) {
+                            viewModel.updatePromotion(existingPromotion.promotionId!!, promoData)
+                        } else {
+                            viewModel.createPromotion(promoData)
+                        }
+                    }.onSuccess {
                             showError = false
                             onClose()
                         }
@@ -831,4 +890,23 @@ private fun PromotionStateChip(
             fontSize = 14.sp
         )
     }
+}
+
+/**
+ * Componente wrapper para editar una promoción existente
+ * Utiliza NewPromotionSheet con el parámetro existingPromotion
+ */
+@Composable
+fun EditPromotionSheet(
+    promotion: Promotions,
+    onClose: () -> Unit,
+    viewModel: PromoViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
+) {
+    NewPromotionSheet(
+        onClose = onClose,
+        viewModel = viewModel,
+        authViewModel = authViewModel,
+        existingPromotion = promotion
+    )
 }

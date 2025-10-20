@@ -149,7 +149,7 @@ fun Home(
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // PROMOS: carga inicial → favoritas intercaladas (si hay), si no → todas
+    // PROMOS: carga inicial → favoritas intercaladas (si hay), si no → todas ACTIVAS
     // ─────────────────────────────────────────────────────────────────────────────
     LaunchedEffect(user.categories) {
         promoError = null
@@ -161,9 +161,9 @@ fun Home(
                 .orEmpty()
 
             if (favNames.isNotEmpty()) {
-                promoViewModel.getRecommendedInterleaved(favNames)
+                promoViewModel.getRecommendedInterleaved(favNames)  // Ya filtra activas
             } else {
-                promoViewModel.getAllPromotions()
+                promoViewModel.getActivePromotions()  // Solo activas
             }
         }.onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
         promoLoading = false
@@ -181,12 +181,12 @@ fun Home(
         }
     }
 
-    // Carga de promos cuando cambia el filtro de categoría
+    // Carga de promos cuando cambia el filtro de categoría (SOLO ACTIVAS)
     LaunchedEffect(selectedCategoryName) {
         if (selectedCategoryName == null) return@LaunchedEffect
         promoError = null
         promoLoading = true
-        runCatching { promoViewModel.getPromotionByCategory(selectedCategoryName!!) }
+        runCatching { promoViewModel.getActivePromotionsByCategory(selectedCategoryName!!) }
             .onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
         promoLoading = false
     }
@@ -317,7 +317,7 @@ fun Home(
                                         selectedCategoryName = if (selectedCategoryName == name) null else name
                                         // Refrescar inmediatamente promos + colaboradores
                                         scope.launch {
-                                            // PROMOS
+                                            // PROMOS (SOLO ACTIVAS)
                                             promoError = null
                                             promoLoading = true
                                             runCatching {
@@ -330,10 +330,10 @@ fun Home(
                                                     if (favNames.isNotEmpty()) {
                                                         promoViewModel.getRecommendedInterleaved(favNames)
                                                     } else {
-                                                        promoViewModel.getAllPromotions()
+                                                        promoViewModel.getActivePromotions()
                                                     }
                                                 } else {
-                                                    promoViewModel.getPromotionByCategory(selectedCategoryName!!)
+                                                    promoViewModel.getActivePromotionsByCategory(selectedCategoryName!!)
                                                 }
                                             }.onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
                                             promoLoading = false
@@ -366,7 +366,7 @@ fun Home(
                             onClick = {
                                 selectedCategoryName = null
                                 scope.launch {
-                                    // PROMOS (favoritas intercaladas si existen, si no todas)
+                                    // PROMOS (favoritas intercaladas si existen, si no todas ACTIVAS)
                                     promoError = null
                                     promoLoading = true
                                     runCatching {
@@ -378,7 +378,7 @@ fun Home(
                                         if (favNames.isNotEmpty()) {
                                             promoViewModel.getRecommendedInterleaved(favNames)
                                         } else {
-                                            promoViewModel.getAllPromotions()
+                                            promoViewModel.getActivePromotions()
                                         }
                                     }.onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
                                     promoLoading = false
