@@ -30,6 +30,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.delay
 import mx.itesm.beneficiojuventud.model.webhook.PromotionData
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewcollab.QRScannerScreen
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
@@ -244,6 +245,11 @@ private fun AppNav(
             } else {
                 Startup()
             }
+        }
+
+        // --- Collaborator screens ---
+        composable("qr_scanner") {
+            QRScannerScreen(nav = nav)
         }
     }
 }

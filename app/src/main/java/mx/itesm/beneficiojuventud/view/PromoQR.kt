@@ -3,7 +3,6 @@ package mx.itesm.beneficiojuventud.view
 
 import android.graphics.Bitmap
 import android.util.Log
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -19,11 +18,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -248,7 +244,6 @@ fun PromoQR(
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
     var showQrDialog by rememberSaveable { mutableStateOf(false) }
-    var isRedeemed by rememberSaveable { mutableStateOf(false) }
 
     val promo by viewModel.promoState.collectAsState()
     val favPromos by userViewModel.favoritePromotions.collectAsState()
@@ -539,33 +534,16 @@ fun PromoQR(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Crossfade(targetState = isRedeemed, label = "redeem_overlay_xfade") { redeemed ->
-                            if (redeemed) {
-                                RedeemedCardInner()
-                            } else {
-                                QRCardInner(detail = detail ?: return@Crossfade, qrBitmap = qrImage)
-                            }
-                        }
+                        QRCardInner(detail = detail ?: return@Box, qrBitmap = qrImage)
                     }
 
                     Spacer(Modifier.height(20.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(
-                            onClick = { isRedeemed = true },
-                            modifier = Modifier.weight(1f)
-                        ) { Text("Simular escaneo") }
-
-                        MainButton(
-                            text = "Cerrar",
-                            modifier = Modifier.weight(1f).height(52.dp),
-                            onClick = { showQrDialog = false }
-                        )
-                    }
+                    MainButton(
+                        text = "Cerrar",
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        onClick = { showQrDialog = false }
+                    )
                 }
             }
         }
@@ -651,36 +629,6 @@ private fun QRCardInner(
             maxLines = 3,
             overflow = TextOverflow.Ellipsis
         )
-    }
-}
-
-@Composable
-private fun RedeemedCardInner() {
-    val dash = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .drawBehind {
-                val strokeWidth = 2.dp.toPx()
-                drawRoundRect(
-                    color = Color(0xFFDFE3E6),
-                    style = Stroke(width = strokeWidth, pathEffect = dash),
-                    cornerRadius = CornerRadius(16.dp.toPx())
-                )
-            }
-            .padding(vertical = 18.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_check_circle),
-            contentDescription = null,
-            tint = Color(0xFF22C55E),
-            modifier = Modifier.size(56.dp)
-        )
-        Spacer(Modifier.height(8.dp))
-        Text("¡Cupón Canjeado!", color = Color(0xFF22C55E), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-        Spacer(Modifier.height(4.dp))
-        Text("Gracias por usar nuestros servicios", color = Color.Gray, fontSize = 12.sp)
     }
 }
 

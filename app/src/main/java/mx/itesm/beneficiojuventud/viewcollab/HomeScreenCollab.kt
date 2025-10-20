@@ -51,7 +51,10 @@ fun HomeScreenCollab(nav: NavHostController) {
             BJBottomBarCollab(
                 selected = selectedTab,
                 onSelect = { newTab -> selectedTab = newTab },
-                onAddClick = { /* TODO */ }
+                onAddClick = {
+                    // Navigate to QR Scanner
+                    nav.navigate("qr_scanner")
+                }
             )
         }
     ) { paddingValues ->
