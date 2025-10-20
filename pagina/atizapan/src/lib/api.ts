@@ -5,7 +5,7 @@ import { User, UserStats, AdminStats, CollaboratorStats } from "@/types/user";
 
 const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? '/api/proxy'  // Usar proxy local en desarrollo
-  : 'http://3.226.114.132:3000';  // Usar API directa en producción
+  : 'https://beneficiojoven.lat';  // Usar API directa en producción
 
 export interface UserRegistrationData {
   name: string;
@@ -29,7 +29,7 @@ export interface ApiError {
 export async function fetchFromApi(path: string) {
   const session = await getServerSession(authOptions);
   const token = (session as { accessToken?: string })?.accessToken;
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL!;
+  const base = 'https://beneficiojoven.lat';
   const res = await fetch(`${base}${path}`, {
     headers: { Authorization: token ? `Bearer ${token}` : "" },
     cache: "no-store",

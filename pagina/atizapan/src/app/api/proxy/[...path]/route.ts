@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_BASE_URL = 'http://3.226.114.132:3000';
+const API_BASE_URL = 'https://beneficiojoven.lat';
 
 async function handleRequest(request: NextRequest, method: string) {
   try {

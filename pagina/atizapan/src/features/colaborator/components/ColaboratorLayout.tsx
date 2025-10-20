@@ -56,27 +56,15 @@ export default function ColaboratorLayout({
 
   const navigation = [
     {
-      name: "Dashboard",
+      name: "Promociones",
       href: "/colaborator",
-      icon: HomeIcon,
+      icon: TagIcon,
       current: pathname === "/colaborator"
     },
     {
-      name: "Promociones",
-      href: "/colaborator/promociones",
-      icon: TagIcon,
-      current: pathname?.startsWith("/colaborator/promociones")
-    },
-    {
       name: "Estadísticas",
-      href: "/colaborator/estadisticas",
-      icon: ChartBarIcon,
-      current: pathname?.startsWith("/colaborator/estadisticas") && !pathname?.includes("avanzadas")
-    },
-    {
-      name: "Analytics Avanzados",
       href: "/colaborator/estadisticas-avanzadas",
-      icon: ChartPieIcon,
+      icon: ChartBarIcon,
       current: pathname?.startsWith("/colaborator/estadisticas-avanzadas")
     },
     {
@@ -85,25 +73,6 @@ export default function ColaboratorLayout({
       icon: BuildingStorefrontIcon,
       current: pathname?.startsWith("/colaborator/perfil") && !pathname?.includes("mejorado")
     },
-    {
-      name: "Perfil Completo",
-      href: "/colaborator/perfil-mejorado",
-      icon: UserIcon,
-      current: pathname?.startsWith("/colaborator/perfil-mejorado")
-    },
-    {
-      name: "Notificaciones",
-      href: "/colaborator/notificaciones",
-      icon: BellIcon,
-      current: pathname?.startsWith("/colaborator/notificaciones"),
-      badge: unreadNotifications
-    },
-    {
-      name: "Configuraciones",
-      href: "/colaborator/configuraciones",
-      icon: CogIcon,
-      current: pathname?.startsWith("/colaborator/configuraciones")
-    }
   ];
 
   const handleLogout = async () => {

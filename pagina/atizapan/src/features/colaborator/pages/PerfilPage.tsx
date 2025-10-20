@@ -256,7 +256,7 @@ export default function PerfilPage() {
                 className="object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentData.name)}&background=008D96&color=fff&size=80`;
+                  target.src = ``;
                 }}
               />
             </div>

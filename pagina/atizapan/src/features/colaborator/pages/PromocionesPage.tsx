@@ -3,6 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import KPICard from '@/features/admin/components/KPICard';
+import {
+  ChartBarIcon,
+  ArrowTrendingUpIcon,
+  CurrencyDollarIcon,
+  UsersIcon,
+  TicketIcon,
+  StarIcon
+} from '@heroicons/react/24/outline';
 
 // Estructura exacta según la documentación de la API
 interface ApiPromotion {
@@ -84,7 +92,7 @@ interface ApiCollaborator {
 
 // API Service simplificado
 class SimpleApiService {
-  private baseUrl = process.env.NODE_ENV === 'development' ? '/api/proxy' : 'http://3.226.114.132:3000';
+  private baseUrl = process.env.NODE_ENV === 'development' ? '/api/proxy' : 'https://beneficiojoven.lat';
   private aiWebhookUrl = 'https://primary-production-0858b.up.railway.app/webhook/bdd4b48a-4f48-430f-a443-a14a19009340';
 
   private async request(endpoint: string, options: RequestInit = {}) {
@@ -516,11 +524,11 @@ export default function PromocionesPage() {
       </div>
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <KPICard
-          title="Total Promociones"
-          value={promotions.length}
-          icon={<span className="text-[#008D96]">📊</span>}
-        />
+            <KPICard
+              title={"Total Promociones"}
+              value={promotions.length}
+              icon={<TicketIcon className="h-4 w-4" />}
+            />
         <KPICard
           title="Promociones Activas"
           value={activePromotions}

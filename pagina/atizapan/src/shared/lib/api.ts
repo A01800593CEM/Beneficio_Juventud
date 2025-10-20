@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 export async function fetchFromApi(path: string) {
   const session = await getServerSession(authOptions);
   const token = (session as { accessToken?: string })?.accessToken;
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL!;
+  const base = 'https://beneficiojoven.lat';
   const res = await fetch(`${base}${path}`, {
     headers: { Authorization: token ? `Bearer ${token}` : "" },
     cache: "no-store",
