@@ -42,6 +42,7 @@ import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.view.Screens
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 
@@ -105,21 +106,21 @@ fun HomeScreenCollab(
                 icon = Icons.Outlined.LocalOffer,
                 title = "Promociones Activas",
                 description = "Visualiza, edita o desactiva las ofertas que tienes vigentes.",
-                onClick = { /* La bottom bar ya navega por ruta */ }
+                onClick = { nav.navigate(Screens.PromotionsScreen.route) }
             )
             Spacer(Modifier.height(16.dp))
             InfoCardCollab(
                 icon = Icons.Outlined.BarChart,
                 title = "Estadísticas",
                 description = "Analiza el rendimiento y la conversión de tus cupones.",
-                onClick = { /* La bottom bar ya navega por ruta */ }
+                onClick = { nav.navigate(Screens.StatsScreen.route) }
             )
             Spacer(Modifier.height(16.dp))
             InfoCardCollab(
                 icon = Icons.Default.Person,
                 title = "Perfil",
                 description = "Modifica la información de tu negocio.",
-                onClick = { /* La bottom bar ya navega por ruta */ }
+                onClick = { nav.navigate(Screens.ProfileCollab.route) }
             )
 
             // Evita que el último ítem quede oculto detrás de la barra
