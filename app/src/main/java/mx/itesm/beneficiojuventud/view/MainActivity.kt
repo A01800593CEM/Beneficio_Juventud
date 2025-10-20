@@ -322,7 +322,9 @@ private fun AppNav(
                 }
             )
         }
-        composable(Screens.StatsScreen.route) { StatsScreen(nav) }
+        composable(Screens.StatsScreen.route) {
+            val collabId by authViewModel.currentUserId.collectAsState()
+            StatsScreen(nav, collabId!!) }
         composable(Screens.PromotionsScreen.route) {
             val collabId by authViewModel.currentUserId.collectAsState()
             PromotionsScreenCollab(

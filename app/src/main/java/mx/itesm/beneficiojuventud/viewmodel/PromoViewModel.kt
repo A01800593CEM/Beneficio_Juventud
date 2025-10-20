@@ -57,7 +57,7 @@ class PromoViewModel : ViewModel() {
     }
 
     suspend fun createPromotion(promo: Promotions) {
-        _promoState.value = model.createPromotion(promo)
+        model.createPromotion(promo)
     }
 
     suspend fun updatePromotion(id: Int, update: Promotions) {

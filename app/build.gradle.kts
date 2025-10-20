@@ -138,8 +138,7 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // 🔹 Otras librerías del proyecto
-    implementation(libs.vico.core)
-    implementation(libs.vico.compose)
+    implementation(libs.ycharts)
 
     // CameraX for QR scanning
     implementation("androidx.camera:camera-camera2:1.3.1")
