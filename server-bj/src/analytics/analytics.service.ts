@@ -96,26 +96,75 @@ export class AnalyticsService {
       const dateRange = this.getDateRange(timeRange);
       console.log(`Date range: ${dateRange.startDate} to ${dateRange.endDate}`);
 
-      // Fetch collaborator-specific data sequentially for better error tracking
-      console.log('Fetching redemption trends...');
-      const redemptionTrends = await this.getCollaboratorRedemptionTrends(collaboratorId, dateRange);
+      // Test each method individually to find the failing one
+      let redemptionTrends: VicoChartEntry[] = [];
+      let bookingTrends: VicoChartEntry[] = [];
+      let promotionStats: any[] = [];
+      let totalStats: any = {};
+      let topRedeemedCoupons: VicoBarChartEntry[] = [];
+      let redemptionTrendsByPromotion: VicoMultiSeriesEntry[] = [];
 
-      console.log('Fetching booking trends...');
-      const bookingTrends = await this.getCollaboratorBookingTrends(collaboratorId, dateRange);
+      try {
+        console.log('Fetching redemption trends...');
+        redemptionTrends = await this.getCollaboratorRedemptionTrends(collaboratorId, dateRange);
+        console.log('✅ Redemption trends fetched');
+      } catch (e) {
+        console.error('❌ Error fetching redemption trends:', e.message);
+        redemptionTrends = [];
+      }
 
-      console.log('Fetching promotion stats...');
-      const promotionStats = await this.getCollaboratorPromotionStats(collaboratorId);
+      try {
+        console.log('Fetching booking trends...');
+        bookingTrends = await this.getCollaboratorBookingTrends(collaboratorId, dateRange);
+        console.log('✅ Booking trends fetched');
+      } catch (e) {
+        console.error('❌ Error fetching booking trends:', e.message);
+        bookingTrends = [];
+      }
 
-      console.log('Fetching total stats...');
-      const totalStats = await this.getCollaboratorStatistics(collaboratorId, dateRange);
+      try {
+        console.log('Fetching promotion stats...');
+        promotionStats = await this.getCollaboratorPromotionStats(collaboratorId);
+        console.log('✅ Promotion stats fetched');
+      } catch (e) {
+        console.error('❌ Error fetching promotion stats:', e.message);
+        promotionStats = [];
+      }
 
-      console.log('Fetching top redeemed coupons...');
-      const topRedeemedCoupons = await this.getTopRedeemedCoupons(collaboratorId, dateRange);
+      try {
+        console.log('Fetching total stats...');
+        totalStats = await this.getCollaboratorStatistics(collaboratorId, dateRange);
+        console.log('✅ Total stats fetched');
+      } catch (e) {
+        console.error('❌ Error fetching total stats:', e.message);
+        totalStats = {
+          totalPromotions: 0,
+          activePromotions: 0,
+          totalBookings: 0,
+          redeemedCoupons: 0,
+          totalFavorites: 0
+        };
+      }
 
-      console.log('Fetching redemption trends by promotion...');
-      const redemptionTrendsByPromotion = await this.getRedemptionTrendsByPromotion(collaboratorId, dateRange);
+      try {
+        console.log('Fetching top redeemed coupons...');
+        topRedeemedCoupons = await this.getTopRedeemedCoupons(collaboratorId, dateRange);
+        console.log('✅ Top redeemed coupons fetched');
+      } catch (e) {
+        console.error('❌ Error fetching top redeemed coupons:', e.message);
+        topRedeemedCoupons = [];
+      }
 
-      console.log('All data fetched successfully, building response...');
+      try {
+        console.log('Fetching redemption trends by promotion...');
+        redemptionTrendsByPromotion = await this.getRedemptionTrendsByPromotion(collaboratorId, dateRange);
+        console.log('✅ Redemption trends by promotion fetched');
+      } catch (e) {
+        console.error('❌ Error fetching redemption trends by promotion:', e.message);
+        redemptionTrendsByPromotion = [];
+      }
+
+      console.log('All data fetched (with fallbacks), building response...');
 
       return {
         metadata: {
@@ -150,7 +199,7 @@ export class AnalyticsService {
             xAxisLabel: 'Days',
             yAxisLabel: 'Redemptions',
             minY: 0,
-            maxY: Math.max(...redemptionTrends.map((e) => e.y), 1),
+            maxY: redemptionTrends.length > 0 ? Math.max(...redemptionTrends.map((e) => e.y), 1) : 1,
           },
           // Booking trends - Vico Line Chart
           bookingTrends: {
@@ -161,7 +210,7 @@ export class AnalyticsService {
             xAxisLabel: 'Days',
             yAxisLabel: 'Bookings',
             minY: 0,
-            maxY: Math.max(...bookingTrends.map((e) => e.y), 1),
+            maxY: bookingTrends.length > 0 ? Math.max(...bookingTrends.map((e) => e.y), 1) : 1,
           },
           // Promotion statistics summary
           promotionStats: {
