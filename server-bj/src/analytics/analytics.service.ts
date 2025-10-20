@@ -365,7 +365,7 @@ export class AnalyticsService {
 
     const redemptions = await this.redeemedcouponRepository
       .createQueryBuilder('redeem')
-      .leftJoinAndSelect('redeem.promotion', 'promo')
+      .leftJoin('redeem.promotion', 'promo')
       .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
       .andWhere('redeem.usedDate >= :startDate', {
         startDate: dateRange.startDate,
@@ -393,7 +393,7 @@ export class AnalyticsService {
 
     const bookings = await this.bookingsRepository
       .createQueryBuilder('booking')
-      .leftJoinAndSelect('booking.promotion', 'promo')
+      .leftJoin('booking.promotion', 'promo')
       .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
       .andWhere('booking.bookingDate >= :startDate', {
         startDate: dateRange.startDate,
@@ -452,14 +452,14 @@ export class AnalyticsService {
     // Count total bookings for collaborator's promotions
     const totalBookings = await this.bookingsRepository
       .createQueryBuilder('booking')
-      .leftJoinAndSelect('booking.promotion', 'promo')
+      .leftJoin('booking.promotion', 'promo')
       .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
       .getCount();
 
     // Count redeemed coupons in date range
     const redeemedCoupons = await this.redeemedcouponRepository
       .createQueryBuilder('redeem')
-      .leftJoinAndSelect('redeem.promotion', 'promo')
+      .leftJoin('redeem.promotion', 'promo')
       .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
       .andWhere('redeem.usedDate >= :startDate', {
         startDate: dateRange.startDate,
@@ -501,7 +501,7 @@ export class AnalyticsService {
   ): Promise<VicoBarChartEntry[]> {
     const topCoupons = await this.redeemedcouponRepository
       .createQueryBuilder('redeem')
-      .leftJoinAndSelect('redeem.promotion', 'promo')
+      .leftJoin('redeem.promotion', 'promo')
       .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
       .andWhere('redeem.usedDate >= :startDate', {
         startDate: dateRange.startDate,
@@ -538,7 +538,7 @@ export class AnalyticsService {
     // First, get top 5 promotions by redemption count
     const topPromotions = await this.redeemedcouponRepository
       .createQueryBuilder('redeem')
-      .leftJoinAndSelect('redeem.promotion', 'promo')
+      .leftJoin('redeem.promotion', 'promo')
       .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
       .andWhere('redeem.usedDate >= :startDate', {
         startDate: dateRange.startDate,
@@ -739,8 +739,8 @@ export class AnalyticsService {
   private async getTopCollaborators(dateRange: any): Promise<TopCollaboratorData[]> {
     const topCollabs = await this.redeemedcouponRepository
       .createQueryBuilder('redeem')
-      .leftJoinAndSelect('redeem.promotion', 'promo')
-      .leftJoinAndSelect('promo.collaborator', 'collab')
+      .leftJoin('redeem.promotion', 'promo')
+      .leftJoin('promo.collaborator', 'collab')
       .where('redeem.usedDate >= :startDate', { startDate: dateRange.startDate })
       .andWhere('redeem.usedDate <= :endDate', { endDate: dateRange.endDate })
       .select('collab.cognitoId', 'collaboratorId')
@@ -789,8 +789,8 @@ export class AnalyticsService {
   private async getTopPromotions(dateRange: any): Promise<TopPromotionData[]> {
     const topPromos = await this.redeemedcouponRepository
       .createQueryBuilder('redeem')
-      .leftJoinAndSelect('redeem.promotion', 'promo')
-      .leftJoinAndSelect('promo.collaborator', 'collab')
+      .leftJoin('redeem.promotion', 'promo')
+      .leftJoin('promo.collaborator', 'collab')
       .where('redeem.usedDate >= :startDate', { startDate: dateRange.startDate })
       .andWhere('redeem.usedDate <= :endDate', { endDate: dateRange.endDate })
       .select('promo.promotionId', 'promotionId')
