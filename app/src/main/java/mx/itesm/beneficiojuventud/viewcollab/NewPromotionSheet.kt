@@ -38,18 +38,19 @@ private val Purple = Color(0xFF6200EE)
 @Composable
 fun NewPromotionSheet(
     onClose: () -> Unit,
-    viewModel: PromoViewModel = viewModel()
+    viewModel: PromoViewModel = viewModel(),
+    initialPromotionData: mx.itesm.beneficiojuventud.model.webhook.PromotionData? = null
 ) {
     val promo by viewModel.promoState.collectAsState()
     val scope = rememberCoroutineScope()
 
-    var title by rememberSaveable { mutableStateOf(promo.title.orEmpty()) }
-    var description by rememberSaveable { mutableStateOf(promo.description.orEmpty()) }
-    var startDate by rememberSaveable { mutableStateOf(promo.initialDate.orEmpty()) }
-    var endDate by rememberSaveable { mutableStateOf(promo.endDate.orEmpty()) }
-    var totalStock by rememberSaveable { mutableStateOf(promo.totalStock?.toString().orEmpty()) }
-    var limitPerUser by rememberSaveable { mutableStateOf(promo.limitPerUser?.toString().orEmpty()) }
-    var imageUrl by rememberSaveable { mutableStateOf(promo.imageUrl.orEmpty()) }
+    var title by rememberSaveable { mutableStateOf(initialPromotionData?.title ?: promo.title.orEmpty()) }
+    var description by rememberSaveable { mutableStateOf(initialPromotionData?.description ?: promo.description.orEmpty()) }
+    var startDate by rememberSaveable { mutableStateOf(initialPromotionData?.initialDate ?: promo.initialDate.orEmpty()) }
+    var endDate by rememberSaveable { mutableStateOf(initialPromotionData?.endDate ?: promo.endDate.orEmpty()) }
+    var totalStock by rememberSaveable { mutableStateOf(initialPromotionData?.totalStock?.toString() ?: promo.totalStock?.toString().orEmpty()) }
+    var limitPerUser by rememberSaveable { mutableStateOf(initialPromotionData?.limitPerUser?.toString() ?: promo.limitPerUser?.toString().orEmpty()) }
+    var imageUrl by rememberSaveable { mutableStateOf(initialPromotionData?.imageUrl ?: promo.imageUrl.orEmpty()) }
 
     var showStartPicker by remember { mutableStateOf(false) }
     var showEndPicker by remember { mutableStateOf(false) }

@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.model.webhook.PromotionData
 
 private val TextGrey = Color(0xFF616161)
 
@@ -41,7 +42,7 @@ fun GeneratePromotionScreen(nav: NavHostController) {
     val sheetStateAI = rememberModalBottomSheetState()
     var showBottomSheetAI by remember { mutableStateOf(false) }
 
-    var aiPromptInput by remember { mutableStateOf<String?>(null) }
+    var aiGeneratedPromotion by remember { mutableStateOf<PromotionData?>(null) }
 
     val scope = rememberCoroutineScope()
 
@@ -72,7 +73,7 @@ fun GeneratePromotionScreen(nav: NavHostController) {
                     title = "Crear Manualmente",
                     description = "Diseña tu promoción, paso a paso, con total control sobre cada detalle.",
                     onClick = {
-                        aiPromptInput = null
+                        aiGeneratedPromotion = null
                         showBottomSheetManual = true
                     }
                 )
@@ -92,13 +93,16 @@ fun GeneratePromotionScreen(nav: NavHostController) {
             onDismissRequest = { showBottomSheetManual = false },
             sheetState = sheetStateManual
         ) {
-            NewPromotionSheet(onClose = {
-                scope.launch { sheetStateManual.hide() }.invokeOnCompletion {
-                    if (!sheetStateManual.isVisible) {
-                        showBottomSheetManual = false
+            NewPromotionSheet(
+                onClose = {
+                    scope.launch { sheetStateManual.hide() }.invokeOnCompletion {
+                        if (!sheetStateManual.isVisible) {
+                            showBottomSheetManual = false
+                        }
                     }
-                }
-            })
+                },
+                initialPromotionData = aiGeneratedPromotion
+            )
         }
     }
 
@@ -115,8 +119,8 @@ fun GeneratePromotionScreen(nav: NavHostController) {
                         }
                     }
                 },
-                onGeneratePromotion = { prompt ->
-                    aiPromptInput = prompt
+                onGeneratePromotion = { promotionData ->
+                    aiGeneratedPromotion = promotionData
 
                     scope.launch {
                         sheetStateAI.hide()
