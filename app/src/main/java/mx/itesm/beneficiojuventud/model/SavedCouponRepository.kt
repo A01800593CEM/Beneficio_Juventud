@@ -9,6 +9,7 @@ import mx.itesm.beneficiojuventud.model.RoomDB.PromotionsCategories.PromotionWit
 import mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionDao
 import mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionEntity
 import mx.itesm.beneficiojuventud.model.bookings.Booking
+import mx.itesm.beneficiojuventud.model.bookings.BookingStatus
 import mx.itesm.beneficiojuventud.model.bookings.RemoteServiceBooking
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
@@ -148,12 +149,27 @@ class SavedCouponRepository(
         }
     }
 
-    suspend fun cancelBooking(bookingId: Int, promotionId: Int) {
+    suspend fun cancelBooking(bookingId: Int, promotionId: Int, cancelledDate: String) {
         try {
+            Log.d("CouponRepository", "Cancelando booking $bookingId con cancelledDate: $cancelledDate")
             RemoteServiceBooking.deleteBooking(bookingId)
 
-            // Eliminar booking local
-            bookingDao.deleteById(bookingId)
+            // Actualizar booking local con estado CANCELLED y fecha de cancelación
+            val booking = bookingDao.getBookingById(bookingId)
+            if (booking != null) {
+                val updatedBooking = booking.copy(
+                    status = BookingStatus.CANCELLED,
+                    cancelledDate = cancelledDate
+                )
+                Log.d("CouponRepository", "Actualizando booking: status=${updatedBooking.status}, cancelledDate=${updatedBooking.cancelledDate}")
+                bookingDao.updateBooking(updatedBooking)
+
+                // Verificar que se guardó correctamente
+                val verified = bookingDao.getBookingById(bookingId)
+                Log.d("CouponRepository", "Booking verificado después de update: status=${verified?.status}, cancelledDate=${verified?.cancelledDate}")
+            } else {
+                Log.w("CouponRepository", "Booking $bookingId no encontrado en base de datos local")
+            }
 
             // Eliminar relaciones de categorías
             promotionCategoriesDao.deleteAllCategoriesForPromotion(promotionId)

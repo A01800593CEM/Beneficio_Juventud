@@ -9,5 +9,6 @@ data class Booking(
     val bookingDate: String? = null, // lo ocupamos
     val limitUseDate: String? = null, // lo ocupamos
     val status: BookingStatus? = null, // lo ocupamos
+    val cancelledDate: String? = null, // fecha de cancelación para cooldown
 
 )

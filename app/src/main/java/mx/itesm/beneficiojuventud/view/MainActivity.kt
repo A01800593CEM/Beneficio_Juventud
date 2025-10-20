@@ -55,7 +55,9 @@ class MainActivity : ComponentActivity() {
             applicationContext,
             LocalDatabase::class.java,
             "beneficio-joven-db"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
         enableEdgeToEdge()
         solicitarPermiso()
         obtenerToken()

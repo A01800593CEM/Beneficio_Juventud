@@ -59,6 +59,7 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import mx.itesm.beneficiojuventud.model.bookings.BookingStatus
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.ui.graphics.ImageBitmap
@@ -372,11 +373,71 @@ fun PromoQR(
         } catch (_: Exception) {}
     }
 
-    // Verificar si la promoción está reservada
-    val currentBooking = remember(userBookings, promotionId) {
-        userBookings.find { it.promotionId == promotionId }
+    // Log de todos los bookings para debug
+    LaunchedEffect(userBookings) {
+        Log.d(TAG, "Total userBookings: ${userBookings.size}")
+        userBookings.forEach { booking ->
+            Log.d(TAG, "Booking: id=${booking.bookingId}, promotionId=${booking.promotionId}, status=${booking.status}, cancelledDate=${booking.cancelledDate}")
+        }
     }
-    val isReserved = currentBooking != null
+
+    // Verificar si la promoción está reservada (solo bookings activos)
+    val currentBooking = remember(userBookings, promotionId) {
+        val found = userBookings.find {
+            it.promotionId == promotionId &&
+            it.status != BookingStatus.CANCELLED
+        }
+        Log.d(TAG, "Current booking for promotion $promotionId: ${found?.bookingId}")
+        found
+    }
+
+    // Buscar booking cancelado para verificar cooldown
+    val cancelledBooking = remember(userBookings, promotionId) {
+        val found = userBookings.find {
+            it.promotionId == promotionId &&
+            it.status == BookingStatus.CANCELLED
+        }
+        Log.d(TAG, "Cancelled booking for promotion $promotionId: ${found?.bookingId}, cancelledDate=${found?.cancelledDate}")
+        found
+    }
+
+    // Estado de la reserva con expiración
+    val bookingExpired = remember(currentBooking) {
+        currentBooking?.let { isBookingExpired(it.bookingDate) } ?: false
+    }
+
+    val isReserved = currentBooking != null && !bookingExpired
+
+    // Tiempo restante hasta expiración (horas, minutos)
+    val timeRemaining = remember(currentBooking) {
+        currentBooking?.let { getTimeUntilExpiration(it.bookingDate) } ?: Pair(0L, 0L)
+    }
+
+    // Cooldown desde la cancelación (manual o automática)
+    val inCooldown = remember(cancelledBooking) {
+        val result = cancelledBooking?.let {
+            Log.d(TAG, "Checking cooldown - cancelledDate: ${it.cancelledDate}, status: ${it.status}")
+            isInCooldown(it.cancelledDate)
+        } ?: false
+        Log.d(TAG, "inCooldown result: $result")
+        result
+    }
+
+    val cooldownTime = remember(cancelledBooking) {
+        if (inCooldown) {
+            val time = cancelledBooking?.let { getTimeUntilCooldownEnd(it.cancelledDate) } ?: Pair(0L, 0L)
+            Log.d(TAG, "Cooldown time remaining: ${time.first}m ${time.second}s")
+            time
+        } else Pair(0L, 0L)
+    }
+
+    // Auto-cancelar reservas expiradas cuando se abre la pantalla
+    LaunchedEffect(currentBooking, bookingExpired) {
+        if (currentBooking != null && bookingExpired) {
+            Log.d(TAG, "Reserva expirada detectada, cancelando automáticamente: ${currentBooking.bookingId}")
+            bookingViewModel.cancelBooking(currentBooking)
+        }
+    }
 
     // Theme
     val currentTheme = detail?.theme ?: PromoTheme.light
@@ -577,20 +638,50 @@ fun PromoQR(
                                     listOf(Color(0xFFDC2626), Color(0xFFEF4444))
                                 )
 
+                                val greyGradient = Brush.linearGradient(
+                                    listOf(Color(0xFF9CA3AF), Color(0xFF6B7280))
+                                )
+
                                 MainButton(
                                     text = when {
                                         bookingLoading && !isReserved -> "Reservando..."
                                         bookingLoading && isReserved -> "Cancelando..."
-                                        isReserved -> "Cancelar Reservación"
+                                        bookingExpired && inCooldown -> {
+                                            val (h, m) = cooldownTime
+                                            "Cooldown (${formatTimeRemaining(h, m)})"
+                                        }
+                                        bookingExpired -> "Reserva Expirada"
+                                        isReserved -> {
+                                            val (h, m) = timeRemaining
+                                            if (h > 0 || m > 0) {
+                                                "Cancelar (${formatTimeRemaining(h, m)})"
+                                            } else {
+                                                "Cancelar Reservación"
+                                            }
+                                        }
                                         else -> "Reservar Cupón"
                                     },
                                     modifier = Modifier.fillMaxWidth(),
-                                    backgroundGradient = if (isReserved) redGradient else null,
+                                    backgroundGradient = when {
+                                        bookingExpired || inCooldown -> greyGradient
+                                        isReserved -> redGradient
+                                        else -> null
+                                    },
+                                    enabled = !bookingExpired && !inCooldown,
                                     onClick = {
                                         if (isReserved) {
                                             // Cancelar reservación (pero mantener en favoritos)
                                             currentBooking?.let { booking ->
                                                 bookingViewModel.cancelBooking(booking)
+                                            }
+                                        } else if (inCooldown) {
+                                            val (h, m) = cooldownTime
+                                            val timeMsg = formatTimeRemaining(h, m)
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    message = "Debes esperar $timeMsg antes de volver a reservar",
+                                                    duration = SnackbarDuration.Short
+                                                )
                                             }
                                         } else {
                                             // Verificar que hay stock disponible
@@ -830,6 +921,95 @@ private fun RedeemedCardInner() {
         Text("¡Cupón Canjeado!", color = Color(0xFF22C55E), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
         Spacer(Modifier.height(4.dp))
         Text("Gracias por usar nuestros servicios", color = Color.Gray, fontSize = 12.sp)
+    }
+}
+
+// ---------- Helpers de Expiración y Cooldown ----------
+
+/**
+ * Verifica si una reserva ha expirado (1 minuto desde bookingDate para pruebas)
+ */
+private fun isBookingExpired(bookingDate: String?): Boolean {
+    if (bookingDate.isNullOrBlank()) return false
+    return try {
+        val booking = parseDate(bookingDate) ?: return false
+        val now = Date()
+        val diffMillis = now.time - booking.time
+        val minute1InMillis = 1L * 60 * 1000  // 1 minuto para pruebas
+        diffMillis >= minute1InMillis
+    } catch (e: Exception) {
+        false
+    }
+}
+
+/**
+ * Calcula el tiempo restante hasta la expiración
+ * Retorna pair de (minutos, segundos) para pruebas
+ */
+private fun getTimeUntilExpiration(bookingDate: String?): Pair<Long, Long> {
+    if (bookingDate.isNullOrBlank()) return Pair(0L, 0L)
+    return try {
+        val booking = parseDate(bookingDate) ?: return Pair(0L, 0L)
+        val now = Date()
+        val diffMillis = now.time - booking.time
+        val minute1InMillis = 1L * 60 * 1000  // 1 minuto para pruebas
+        val remainingMillis = maxOf(0L, minute1InMillis - diffMillis)
+
+        val minutes = remainingMillis / (1000 * 60)
+        val seconds = (remainingMillis % (1000 * 60)) / 1000
+
+        Pair(minutes, seconds)
+    } catch (e: Exception) {
+        Pair(0L, 0L)
+    }
+}
+
+/**
+ * Formatea el tiempo restante en formato legible "Xm Ys" para pruebas
+ */
+private fun formatTimeRemaining(minutes: Long, seconds: Long): String {
+    return when {
+        minutes > 0 && seconds > 0 -> "${minutes}m ${seconds}s"
+        minutes > 0 -> "${minutes}m"
+        seconds > 0 -> "${seconds}s"
+        else -> "Expirando..."
+    }
+}
+
+/**
+ * Verifica si una reserva cancelada está en período de cooldown (1 minuto desde cancelación para pruebas)
+ */
+private fun isInCooldown(cancelledDate: String?): Boolean {
+    if (cancelledDate.isNullOrBlank()) return false
+    return try {
+        val cancelled = parseDate(cancelledDate) ?: return false
+        val now = Date()
+        val diffMillis = now.time - cancelled.time
+        val minute1InMillis = 1L * 60 * 1000  // 1 minuto cooldown para pruebas
+        diffMillis < minute1InMillis
+    } catch (e: Exception) {
+        false
+    }
+}
+
+/**
+ * Calcula el tiempo restante de cooldown en formato (minutos, segundos) para pruebas
+ */
+private fun getTimeUntilCooldownEnd(cancelledDate: String?): Pair<Long, Long> {
+    if (cancelledDate.isNullOrBlank()) return Pair(0L, 0L)
+    return try {
+        val cancelled = parseDate(cancelledDate) ?: return Pair(0L, 0L)
+        val now = Date()
+        val diffMillis = now.time - cancelled.time
+        val minute1InMillis = 1L * 60 * 1000  // 1 minuto para pruebas
+        val remainingMillis = maxOf(0L, minute1InMillis - diffMillis)
+
+        val minutes = remainingMillis / (1000 * 60)
+        val seconds = (remainingMillis % (1000 * 60)) / 1000
+
+        Pair(minutes, seconds)
+    } catch (e: Exception) {
+        Pair(0L, 0L)
     }
 }
 

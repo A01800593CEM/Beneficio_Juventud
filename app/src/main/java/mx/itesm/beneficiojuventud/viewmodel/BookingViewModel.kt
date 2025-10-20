@@ -186,9 +186,11 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
                     }
                 }
 
+                val cancelDate = getCurrentDateISO()
                 repository.cancelBooking(
                     bookingId = booking.bookingId ?: return@launch,
-                    promotionId = promotionId
+                    promotionId = promotionId,
+                    cancelledDate = cancelDate
                 )
 
                 _message.value = "Reservación cancelada"
@@ -279,6 +281,7 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
 
     private fun getCurrentDateISO(): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
         return sdf.format(Date())
     }
 
@@ -286,6 +289,7 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
         val calendar = Calendar.getInstance()
         calendar.add(Calendar.DAY_OF_MONTH, 30) // 30 días desde hoy
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
         return sdf.format(calendar.time)
     }
 }

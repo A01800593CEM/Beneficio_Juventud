@@ -11,5 +11,6 @@ data class BookingEntity(
     val promotionId: Int?,
     val bookingDate: String?,
     val limitUseDate: String?,
-    val status: BookingStatus?
+    val status: BookingStatus?,
+    val cancelledDate: String? = null
 )

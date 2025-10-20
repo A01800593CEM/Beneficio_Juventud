@@ -18,7 +18,7 @@ import mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionEntity
     PromotionEntity::class,
     CategoryEntity::class,
     PromotionCategories::class,
-    BookingEntity::class], version = 2)
+    BookingEntity::class], version = 3)
 @TypeConverters(Converters::class)
 abstract class LocalDatabase : RoomDatabase() {
     abstract fun promotionDao(): PromotionDao
