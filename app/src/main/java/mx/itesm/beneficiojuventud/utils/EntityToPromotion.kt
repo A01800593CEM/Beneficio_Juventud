@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.utils
 
+import android.util.Base64
 import mx.itesm.beneficiojuventud.model.RoomDB.PromotionsCategories.PromotionWithCategories
 import mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionEntity
 import mx.itesm.beneficiojuventud.model.promos.Promotions
@@ -9,12 +10,23 @@ import mx.itesm.beneficiojuventud.model.promos.Promotions
  * Converts a database [PromotionEntity] object into a business logic [Promotions] object.
  */
 fun PromotionWithCategories.toPromotion(): Promotions {
+    // Use the file path directly - Coil can load from file:// URIs
+    val imageUrl = this.promotion.imagePath?.let { path ->
+        // Convert to file:// URI for Coil to load
+        if (path.startsWith("file://")) {
+            path
+        } else {
+            "file://$path"
+        }
+    }
+
+    android.util.Log.d("EntityToPromotion", "Converting promotion ${this.promotion.promotionId}: image path = $imageUrl")
+
     return Promotions(
         promotionId = this.promotion.promotionId,
         title = this.promotion.title,
         description = this.promotion.description,
-        // The `image` field from the entity (ByteArray?) is not mapped back to the Promotions model,
-        // which is common if the UI model uses an image URL or handles loading differently.
+        imageUrl = imageUrl,  // Use file path for offline images
         initialDate = this.promotion.initialDate,
         endDate = this.promotion.endDate,
         promotionType = this.promotion.promotionType,
@@ -28,8 +40,6 @@ fun PromotionWithCategories.toPromotion(): Promotions {
         theme = this.promotion.theme,
         businessName = this.promotion.businessName,
         categories = this.categories.toCategoryList()
-        // Note: We don't map `isReserved` back, as the `Promotions` class might not have this field.
-        // If it does, you would add: isReserved = this.isReserved
     )
 }
 

@@ -187,16 +187,27 @@ class UserViewModel(private val repository: SavedCouponRepository) : ViewModel()
         // No tocamos loadToken aquí para no invalidar otras cargas largas.
         viewModelScope.launch {
             // Promos
+            android.util.Log.d("UserViewModel", "refreshFavorites called for user: $cognitoId")
             runCatching {
                 withContext(Dispatchers.IO) { repository.getFavoritePromotions(cognitoId) }
-            }.onSuccess { _favoritePromotions.value = it }
-                .onFailure { e -> _error.value = e.message ?: "Error al refrescar promociones favoritas" }
+            }.onSuccess {
+                android.util.Log.d("UserViewModel", "Successfully loaded ${it.size} favorite promos")
+                _favoritePromotions.value = it
+            }.onFailure { e ->
+                android.util.Log.e("UserViewModel", "Failed to load favorite promos", e)
+                _error.value = e.message ?: "Error al refrescar promociones favoritas"
+            }
 
             // Collabs (List<Collaborator>)
             runCatching {
                 withContext(Dispatchers.IO) { model.getFavoriteCollabs(cognitoId) }
-            }.onSuccess { _favoriteCollabs.value = it }
-                .onFailure { e -> _error.value = e.message ?: "Error al refrescar colaboradores favoritos" }
+            }.onSuccess {
+                android.util.Log.d("UserViewModel", "Successfully loaded ${it.size} favorite collabs")
+                _favoriteCollabs.value = it
+            }.onFailure { e ->
+                android.util.Log.e("UserViewModel", "Failed to load favorite collabs", e)
+                _error.value = e.message ?: "Error al refrescar colaboradores favoritos"
+            }
         }
     }
 
@@ -238,5 +249,22 @@ class UserViewModel(private val repository: SavedCouponRepository) : ViewModel()
         val isFav = _favoriteCollabs.value.any { it.cognitoId == collaboratorId }
         if (isFav) unfavoriteCollaborator(collaboratorId, cognitoId)
         else favoriteCollaborator(collaboratorId, cognitoId)
+    }
+
+    /**
+     * Syncs all categories from the server to RoomDB for offline access.
+     * This should be called when the app has internet connectivity.
+     */
+    fun syncCategories() {
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { repository.syncCategoriesFromServer() }
+            }.onSuccess {
+                android.util.Log.d("UserViewModel", "Categories synced successfully")
+            }.onFailure { e ->
+                android.util.Log.e("UserViewModel", "Failed to sync categories", e)
+                // Don't set error state - this is a background operation
+            }
+        }
     }
 }

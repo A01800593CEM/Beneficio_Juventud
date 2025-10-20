@@ -12,7 +12,7 @@ data class PromotionEntity(
     @PrimaryKey val promotionId: Int?,
     val title: String?,
     val description: String?,
-    @ColumnInfo(typeAffinity = ColumnInfo.Companion.BLOB) val image: ByteArray?,
+    val imagePath: String?, // Changed from BLOB to file path
     val initialDate: String?,
     val endDate: String?,
     val promotionType: PromotionType?,

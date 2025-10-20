@@ -6,12 +6,12 @@ import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.utils.toCategoryEntityList
 
 
-fun Promotions.toEntity(isReserved: Boolean = false) : PromotionEntity {
+fun Promotions.toEntity(isReserved: Boolean = false, imagePath: String? = null) : PromotionEntity {
     return PromotionEntity(
         promotionId = this.promotionId,
         title = this.title,
         description = this.description,
-        image = null,
+        imagePath = imagePath,  // Now accepts the file path
         initialDate = this.initialDate,
         endDate = this.endDate,
         promotionType = this.promotionType,

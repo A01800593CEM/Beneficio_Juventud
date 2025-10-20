@@ -742,7 +742,7 @@ private fun TopBar(
 @Composable
 private fun HomePreview() {
     // 1. Create a fake DAO that implements the actual PromotionDao interface
-    val fakeDao = object : PromotionDao {
+    val fakePromotionDao = object : PromotionDao {
         override suspend fun getFavoritePromotions(): List<PromotionWithCategories> {
             return emptyList()
         }
@@ -758,7 +758,7 @@ private fun HomePreview() {
                     promotionId = promotionId,
                     title = "Preview Promo",
                     description = null,
-                    image = null,
+                    imagePath = null,
                     initialDate = null,
                     endDate = null,
                     promotionType = null,
@@ -786,8 +786,45 @@ private fun HomePreview() {
         }
     }
 
-    // 2. Create a repository with the fake DAO.
-    val fakeRepository = SavedCouponRepository(fakeDao)
+    // Create a fake CategoryDao
+    val fakeCategoryDao = object : mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryDao {
+        override suspend fun getAll(): List<mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryEntity> {
+            return emptyList()
+        }
+
+        override suspend fun findById(categoryId: Int): mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryEntity {
+            return mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryEntity(categoryId, "Preview Category")
+        }
+
+        override suspend fun insertCategory(vararg gategories: mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryEntity) {
+            // Do nothing for preview
+        }
+
+        override suspend fun deleteCategory(category: mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryEntity) {
+            // Do nothing for preview
+        }
+    }
+
+    // Create a fake PromotionCategoriesDao
+    val fakePromotionCategoriesDao = object : mx.itesm.beneficiojuventud.model.RoomDB.PromotionsCategories.PromotionCategoriesDao {
+        override suspend fun insertPromotionCategory(promotionCategory: mx.itesm.beneficiojuventud.model.RoomDB.PromotionsCategories.PromotionCategories) {
+            // Do nothing for preview
+        }
+
+        override suspend fun insertPromotionCategories(vararg promotionCategories: mx.itesm.beneficiojuventud.model.RoomDB.PromotionsCategories.PromotionCategories) {
+            // Do nothing for preview
+        }
+
+        override suspend fun deletePromotionCategories(promotionId: Int) {
+            // Do nothing for preview
+        }
+    }
+
+    // Get the context for the repository
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // 2. Create a repository with the fake DAOs.
+    val fakeRepository = SavedCouponRepository(context, fakePromotionDao, fakeCategoryDao, fakePromotionCategoriesDao)
 
     // 3. Create the ViewModel with the fake repository.
     // NOTE: Your UserViewModel might need more fake dependencies if its constructor changed.

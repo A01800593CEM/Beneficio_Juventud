@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
         val db = LocalDatabase.getDatabase(this)
         val promotionDao = db.promotionDao()
         val categoryDao = db.categoryDao()
+        val promotionCategoriesDao = db.promotionCategoriesDao()
 
         enableEdgeToEdge()
         solicitarPermiso()
@@ -63,7 +64,8 @@ class MainActivity : ComponentActivity() {
             BeneficioJuventudTheme {
                 AppContent(
                     promotionDao = promotionDao,
-                    categoryDao = categoryDao
+                    categoryDao = categoryDao,
+                    promotionCategoriesDao = promotionCategoriesDao
                 )
             }
         }
@@ -107,11 +109,19 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppContent(
     promotionDao: mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionDao,
-    categoryDao: mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryDao
+    categoryDao: mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryDao,
+    promotionCategoriesDao: mx.itesm.beneficiojuventud.model.RoomDB.PromotionsCategories.PromotionCategoriesDao
 ) {
-    // Create repository with the DAO
-    val repository = remember(promotionDao) {
-        mx.itesm.beneficiojuventud.model.SavedCouponRepository(promotionDao)
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // Create repository with the DAOs
+    val repository = remember(promotionDao, categoryDao, promotionCategoriesDao) {
+        mx.itesm.beneficiojuventud.model.SavedCouponRepository(
+            context = context,
+            promotionDao = promotionDao,
+            categoryDao = categoryDao,
+            promotionCategoriesDao = promotionCategoriesDao
+        )
     }
 
     // Create ViewModels
@@ -172,6 +182,13 @@ private fun AppNav(
         if (!currentUserId.isNullOrBlank()) userViewModel.getUserById(currentUserId!!)
     }
 
+    // Sync categories from server when app starts and user is authenticated
+    LaunchedEffect(appState.isAuthenticated) {
+        if (appState.isAuthenticated) {
+            userViewModel.syncCategories()
+        }
+    }
+
     NavHost(navController = nav, startDestination = "splash") {
         composable("splash") {
             // Usamos la lógica de splash/arranque del primer bloque
@@ -185,7 +202,13 @@ private fun AppNav(
         // --- Autenticación ---
         composable(Screens.LoginRegister.route) { LoginRegister(nav) }
         composable(Screens.Login.route) { Login(nav, authViewModel = authViewModel) }
-        composable(Screens.Register.route) { Register(nav, authViewModel = authViewModel) }
+        composable(Screens.Register.route) {
+            Register(
+                nav = nav,
+                authViewModel = authViewModel,
+                userViewModel = userViewModel
+            )
+        }
         composable(Screens.ForgotPassword.route) { ForgotPassword(nav) }
         composable(Screens.RecoveryCode.route) { RecoveryCode(nav) }
         composable("recovery_code/{email}") { backStackEntry ->
@@ -196,14 +219,24 @@ private fun AppNav(
             RecoveryCode(nav, emailArg = email)
         }
         composable(Screens.ConfirmSignUp.route) {
-            ConfirmSignUp(nav, "", authViewModel = authViewModel)
+            ConfirmSignUp(
+                nav = nav,
+                email = "",
+                authViewModel = authViewModel,
+                userViewModel = userViewModel
+            )
         }
         composable("confirm_signup/{email}") { backStackEntry ->
             val email = java.net.URLDecoder.decode(
                 backStackEntry.arguments?.getString("email") ?: "",
                 "UTF-8"
             )
-            ConfirmSignUp(nav, email, authViewModel = authViewModel)
+            ConfirmSignUp(
+                nav = nav,
+                email = email,
+                authViewModel = authViewModel,
+                userViewModel = userViewModel
+            )
         }
         composable(Screens.NewPassword.route) { NewPassword(nav) }
         composable("new_password/{email}/{code}") { backStackEntry ->

@@ -3,6 +3,7 @@ package mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import mx.itesm.beneficiojuventud.model.RoomDB.PromotionsCategories.PromotionWithCategories
@@ -23,7 +24,7 @@ interface PromotionDao {
     @Query("SELECT * FROM promotion WHERE promotionId = :promotionId")
     suspend fun findById(promotionId: Int): PromotionWithCategories
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPromotions(vararg promotions: PromotionEntity)
 
     @Delete
