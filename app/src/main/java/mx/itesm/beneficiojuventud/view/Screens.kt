@@ -63,6 +63,8 @@ sealed class Screens(val route: String) {
         )
     }
 
+    data object GeneratePromotionScreen : Screens("generate_promotion_screen")
+
     data object EditProfileCollab : Screens("edit_profile_collab")
 
 }

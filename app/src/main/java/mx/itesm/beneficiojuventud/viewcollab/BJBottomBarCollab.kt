@@ -24,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import mx.itesm.beneficiojuventud.components.GradientText
@@ -31,20 +33,26 @@ import mx.itesm.beneficiojuventud.view.GradientIcon
 import mx.itesm.beneficiojuventud.view.Screens
 
 /** Tabs del panel colaborador (los 4 de la barra). El 5º ícono es el botón central QR. */
-enum class CollabTab(val label: String, val icon: ImageVector, val route: String) {
-    Menu("Menú",     Icons.Outlined.Home,       Screens.HomeScreenCollab.route),
-    Stats("Stats",   Icons.Outlined.Equalizer,  Screens.StatsScreen.route),
+enum class CollabTab(val label: String, val icon: ImageVector, val rootRoute: String) {
+    Menu("Menú",       Icons.Outlined.Home,       Screens.HomeScreenCollab.route),
+    Stats("Stats",     Icons.Outlined.Equalizer,  Screens.StatsScreen.route),
     Promotions("Promos", Icons.Outlined.Discount, Screens.PromotionsScreen.route),
-    Profile("Perfil", Icons.Outlined.Person,    Screens.ProfileCollab.route)
+    Profile("Perfil",  Icons.Outlined.Person,     Screens.ProfileCollab.route)
 }
 
-/**
- * Bottom bar para el panel de colaborador:
- * - Misma filosofía que BJBottomBar (altura fija y sin crecer por insets).
- * - Tab activo según la ruta actual del NavController.
- * - Navegación con popUpTo + restoreState para conservar estado entre tabs.
- * - Botón central “flotante” para abrir el lector QR.
+/** Navegación entre tabs que:
+ * - Hace pop hasta el startDestination del grafo
+ * - Evita duplicados (singleTop)
+ * - Restaura estado de cada tab
  */
+private fun NavHostController.navigateToTabRoot(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
 @Composable
 fun BJBottomBarCollab(
     nav: NavHostController,
@@ -56,16 +64,15 @@ fun BJBottomBarCollab(
 ) {
     val labelBase = MaterialTheme.typography.labelSmall
 
-    // Altura real del inset inferior (gestures/botones)
+    // Inset inferior real
     val bottomInset = WindowInsets.navigationBars
         .only(WindowInsetsSides.Bottom)
         .asPaddingValues()
         .calculateBottomPadding()
 
-    // Ruta actual → tab seleccionado
+    // Ruta/stack actual para marcar seleccionado correctamente
     val backStackEntry by nav.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route
-    val selectedTab = CollabTab.values().firstOrNull { it.route == currentRoute } ?: CollabTab.Menu
+    val currentDestination = backStackEntry?.destination
 
     Column(Modifier.fillMaxWidth()) {
         // Barra + botón central
@@ -78,10 +85,9 @@ fun BJBottomBarCollab(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(88.dp), // espacio para la barra (68) + botón central (sale por arriba)
+                    .height(88.dp),
                 contentAlignment = Alignment.BottomCenter
             ) {
-                // Barra inferior (altura fija; no crece con insets)
                 NavigationBar(
                     containerColor = containerColor,
                     tonalElevation = 0.dp,
@@ -116,19 +122,14 @@ fun BJBottomBarCollab(
 
                     @Composable
                     fun Item(tab: CollabTab) {
-                        val isSel = selectedTab == tab
+                        // Considera seleccionado si cualquier destino en la jerarquía coincide con la ruta raíz del tab.
+                        val isSel = currentDestination
+                            ?.hierarchy
+                            ?.any { dest -> dest.route == tab.rootRoute } == true
+
                         NavigationBarItem(
                             selected = isSel,
-                            onClick = {
-                                if (currentRoute != tab.route) {
-                                    nav.navigate(tab.route) {
-                                        // Mantén stack limpio entre tabs y restaura estado
-                                        popUpTo(Screens.HomeScreenCollab.route) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                }
-                            },
+                            onClick = { nav.navigateToTabRoot(tab.rootRoute) },
                             icon = { IconC(tab.icon, isSel) },
                             label = { Label(tab.label, isSel) },
                             alwaysShowLabel = true,
@@ -141,7 +142,7 @@ fun BJBottomBarCollab(
                     Item(CollabTab.Menu)
                     Item(CollabTab.Stats)
 
-                    // Espacio reservado para el botón central
+                    // Espacio para el botón central
                     Spacer(modifier = Modifier.weight(1f))
 
                     // Lado derecho
@@ -149,7 +150,7 @@ fun BJBottomBarCollab(
                     Item(CollabTab.Profile)
                 }
 
-                // Botón central (5º ícono): escáner QR
+                // Botón central (QR)
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -158,7 +159,12 @@ fun BJBottomBarCollab(
                         .shadow(4.dp, CircleShape)
                         .clip(CircleShape)
                         .background(activeBrush)
-                        .clickable { nav.navigate(Screens.QrScanner.route) },
+                        .clickable {
+                            // Si el lector QR es pantalla aparte, evita apilar duplicados:
+                            nav.navigate(Screens.QrScanner.route) {
+                                launchSingleTop = true
+                            }
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -171,7 +177,6 @@ fun BJBottomBarCollab(
             }
         }
 
-        // Este espacio SOLO aparece si hay inset inferior; empuja la barra hacia arriba.
         if (bottomInset > 0.dp) {
             Spacer(Modifier.height(bottomInset))
         }

@@ -34,6 +34,7 @@ import mx.itesm.beneficiojuventud.model.RoomDB.LocalDatabase
 import mx.itesm.beneficiojuventud.model.webhook.PromotionData
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewcollab.EditProfileCollab
+import mx.itesm.beneficiojuventud.viewcollab.GeneratePromotionScreen
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
@@ -324,6 +325,8 @@ private fun AppNav(
                 destinationRoute = java.net.URLDecoder.decode(destination, "UTF-8")
             )
         }
+
+        composable(Screens.GeneratePromotionScreen.route) { GeneratePromotionScreen(nav) }
     }
 }
 

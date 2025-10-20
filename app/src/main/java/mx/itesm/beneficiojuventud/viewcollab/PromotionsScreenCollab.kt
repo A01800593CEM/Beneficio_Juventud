@@ -2,11 +2,9 @@ package mx.itesm.beneficiojuventud.viewcollab
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Settings
@@ -14,8 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -28,9 +24,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.GradientDivider
+import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.PromoImageBanner
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.view.Screens
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 
 private val TextGrey = Color(0xFF616161)
@@ -44,7 +42,7 @@ fun PromotionsScreenCollab(
     collabId: String,
     promoViewModel: PromoViewModel = viewModel(),
     onEditPromotion: (Int) -> Unit = {},
-    onCreatePromotion: () -> Unit = {}
+    onCreatePromotion: () -> Unit = {} // (se deja por compatibilidad, ya no se usa abajo)
 ) {
     val allPromos by promoViewModel.promoListState.collectAsState(initial = emptyList())
     val promosForThisCollab: List<Promotions> = remember(allPromos, collabId) {
@@ -132,37 +130,22 @@ fun PromotionsScreenCollab(
                         }
                     }
 
-                    CreatePromotionButton(
+                    // === MainButton en lugar de CreatePromotionButton ===
+                    MainButton(
+                        text = "Crear una Nueva Promoción",
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        onClick = { onCreatePromotion() }
+                        onClick = {
+                            // Navega a la pantalla solicitada
+                            nav.navigate(Screens.GeneratePromotionScreen.route)
+                        }
                     )
 
-                    // Extra aire bajo el botón
                     Spacer(Modifier.height(8.dp))
                 }
             }
         }
-    }
-}
-@Composable
-private fun CreatePromotionButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val gradient = Brush.horizontalGradient(listOf(DarkBlue, Teal))
-    Box(
-        modifier = modifier
-            .background(gradient, shape = RoundedCornerShape(16.dp))
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Crear una Nueva Promoción",
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp
-        )
     }
 }
 
