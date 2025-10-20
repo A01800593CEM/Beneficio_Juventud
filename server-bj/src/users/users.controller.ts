@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -126,4 +126,10 @@ export class UsersController {
   remFavoritePromo(@Param('promotion_id') promotionId: number, @Param('user_id') userId: string) {
     return this.usersService.remFavoritePromo(userId, promotionId);
   }
+
+  @Get('email-exists')
+async checkEmailExists(@Query('email') email: string) {
+  const exists = await this.usersService.emailExists(email);
+  return { exists };
+}
 }

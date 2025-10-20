@@ -51,6 +51,15 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.ui.text.style.TextOverflow
 import mx.itesm.beneficiojuventud.components.BJTab
 
+// Nuevos imports para foto de perfil (igual que en Profile.kt)
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import com.amplifyframework.core.Amplify
+import com.amplifyframework.storage.StoragePath
+import java.io.File
+import android.util.Log
+
 // 👇 NUEVOS imports: diseño “Poster” con fav
 import mx.itesm.beneficiojuventud.components.MerchantRowSelectable
 import mx.itesm.beneficiojuventud.components.MerchantDesign
@@ -102,12 +111,49 @@ fun Home(
     var collabLoading by remember { mutableStateOf(false) }
     var collabError by remember { mutableStateOf<String?>(null) }
 
-    // Carga inicial de TODAS las promos
-    LaunchedEffect(Unit) {
+    // ⬇️ Estado e imagen de perfil (igual que en Profile.kt)
+    val context = LocalContext.current
+    var profileImageUrl by remember { mutableStateOf<String?>(null) }
+    var isLoadingImage by remember { mutableStateOf(false) }
+
+    LaunchedEffect(cognitoId) {
+        if (cognitoId.isBlank()) {
+            profileImageUrl = null
+            isLoadingImage = false
+            return@LaunchedEffect
+        }
+        try {
+            downloadProfileImageForDisplay(
+                context = context,
+                userId = cognitoId,
+                onSuccess = { url: String -> profileImageUrl = url },
+                onError = { _: Throwable? -> /* si falla, dejamos el fallback */ },
+                onLoading = { loading: Boolean -> isLoadingImage = loading }
+            )
+        } catch (_: Exception) {
+            // Storage no configurado aún, ignoramos
+        }
+
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // PROMOS: carga inicial → favoritas intercaladas (si hay), si no → todas
+    // ─────────────────────────────────────────────────────────────────────────────
+    LaunchedEffect(user.categories) {
         promoError = null
         promoLoading = true
-        runCatching { promoViewModel.getAllPromotions() }
-            .onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
+        runCatching {
+            val favNames = user.categories
+                ?.mapNotNull { it.name }
+                ?.filter { it.isNotBlank() }
+                .orEmpty()
+
+            if (favNames.isNotEmpty()) {
+                promoViewModel.getRecommendedInterleaved(favNames)
+            } else {
+                promoViewModel.getAllPromotions()
+            }
+        }.onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
         promoLoading = false
     }
 
@@ -159,7 +205,9 @@ fun Home(
             TopBar(
                 displayName = displayName,
                 search = search,
-                onSearchChange = { search = it }
+                onSearchChange = { search = it },
+                profileImageUrl = profileImageUrl,
+                isLoadingImage = isLoadingImage
             )
         },
         bottomBar = {
@@ -252,7 +300,16 @@ fun Home(
                                             promoLoading = true
                                             runCatching {
                                                 if (selectedCategoryName == null) {
-                                                    promoViewModel.getAllPromotions()
+                                                    val favNames = user.categories
+                                                        ?.mapNotNull { it.name }
+                                                        ?.filter { it.isNotBlank() }
+                                                        .orEmpty()
+
+                                                    if (favNames.isNotEmpty()) {
+                                                        promoViewModel.getRecommendedInterleaved(favNames)
+                                                    } else {
+                                                        promoViewModel.getAllPromotions()
+                                                    }
                                                 } else {
                                                     promoViewModel.getPromotionByCategory(selectedCategoryName!!)
                                                 }
@@ -287,11 +344,21 @@ fun Home(
                             onClick = {
                                 selectedCategoryName = null
                                 scope.launch {
-                                    // PROMOS
+                                    // PROMOS (favoritas intercaladas si existen, si no todas)
                                     promoError = null
                                     promoLoading = true
-                                    runCatching { promoViewModel.getAllPromotions() }
-                                        .onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
+                                    runCatching {
+                                        val favNames = user.categories
+                                            ?.mapNotNull { it.name }
+                                            ?.filter { it.isNotBlank() }
+                                            .orEmpty()
+
+                                        if (favNames.isNotEmpty()) {
+                                            promoViewModel.getRecommendedInterleaved(favNames)
+                                        } else {
+                                            promoViewModel.getAllPromotions()
+                                        }
+                                    }.onFailure { e -> promoError = e.message ?: "Error al cargar promos" }
                                     promoLoading = false
 
                                     // COLABORADORES: vuelve a 1ra categoría como “default”
@@ -553,12 +620,14 @@ fun Home(
     }
 }
 
-/** TopBar segura (solo Top + Horizontal). */
+/** TopBar segura (solo Top + Horizontal) con avatar que carga igual que Profile.kt. */
 @Composable
 private fun TopBar(
     displayName: String,
     search: String,
-    onSearchChange: (String) -> Unit
+    onSearchChange: (String) -> Unit,
+    profileImageUrl: String?,
+    isLoadingImage: Boolean
 ) {
     Column(
         Modifier
@@ -587,16 +656,37 @@ private fun TopBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                         .background(Color(0xFFD7F2F3)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Person,
-                        contentDescription = null,
-                        tint = Color(0xFF008D96)
-                    )
+                    when {
+                        isLoadingImage -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color(0xFF008D96)
+                            )
+                        }
+                        profileImageUrl != null -> {
+                            AsyncImage(
+                                model = profileImageUrl,
+                                contentDescription = "Foto de perfil",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(CircleShape)
+                            )
+                        }
+                        else -> {
+                            Icon(
+                                imageVector = Icons.Outlined.Person,
+                                contentDescription = null,
+                                tint = Color(0xFF008D96)
+                            )
+                        }
+                    }
                 }
                 Spacer(Modifier.width(8.dp))
                 Column {
@@ -647,3 +737,38 @@ private fun HomePreview() {
         Home(nav = nav, userViewModel = UserViewModel())
     }
 }
+
+// ————————————————————————————————————————————————————————————————
+// Helper: descarga imagen de perfil (igual que en Profile.kt)
+// (Si ya lo tienes en un utils, puedes borrar esto y usar el tuyo.)
+// ————————————————————————————————————————————————————————————————
+private fun downloadProfileImageForDisplay(
+    context: android.content.Context,
+    userId: String,
+    onSuccess: (String) -> Unit,
+    onError: (Throwable?) -> Unit,
+    onLoading: (Boolean) -> Unit
+) {
+    val key = StoragePath.fromString("public/profile-images/$userId.jpg") // ← CORREGIDO
+    try {
+        onLoading(true)
+        val localFile = File(context.cacheDir, "avatar_$userId.jpg")
+        Amplify.Storage.downloadFile(
+            key,
+            localFile,
+            { result ->
+                onLoading(false)
+                onSuccess(result.file.absolutePath)
+            },
+            { error ->
+                onLoading(false)
+                Log.e("Home", "Error descargando avatar", error)
+                onError(error)
+            }
+        )
+    } catch (e: Exception) {
+        onLoading(false)
+        onError(e)
+    }
+}
+

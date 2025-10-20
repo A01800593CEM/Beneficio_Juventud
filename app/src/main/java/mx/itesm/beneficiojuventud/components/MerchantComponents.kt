@@ -76,7 +76,7 @@ fun MerchantCardHorizontalFav(
     val categories = readableCategories(collab)
     val locationText = collab.address ?: ""
     val ratingText = "4.7"
-    val fallbackRes = R.drawable.brasa
+    val fallbackRes = R.drawable.el_fuego_sagrado
 
     Surface(
         shape = RoundedCornerShape(20.dp),

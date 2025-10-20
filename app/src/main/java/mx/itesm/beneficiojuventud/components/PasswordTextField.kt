@@ -2,6 +2,7 @@ package mx.itesm.beneficiojuventud.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -42,7 +43,7 @@ fun PasswordTextField(
         singleLine = true,
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp),
+            .heightIn(min = TextFieldDefaults.MinHeight),
         shape = shape,
         leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null) },
         trailingIcon = {
@@ -56,29 +57,28 @@ fun PasswordTextField(
         placeholder = {
             Text(
                 text = placeholder,
-                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
-                textAlign = TextAlign.Start
+                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             )
         },
-        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+        // ← misma tipografía/lineHeight que el Email para evitar cortes en letras como 'g', 'p', etc.
+        textStyle = TextStyle(
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            color = Color(0xFF2F2F2F)
+        ),
         visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Password,
             imeAction = ImeAction.Done
         ),
         colors = TextFieldDefaults.colors(
-            // Fondo
             focusedContainerColor = Color.White,
             unfocusedContainerColor = Color.White,
-            // Borde
-            focusedIndicatorColor = Color(0xFFE0E0E0),
-            unfocusedIndicatorColor = Color(0xFFE0E0E0),
-            // Cursor
+            focusedIndicatorColor = Color(0xFFD3D3D3),
+            unfocusedIndicatorColor = Color(0xFFD3D3D3),
             cursorColor = Color(0xFF008D96),
-            // Placeholder
             focusedPlaceholderColor = Color(0xFF7D7A7A),
             unfocusedPlaceholderColor = Color(0xFF7D7A7A),
-            // Iconos
             focusedLeadingIconColor = Color(0xFF7D7A7A),
             unfocusedLeadingIconColor = Color(0xFF7D7A7A),
             focusedTrailingIconColor = Color(0xFF7D7A7A),
@@ -86,3 +86,4 @@ fun PasswordTextField(
         )
     )
 }
+

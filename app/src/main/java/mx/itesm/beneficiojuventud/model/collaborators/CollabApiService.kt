@@ -24,4 +24,7 @@ interface CollabApiService {
 
     @DELETE("collaborators/{id}")
     suspend fun deleteCollaborator(@Path("id") id: String): Response<Unit>
+
+    @GET("collaborators/email-exists/{email}")
+    suspend fun emailExists(@Path("email") email: String): Response<Boolean>
 }

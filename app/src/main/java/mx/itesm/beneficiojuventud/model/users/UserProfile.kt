@@ -1,6 +1,7 @@
 package mx.itesm.beneficiojuventud.model.users
 
 import com.google.gson.annotations.SerializedName
+import mx.itesm.beneficiojuventud.model.categories.Category
 
 data class UserProfile(
 
@@ -16,7 +17,8 @@ data class UserProfile(
     val registrationDate: String? = null,
     val updatedAt: String? = null,
     val notificationToken: String? = null,
-    val profileImageKey: String? = null // Key de la imagen en S3
+    val profileImageKey: String? = null, // Key de la imagen en S3
+    val categories: List<Category>? = null
 )
 
 enum class AccountState {

@@ -7,12 +7,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material3.*
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,54 +73,69 @@ fun Register(
     authViewModel: AuthViewModel = viewModel(),
     userViewModel: UserViewModel = viewModel()
 ) {
-    var nombre by remember { mutableStateOf("") }
-    var apPaterno by remember { mutableStateOf("") }
-    var apMaterno by remember { mutableStateOf("") }
+    var nombre by rememberSaveable { mutableStateOf("") }
+    var apPaterno by rememberSaveable { mutableStateOf("") }
+    var apMaterno by rememberSaveable { mutableStateOf("") }
 
     // Fecha de nacimiento: display (UI) + db (ISO)
-    var fechaNacDisplay by remember { mutableStateOf("") }     // ej. "01/02/2003"
-    var fechaNacDb by remember { mutableStateOf("") }          // ej. "2003-02-01"
+    var fechaNacDisplay by rememberSaveable { mutableStateOf("") }     // ej. "01/02/2003"
+    var fechaNacDb by rememberSaveable { mutableStateOf("") }          // ej. "2003-02-01"
+    // Error visible inmediato bajo el campo
+    var birthDateErrorMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
-    var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var acceptTerms by remember { mutableStateOf(false) }
+    var email by rememberSaveable { mutableStateOf("") }
+    var phone by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var acceptTerms by rememberSaveable { mutableStateOf(false) }
     var showError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
     val authState by authViewModel.authState.collectAsState()
     val scope = rememberCoroutineScope()
 
-    // Parche 2: latch para impedir doble creación si este flow se disparara de nuevo
+    // Latch: evita re-navegar automáticamente al volver de Confirm;
+    // se resetea en cada nuevo intento (al presionar "Continuar").
+    var didNavigateToConfirm by rememberSaveable { mutableStateOf(false) }
+
+    // Parche: si Cognito crea y confirma sin OTP
     var didCreateDirect by rememberSaveable { mutableStateOf(false) }
 
-    // Navegación post-registro (Camino B -> ConfirmSignUp)
-    LaunchedEffect(authState.needsConfirmation) {
-        if (authState.needsConfirmation) {
+    // Edad válida si no hay error y hay fecha
+    val isAgeValid = birthDateErrorMessage == null && fechaNacDb.isNotBlank()
+
+    var isCheckingEmail by rememberSaveable { mutableStateOf(false) }
+
+    // Parche: al volver del ConfirmSignUp, aseguramos que no quede en "Registrando."
+    LaunchedEffect(Unit) {
+        authViewModel.markIdle()
+    }
+
+    // Navegación a Confirm (idempotente por intento)
+    LaunchedEffect(authState.needsConfirmation, didNavigateToConfirm) {
+        if (authState.needsConfirmation && !didNavigateToConfirm) {
+            didNavigateToConfirm = true
             nav.navigate(Screens.confirmSignUpWithEmail(email)) {
-                popUpTo(Screens.Register.route) { inclusive = true }
+                // Mantener Register en el back stack para poder regresar
+                popUpTo(Screens.Register.route) { inclusive = false }
+                launchSingleTop = true
             }
         }
     }
 
-    // Parche 2: Manejar signUp completo sin confirmación
+    // SignUp completo sin confirmación (auto sign-in, crear usuario y navegar)
     LaunchedEffect(authState.isSuccess, authState.needsConfirmation) {
         if (didCreateDirect) return@LaunchedEffect
         if (authState.isSuccess && !authState.needsConfirmation) {
             val pending = authViewModel.consumePendingUserProfile()
             val sub = authState.cognitoSub
 
-            if (pending == null || sub.isNullOrBlank()) {
-                // Si falta info, simplemente no dispares este camino
-                return@LaunchedEffect
-            }
+            if (pending == null || sub.isNullOrBlank()) return@LaunchedEffect
 
             didCreateDirect = true
 
-            // Auto sign-in con los datos que aún tienes en la pantalla
+            // Auto sign-in con lo que está en pantalla
             authViewModel.signIn(email.trim(), password)
 
-            // Crea en BD y navega
             scope.launch {
                 try {
                     userViewModel.createUser(
@@ -130,10 +145,7 @@ fun Register(
                             accountState = AccountState.activo
                         )
                     )
-
-                    // Limpieza “por si acaso”
                     authViewModel.clearPendingCredentials()
-
                     nav.navigate(Screens.Onboarding.route) {
                         popUpTo(Screens.LoginRegister.route) { inclusive = true }
                         launchSingleTop = true
@@ -147,10 +159,19 @@ fun Register(
         }
     }
 
-    // Errores de registro
+    // Errores: deja que el VM resuelva UsernameExists (UNCONFIRMED vs CONFIRMED)
     LaunchedEffect(authState.error) {
-        authState.error?.let { error ->
-            errorMessage = error
+        authState.error?.let { raw ->
+            val lower = raw.lowercase()
+            val looksLikeExists =
+                "usernameexistsexception" in lower ||
+                        "already exists" in lower ||
+                        ("email" in lower && "exists" in lower)
+
+            if (looksLikeExists) return@LaunchedEffect // VM hará resend + needsConfirmation o error confirmado
+
+            val friendly = mapAuthErrorToFriendly(raw)
+            errorMessage = friendly
             showError = true
         }
     }
@@ -163,7 +184,8 @@ fun Register(
             email.isNotBlank() &&
             phone.isNotBlank() &&
             password.isNotBlank() &&
-            acceptTerms
+            acceptTerms &&
+            isAgeValid
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -176,11 +198,24 @@ fun Register(
                     .padding(horizontal = 24.dp, vertical = 8.dp)
             ) {
                 MainButton(
-                    text = if (authState.isLoading) "Registrando..." else "Continuar",
-                    enabled = !authState.isLoading && isFormValid,
+                    text = when {
+                        authState.isLoading -> "Registrando."
+                        isCheckingEmail     -> "Verificando correo."
+                        else                -> "Continuar"
+                    },
+                    enabled = !authState.isLoading && !isCheckingEmail && isFormValid,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    showError = false
+                    if (!isAgeValid) {
+                        showError = true
+                        errorMessage = birthDateErrorMessage ?: "Para registrarte debes tener entre 12 y 29 años."
+                        return@MainButton
+                    }
+
+                    // 👇 FIX: nuevo intento → resetea el latch para permitir re-navegar a Confirm
+                    didNavigateToConfirm = false
+
+                    // Guardar datos temporales como ya lo haces
                     val userProfile = UserProfile(
                         name = nombre,
                         lastNamePaternal = apPaterno,
@@ -189,10 +224,31 @@ fun Register(
                         phoneNumber = phone,
                         email = email
                     )
-                    // Guardamos perfil preliminar y credenciales en memoria
                     authViewModel.savePendingUserProfile(userProfile)
                     authViewModel.setPendingCredentials(email, password)
-                    authViewModel.signUp(email, password)
+
+                    // Pre-checar si el correo ya existe en la BD
+                    scope.launch {
+                        showError = false
+                        isCheckingEmail = true
+                        try {
+                            val exists = userViewModel.emailExists(email.trim())
+                            if (exists) {
+                                showError = true
+                                errorMessage = "Este correo ya está registrado. Inicia sesión o restablece tu contraseña."
+                                return@launch
+                            }
+                        } catch (e: Exception) {
+                            showError = true
+                            errorMessage = "No se pudo verificar el correo. Revisa tu conexión e inténtalo de nuevo."
+                            return@launch
+                        } finally {
+                            isCheckingEmail = false
+                        }
+
+                        // Si no existe → continuar con registro Cognito
+                        authViewModel.signUp(email, password)
+                    }
                 }
 
                 Row(
@@ -270,7 +326,11 @@ fun Register(
                         shape = RoundedCornerShape(18.dp),
                         leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
                         placeholder = { Text("Nombre", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-                        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+                        textStyle = TextStyle(
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp,
+                            color = Color(0xFF2F2F2F)
+                        ),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         colors = textFieldColors()
                     )
@@ -289,8 +349,13 @@ fun Register(
                             .fillMaxWidth()
                             .heightIn(min = TextFieldDefaults.MinHeight),
                         shape = RoundedCornerShape(18.dp),
+                        leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
                         placeholder = { Text("Apellido Paterno", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-                        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+                        textStyle = TextStyle(
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp,
+                            color = Color(0xFF2F2F2F)
+                        ),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         colors = textFieldColors()
                     )
@@ -309,23 +374,39 @@ fun Register(
                             .fillMaxWidth()
                             .heightIn(min = TextFieldDefaults.MinHeight),
                         shape = RoundedCornerShape(18.dp),
+                        leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
                         placeholder = { Text("Apellido Materno", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-                        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+                        textStyle = TextStyle(
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp,
+                            color = Color(0xFF2F2F2F)
+                        ),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         colors = textFieldColors()
                     )
                 }
             }
 
-            // Fecha de nacimiento (readOnly)
+            // Fecha de nacimiento (readOnly con error visible inmediato)
             item { Label("Fecha de Nacimiento") }
             item {
                 BirthDateField(
                     value = fechaNacDisplay,
                     onDateSelected = { localDate ->
-                        fechaNacDisplay = localDate.format(displayFormatterEs)   // UI
-                        fechaNacDb = localDate.format(storageFormatter)          // ISO
+                        // Actualiza display y storage
+                        fechaNacDisplay = localDate.format(displayFormatterEs)
+                        fechaNacDb = localDate.format(storageFormatter)
+
+                        // Valida edad al momento
+                        val edad = computeAgeFromIso(fechaNacDb)
+                        birthDateErrorMessage = when {
+                            edad == null -> "Selecciona una fecha válida."
+                            edad < 12 -> "Debes tener al menos 12 años para registrarte."
+                            edad > 29 -> "El programa está limitado a jóvenes de hasta 29 años."
+                            else -> null
+                        }
                     },
+                    errorMessage = birthDateErrorMessage,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -348,7 +429,11 @@ fun Register(
                         shape = RoundedCornerShape(18.dp),
                         leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = null) },
                         placeholder = { Text("55 5555 5555", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-                        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+                        textStyle = TextStyle(
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp,
+                            color = Color(0xFF2F2F2F)
+                        ),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number,
                             imeAction = ImeAction.Next
@@ -358,7 +443,6 @@ fun Register(
                     )
                 }
             }
-
 
             // Correo
             item { Label("Correo Electrónico") }
@@ -411,7 +495,7 @@ fun Register(
                 }
             }
 
-            // Error
+            // Error global (auth / backend)
             if (showError && errorMessage.isNotEmpty()) {
                 item {
                     Card(
@@ -447,7 +531,6 @@ fun Register(
     }
 }
 
-
 private class MxPhoneVisualTransformation : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val raw = text.text
@@ -476,6 +559,7 @@ private class MxPhoneVisualTransformation : VisualTransformation {
         return TransformedText(AnnotatedString(formatted), offsetMapping)
     }
 }
+
 /**
  * Helper que desplaza el campo enfocado dentro de la vista visible cuando aparece el IME.
  * Espera un frame y un pequeño retardo para evitar saltos y luego solicita bringIntoView.
@@ -508,6 +592,7 @@ private fun FocusBringIntoView(
 private fun BirthDateField(
     value: String,
     onDateSelected: (LocalDate) -> Unit,
+    errorMessage: String?,
     modifier: Modifier = Modifier
 ) {
     val showDialog = remember { mutableStateOf(false) }
@@ -517,6 +602,7 @@ private fun BirthDateField(
     val minMillis = remember { LocalDate.of(1900, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli() }
     val maxMillis = remember { today.atStartOfDay(zone).toInstant().toEpochMilli() }
 
+    // El state del DatePicker se crea UNA vez y se usa en el diálogo
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = value.toMillisFromDisplayOrNull(zone),
         yearRange = 1900..today.year,
@@ -526,35 +612,49 @@ private fun BirthDateField(
         }
     )
 
-    // 👇 Hacer clic en cualquier parte del campo abre el DatePicker
     val interactionSource = remember { MutableInteractionSource() }
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null
-            ) { showDialog.value = true }
-    ) {
+
+    Column(modifier = modifier) {
         OutlinedTextField(
             value = value,
             onValueChange = { /* readOnly */ },
             readOnly = true,
             singleLine = true,
-            placeholder = { Text("DD/MM/AAAA", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-            trailingIcon = {
+            // El propio TextField es clickeable para abrir el diálogo
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = TextFieldDefaults.MinHeight)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null
+                ) { showDialog.value = true },
+            shape = RoundedCornerShape(18.dp),
+            // El icono izquierdo también abre el diálogo
+            leadingIcon = {
                 IconButton(onClick = { showDialog.value = true }) {
                     Icon(Icons.Outlined.CalendarMonth, contentDescription = "Elegir fecha")
                 }
             },
-            textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+            placeholder = { Text("DD/MM/AAAA", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
+            textStyle = TextStyle(
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                color = Color(0xFF2F2F2F)
+            ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             colors = textFieldColors(),
-            shape = RoundedCornerShape(18.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = TextFieldDefaults.MinHeight)
+            isError = errorMessage != null // activa borde rojo si hay error
         )
+
+        // Mensaje visible justo debajo si hay error
+        if (errorMessage != null) {
+            Text(
+                text = errorMessage,
+                color = Color(0xFFD32F2F),
+                fontSize = 13.sp,
+                modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+            )
+        }
     }
 
     if (showDialog.value) {
@@ -563,9 +663,8 @@ private fun BirthDateField(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        // ✅ Usa la zona local para evitar desfaces por UTC
                         val localDate = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
-                        onDateSelected(localDate)
+                        onDateSelected(localDate) // aquí se valida y se actualiza el error en Register
                     }
                     showDialog.value = false
                 }) { Text("Aceptar") }
@@ -582,7 +681,6 @@ private fun BirthDateField(
     }
 }
 
-
 /** Locale ES-MX para formateo. */
 private val localeEsMx: Locale = Locale.Builder().setLanguage("es").setRegion("MX").build()
 
@@ -597,6 +695,27 @@ private fun String.toMillisFromDisplayOrNull(zone: ZoneId): Long? = runCatching 
     val parsed = LocalDate.parse(this, displayFormatterEs)
     parsed.atStartOfDay(zone).toInstant().toEpochMilli()
 }.getOrNull()
+
+/** Calcula edad en años desde una fecha ISO (yyyy-MM-dd). Devuelve null si no es válida. */
+private fun computeAgeFromIso(isoDate: String, today: LocalDate = LocalDate.now()): Int? = runCatching {
+    if (isoDate.isBlank()) return null
+    val birth = LocalDate.parse(isoDate, storageFormatter)
+    val p = Period.between(birth, today)
+    p.years
+}.getOrNull()
+
+/** Mapea errores de Auth a mensajes amigables. */
+private fun mapAuthErrorToFriendly(raw: String): String {
+    val lower = raw.lowercase()
+    return when {
+        // Ignorado aquí: lo resuelve el VM (UNCONFIRMED vs CONFIRMED)
+        "usernameexistsexception" in lower || "already exists" in lower || ("email" in lower && "exists" in lower) ->
+            raw
+        "invalidpassword" in lower || ("password" in lower && ("invalid" in lower || "weak" in lower)) ->
+            "La contraseña no cumple los requisitos. Prueba con una más fuerte."
+        else -> raw
+    }
+}
 
 @Composable
 private fun Label(text: String, top: Dp = 0.dp) {
@@ -618,6 +737,6 @@ private fun textFieldColors() = TextFieldDefaults.colors(
     unfocusedLeadingIconColor = Color(0xFF7D7A7A),
     focusedTrailingIconColor = Color(0xFF7D7A7A),
     unfocusedTrailingIconColor = Color(0xFF7D7A7A),
-    focusedPlaceholderColor = Color(0xFF616161),
-    unfocusedPlaceholderColor = Color(0xFF616161),
+    focusedPlaceholderColor = Color(0xFF7D7A7A),
+    unfocusedPlaceholderColor = Color(0xFF7D7A7A)
 )

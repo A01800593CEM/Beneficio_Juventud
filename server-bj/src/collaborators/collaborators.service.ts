@@ -28,15 +28,20 @@ export class CollaboratorsService {
   
   /**
    * Creates a new collaborator with associated categories.
+   * Categories are optional during registration and can be updated later.
    * @param createCollaboratorDto - The DTO containing collaborator information
    * @returns Promise<Collaborator> The newly created collaborator
    */
   async create(createCollaboratorDto: CreateCollaboratorDto): Promise<Collaborator> {
     const { categoryIds, ...data } = createCollaboratorDto;
 
-    const categories = await this.categoriesRepository.findBy({
-      id: In(categoryIds),
-    });
+    // Solo buscar categorías si se proporcionaron IDs
+    let categories = [];
+    if (categoryIds && categoryIds.length > 0) {
+      categories = await this.categoriesRepository.findBy({
+        id: In(categoryIds),
+      });
+    }
 
     const collaborator = this.collaboratorsRepository.create({
       ...data,
@@ -182,10 +187,5 @@ export class CollaboratorsService {
       .where('category.name = :categoryName', { categoryName })
       .getMany();
 }
-
- 
-
-
-
 
 }

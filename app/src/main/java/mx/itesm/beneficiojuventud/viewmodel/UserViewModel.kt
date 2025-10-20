@@ -3,14 +3,20 @@ package mx.itesm.beneficiojuventud.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import mx.itesm.beneficiojuventud.model.bookings.Booking
+import mx.itesm.beneficiojuventud.model.bookings.RemoteServiceBooking
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.Promotions
+import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
 import mx.itesm.beneficiojuventud.model.users.RemoteServiceUser
 import mx.itesm.beneficiojuventud.model.users.UserProfile
+import java.time.OffsetDateTime
 
 class UserViewModel : ViewModel() {
 
@@ -31,6 +37,14 @@ class UserViewModel : ViewModel() {
     // AHORA: lista de objetos Collaborator (antes List<Int>)
     private val _favoriteCollabs = MutableStateFlow<List<Collaborator>>(emptyList())
     val favoriteCollabs: StateFlow<List<Collaborator>> = _favoriteCollabs
+
+    // Reservaciones del usuario
+    private val _userBookings = MutableStateFlow<List<Booking>>(emptyList())
+    val userBookings: StateFlow<List<Booking>> = _userBookings
+
+    // Promociones reservadas (con detalles completos)
+    private val _reservedPromotions = MutableStateFlow<List<Promotions>>(emptyList())
+    val reservedPromotions: StateFlow<List<Promotions>> = _reservedPromotions
 
     /** Token para invalidar respuestas tardías cuando cambia de cuenta o se hace clear. */
     private var loadToken: Int = 0
@@ -102,7 +116,6 @@ class UserViewModel : ViewModel() {
     }
 
     fun deleteUser(cognitoId: String) {
-        // Borrar no necesita tomar ownership del token; pero limpiamos estado local si aplica.
         _error.value = null
         _isLoading.value = true
 
@@ -112,7 +125,6 @@ class UserViewModel : ViewModel() {
             }
             result.fold(
                 onSuccess = {
-                    // Si borraste el usuario actual, deja el state limpio
                     clearUser()
                 },
                 onFailure = { e ->
@@ -123,18 +135,51 @@ class UserViewModel : ViewModel() {
         }
     }
 
+    suspend fun emailExists(email: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            runCatching { model.emailExists(email) }
+                .getOrElse { throw it } // deja que el UI muestre error si falla
+        }
+    }
+
+
+    // ============== FAVORITOS: PROMOCIONES ==============
+
     fun favoritePromotion(promotionId: Int, cognitoId: String) {
         _error.value = null
-        // No activamos el loading global para no bloquear la UI por una acción rápida.
         viewModelScope.launch {
-            val result = runCatching {
+            val op = runCatching {
                 withContext(Dispatchers.IO) { model.favoritePromotion(promotionId, cognitoId) }
             }
-            result.onFailure { e ->
+
+            op.onFailure { e ->
                 _error.value = e.message ?: "Error al marcar favorito"
             }.onSuccess {
-                // Refrescamos listas para mantener consistencia
-                refreshFavorites(cognitoId)
+                // Recargar listas SINCRÓNICAMENTE y ACTUALIZAR estado antes de emitir evento
+                val refreshedPromos = runCatching {
+                    withContext(Dispatchers.IO) { model.getFavoritePromotions(cognitoId) }
+                }.getOrElse { emptyList() }
+
+                _favoritePromotions.value = refreshedPromos
+
+                // Buscar la promo recién agregada para obtener título/negocio
+                val added = refreshedPromos.firstOrNull { it.promotionId == promotionId }
+                val title = added?.title ?: "Promoción $promotionId"
+                val business = added?.businessName
+
+                _favoritePromoEvents.emit(
+                    FavoritePromoEvent.Added(
+                        promotionId = promotionId,
+                        title = title,
+                        businessName = business,
+                        timestampIso = OffsetDateTime.now().toString()
+                    )
+                )
+
+                // Opcional: mantener también la lista de colaboradores favoritos al día
+                runCatching {
+                    withContext(Dispatchers.IO) { model.getFavoriteCollabs(cognitoId) }
+                }.onSuccess { _favoriteCollabs.value = it }
             }
         }
     }
@@ -142,14 +187,38 @@ class UserViewModel : ViewModel() {
     fun unfavoritePromotion(promotionId: Int, cognitoId: String) {
         _error.value = null
         viewModelScope.launch {
-            val result = runCatching {
+            // Capturar datos ANTES de eliminar
+            val current = _favoritePromotions.value.firstOrNull { it.promotionId == promotionId }
+            val titleBefore = current?.title ?: "Promoción $promotionId"
+            val businessBefore = current?.businessName
+
+            val op = runCatching {
                 withContext(Dispatchers.IO) { model.unfavoritePromotion(promotionId, cognitoId) }
             }
-            result.onFailure { e ->
+
+            op.onFailure { e ->
                 _error.value = e.message ?: "Error al quitar favorito"
             }.onSuccess {
-                // Refrescamos listas para mantener consistencia
-                refreshFavorites(cognitoId)
+                // Recargar listas SINCRÓNICAMENTE y ACTUALIZAR estado antes de emitir evento
+                val refreshedPromos = runCatching {
+                    withContext(Dispatchers.IO) { model.getFavoritePromotions(cognitoId) }
+                }.getOrElse { emptyList() }
+
+                _favoritePromotions.value = refreshedPromos
+
+                _favoritePromoEvents.emit(
+                    FavoritePromoEvent.Removed(
+                        promotionId = promotionId,
+                        title = titleBefore,
+                        businessName = businessBefore,
+                        timestampIso = OffsetDateTime.now().toString()
+                    )
+                )
+
+                // Opcional: mantener también la lista de colaboradores favoritos al día
+                runCatching {
+                    withContext(Dispatchers.IO) { model.getFavoriteCollabs(cognitoId) }
+                }.onSuccess { _favoriteCollabs.value = it }
             }
         }
     }
@@ -173,46 +242,64 @@ class UserViewModel : ViewModel() {
         }
     }
 
-    fun getFavoriteCollabs(cognitoId: String) {
-        val myToken = ++loadToken
-        _error.value = null
-        _isLoading.value = true
-
-        viewModelScope.launch {
-            val result = runCatching {
-                withContext(Dispatchers.IO) { model.getFavoriteCollabs(cognitoId) }
-            }
-            if (myToken != loadToken) return@launch
-
-            result.fold(
-                onSuccess = { list -> _favoriteCollabs.value = list }, // ahora es List<Collaborator>
-                onFailure = { e -> _error.value = e.message ?: "Error al obtener colaboradores favoritos" }
-            )
-            _isLoading.value = false
-        }
-    }
-
-    /** Conveniencia para refrescar ambas listas de favoritos sin pelear con el token global. */
+    /** Conveniencia para refrescar ambas listas de favoritos sin pelear con el token global (asincrónico). */
     fun refreshFavorites(cognitoId: String) {
-        // No tocamos loadToken aquí para no invalidar otras cargas largas.
         viewModelScope.launch {
-            // Promos
             runCatching {
                 withContext(Dispatchers.IO) { model.getFavoritePromotions(cognitoId) }
             }.onSuccess { _favoritePromotions.value = it }
                 .onFailure { e -> _error.value = e.message ?: "Error al refrescar promociones favoritas" }
 
-            // Collabs (List<Collaborator>)
             runCatching {
                 withContext(Dispatchers.IO) { model.getFavoriteCollabs(cognitoId) }
             }.onSuccess { _favoriteCollabs.value = it }
                 .onFailure { e -> _error.value = e.message ?: "Error al refrescar colaboradores favoritos" }
+
+            // Reservaciones
+            runCatching {
+                withContext(Dispatchers.IO) { RemoteServiceBooking.getUserBookings(cognitoId) }
+            }.onSuccess { bookings ->
+                _userBookings.value = bookings
+                // Cargar detalles de las promociones reservadas
+                loadReservedPromotionsDetails(bookings)
+            }.onFailure { e -> _error.value = e.message ?: "Error al refrescar reservaciones" }
         }
     }
 
-    // --- COLLABORATORS FAVORITES ---
+    /** Carga los detalles completos de las promociones reservadas */
+    private suspend fun loadReservedPromotionsDetails(bookings: List<Booking>) {
+        val promos = bookings.mapNotNull { booking ->
+            booking.promotionId?.let { promotionId ->
+                runCatching {
+                    withContext(Dispatchers.IO) { RemoteServicePromos.getPromotionById(promotionId) }
+                }.getOrNull()
+            }
+        }
+        _reservedPromotions.value = promos
+    }
 
-    // AHORA: collaboratorId es String (cognitoId), no Int
+    /** Obtiene las reservaciones del usuario */
+    fun getUserBookings(cognitoId: String) {
+        viewModelScope.launch {
+            _error.value = null
+            runCatching {
+                withContext(Dispatchers.IO) { RemoteServiceBooking.getUserBookings(cognitoId) }
+            }.onSuccess { bookings ->
+                _userBookings.value = bookings
+                loadReservedPromotionsDetails(bookings)
+            }.onFailure { e ->
+                _error.value = e.message ?: "Error al obtener reservaciones"
+            }
+        }
+    }
+
+    /** Verifica si una promoción está reservada por el usuario */
+    fun isPromotionReserved(promotionId: Int): Boolean {
+        return _userBookings.value.any { it.promotionId == promotionId }
+    }
+
+    // ============== FAVORITOS: COLABORADORES ==============
+
     fun favoriteCollaborator(collaboratorId: String, cognitoId: String) {
         _error.value = null
         viewModelScope.launch {
@@ -244,9 +331,27 @@ class UserViewModel : ViewModel() {
     }
 
     fun toggleFavoriteCollaborator(collaboratorId: String, cognitoId: String) {
-        // Como ahora _favoriteCollabs es List<Collaborator>, comparamos por cognitoId
         val isFav = _favoriteCollabs.value.any { it.cognitoId == collaboratorId }
         if (isFav) unfavoriteCollaborator(collaboratorId, cognitoId)
         else favoriteCollaborator(collaboratorId, cognitoId)
     }
+
+    // ============== EVENTOS PARA HISTORIAL ==============
+
+    sealed class FavoritePromoEvent(
+        val promotionId: Int,
+        val title: String,
+        val businessName: String?,
+        val timestampIso: String
+    ) {
+        class Added(promotionId: Int, title: String, businessName: String?, timestampIso: String)
+            : FavoritePromoEvent(promotionId, title, businessName, timestampIso)
+
+        class Removed(promotionId: Int, title: String, businessName: String?, timestampIso: String)
+            : FavoritePromoEvent(promotionId, title, businessName, timestampIso)
+    }
+
+    // Flujo de eventos: el History lo escuchará
+    private val _favoritePromoEvents = MutableSharedFlow<FavoritePromoEvent>(replay = 20)
+    val favoritePromoEvents: SharedFlow<FavoritePromoEvent> = _favoritePromoEvents
 }

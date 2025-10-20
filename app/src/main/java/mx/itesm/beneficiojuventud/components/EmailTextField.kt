@@ -2,6 +2,7 @@ package mx.itesm.beneficiojuventud.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -34,38 +35,39 @@ fun EmailTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
+        // ⬇️ Quita height(48.dp) y usa altura mínima segura
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp),
+            .heightIn(min = TextFieldDefaults.MinHeight), // ~56.dp
         shape = shape,
         leadingIcon = { Icon(Icons.Outlined.Email, contentDescription = null) },
         placeholder = {
             Text(
                 text = placeholder,
-                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
-                textAlign = TextAlign.Start
+                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             )
         },
-        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
+        // ⬇️ Un pelín más de lineHeight evita cortes en algunas fuentes/escalas
+        textStyle = TextStyle(
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            color = Color(0xFF2F2F2F)
+        ),
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Email,
             imeAction = ImeAction.Next
         ),
         colors = TextFieldDefaults.colors(
-            // Fondo
             focusedContainerColor = Color.White,
             unfocusedContainerColor = Color.White,
-            // Borde (indicator en M3)
-            focusedIndicatorColor = Color(0xFFE0E0E0),
-            unfocusedIndicatorColor = Color(0xFFE0E0E0),
-            // Cursor
+            focusedIndicatorColor = Color(0xFFD3D3D3),
+            unfocusedIndicatorColor = Color(0xFFD3D3D3),
             cursorColor = Color(0xFF008D96),
-            // Placeholder
             focusedPlaceholderColor = Color(0xFF7D7A7A),
             unfocusedPlaceholderColor = Color(0xFF7D7A7A),
-            // Icono
             focusedLeadingIconColor = Color(0xFF7D7A7A),
             unfocusedLeadingIconColor = Color(0xFF7D7A7A)
         )
     )
 }
+

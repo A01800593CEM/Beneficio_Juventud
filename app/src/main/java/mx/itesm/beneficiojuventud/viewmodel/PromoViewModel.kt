@@ -2,6 +2,8 @@ package mx.itesm.beneficiojuventud.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,9 +22,9 @@ class PromoViewModel : ViewModel() {
     private val _promoListState = MutableStateFlow<List<Promotions>>(emptyList())
     val promoListState: StateFlow<List<Promotions>> = _promoListState
 
-    // Si prefieres mantenerlas suspend, déjalas así.
-    // Si las llamas desde Compose sin coroutine externa, puedes envolverlas en launch.
-
+    // ─────────────────────────────────────────────────────────────────────────────
+    // CRUD/Queries base
+    // ─────────────────────────────────────────────────────────────────────────────
     suspend fun getAllPromotions() {
         _promoListState.value = model.getAllPromotions()
     }
@@ -47,7 +49,61 @@ class PromoViewModel : ViewModel() {
         model.deletePromotion(id)
     }
 
-    // Favoritos en memoria (solo client-side por ahora)
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Recomendado para ti (intercalado por categorías favoritas)
+    // ─────────────────────────────────────────────────────────────────────────────
+    /**
+     * Obtiene promociones por cada categoría dada y las entrelaza (round-robin)
+     * 1 de cada lista, repitiendo hasta agotar todas. Evita duplicados por promotionId.
+     */
+    suspend fun getRecommendedInterleaved(categories: List<String>) {
+        if (categories.isEmpty()) {
+            // Fallback si el usuario no tiene categorías
+            _promoListState.value = model.getAllPromotions()
+            return
+        }
+
+        // Cargar en paralelo todas las listas por categoría
+        val lists: List<List<Promotions>> = coroutineScope {
+            categories.map { cat ->
+                async {
+                    runCatching { model.getPromotionByCategory(cat) }
+                        .getOrElse { emptyList() }
+                }
+            }.map { it.await() }
+        }
+
+        _promoListState.value = interleaveRoundRobinDistinct(lists)
+    }
+
+    /** Intercala 1-a-1 manteniendo orden relativo dentro de cada lista y sin duplicados. */
+    private fun interleaveRoundRobinDistinct(lists: List<List<Promotions>>): List<Promotions> {
+        if (lists.isEmpty()) return emptyList()
+        val queues = lists.map { it.toMutableList() }
+        val seen = LinkedHashSet<Int>() // promotionId para deduplicar
+        val out = ArrayList<Promotions>()
+
+        var anyLeft: Boolean
+        do {
+            anyLeft = false
+            for (q in queues) {
+                if (q.isNotEmpty()) {
+                    anyLeft = true
+                    val next = q.removeAt(0)
+                    val id = next.promotionId
+                    if (id == null || seen.add(id)) {
+                        out.add(next)
+                    }
+                }
+            }
+        } while (anyLeft)
+
+        return out
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Favoritos locales (client-side)
+    // ─────────────────────────────────────────────────────────────────────────────
     private val _favoriteIds = MutableStateFlow<Set<Int>>(emptySet())
     val favoriteIds: StateFlow<Set<Int>> = _favoriteIds.asStateFlow()
 

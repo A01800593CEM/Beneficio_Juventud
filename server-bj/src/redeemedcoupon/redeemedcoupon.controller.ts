@@ -37,7 +37,6 @@ export class RedeemedcouponController {
    * ```json
    * {
    *   "userId": 5,
-   *   "collaboratorId": 3,
    *   "branchId": 2,
    *   "promotionId": 17
    * }
@@ -57,6 +56,11 @@ export class RedeemedcouponController {
   @Get()
   findAll() {
     return this.redeemedcouponService.findAll();
+  }
+
+  @Get('allcoupons/user/:id')
+  findAllByUser(@Param('id') userId: string) {
+    return this.redeemedcouponService.findAllByUser(userId);
   }
 
   /**

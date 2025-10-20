@@ -1,27 +1,27 @@
-
+import * as fs from 'fs';
+import * as path from 'path';
 import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
-import { sendNotification } from './enviar';
-import { seedDatabase } from './seedServer'
 
 async function bootstrap() {
+  const certDir = path.join(process.cwd(), 'src', 'certificates');
+  const httpsOptions = {
+    key: fs.readFileSync(path.join(certDir, 'key.pem')),
+    cert: fs.readFileSync(path.join(certDir, 'cert.pem')),
+  };
+
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter()
+    new FastifyAdapter({ https: httpsOptions }),
   );
-  await app.listen(process.env.PORT ?? 3000, "0.0.0.0");
 
-  // setTimeout(async () => {
-  //   try {
-  //     await seedDatabase();
-  //     console.log('🌱 Database seeded successfully');
-  //   } catch (err) {
-  //     console.error('❌ Seed failed:', err);
-  //   }
-  // }, 1000);
+  app.enableCors({ origin: true, credentials: true });
+  await app.listen(3000, '0.0.0.0');
+  console.log('✅ HTTPS running at https://localhost:3000');
 }
+
 bootstrap();

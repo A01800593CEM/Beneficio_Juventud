@@ -34,9 +34,6 @@ class AmplifyApp : Application() {
             Amplify.addPlugin(AWSS3StoragePlugin())
             Log.d(TAG, "Plugins Auth y Storage agregados exitosamente")
 
-            Amplify.addPlugin(AWSS3StoragePlugin())
-            Log.d(TAG, "Plugin Storage agregado exitosamente")
-
             // 2. Configurar Amplify (lee automáticamente amplifyconfiguration.json de res/raw)
             Amplify.configure(applicationContext)
             Log.d(TAG, "✅ Amplify configurado exitosamente")

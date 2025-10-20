@@ -2,8 +2,6 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { CollaboratorsService } from './collaborators.service';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
 import { UpdateCollaboratorDto } from './dto/update-collaborator.dto';
-import { CategoriesByNamePipe } from 'src/common/pipes/transform-to-id.pipe';
-import { Category } from 'src/categories/entities/category.entity';
 import { PromotionsService } from 'src/promotions/promotions.service';
 
 @Controller('collaborators')
@@ -13,13 +11,8 @@ export class CollaboratorsController {
     private readonly promotionsService: PromotionsService) {}
 
   @Post()
-  create(
-    @Body('categories', CategoriesByNamePipe) categories: Category[],
-    @Body() createCollaboratorDto: CreateCollaboratorDto) {
-    return this.collaboratorsService.create({
-      ...createCollaboratorDto,
-      categoryIds: categories.map(category => category.id),
-    });
+  create(@Body() createCollaboratorDto: CreateCollaboratorDto) {
+    return this.collaboratorsService.create(createCollaboratorDto);
   }
 
   @Get()
