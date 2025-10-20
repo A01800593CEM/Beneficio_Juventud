@@ -16,9 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.components.MainButton
@@ -51,8 +54,16 @@ fun NewPromotionSheet(
     var showStartPicker by remember { mutableStateOf(false) }
     var showEndPicker by remember { mutableStateOf(false) }
 
-    // ---------- HEADER ----------
-    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+    // ---------- HEADER Y CUERPO ----------
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(16.dp)
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Regresar")
@@ -61,7 +72,6 @@ fun NewPromotionSheet(
         }
         Spacer(Modifier.height(16.dp))
 
-        // ---------- BODY ----------
         LazyColumn(modifier = Modifier.weight(1f)) {
             item {
                 FormTextField(title, { title = it }, "Título de la Promoción*", "Ej. Martes 2x1")
@@ -111,7 +121,7 @@ fun NewPromotionSheet(
 
         Spacer(Modifier.height(24.dp))
 
-        // ---------- MAIN BUTTON ----------
+        // ---------- BOTÓN PRINCIPAL ----------
         MainButton(
             text = "Crear Nueva Promoción",
             onClick = {
@@ -133,7 +143,7 @@ fun NewPromotionSheet(
                 scope.launch {
                     runCatching { viewModel.createPromotion(newPromo) }
                         .onSuccess { onClose() }
-                        .onFailure { /* TODO: mostrar error */ }
+                        .onFailure { /* TODO: manejar error */ }
                 }
             }
         )
@@ -191,7 +201,8 @@ private fun DatePickerField(
     }
     if (show) {
         val state = rememberDatePickerState()
-        DatePickerDialog(onDismissRequest = onDismiss,
+        DatePickerDialog(
+            onDismissRequest = onDismiss,
             confirmButton = {
                 TextButton(onClick = {
                     val millis = state.selectedDateMillis ?: return@TextButton
@@ -203,14 +214,20 @@ private fun DatePickerField(
                     onDismiss()
                 }) { Text("Aceptar") }
             },
-            dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }) {
+            dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        ) {
             DatePicker(state = state)
         }
     }
 }
 
 @Composable
-private fun GradientButton(text: String, brush: Brush, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
+private fun GradientButton(
+    text: String,
+    brush: Brush,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
+) {
     Button(
         onClick = onClick,
         modifier = modifier.height(50.dp),
@@ -218,8 +235,41 @@ private fun GradientButton(text: String, brush: Brush, modifier: Modifier = Modi
         contentPadding = PaddingValues(),
         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
     ) {
-        Box(modifier = Modifier.fillMaxSize().background(brush), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(brush),
+            contentAlignment = Alignment.Center
+        ) {
             Text(text, color = Color.White, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+// ------------------- FULLSCREEN HOST -------------------
+@Composable
+fun NewPromotionHost(
+    onClose: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,   // pantalla completa
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding(),
+            color = Color.White,
+            tonalElevation = 0.dp,
+            shape = RectangleShape
+        ) {
+            NewPromotionSheet(onClose = onClose)
         }
     }
 }
