@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName
 
 /**
  * DTO for creating promotions that matches the backend API expectations.
- * Uses category names (strings) instead of Category objects.
+ * Uses categoryIds (array of IDs) and optional branchIds.
  */
 data class CreatePromotionRequest(
     val collaboratorId: String,
@@ -22,14 +22,17 @@ data class CreatePromotionRequest(
     val promotionState: PromotionState,
     @SerializedName("promotionTheme") val theme: PromoTheme? = null,
     @SerializedName("is_bookable") val isBookable: Boolean,
-    // Categories as array of category names (strings)
-    val categories: List<String>
+    // Category IDs as array of integers
+    val categoryIds: List<Int>,
+    // Branch IDs as optional array of integers
+    // If null or empty, promotion applies to ALL collaborator's branches
+    val branchIds: List<Int>? = null
 )
 
 /**
  * Extension function to convert Promotions to CreatePromotionRequest
  */
-fun Promotions.toCreateRequest(): CreatePromotionRequest {
+fun Promotions.toCreateRequest(branchIds: List<Int>? = null): CreatePromotionRequest {
     return CreatePromotionRequest(
         collaboratorId = this.collaboratorId ?: throw IllegalArgumentException("collaboratorId is required"),
         title = this.title ?: throw IllegalArgumentException("title is required"),
@@ -46,7 +49,9 @@ fun Promotions.toCreateRequest(): CreatePromotionRequest {
         promotionState = this.promotionState ?: throw IllegalArgumentException("promotionState is required"),
         theme = this.theme,
         isBookable = this.isBookable ?: false,
-        // Extract category names from Category objects
-        categories = this.categories.mapNotNull { it.name }
+        // Extract category IDs from Category objects
+        categoryIds = this.categories.mapNotNull { it.id },
+        // Pass branch IDs if provided
+        branchIds = branchIds
     )
 }

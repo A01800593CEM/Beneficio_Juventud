@@ -71,6 +71,18 @@ export class BranchService {
   }
 
   /**
+   * Retrieves all branches belonging to a specific collaborator.
+   * @param collaboratorId - The cognito ID of the collaborator
+   * @returns Promise resolving to an array of branch entities
+   */
+  async findByCollaborator(collaboratorId: string): Promise<Branch[]> {
+    return this.branchRepository.find({
+      where: { collaboratorId },
+      order: { name: 'ASC' }
+    });
+  }
+
+  /**
    * Removes a branch from the system.
    * @param id - The unique identifier of the branch to remove
    * @returns Promise resolving when the branch is deleted

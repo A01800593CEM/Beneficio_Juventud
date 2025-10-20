@@ -77,6 +77,15 @@ export class CreatePromotionDto {
   categoryIds?: number[];
 
   /**
+   * Array de IDs de sucursales donde aplica la promoción.
+   * Si es undefined o array vacío, la promoción aplicará para TODAS las sucursales del colaborador.
+   */
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  branchIds?: number[];
+
+  /**
    * (Legacy) si alguien sigue mandando "promotionTheme", lo aceptamos.
    * Se mapeará a "theme" en el servicio.
    */

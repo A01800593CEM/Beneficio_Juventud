@@ -20,6 +20,7 @@ import { Collaborator } from 'src/collaborators/entities/collaborator.entity';
 import { PromotionTheme } from '../enums/promotion-theme.enum';
 import { User } from 'src/users/entities/user.entity';
 import { Notification } from 'src/notifications/entities/notification.entity';
+import { Branch } from 'src/branch/entities/branch.entity';
 
 @Entity({ name: 'promocion' })
 export class Promotion {
@@ -116,6 +117,20 @@ export class Promotion {
     },
   })
   categories: Category[];
+
+  @ManyToMany(() => Branch, (branch) => branch.promotions)
+  @JoinTable({
+    name: 'promocion_sucursal',
+    joinColumn: {
+      name: 'promocion_id',
+      referencedColumnName: 'promotionId',
+    },
+    inverseJoinColumn: {
+      name: 'sucursal_id',
+      referencedColumnName: 'branchId',
+    },
+  })
+  branches: Branch[];
 
   @ManyToOne(() => Collaborator, (collaborator) => collaborator.promotions)
   @JoinColumn({

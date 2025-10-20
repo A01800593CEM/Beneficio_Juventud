@@ -1,10 +1,11 @@
 import {
-  Entity, 
-  PrimaryGeneratedColumn, 
+  Entity,
+  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn, 
-  UpdateDateColumn, 
-  ManyToOne, 
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  ManyToMany,
   JoinColumn,
   OneToMany
 } from 'typeorm';
@@ -12,6 +13,7 @@ import type { Relation } from 'typeorm';
 import { Collaborator } from '../../collaborators/entities/collaborator.entity';
 import { BranchState } from '../../branch/enums/branch-state.enum';
 import { Redeemedcoupon } from '../../redeemedcoupon/entities/redeemedcoupon.entity';
+import { Promotion } from '../../promotions/entities/promotion.entity';
 
 @Entity({name: 'sucursal'})
 export class Branch {
@@ -53,8 +55,8 @@ export class Branch {
   @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
 
-  
-  //Reltaions
+
+  //Relations
 
     @ManyToOne(() => Collaborator, collaborator => collaborator.branch)
     @JoinColumn({ name: 'colaborador_id', referencedColumnName: 'cognitoId' })
@@ -62,5 +64,8 @@ export class Branch {
 
     @OneToMany(() => Redeemedcoupon, redeemedcoupons => redeemedcoupons.branch)
     redeemedcoupon: Relation<Redeemedcoupon>
+
+    @ManyToMany(() => Promotion, promotion => promotion.branches)
+    promotions: Relation<Promotion[]>;
 }
 

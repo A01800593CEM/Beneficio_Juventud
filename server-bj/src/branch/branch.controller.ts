@@ -38,6 +38,17 @@ export class BranchController {
   }
 
   /**
+   * Retrieves all branches for a specific collaborator.
+   * @route GET /branch/collaborator/:collaboratorId
+   * @param collaboratorId - The cognito ID of the collaborator
+   * @returns An array of branch entities belonging to the collaborator
+   */
+  @Get('collaborator/:collaboratorId')
+  findByCollaborator(@Param('collaboratorId') collaboratorId: string) {
+    return this.branchService.findByCollaborator(collaboratorId);
+  }
+
+  /**
    * Retrieves a specific branch by ID.
    * @route GET /branch/:id
    * @param id - The unique identifier of the branch

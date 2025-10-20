@@ -165,12 +165,26 @@ fun NewPromotionSheet(
         mutableStateOf(existingPromotion?.isBookable ?: promo.isBookable ?: false)
     }
 
-    // Cargar categorías al iniciar
+    // Sucursales (branches)
+    var availableBranches by remember { mutableStateOf<List<mx.itesm.beneficiojuventud.model.Branch>>(emptyList()) }
+    var selectedBranches by remember { mutableStateOf<Set<Int>>(emptySet()) }
+
+    // Cargar categorías y sucursales al iniciar
     LaunchedEffect(Unit) {
         runCatching {
             availableCategories = RemoteServiceCategory.getCategories()
         }.onFailure { error ->
             android.util.Log.e("NewPromotionSheet", "Error loading categories", error)
+        }
+    }
+
+    LaunchedEffect(collaboratorId) {
+        if (collaboratorId != "anonymous") {
+            runCatching {
+                availableBranches = mx.itesm.beneficiojuventud.model.branch.RemoteServiceBranch.getBranchesByCollaborator(collaboratorId)
+            }.onFailure { error ->
+                android.util.Log.e("NewPromotionSheet", "Error loading branches", error)
+            }
         }
     }
 
@@ -553,6 +567,99 @@ fun NewPromotionSheet(
 
                 Spacer(Modifier.height(24.dp))
 
+                // Sucursales
+                Text("Sucursales", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = DarkBlue)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Selecciona las sucursales donde aplica (si no seleccionas ninguna, aplicará a todas)",
+                    fontSize = 14.sp,
+                    color = TextGrey
+                )
+                Spacer(Modifier.height(12.dp))
+
+                if (availableBranches.isEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = LightGrey)
+                    ) {
+                        Text(
+                            "No tienes sucursales registradas. La promoción se aplicará a todas tus sucursales futuras.",
+                            modifier = Modifier.padding(16.dp),
+                            fontSize = 14.sp,
+                            color = TextGrey
+                        )
+                    }
+                } else {
+                    // Opción "Todas las sucursales"
+                    val allSelected = selectedBranches.isEmpty()
+                    PromotionStateChip(
+                        text = "Todas las sucursales (${availableBranches.size})",
+                        selected = allSelected,
+                        onClick = {
+                            selectedBranches = emptySet()
+                        },
+                        color = Teal,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    // Lista de sucursales individuales con checkboxes
+                    availableBranches.forEach { branch ->
+                        branch.branchId?.let { branchId ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (selectedBranches.contains(branchId)) Purple.copy(alpha = 0.1f) else LightGrey)
+                                    .clickable {
+                                        selectedBranches = if (selectedBranches.contains(branchId)) {
+                                            selectedBranches - branchId
+                                        } else {
+                                            selectedBranches + branchId
+                                        }
+                                    }
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = selectedBranches.contains(branchId),
+                                    onCheckedChange = { checked ->
+                                        selectedBranches = if (checked) {
+                                            selectedBranches + branchId
+                                        } else {
+                                            selectedBranches - branchId
+                                        }
+                                    },
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = Purple,
+                                        uncheckedColor = Color.Gray
+                                    )
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = branch.name ?: "Sin nombre",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = DarkBlue
+                                    )
+                                    branch.address?.let { address ->
+                                        Text(
+                                            text = address,
+                                            fontSize = 12.sp,
+                                            color = TextGrey
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+
                 // Reservabilidad
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -696,7 +803,50 @@ fun NewPromotionSheet(
                         if (isEditMode && existingPromotion?.promotionId != null) {
                             viewModel.updatePromotion(existingPromotion.promotionId!!, promoData)
                         } else {
-                            viewModel.createPromotion(promoData)
+                            // Prepare branch IDs list (if empty, server will apply to all branches)
+                            val branchIdsList = if (selectedBranches.isEmpty()) null else selectedBranches.toList()
+                            android.util.Log.d("NewPromotionSheet", "Creating promotion with branchIds: $branchIdsList")
+
+                            // RemoteServicePromos.createPromotion calls toCreateRequest internally
+                            // We need to store branchIds somewhere accessible by toCreateRequest
+                            // For now, let's call the service directly with proper request
+                            val createRequest = mx.itesm.beneficiojuventud.model.promos.CreatePromotionRequest(
+                                collaboratorId = promoData.collaboratorId ?: "",
+                                title = promoData.title ?: "",
+                                description = promoData.description ?: "",
+                                imageUrl = promoData.imageUrl,
+                                initialDate = promoData.initialDate ?: "",
+                                endDate = promoData.endDate ?: "",
+                                promotionType = promoData.promotionType ?: mx.itesm.beneficiojuventud.model.promos.PromotionType.descuento,
+                                promotionString = promoData.promotionString,
+                                totalStock = promoData.totalStock ?: 0,
+                                availableStock = promoData.availableStock ?: 0,
+                                limitPerUser = promoData.limitPerUser ?: 0,
+                                dailyLimitPerUser = promoData.dailyLimitPerUser ?: 0,
+                                promotionState = promoData.promotionState ?: mx.itesm.beneficiojuventud.model.promos.PromotionState.activa,
+                                theme = promoData.theme,
+                                isBookable = promoData.isBookable ?: false,
+                                categoryIds = selectedCategories.toList(),
+                                branchIds = branchIdsList
+                            )
+
+                            val gson = com.google.gson.GsonBuilder()
+                                .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+                                .create()
+                            android.util.Log.d("NewPromotionSheet", "Request JSON: ${gson.toJson(createRequest)}")
+
+                            // Call API service directly
+                            mx.itesm.beneficiojuventud.model.promos.PromoApiService
+                            val retrofit = retrofit2.Retrofit.Builder()
+                                .baseUrl(mx.itesm.beneficiojuventud.utils.Constants.BASE_URL)
+                                .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create(gson))
+                                .build()
+                            val apiService = retrofit.create(mx.itesm.beneficiojuventud.model.promos.PromoApiService::class.java)
+                            val response = apiService.createPromotion(createRequest)
+
+                            if (!response.isSuccessful) {
+                                throw Exception("Error ${response.code()}: ${response.errorBody()?.string()}")
+                            }
                         }
                     }.onSuccess {
                             showError = false

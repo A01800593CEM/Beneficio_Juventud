@@ -28,8 +28,9 @@ export class PromotionsService {
   ) {}
 
   async create(createPromotionDto: CreatePromotionDto): Promise<Promotion> {
-    const { categoryIds, ...data } = createPromotionDto;
+    const { categoryIds, branchIds, ...data } = createPromotionDto;
 
+    // Obtener categorías
     const safeIds = categoryIds ?? [];
     const categories = await this.categoriesRepository.findBy({ id: In(safeIds) });
 
@@ -41,11 +42,41 @@ export class PromotionsService {
       throw new NotFoundException(`Some categories were not found: [${missing.join(', ')}]`);
     }
 
+    // Obtener sucursales
+    let branches: Branch[] = [];
+    if (branchIds && branchIds.length > 0) {
+      // Sucursales específicas seleccionadas
+      branches = await this.branchRepository.findBy({
+        branchId: In(branchIds)
+      });
+
+      // Validar que todas las sucursales pertenecen al colaborador
+      const allBelongToCollaborator = branches.every(
+        branch => branch.collaboratorId === data.collaboratorId
+      );
+
+      if (!allBelongToCollaborator) {
+        throw new NotFoundException(
+          'Cannot assign promotion to branches of another collaborator'
+        );
+      }
+
+      if (branches.length !== branchIds.length) {
+        throw new NotFoundException('Some branches were not found');
+      }
+    } else {
+      // Si no se especifican sucursales, aplicar a TODAS las del colaborador
+      branches = await this.branchRepository.find({
+        where: { collaboratorId: data.collaboratorId }
+      });
+    }
+
     const promotion = this.promotionsRepository.create({
       ...data,
       // aceptar ambos (theme y promotionTheme), priorizando "theme"
       theme: data.theme ?? data.promotionTheme ?? PromotionTheme.LIGHT,
       categories,
+      branches,
     });
 
     this.notificationsService.newPromoNotif(promotion);
