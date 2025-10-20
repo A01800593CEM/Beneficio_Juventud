@@ -39,4 +39,16 @@ export class AnalyticsController {
   async getPromotionAnalytics(@Param('collaboratorId') collaboratorId: string) {
     return this.analyticsService.getPromotionAnalytics(collaboratorId);
   }
+
+  /**
+   * Get comprehensive platform-wide analytics for administrators.
+   * Optimized for Recharts visualization library (Web).
+   * @route GET /analytics/admin/dashboard?timeRange=month
+   * @param timeRange - 'week', 'month', 'year' (default: 'month')
+   * @returns Admin dashboard data optimized for Recharts
+   */
+  @Get('admin/dashboard')
+  async getAdminDashboard(@Query('timeRange') timeRange: string = 'month') {
+    return this.analyticsService.getAdminDashboard(timeRange);
+  }
 }
