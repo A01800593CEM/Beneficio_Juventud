@@ -282,7 +282,7 @@ private fun AppNav(
                 collabViewModel = collabViewModel
             )
         }
-        composable(Screens.ProfileCollab.route) { ProfileCollab(nav = nav, collabViewModel = collabViewModel) }
+        composable(Screens.ProfileCollab.route) { ProfileCollab(nav, authViewModel, collabViewModel) }
         composable(Screens.QrScanner.route) {
             QrScannerScreen(
                 onClose = { nav.popBackStack() },

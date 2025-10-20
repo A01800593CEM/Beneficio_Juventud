@@ -15,9 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -705,41 +708,35 @@ private fun DatePickerField(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // InteractionSource para hacer clickeable todo el TextField
-    val interactionSource = remember { MutableInteractionSource() }
+    val clickSrc = remember { MutableInteractionSource() }
 
     Column(modifier = modifier) {
         Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextGrey)
         Spacer(Modifier.height(4.dp))
+
         OutlinedTextField(
             value = value,
-            onValueChange = {},
+            onValueChange = {},               // readOnly: no edición directa
             readOnly = true,
-            placeholder = {
-                Text(
-                    "YYYY-MM-DD",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-            },
+            placeholder = { Text("YYYY-MM-DD", fontSize = 14.sp, color = Color.Gray) },
             leadingIcon = {
-                Icon(
-                    Icons.Default.CalendarToday,
-                    contentDescription = "Seleccionar fecha",
-                    tint = Teal
-                )
+                IconButton(onClick = onOpen) {   // el ícono también abre
+                    Icon(Icons.Default.CalendarToday, contentDescription = "Seleccionar fecha", tint = Teal)
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
+                // 1) Abre al recibir foco (tap)
+                .onFocusChanged { if (it.isFocused) onOpen() }
+                // 2) Abre con click explícito como respaldo
                 .clickable(
-                    interactionSource = interactionSource,
+                    interactionSource = clickSrc,
                     indication = null
                 ) { onOpen() },
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Teal,
                 unfocusedBorderColor = Color.LightGray,
-                disabledBorderColor = Color.LightGray,
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
                 disabledContainerColor = Color.Transparent
@@ -748,29 +745,30 @@ private fun DatePickerField(
     }
 
     if (show) {
-        val state = rememberDatePickerState()
+        // Si ya tienes un valor, úsalo como selección inicial
+        val initialMillis = remember(value) {
+            runCatching {
+                if (value.isNotBlank())
+                    java.time.LocalDate.parse(value).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                else null
+            }.getOrNull()
+        }
+        val state = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+
         DatePickerDialog(
             onDismissRequest = onDismiss,
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        val millis = state.selectedDateMillis ?: return@TextButton
-                        val date = java.time.Instant.ofEpochMilli(millis)
-                            .atZone(java.time.ZoneId.systemDefault())
-                            .toLocalDate()
-                            .toString()
-                        onPicked(date)
-                        onDismiss()
-                    }
-                ) {
-                    Text("Aceptar", color = Teal)
-                }
+                TextButton(onClick = {
+                    val millis = state.selectedDateMillis ?: return@TextButton
+                    val date = java.time.Instant.ofEpochMilli(millis)
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDate()
+                        .toString()
+                    onPicked(date)
+                    onDismiss()
+                }) { Text("Aceptar", color = Teal) }
             },
-            dismissButton = {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancelar")
-                }
-            }
+            dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
         ) {
             DatePicker(
                 state = state,
@@ -784,6 +782,7 @@ private fun DatePickerField(
         }
     }
 }
+
 
 @Composable
 private fun PromotionTypeChip(
