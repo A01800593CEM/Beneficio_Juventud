@@ -47,9 +47,36 @@ object RemoteServicePromos {
     }
 
     suspend fun createPromotion(promo: Promotions): Promotions {
+        // Log detallado para debug
+        android.util.Log.d("RemoteServicePromos", "=== Creating Promotion ===")
+        android.util.Log.d("RemoteServicePromos", "collaboratorId: ${promo.collaboratorId}")
+        android.util.Log.d("RemoteServicePromos", "title: ${promo.title}")
+        android.util.Log.d("RemoteServicePromos", "description: ${promo.description}")
+        android.util.Log.d("RemoteServicePromos", "imageUrl: ${promo.imageUrl}")
+        android.util.Log.d("RemoteServicePromos", "initialDate: ${promo.initialDate}")
+        android.util.Log.d("RemoteServicePromos", "endDate: ${promo.endDate}")
+        android.util.Log.d("RemoteServicePromos", "promotionType: ${promo.promotionType}")
+        android.util.Log.d("RemoteServicePromos", "promotionString: ${promo.promotionString}")
+        android.util.Log.d("RemoteServicePromos", "totalStock: ${promo.totalStock}")
+        android.util.Log.d("RemoteServicePromos", "availableStock: ${promo.availableStock}")
+        android.util.Log.d("RemoteServicePromos", "limitPerUser: ${promo.limitPerUser}")
+        android.util.Log.d("RemoteServicePromos", "dailyLimitPerUser: ${promo.dailyLimitPerUser}")
+        android.util.Log.d("RemoteServicePromos", "promotionState: ${promo.promotionState}")
+        android.util.Log.d("RemoteServicePromos", "theme: ${promo.theme}")
+        android.util.Log.d("RemoteServicePromos", "isBookable: ${promo.isBookable}")
+
+        // Serializar a JSON para ver qué se envía
+        val jsonBody = gson.toJson(promo)
+        android.util.Log.d("RemoteServicePromos", "JSON Body: $jsonBody")
+
         val response = promoApiService.createPromotion(promo)
+
+        android.util.Log.d("RemoteServicePromos", "Response code: ${response.code()}")
+
         if (!response.isSuccessful) {
-            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+            val errorBody = response.errorBody()?.string().orEmpty()
+            android.util.Log.e("RemoteServicePromos", "Error body: $errorBody")
+            throw Exception("Error ${response.code()}: $errorBody")
         }
         return response.body() ?: throw Exception("Respuesta vacía al crear la promoción")
     }
