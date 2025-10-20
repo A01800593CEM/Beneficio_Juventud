@@ -99,4 +99,16 @@ object RemoteServicePromos {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
         }
     }
+
+    suspend fun getNearbyPromotions(
+        latitude: Double,
+        longitude: Double,
+        radius: Double = 3.0
+    ): List<NearbyPromotion> {
+        val response = promoApiService.getNearbyPromotions(latitude, longitude, radius)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        return response.body() ?: emptyList()
+    }
 }

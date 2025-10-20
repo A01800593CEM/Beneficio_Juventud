@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NotificationsNone
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material3.*
@@ -32,14 +34,20 @@ import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJSearchBar
 import mx.itesm.beneficiojuventud.components.CategoryPill
+import mx.itesm.beneficiojuventud.components.CombinedNearbyMap
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.components.PromoCarousel
 import mx.itesm.beneficiojuventud.components.SectionTitle
+import mx.itesm.beneficiojuventud.model.collaborators.NearbyCollaborator
+import mx.itesm.beneficiojuventud.model.promos.NearbyPromotion
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.utils.LocationManager
+import mx.itesm.beneficiojuventud.utils.UserLocation
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
+import androidx.compose.ui.platform.LocalContext
 
 // Insets
 import androidx.compose.foundation.layout.WindowInsets
@@ -123,8 +131,81 @@ fun Home(
     var collabLoading by remember { mutableStateOf(false) }
     var collabError by remember { mutableStateOf<String?>(null) }
 
-    // ⬇️ Estado e imagen de perfil (igual que en Profile.kt)
+    // ─────────────────────────────────────────────────────────────────────────────
+    // UBICACIÓN Y DATOS CERCANOS
+    // ─────────────────────────────────────────────────────────────────────────────
     val context = LocalContext.current
+    val enableNearbyFeature = remember { true } // Cambiar a false para deshabilitar la función
+    val locationManager = remember { LocationManager(context) }
+    var userLocation by remember { mutableStateOf<UserLocation?>(null) }
+    var nearbyPromotions by remember { mutableStateOf<List<NearbyPromotion>>(emptyList()) }
+    var nearbyCollaborators by remember { mutableStateOf<List<NearbyCollaborator>>(emptyList()) }
+    var nearbyLoading by remember { mutableStateOf(false) }
+    var nearbyError by remember { mutableStateOf<String?>(null) }
+
+    // Obtener ubicación del usuario (en background para no bloquear)
+    LaunchedEffect(enableNearbyFeature) {
+        if (!enableNearbyFeature) return@LaunchedEffect
+
+        scope.launch {
+            try {
+                if (locationManager.hasLocationPermission()) {
+                    userLocation = locationManager.getLastKnownLocation()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("Home", "Error getting location", e)
+            }
+        }
+    }
+
+    // Cargar promociones y colaboradores cercanos cuando tengamos ubicación
+    LaunchedEffect(userLocation, enableNearbyFeature) {
+        if (!enableNearbyFeature) return@LaunchedEffect
+        val location = userLocation ?: return@LaunchedEffect
+
+        nearbyLoading = true
+        nearbyError = null
+
+        scope.launch {
+            try {
+                // Llamar a los endpoints de nearby en paralelo con timeout
+                val promosDeferred = async {
+                    try {
+                        promoViewModel.getNearbyPromotions(
+                            location.latitude,
+                            location.longitude,
+                            radius = 3.0
+                        )
+                    } catch (e: Exception) {
+                        android.util.Log.e("Home", "Error loading nearby promos", e)
+                        emptyList()
+                    }
+                }
+                val collabsDeferred = async {
+                    try {
+                        collabViewModel.getNearbyCollaborators(
+                            location.latitude,
+                            location.longitude,
+                            radius = 3.0
+                        )
+                    } catch (e: Exception) {
+                        android.util.Log.e("Home", "Error loading nearby collabs", e)
+                        emptyList()
+                    }
+                }
+
+                nearbyPromotions = promosDeferred.await()
+                nearbyCollaborators = collabsDeferred.await()
+            } catch (e: Exception) {
+                android.util.Log.e("Home", "Error in nearby loading", e)
+                nearbyError = e.message ?: "Error desconocido"
+            } finally {
+                nearbyLoading = false
+            }
+        }
+    }
+
+    // ⬇️ Estado e imagen de perfil (igual que en Profile.kt)
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var isLoadingImage by remember { mutableStateOf(false) }
 
@@ -504,6 +585,156 @@ fun Home(
                             }
                         )
                     }
+                }
+            }
+
+            // ─── Cerca de ti (MAPA) ─────────────────────────────────────────────
+            if (enableNearbyFeature && search.isBlank() && selectedCategoryName == null) {
+                item {
+                    SectionTitle(
+                        "Cerca de ti",
+                        Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp, bottom = 6.dp)
+                    )
+
+                    when {
+                        !locationManager.hasLocationPermission() -> {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        "📍 Activa los permisos de ubicación",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        "Para mostrarte promociones y negocios cerca de ti",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                        userLocation == null -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(250.dp)
+                                    .padding(horizontal = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text("Obteniendo tu ubicación...", fontSize = 13.sp)
+                                }
+                            }
+                        }
+                        nearbyLoading -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(250.dp)
+                                    .padding(horizontal = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text("Buscando cerca de ti...", fontSize = 13.sp)
+                                }
+                            }
+                        }
+                        nearbyError != null -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(250.dp)
+                                    .padding(horizontal = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "No se pudo cargar el mapa: $nearbyError",
+                                    color = Color(0xFF8C8C8C),
+                                    fontSize = 13.sp,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                        nearbyPromotions.isEmpty() && nearbyCollaborators.isEmpty() -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(250.dp)
+                                    .padding(horizontal = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        "🗺️",
+                                        fontSize = 48.sp
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        "No hay promociones ni negocios cerca de ti",
+                                        color = Color(0xFF8C8C8C),
+                                        fontSize = 13.sp,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                    Text(
+                                        "Radio de búsqueda: 3 km",
+                                        color = Color(0xFF8C8C8C),
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+                        else -> {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(300.dp)
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                CombinedNearbyMap(
+                                    userLocation = userLocation,
+                                    nearbyPromotions = nearbyPromotions,
+                                    nearbyCollaborators = nearbyCollaborators,
+                                    onPromotionMarkerClick = { promo ->
+                                        promo.promotionId?.let { id ->
+                                            nav.navigate(Screens.PromoQR.createRoute(id))
+                                        }
+                                    },
+                                    onCollaboratorMarkerClick = { collab ->
+                                        collab.cognitoId?.let { id ->
+                                            nav.navigate(Screens.Business.createRoute(id))
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
                 }
             }
 

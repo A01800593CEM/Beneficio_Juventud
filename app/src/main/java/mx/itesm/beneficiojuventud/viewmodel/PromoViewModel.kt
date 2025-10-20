@@ -68,6 +68,15 @@ class PromoViewModel : ViewModel() {
         model.deletePromotion(id)
     }
 
+    /** Obtiene promociones cercanas a una ubicación específica */
+    suspend fun getNearbyPromotions(
+        latitude: Double,
+        longitude: Double,
+        radius: Double = 3.0
+    ): List<mx.itesm.beneficiojuventud.model.promos.NearbyPromotion> {
+        return model.getNearbyPromotions(latitude, longitude, radius)
+    }
+
     // ─────────────────────────────────────────────────────────────────────────────
     // Recomendado para ti (intercalado por categorías favoritas)
     // ─────────────────────────────────────────────────────────────────────────────
