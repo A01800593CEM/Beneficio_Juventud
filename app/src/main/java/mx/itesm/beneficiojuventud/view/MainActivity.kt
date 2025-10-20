@@ -51,19 +51,19 @@ import mx.itesm.beneficiojuventud.viewcollab.PromotionsScreenCollab
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val localDatabase = Room.databaseBuilder(
-            applicationContext,
-            LocalDatabase::class.java,
-            "beneficio-joven-db"
-        )
-            .fallbackToDestructiveMigration()
-            .build()
+        val db = LocalDatabase.getDatabase(this)
+        val promotionDao = db.promotionDao()
+        val categoryDao = db.categoryDao()
+
         enableEdgeToEdge()
         solicitarPermiso()
         obtenerToken()
         setContent {
             BeneficioJuventudTheme {
-                AppContent()
+                AppContent(
+                    promotionDao = promotionDao,
+                    categoryDao = categoryDao
+                )
             }
         }
     }
@@ -112,6 +112,23 @@ private fun AppContent(
 ) {
     val context = LocalContext.current
     val authViewModel = remember { AuthViewModel(context) }
+    promotionDao: mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionDao,
+    categoryDao: mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryDao
+) {
+    // Create repository with the DAO
+    val repository = remember(promotionDao) {
+        mx.itesm.beneficiojuventud.model.SavedCouponRepository(promotionDao)
+    }
+
+    // Create ViewModels
+    val authViewModel: AuthViewModel = viewModel()
+    val userViewModel = remember(repository) {
+        UserViewModel(repository = repository)
+    }
+    val collabViewModel: CollabViewModel = viewModel()
+    val categoryViewModel: CategoryViewModel = viewModel()
+    val promoViewModel: PromoViewModel = viewModel()
+
     val nav = rememberNavController()
     AppNav(
         nav = nav,
@@ -287,6 +304,8 @@ private fun AppNav(
                     promotionId = promotionId,
                     cognitoId = cognitoId!!,
                     bookingViewModel = bookingViewModel
+                    viewModel = promoViewModel,
+                    userViewModel = userViewModel
                 )
             } else {
                 Startup()

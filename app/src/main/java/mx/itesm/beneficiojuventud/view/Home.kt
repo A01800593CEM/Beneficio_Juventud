@@ -67,11 +67,20 @@ import com.amplifyframework.core.Amplify
 import com.amplifyframework.storage.StoragePath
 import java.io.File
 import android.util.Log
+import aws.smithy.kotlin.runtime.telemetry.context.Context
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 // 👇 NUEVOS imports: diseño “Poster” con fav
 import mx.itesm.beneficiojuventud.components.MerchantRowSelectable
 import mx.itesm.beneficiojuventud.components.MerchantDesign
 import mx.itesm.beneficiojuventud.components.iconForCategoryName
+import mx.itesm.beneficiojuventud.model.RoomDB.LocalDatabase
+import mx.itesm.beneficiojuventud.model.RoomDB.PromotionsCategories.PromotionWithCategories
+import mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionDao
+import mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionEntity
+import mx.itesm.beneficiojuventud.model.SavedCouponRepository
+import org.checkerframework.common.returnsreceiver.qual.This
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1020,11 +1029,68 @@ private fun TopBar(
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun HomePreview() {
+    // 1. Create a fake DAO that implements the actual PromotionDao interface
+    val fakeDao = object : PromotionDao {
+        override suspend fun getFavoritePromotions(): List<PromotionWithCategories> {
+            return emptyList()
+        }
+
+        override suspend fun getReservedPromotions(): List<PromotionWithCategories> {
+            return emptyList()
+        }
+
+        override suspend fun findById(promotionId: Int): PromotionWithCategories {
+            // Return a dummy PromotionWithCategories for preview
+            return PromotionWithCategories(
+                promotion = PromotionEntity(
+                    promotionId = promotionId,
+                    title = "Preview Promo",
+                    description = null,
+                    image = null,
+                    initialDate = null,
+                    endDate = null,
+                    promotionType = null,
+                    promotionString = null,
+                    totalStock = null,
+                    availableStock = null,
+                    limitPerUser = null,
+                    dailyLimitPerUser = null,
+                    promotionState = null,
+                    isBookable = null,
+                    theme = null,
+                    businessName = null,
+                    isReserved = false
+                ),
+                categories = emptyList()
+            )
+        }
+
+        override suspend fun insertPromotions(vararg promotions: PromotionEntity) {
+            // Do nothing for preview
+        }
+
+        override suspend fun deletePromotions(promotion: PromotionEntity) {
+            // Do nothing for preview
+        }
+    }
+
+    // 2. Create a repository with the fake DAO.
+    val fakeRepository = SavedCouponRepository(fakeDao)
+
+    // 3. Create the ViewModel with the fake repository.
+    // NOTE: Your UserViewModel might need more fake dependencies if its constructor changed.
+    // If you get an error on the line below, you'll need to pass fake versions
+    // for the other repository parameters as well.
+    val fakeViewModel = UserViewModel(repository = fakeRepository)
+
+
     BeneficioJuventudTheme {
         val nav = rememberNavController()
-        Home(nav = nav, userViewModel = UserViewModel())
+        // 4. Pass the fake ViewModel to your Home composable.
+        Home(nav = nav, userViewModel = fakeViewModel)
     }
 }
+
 
 // ————————————————————————————————————————————————————————————————
 // Helper: descarga imagen de perfil (igual que en Profile.kt)

@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mx.itesm.beneficiojuventud.model.bookings.Booking
 import mx.itesm.beneficiojuventud.model.bookings.RemoteServiceBooking
+import mx.itesm.beneficiojuventud.model.SavedCouponRepository
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
@@ -18,7 +19,7 @@ import mx.itesm.beneficiojuventud.model.users.RemoteServiceUser
 import mx.itesm.beneficiojuventud.model.users.UserProfile
 import java.time.OffsetDateTime
 
-class UserViewModel : ViewModel() {
+class UserViewModel(private val repository: SavedCouponRepository) : ViewModel() {
 
     private val model = RemoteServiceUser
 
@@ -148,8 +149,8 @@ class UserViewModel : ViewModel() {
     fun favoritePromotion(promotionId: Int, cognitoId: String) {
         _error.value = null
         viewModelScope.launch {
-            val op = runCatching {
-                withContext(Dispatchers.IO) { model.favoritePromotion(promotionId, cognitoId) }
+            val result = runCatching {
+                withContext(Dispatchers.IO) { repository.favoritePromotion(promotionId, cognitoId) }
             }
 
             op.onFailure { e ->
@@ -187,13 +188,8 @@ class UserViewModel : ViewModel() {
     fun unfavoritePromotion(promotionId: Int, cognitoId: String) {
         _error.value = null
         viewModelScope.launch {
-            // Capturar datos ANTES de eliminar
-            val current = _favoritePromotions.value.firstOrNull { it.promotionId == promotionId }
-            val titleBefore = current?.title ?: "Promoción $promotionId"
-            val businessBefore = current?.businessName
-
-            val op = runCatching {
-                withContext(Dispatchers.IO) { model.unfavoritePromotion(promotionId, cognitoId) }
+            val result = runCatching {
+                withContext(Dispatchers.IO) { repository.unfavoritePromotion(promotionId, cognitoId) }
             }
 
             op.onFailure { e ->
@@ -230,7 +226,7 @@ class UserViewModel : ViewModel() {
 
         viewModelScope.launch {
             val result = runCatching {
-                withContext(Dispatchers.IO) { model.getFavoritePromotions(cognitoId) }
+                withContext(Dispatchers.IO) { repository.getFavoritePromotions(cognitoId) }
             }
             if (myToken != loadToken) return@launch
 
@@ -246,7 +242,7 @@ class UserViewModel : ViewModel() {
     fun refreshFavorites(cognitoId: String) {
         viewModelScope.launch {
             runCatching {
-                withContext(Dispatchers.IO) { model.getFavoritePromotions(cognitoId) }
+                withContext(Dispatchers.IO) { repository.getFavoritePromotions(cognitoId) }
             }.onSuccess { _favoritePromotions.value = it }
                 .onFailure { e -> _error.value = e.message ?: "Error al refrescar promociones favoritas" }
 
