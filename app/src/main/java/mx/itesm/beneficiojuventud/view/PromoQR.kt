@@ -3,9 +3,11 @@ package mx.itesm.beneficiojuventud.view
 
 import android.graphics.Bitmap
 import android.util.Log
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,12 +16,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -50,6 +56,7 @@ import mx.itesm.beneficiojuventud.model.promos.PromotionState
 import mx.itesm.beneficiojuventud.model.promos.PromotionType
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import java.text.SimpleDateFormat
@@ -89,7 +96,9 @@ data class PromoDetailUi(
     val terms: String,
     val stockLabel: String,
     val theme: PromoTheme = PromoTheme.light,
-    val accentColor: Color = Color(0xFF008D96) // puedes cambiar si agregas accent en backend
+    val accentColor: Color = Color(0xFF008D96), // puedes cambiar si agregas accent en backend
+    val isBookable: Boolean = false,
+    val dailyLimitPerUser: Int? = null
 )
 
 // ---------- Paletas/gradiente (idéntico a PromoComponents) ----------
@@ -168,11 +177,16 @@ private fun toUi(p: Promotions): PromoDetailUi {
         append("Tipo: ${p.promotionType?.displayName ?: "—"}")
         p.promotionState?.let { append(" • Estado: ${it.displayName}") }
     }
-    val stock  = if (p.totalStock != null && p.availableStock != null) {
-        "Stock: ${p.availableStock} / ${p.totalStock}"
-    } else "Stock: —"
 
-    val themeMode = p.theme ?: PromoTheme.light // <- MISMO PATRÓN QUE EN COMPONENTES/COUPONS
+    // --- NUEVO: texto de stock/uso según bookable ---
+    val isBookable = p.isBookable == true
+    val stockText = if (isBookable) {
+        "Disponibles: ${p.availableStock ?: "—"}"
+    } else {
+        "Usos disponibles: ${p.limitPerUser ?: "—"}"
+    }
+
+    val themeMode = p.theme ?: PromoTheme.light
 
     return PromoDetailUi(
         bannerUrlOrRes = banner,
@@ -182,9 +196,11 @@ private fun toUi(p: Promotions): PromoDetailUi {
         validUntil = valid,
         description = desc,
         terms = terms,
-        stockLabel = stock,
+        stockLabel = stockText,
         theme = themeMode,
-        accentColor = if (themeMode == PromoTheme.dark) Color(0xFF00A3A3) else Color(0xFF008D96)
+        accentColor = if (themeMode == PromoTheme.dark) Color(0xFF00A3A3) else Color(0xFF008D96),
+        isBookable = isBookable,
+        dailyLimitPerUser = p.dailyLimitPerUser
     )
 }
 
@@ -240,14 +256,23 @@ fun PromoQR(
     cognitoId: String,
     modifier: Modifier = Modifier,
     viewModel: PromoViewModel = viewModel(),
-    userViewModel: UserViewModel = viewModel()
+    userViewModel: UserViewModel = viewModel(),
+    bookingViewModel: BookingViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
     var showQrDialog by rememberSaveable { mutableStateOf(false) }
+    var isRedeemed by rememberSaveable { mutableStateOf(false) }
 
     val promo by viewModel.promoState.collectAsState()
     val favPromos by userViewModel.favoritePromotions.collectAsState()
     val userError by userViewModel.error.collectAsState()
+
+    // Booking states
+    val bookingSuccess by bookingViewModel.bookingSuccess.collectAsState()
+    val bookingError by bookingViewModel.error.collectAsState()
+    val bookingLoading by bookingViewModel.isLoading.collectAsState()
+    val bookingMessage by bookingViewModel.message.collectAsState()
+    val userBookings by bookingViewModel.bookings.collectAsState()
 
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -271,8 +296,54 @@ fun PromoQR(
     LaunchedEffect(cognitoId) {
         try { userViewModel.getFavoritePromotions(cognitoId) } catch (_: Exception) {}
     }
+
+    // Cargar reservas del usuario
+    LaunchedEffect(cognitoId) {
+        try { bookingViewModel.loadUserBookings(cognitoId) } catch (_: Exception) {}
+    }
+
     LaunchedEffect(userError) {
         userError?.let { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
+    }
+
+    // Manejar éxito de reservación
+    LaunchedEffect(bookingSuccess) {
+        if (bookingSuccess) {
+            // Navegar a pantalla de éxito
+            nav.navigate(
+                Screens.Status.createRoute(
+                    StatusType.COUPON_RESERVATION_SUCCESS,
+                    Screens.Favorites.route
+                )
+            ) {
+                popUpTo(Screens.PromoQR.route) { inclusive = true }
+            }
+            bookingViewModel.resetBookingSuccess()
+        }
+    }
+
+    // Mostrar errores de reservación
+    LaunchedEffect(bookingError) {
+        bookingError?.let { msg ->
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = msg,
+                    actionLabel = "OK",
+                    duration = SnackbarDuration.Long
+                )
+            }
+            bookingViewModel.clearError()
+        }
+    }
+
+    // Mostrar mensajes de reservación
+    LaunchedEffect(bookingMessage) {
+        bookingMessage?.let { msg ->
+            scope.launch {
+                snackbarHostState.showSnackbar(msg)
+            }
+            bookingViewModel.clearMessage()
+        }
     }
 
     // Model UI
@@ -300,6 +371,12 @@ fun PromoQR(
             userViewModel.refreshFavorites(cognitoId)
         } catch (_: Exception) {}
     }
+
+    // Verificar si la promoción está reservada
+    val currentBooking = remember(userBookings, promotionId) {
+        userBookings.find { it.promotionId == promotionId }
+    }
+    val isReserved = currentBooking != null
 
     // Theme
     val currentTheme = detail?.theme ?: PromoTheme.light
@@ -394,21 +471,24 @@ fun PromoQR(
                                         }
                                 )
 
-                                // Chip de descuento (puedes cambiar a accent desde backend si agregas campo)
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(12.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(detail.accentColor)
-                                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = detail.discountLabel,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
-                                    )
+                                // NUEVO: chip "Stock limitado" cuando es bookable
+                                if (detail.isBookable) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(12.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(Color(0xFFFFF3CD)) // amarillo suave
+                                            .border(BorderStroke(1.dp, Color(0xFFFFEEA8)), RoundedCornerShape(16.dp))
+                                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = "Stock limitado",
+                                            color = Color(0xFF8A6D3B),
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 12.sp
+                                        )
+                                    }
                                 }
 
                                 // Favorito con surface blanca para contraste (como en PromoImageBannerFav)
@@ -483,7 +563,79 @@ fun PromoQR(
                             onClick = { showQrDialog = true }
                         )
                     }
+                    item {
+                        if (detail.isBookable) {
+                            Spacer(Modifier.height(8.dp))
 
+                            // Botón con estado de carga
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                            ) {
+                                val redGradient = Brush.linearGradient(
+                                    listOf(Color(0xFFDC2626), Color(0xFFEF4444))
+                                )
+
+                                MainButton(
+                                    text = when {
+                                        bookingLoading && !isReserved -> "Reservando..."
+                                        bookingLoading && isReserved -> "Cancelando..."
+                                        isReserved -> "Cancelar Reservación"
+                                        else -> "Reservar Cupón"
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    backgroundGradient = if (isReserved) redGradient else null,
+                                    onClick = {
+                                        if (isReserved) {
+                                            // Cancelar reservación (pero mantener en favoritos)
+                                            currentBooking?.let { booking ->
+                                                bookingViewModel.cancelBooking(booking)
+                                            }
+                                        } else {
+                                            // Verificar que hay stock disponible
+                                            val available = promo.availableStock ?: 0
+                                            if (available <= 0) {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar(
+                                                        message = "No hay stock disponible",
+                                                        duration = SnackbarDuration.Short
+                                                    )
+                                                }
+                                                return@MainButton
+                                            }
+
+                                            // Agregar a favoritos si no está ya
+                                            if (!isFavoriteLocal) {
+                                                try {
+                                                    userViewModel.favoritePromotion(promotionId, cognitoId)
+                                                    isFavoriteLocal = true
+                                                    userViewModel.refreshFavorites(cognitoId)
+                                                } catch (e: Exception) {
+                                                    Log.e(TAG, "Error al agregar a favoritos", e)
+                                                }
+                                            }
+
+                                            // Reservar cupón
+                                            bookingViewModel.reserveCoupon(promo, cognitoId)
+                                        }
+                                    }
+                                )
+
+                                // Mostrar loading spinner si está cargando
+                                if (bookingLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier
+                                            .align(Alignment.CenterEnd)
+                                            .padding(end = 16.dp)
+                                            .size(24.dp),
+                                        strokeWidth = 2.dp,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
                     item {
                         Spacer(Modifier.height(20.dp))
                         Text(
@@ -534,16 +686,35 @@ fun PromoQR(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-                        QRCardInner(detail = detail ?: return@Box, qrBitmap = qrImage)
+                        Crossfade(targetState = isRedeemed, label = "redeem_overlay_xfade") { redeemed ->
+                            if (redeemed) {
+                                RedeemedCardInner()
+                            } else {
+                                QRCardInner(detail = detail ?: return@Crossfade, qrBitmap = qrImage)
+                            }
+                        }
                     }
 
                     Spacer(Modifier.height(20.dp))
 
-                    MainButton(
-                        text = "Cerrar",
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        onClick = { showQrDialog = false }
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = { isRedeemed = true },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Simular escaneo") }
+
+                        MainButton(
+                            text = "Cerrar",
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp),
+                            onClick = { showQrDialog = false }
+                        )
+                    }
                 }
             }
         }
@@ -629,6 +800,36 @@ private fun QRCardInner(
             maxLines = 3,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@Composable
+private fun RedeemedCardInner() {
+    val dash = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .drawBehind {
+                val strokeWidth = 2.dp.toPx()
+                drawRoundRect(
+                    color = Color(0xFFDFE3E6),
+                    style = Stroke(width = strokeWidth, pathEffect = dash),
+                    cornerRadius = CornerRadius(16.dp.toPx())
+                )
+            }
+            .padding(vertical = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.ic_check_circle),
+            contentDescription = null,
+            tint = Color(0xFF22C55E),
+            modifier = Modifier.size(56.dp)
+        )
+        Spacer(Modifier.height(8.dp))
+        Text("¡Cupón Canjeado!", color = Color(0xFF22C55E), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+        Spacer(Modifier.height(4.dp))
+        Text("Gracias por usar nuestros servicios", color = Color.Gray, fontSize = 12.sp)
     }
 }
 

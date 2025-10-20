@@ -28,9 +28,17 @@ fun MainButton(
     modifier: Modifier = Modifier,
     height: Dp = 60.dp,
     enabled: Boolean = true,
+    backgroundGradient: Brush? = null,
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(12.dp)
+
+    val defaultGradient = Brush.linearGradient(
+        listOf(Color(0xFF4B4C7E), Color(0xFF008D96))
+    )
+    val disabledGradient = Brush.linearGradient(
+        listOf(Color(0xFFBDBDBD), Color(0xFF9E9E9E))
+    )
 
     Button(
         onClick = onClick,
@@ -59,13 +67,9 @@ fun MainButton(
                 .clip(shape)
                 .background(
                     if (enabled) {
-                        Brush.linearGradient(
-                            listOf(Color(0xFF4B4C7E), Color(0xFF008D96))
-                        )
+                        backgroundGradient ?: defaultGradient
                     } else {
-                        Brush.linearGradient(
-                            listOf(Color(0xFFBDBDBD), Color(0xFF9E9E9E))
-                        )
+                        disabledGradient
                     }
                 ),
             contentAlignment = Alignment.Center
