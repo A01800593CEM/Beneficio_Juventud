@@ -206,7 +206,10 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
                 Log.d("BookingViewModel", "Evento Cancelled emitido exitosamente")
 
                 // Recargar bookings después de cancelar
-                booking.userId?.let { loadUserBookings(it) }
+                booking.userId?.let { userId ->
+                    Log.d("BookingViewModel", "Recargando bookings para usuario $userId después de cancelación")
+                    loadUserBookings(userId)
+                }
 
             } catch (e: Exception) {
                 _error.value = "Error al cancelar: ${e.message}"

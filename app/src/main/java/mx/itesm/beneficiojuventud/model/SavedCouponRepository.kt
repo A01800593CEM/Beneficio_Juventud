@@ -119,12 +119,26 @@ class SavedCouponRepository(
 
     suspend fun getBookings(userId: String): List<Booking> {
         try {
-            val bookings = RemoteServiceBooking.getUserBookings(userId)
-            // Guardar bookings localmente
-            bookings.forEach { booking ->
-                bookingDao.insertBooking(booking.toEntity())
+            // Primero obtener los bookings locales (para preservar cancelledDate)
+            val localBookings = bookingDao.getBookingsByUser(userId).toBookingList()
+            val localCancelledIds = localBookings.filter { it.status == BookingStatus.CANCELLED }.map { it.bookingId }.toSet()
+
+            // Obtener bookings activos del servidor
+            val serverBookings = RemoteServiceBooking.getUserBookings(userId)
+
+            // Guardar bookings del servidor localmente, pero NO sobrescribir los cancelados
+            serverBookings.forEach { booking ->
+                if (booking.bookingId !in localCancelledIds) {
+                    bookingDao.insertBooking(booking.toEntity())
+                }
             }
-            return bookings
+
+            // Obtener TODOS los bookings locales actualizados (incluyendo cancelados con su cancelledDate)
+            val updatedLocalBookings = bookingDao.getBookingsByUser(userId).toBookingList()
+            Log.d("CouponRepository", "Bookings cargados: ${serverBookings.size} del servidor, ${updatedLocalBookings.size} locales (${localCancelledIds.size} cancelados preservados)")
+
+            // Retornar todos los bookings locales (incluye activos y cancelados con cancelledDate preservado)
+            return updatedLocalBookings
         } catch (e: Exception) {
             Log.e("CouponRepository", "Failed to fetch bookings from server, using local", e)
             return bookingDao.getBookingsByUser(userId).toBookingList()

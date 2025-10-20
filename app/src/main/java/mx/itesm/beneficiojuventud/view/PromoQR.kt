@@ -337,13 +337,20 @@ fun PromoQR(
         }
     }
 
-    // Mostrar mensajes de reservación
+    // Mostrar mensajes de reservación y recargar bookings
     LaunchedEffect(bookingMessage) {
         bookingMessage?.let { msg ->
             scope.launch {
                 snackbarHostState.showSnackbar(msg)
             }
             bookingViewModel.clearMessage()
+
+            // Recargar bookings después de cancelación
+            if (msg.contains("cancelada", ignoreCase = true)) {
+                Log.d(TAG, "Recargando bookings después de cancelación")
+                kotlinx.coroutines.delay(500) // Pequeña espera para asegurar que el DB se actualizó
+                bookingViewModel.loadUserBookings(cognitoId)
+            }
         }
     }
 
@@ -408,27 +415,46 @@ fun PromoQR(
 
     val isReserved = currentBooking != null && !bookingExpired
 
-    // Tiempo restante hasta expiración (horas, minutos)
-    val timeRemaining = remember(currentBooking) {
-        currentBooking?.let { getTimeUntilExpiration(it.bookingDate) } ?: Pair(0L, 0L)
-    }
+    // Estados mutables para actualización en tiempo real
+    var timeRemaining by remember { mutableStateOf(Pair(0L, 0L)) }
+    var inCooldown by remember { mutableStateOf(false) }
+    var cooldownTime by remember { mutableStateOf(Pair(0L, 0L)) }
 
-    // Cooldown desde la cancelación (manual o automática)
-    val inCooldown = remember(cancelledBooking) {
-        val result = cancelledBooking?.let {
-            Log.d(TAG, "Checking cooldown - cancelledDate: ${it.cancelledDate}, status: ${it.status}")
-            isInCooldown(it.cancelledDate)
-        } ?: false
-        Log.d(TAG, "inCooldown result: $result")
-        result
-    }
+    // Actualizar contadores cada segundo
+    LaunchedEffect(currentBooking, cancelledBooking) {
+        while (true) {
+            // Actualizar tiempo restante de reserva
+            val newTimeRemaining = currentBooking?.let { getTimeUntilExpiration(it.bookingDate) } ?: Pair(0L, 0L)
+            timeRemaining = newTimeRemaining
 
-    val cooldownTime = remember(cancelledBooking) {
-        if (inCooldown) {
-            val time = cancelledBooking?.let { getTimeUntilCooldownEnd(it.cancelledDate) } ?: Pair(0L, 0L)
-            Log.d(TAG, "Cooldown time remaining: ${time.first}m ${time.second}s")
-            time
-        } else Pair(0L, 0L)
+            // Auto-cancelar si el tiempo llegó a 0 y aún existe el booking
+            if (currentBooking != null && newTimeRemaining.first == 0L && newTimeRemaining.second == 0L) {
+                val expired = isBookingExpired(currentBooking.bookingDate)
+                if (expired) {
+                    Log.d(TAG, "Timer llegó a 0, auto-cancelando booking ${currentBooking.bookingId}")
+                    bookingViewModel.cancelBooking(currentBooking)
+                }
+            }
+
+            // Actualizar cooldown
+            val cooldownActive = cancelledBooking?.let {
+                Log.d(TAG, "Checking cooldown - cancelledDate: ${it.cancelledDate}, status: ${it.status}")
+                isInCooldown(it.cancelledDate)
+            } ?: false
+
+            inCooldown = cooldownActive
+            Log.d(TAG, "inCooldown result: $inCooldown")
+
+            cooldownTime = if (inCooldown) {
+                val time = cancelledBooking?.let { getTimeUntilCooldownEnd(it.cancelledDate) } ?: Pair(0L, 0L)
+                Log.d(TAG, "Cooldown time remaining: ${time.first}m ${time.second}s")
+                time
+            } else {
+                Pair(0L, 0L)
+            }
+
+            kotlinx.coroutines.delay(1000) // Actualizar cada segundo
+        }
     }
 
     // Auto-cancelar reservas expiradas cuando se abre la pantalla
@@ -646,15 +672,15 @@ fun PromoQR(
                                     text = when {
                                         bookingLoading && !isReserved -> "Reservando..."
                                         bookingLoading && isReserved -> "Cancelando..."
-                                        bookingExpired && inCooldown -> {
-                                            val (h, m) = cooldownTime
-                                            "Cooldown (${formatTimeRemaining(h, m)})"
+                                        inCooldown -> {
+                                            val (m, s) = cooldownTime
+                                            "Cooldown (${formatTimeRemaining(m, s)})"
                                         }
                                         bookingExpired -> "Reserva Expirada"
                                         isReserved -> {
-                                            val (h, m) = timeRemaining
-                                            if (h > 0 || m > 0) {
-                                                "Cancelar (${formatTimeRemaining(h, m)})"
+                                            val (m, s) = timeRemaining
+                                            if (m > 0 || s > 0) {
+                                                "Cancelar (${formatTimeRemaining(m, s)})"
                                             } else {
                                                 "Cancelar Reservación"
                                             }
@@ -663,11 +689,11 @@ fun PromoQR(
                                     },
                                     modifier = Modifier.fillMaxWidth(),
                                     backgroundGradient = when {
-                                        bookingExpired || inCooldown -> greyGradient
+                                        inCooldown || bookingExpired -> greyGradient
                                         isReserved -> redGradient
                                         else -> null
                                     },
-                                    enabled = !bookingExpired && !inCooldown,
+                                    enabled = !bookingExpired && !inCooldown && !bookingLoading,
                                     onClick = {
                                         if (isReserved) {
                                             // Cancelar reservación (pero mantener en favoritos)
