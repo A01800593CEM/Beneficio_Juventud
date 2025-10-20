@@ -132,7 +132,7 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
                 // Panel de Colaboradres Registro
                 TextButton(onClick = { nav.navigate(Screens.RegisterCollab.route) }) {
                     Text(
-                        "Ver más informacion",
+                        "Registrate",
                         style = TextStyle(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.ExtraBold,
