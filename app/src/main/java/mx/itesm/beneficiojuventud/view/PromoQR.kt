@@ -250,7 +250,8 @@ fun PromoQR(
     var showQrDialog by rememberSaveable { mutableStateOf(false) }
     var isRedeemed by rememberSaveable { mutableStateOf(false) }
 
-    val promo by viewModel.promoState.collectAsState()
+    // Use local state for promo instead of viewModel.promoState
+    var promo by remember { mutableStateOf(Promotions()) }
     val favPromos by userViewModel.favoritePromotions.collectAsState()
     val userError by userViewModel.error.collectAsState()
 
@@ -259,12 +260,17 @@ fun PromoQR(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Cargar promo
+    // Cargar promo - now with offline support via userViewModel
     LaunchedEffect(promotionId) {
         isLoading = true
         error = null
         try {
-            viewModel.getPromotionById(promotionId)
+            val loadedPromo = userViewModel.getPromotionById(promotionId)
+            if (loadedPromo != null) {
+                promo = loadedPromo
+            } else {
+                error = "Promoción no encontrada. Verifica tu conexión a internet."
+            }
         } catch (e: Exception) {
             error = e.message ?: "Error al cargar la promoción."
         } finally {

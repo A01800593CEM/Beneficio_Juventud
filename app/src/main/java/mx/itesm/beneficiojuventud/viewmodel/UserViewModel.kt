@@ -267,4 +267,14 @@ class UserViewModel(private val repository: SavedCouponRepository) : ViewModel()
             }
         }
     }
+
+    /**
+     * Gets a promotion by ID, trying server first, then falling back to local DB.
+     * Returns the promotion or null if not found.
+     */
+    suspend fun getPromotionById(promotionId: Int): mx.itesm.beneficiojuventud.model.promos.Promotions? {
+        return withContext(Dispatchers.IO) {
+            repository.getPromotionById(promotionId)
+        }
+    }
 }

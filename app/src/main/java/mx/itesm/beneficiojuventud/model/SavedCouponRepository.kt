@@ -18,6 +18,7 @@ import mx.itesm.beneficiojuventud.utils.downloadAndSaveImage
 import mx.itesm.beneficiojuventud.utils.deletePromotionImage
 import mx.itesm.beneficiojuventud.utils.toCategoryEntityList
 import mx.itesm.beneficiojuventud.utils.toEntity
+import mx.itesm.beneficiojuventud.utils.toPromotion
 import mx.itesm.beneficiojuventud.utils.toPromotionList
 import mx.itesm.beneficiojuventud.model.categories.RemoteServiceCategory
 import android.content.Context
@@ -101,6 +102,29 @@ class SavedCouponRepository(
             val localPromos = entityPromos.toPromotionList()
             Log.d("CouponRepository", "Returning ${localPromos.size} favorites from RoomDB")
             return localPromos
+        }
+    }
+
+    /**
+     * Gets a single promotion by ID, trying server first, then falling back to local DB
+     */
+    suspend fun getPromotionById(promotionId: Int): Promotions? {
+        try {
+            Log.d("CouponRepository", "Attempting to fetch promotion $promotionId from server")
+            val serverPromo = RemoteServicePromos.getPromotionById(promotionId)
+            Log.d("CouponRepository", "Successfully fetched promotion $promotionId from server")
+            return serverPromo
+        } catch (e: Exception) {
+            Log.w("CouponRepository", "Failed to fetch promotion $promotionId from server, trying RoomDB", e)
+            return try {
+                val localPromo = promotionDao.findById(promotionId)
+                val promo = localPromo.toPromotion()
+                Log.d("CouponRepository", "Successfully loaded promotion $promotionId from RoomDB")
+                promo
+            } catch (dbError: Exception) {
+                Log.e("CouponRepository", "Failed to load promotion $promotionId from RoomDB", dbError)
+                null
+            }
         }
     }
 
