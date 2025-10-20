@@ -47,29 +47,33 @@ object RemoteServicePromos {
     }
 
     suspend fun createPromotion(promo: Promotions): Promotions {
+        // Convert Promotions to CreatePromotionRequest (with category names as strings)
+        val request = promo.toCreateRequest()
+
         // Log detallado para debug
         android.util.Log.d("RemoteServicePromos", "=== Creating Promotion ===")
-        android.util.Log.d("RemoteServicePromos", "collaboratorId: ${promo.collaboratorId}")
-        android.util.Log.d("RemoteServicePromos", "title: ${promo.title}")
-        android.util.Log.d("RemoteServicePromos", "description: ${promo.description}")
-        android.util.Log.d("RemoteServicePromos", "imageUrl: ${promo.imageUrl}")
-        android.util.Log.d("RemoteServicePromos", "initialDate: ${promo.initialDate}")
-        android.util.Log.d("RemoteServicePromos", "endDate: ${promo.endDate}")
-        android.util.Log.d("RemoteServicePromos", "promotionType: ${promo.promotionType}")
-        android.util.Log.d("RemoteServicePromos", "promotionString: ${promo.promotionString}")
-        android.util.Log.d("RemoteServicePromos", "totalStock: ${promo.totalStock}")
-        android.util.Log.d("RemoteServicePromos", "availableStock: ${promo.availableStock}")
-        android.util.Log.d("RemoteServicePromos", "limitPerUser: ${promo.limitPerUser}")
-        android.util.Log.d("RemoteServicePromos", "dailyLimitPerUser: ${promo.dailyLimitPerUser}")
-        android.util.Log.d("RemoteServicePromos", "promotionState: ${promo.promotionState}")
-        android.util.Log.d("RemoteServicePromos", "theme: ${promo.theme}")
-        android.util.Log.d("RemoteServicePromos", "isBookable: ${promo.isBookable}")
+        android.util.Log.d("RemoteServicePromos", "collaboratorId: ${request.collaboratorId}")
+        android.util.Log.d("RemoteServicePromos", "title: ${request.title}")
+        android.util.Log.d("RemoteServicePromos", "description: ${request.description}")
+        android.util.Log.d("RemoteServicePromos", "imageUrl: ${request.imageUrl}")
+        android.util.Log.d("RemoteServicePromos", "initialDate: ${request.initialDate}")
+        android.util.Log.d("RemoteServicePromos", "endDate: ${request.endDate}")
+        android.util.Log.d("RemoteServicePromos", "promotionType: ${request.promotionType}")
+        android.util.Log.d("RemoteServicePromos", "promotionString: ${request.promotionString}")
+        android.util.Log.d("RemoteServicePromos", "totalStock: ${request.totalStock}")
+        android.util.Log.d("RemoteServicePromos", "availableStock: ${request.availableStock}")
+        android.util.Log.d("RemoteServicePromos", "limitPerUser: ${request.limitPerUser}")
+        android.util.Log.d("RemoteServicePromos", "dailyLimitPerUser: ${request.dailyLimitPerUser}")
+        android.util.Log.d("RemoteServicePromos", "promotionState: ${request.promotionState}")
+        android.util.Log.d("RemoteServicePromos", "theme: ${request.theme}")
+        android.util.Log.d("RemoteServicePromos", "isBookable: ${request.isBookable}")
+        android.util.Log.d("RemoteServicePromos", "categories (names): ${request.categories}")
 
         // Serializar a JSON para ver qué se envía
-        val jsonBody = gson.toJson(promo)
+        val jsonBody = gson.toJson(request)
         android.util.Log.d("RemoteServicePromos", "JSON Body: $jsonBody")
 
-        val response = promoApiService.createPromotion(promo)
+        val response = promoApiService.createPromotion(request)
 
         android.util.Log.d("RemoteServicePromos", "Response code: ${response.code()}")
 
