@@ -740,7 +740,8 @@ private fun TopRedeemedCouponsChart(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = "Top 5 Cupones Más Canjeados",
@@ -795,7 +796,8 @@ private fun TopRedeemedCouponsChart(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
             ) {
                 BarChart(
                     modifier = Modifier
@@ -865,7 +867,8 @@ private fun MultiSeriesLineChartCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = chartData.title,
@@ -913,6 +916,7 @@ private fun MultiSeriesLineChartCard(
                 .steps(maxX)
                 .bottomPadding(8.dp)
                 .labelData { index -> index.toString() }
+                .axisOffset(16.dp)
                 .build()
 
             val yAxisData = AxisData.Builder()
@@ -936,7 +940,8 @@ private fun MultiSeriesLineChartCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
             ) {
                 LineChart(
                     modifier = Modifier
@@ -978,7 +983,7 @@ private fun MultiSeriesLineChartCard(
     }
 }
 
-@Preview(showBackground = true, widthDp = 411, heightDp = 891)
+@Preview(showSystemUi = true, showBackground = true, widthDp = 411, heightDp = 891)
 @Composable
 private fun StatsScreenPreview() {
     BeneficioJuventudTheme {
