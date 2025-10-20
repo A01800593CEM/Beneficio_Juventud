@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.viewmodel
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,11 +8,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mx.itesm.beneficiojuventud.model.auth.AuthRepository
 import mx.itesm.beneficiojuventud.model.auth.AuthState
+import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.users.UserProfile
+import mx.itesm.beneficiojuventud.utils.UserPreferencesManager
 import java.util.UUID
 
 /** Estado global de la app. */
@@ -22,9 +26,10 @@ data class AppState(
 )
 
 /** ViewModel unificado para autenticación y estado global de sesión. */
-class AuthViewModel : ViewModel() {
+class AuthViewModel(private val context: Context? = null) : ViewModel() {
 
     private val authRepository = AuthRepository()
+    private var preferencesManager: UserPreferencesManager? = null
 
     // ===== Estado global de la app =====
     private val _appState = MutableStateFlow(AppState())
@@ -47,6 +52,11 @@ class AuthViewModel : ViewModel() {
     private var _pendingUserProfile: UserProfile? = null
     val pendingUserProfile: UserProfile? get() = _pendingUserProfile
 
+    // Datos temporales durante registro de colaboradores
+    private var _pendingCollabProfile: Collaborator? = null
+    val pendingCollabProfile: Collaborator? get() = _pendingCollabProfile
+
+
     // Credenciales temporales SOLO en memoria (no BD)
     private var _pendingEmail: String? = null
     private var _pendingPlainPassword: String? = null
@@ -55,12 +65,18 @@ class AuthViewModel : ViewModel() {
         _pendingEmail = email
         _pendingPlainPassword = password
     }
+    fun getPendingCredentials(): Pair<String?, String?> {
+        return Pair(_pendingEmail, _pendingPlainPassword)
+    }
     fun clearPendingCredentials() {
         _pendingEmail = null
         _pendingPlainPassword = null
     }
 
     init {
+        context?.let {
+            preferencesManager = UserPreferencesManager(it)
+        }
         refreshAuthState()
     }
 
@@ -95,36 +111,79 @@ class AuthViewModel : ViewModel() {
         _pendingUserProfile = null
     }
 
+    // Gestión del perfil de colaborador pendiente durante el registro
+    fun savePendingCollabProfile(collab: Collaborator) {
+        _pendingCollabProfile = collab
+    }
+
+    fun consumePendingCollabProfile(): Collaborator? {
+        val profile = _pendingCollabProfile
+        _pendingCollabProfile = null
+        return profile
+    }
+
+    fun clearPendingCollabProfile() {
+        _pendingCollabProfile = null
+    }
+
+
     // =========================================================
     // ========        FLUJO DE AUTENTICACIÓN          ========
     // =========================================================
 
-    fun signUp(email: String, password: String, telefono: String? = null) {
+    /**
+     * SignUp: usa AuthRepository.signUp(email, password) que devuelve Result<AuthSignUpResult>.
+     * Desempaquetamos con getOrThrow() y tomamos result.userId como cognitoSub.
+     */
+    fun signUp(
+        email: String,
+        password: String,
+        attributes: Map<String, String> = emptyMap() // se mantiene para compatibilidad, no se usa aquí
+    ) {
         viewModelScope.launch {
+            _authState.update { it.copy(isLoading = true, error = null) }
             try {
-                Log.d("AuthViewModel", "Iniciando signUp para: $email")
-                _authState.value = AuthState(isLoading = true)
+                // El repo devuelve Result<AuthSignUpResult>
+                val result = authRepository.signUp(email, password)
+                    .getOrThrow() // 👈 desempaquetar
 
-                val result = authRepository.signUp(email, password, telefono)
-                result.fold(
-                    onSuccess = { r ->
-                        Log.d("AuthViewModel", "SignUp exitoso: needsConfirmation=${!r.isSignUpComplete}")
-                        val sub = r.userId // sub de Cognito (cognitoId)
-                        _currentUserId.value = sub
-                        _authState.value = AuthState(
-                            isSuccess = r.isSignUpComplete,
-                            needsConfirmation = !r.isSignUpComplete,
-                            cognitoSub = sub
+                // Amplify.Auth.signUp() -> AuthSignUpResult
+                // En tu repo ya logueas: isSignUpComplete, userId, nextStep
+                val requiresConfirm = !result.isSignUpComplete
+
+                if (requiresConfirm) {
+                    _authState.update {
+                        it.copy(
+                            isLoading = false,
+                            needsConfirmation = true,
+                            error = null,
+                            cognitoSub = result.userId // 👈 userSub correcto
                         )
-                    },
-                    onFailure = { e ->
-                        Log.e("AuthViewModel", "SignUp falló: ${e.message}", e)
-                        _authState.value = AuthState(error = e.message ?: "Error desconocido al registrar")
                     }
-                )
+                } else {
+                    // Auto-confirm sin OTP
+                    _authState.update {
+                        it.copy(
+                            isLoading = false,
+                            isSuccess = true,
+                            needsConfirmation = false,
+                            error = null,
+                            cognitoSub = result.userId // 👈 userSub correcto
+                        )
+                    }
+                }
             } catch (e: Exception) {
-                Log.e("AuthViewModel", "Error inesperado en signUp: ${e.message}", e)
-                _authState.value = AuthState(error = "Error de conexión. Verifica tu internet e intenta de nuevo.")
+                val msg = (e.message ?: e.toString())
+                val looksLikeExists = msg.contains("UsernameExistsException", true) ||
+                        msg.contains("Username already exists", true) ||
+                        msg.contains("User already exists", true)
+
+                if (looksLikeExists) {
+                    // Si UNCONFIRMED → resend; si ya confirmado → error claro.
+                    handleUsernameExists(email)
+                } else {
+                    _authState.update { it.copy(isLoading = false, error = msg) }
+                }
             }
         }
     }
@@ -186,20 +245,36 @@ class AuthViewModel : ViewModel() {
 
     fun resendSignUpCode(email: String) {
         viewModelScope.launch {
-            _authState.value = AuthState(isLoading = true)
+            val priorSub = _authState.value.cognitoSub
+            _authState.update { it.copy(isLoading = true, error = null) }
+
             val result = authRepository.resendSignUpCode(email)
             result.fold(
                 onSuccess = {
-                    _authState.value = AuthState(needsConfirmation = true)
+                    _authState.update {
+                        it.copy(
+                            isLoading = false,
+                            needsConfirmation = true,
+                            error = null,
+                            cognitoSub = priorSub // 👈 conservar sub
+                        )
+                    }
                 },
                 onFailure = { e ->
-                    _authState.value = AuthState(error = e.message ?: "No se pudo reenviar el código")
+                    _authState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = e.message ?: "No se pudo reenviar el código",
+                            cognitoSub = priorSub // 👈 conservar sub aunque falle
+                        )
+                    }
                 }
             )
         }
     }
 
-    fun signIn(email: String, password: String) {
+
+    fun signIn(email: String, password: String, rememberMe: Boolean = false) {
         viewModelScope.launch {
             try {
                 Log.d("AuthViewModel", "Iniciando signIn para: $email")
@@ -210,6 +285,15 @@ class AuthViewModel : ViewModel() {
                     onSuccess = { r ->
                         Log.d("AuthViewModel", "SignIn exitoso: isSignedIn=${r.isSignedIn}")
                         if (r.isSignedIn) {
+                            // Guardar credenciales si el usuario marcó "Recuérdame"
+                            if (rememberMe) {
+                                preferencesManager?.saveCredentials(email, password)
+                                Log.d("AuthViewModel", "Credenciales guardadas para 'Recuérdame'")
+                            } else {
+                                // Limpiar credenciales si no marcó "Recuérdame"
+                                preferencesManager?.clearCredentials()
+                            }
+
                             _authState.value = AuthState(isSuccess = true)
                             _sessionKey.value = UUID.randomUUID().toString() // nueva sesión
                             refreshAuthState()
@@ -226,6 +310,23 @@ class AuthViewModel : ViewModel() {
                 Log.e("AuthViewModel", "Error inesperado en signIn: ${e.message}", e)
                 _authState.value = AuthState(error = "Error de conexión. Verifica tu internet e intenta de nuevo.")
             }
+        }
+    }
+
+    /**
+     * Intenta hacer login automático si el usuario tiene habilitado "Recuérdame".
+     * @return true si se intentó el auto-login, false si no hay credenciales guardadas
+     */
+    fun tryAutoLogin(): Boolean {
+        val credentials = preferencesManager?.getCredentials()
+        return if (credentials != null) {
+            val (email, password) = credentials
+            Log.d("AuthViewModel", "Intentando auto-login con credenciales guardadas")
+            signIn(email, password, rememberMe = true)
+            true
+        } else {
+            Log.d("AuthViewModel", "No hay credenciales guardadas para auto-login")
+            false
         }
     }
 
@@ -246,9 +347,11 @@ class AuthViewModel : ViewModel() {
                     _currentUserId.value = null
                     _pendingUserProfile = null
                     clearPendingCredentials()
+                    preferencesManager?.clearCredentials() // Limpiar credenciales guardadas
                     _sessionKey.value = UUID.randomUUID().toString()
                     _authState.value = AuthState(isLoading = false)
                     refreshAuthState()
+                    clearPendingCollabProfile() // <-- MODIFICACIÓN
                 },
                 onFailure = { e ->
                     val msg = e.message.orEmpty()
@@ -261,9 +364,11 @@ class AuthViewModel : ViewModel() {
                         _currentUserId.value = null
                         _pendingUserProfile = null
                         clearPendingCredentials()
+                        preferencesManager?.clearCredentials() // Limpiar credenciales guardadas
                         _sessionKey.value = UUID.randomUUID().toString()
                         _authState.value = AuthState(isLoading = false)
                         refreshAuthState()
+                        clearPendingCollabProfile() // <-- MODIFICACIÓN
                     } else {
                         _authState.value = AuthState(
                             isLoading = false,
@@ -348,6 +453,115 @@ class AuthViewModel : ViewModel() {
         _currentUser.value = null
         _currentUserId.value = null
         _pendingUserProfile = null
+        clearPendingCollabProfile() // <-- MODIFICACIÓN
         Log.d("AuthViewModel", "State cleared")
     }
+
+    fun clearError() {
+        _authState.update { it.copy(error = null) }
+    }
+
+    /** Intenta distinguir si el email existe como UNCONFIRMED o CONFIRMED. */
+    private fun resolveExistingAccountOnSignUp(email: String) {
+        val pw = _pendingPlainPassword
+
+        // Sin password: fallback → reenviamos código y navegamos a confirm.
+        if (pw.isNullOrBlank()) {
+            resendSignUpCode(email)
+            _authState.value = AuthState(needsConfirmation = true)
+            return
+        }
+
+        viewModelScope.launch {
+            val signInAttempt = authRepository.signIn(email, pw)
+            signInAttempt.fold(
+                onSuccess = { r ->
+                    if (r.isSignedIn) {
+                        // Confirmado y la contraseña coincide
+                        _authState.value = AuthState(
+                            isSuccess = false,
+                            error = "Esta cuenta ya está confirmada. Inicia sesión."
+                        )
+                    } else {
+                        // Estado intermedio (MFA/challenge) → tratamos como confirmado
+                        _authState.value = AuthState(
+                            isSuccess = false,
+                            error = "Esta cuenta ya está confirmada. Inicia sesión."
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    val msg = e.message?.lowercase().orEmpty()
+                    when {
+                        "usernotconfirmed" in msg || "not confirmed" in msg -> {
+                            // UNCONFIRMED → reenviar código y mandar a Confirm
+                            resendSignUpCode(email)
+                            _authState.value = AuthState(needsConfirmation = true)
+                        }
+                        "notauthorized" in msg || "incorrect username or password" in msg -> {
+                            _authState.value = AuthState(
+                                isSuccess = false,
+                                error = "La cuenta ya existe y está confirmada. Inicia sesión o restablece tu contraseña."
+                            )
+                        }
+                        else -> {
+                            _authState.value = AuthState(
+                                isSuccess = false,
+                                error = e.message ?: "La cuenta ya existe. Intenta iniciar sesión."
+                            )
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    /** Marca el estado de autenticación como inactivo (detiene spinners). */
+    fun markIdle() {
+        _authState.update { it.copy(isLoading = false) }
+    }
+
+
+    /**
+     * Maneja UsernameExistsException: intenta resend (si UNCONFIRMED) y setea needsConfirmation=true.
+     * Si ya está confirmado, devolverá error claro.
+     */
+    private fun handleUsernameExists(email: String) {
+        viewModelScope.launch {
+            _authState.update { it.copy(needsConfirmation = false) }
+            try {
+                // Si el usuario está UNCONFIRMED, esto funciona y envía el código
+                authRepository.resendSignUpCode(email).getOrThrow()
+
+                // 👇 Estado correcto para que Register navegue a Confirm
+                _authState.update {
+                    it.copy(
+                        isLoading = false,
+                        needsConfirmation = true, // <- CLAVE
+                        isSuccess = false,
+                        error = null
+                    )
+                }
+            } catch (ex: Exception) {
+                val t = (ex.message ?: ex.toString()).lowercase()
+                val alreadyConfirmed =
+                    "already confirmed" in t ||
+                            "invalidparameter" in t ||
+                            "code delivery failure" in t ||
+                            "cannot resend" in t
+
+                _authState.update {
+                    it.copy(
+                        isLoading = false,
+                        needsConfirmation = false,
+                        cognitoSub = it.cognitoSub,
+                        error = if (alreadyConfirmed)
+                            "Esta cuenta ya está confirmada. Inicia sesión o restablece tu contraseña."
+                        else ex.message ?: "No fue posible reenviar el código de confirmación."
+                    )
+                }
+            }
+        }
+    }
+
 }

@@ -57,11 +57,11 @@ export class CreateCollaboratorDto {
   @MaxLength(10)
   postalCode: string;
 
-  // 👇 Multiple category IDs
+  // 👇 Multiple category IDs (opcional durante registro, se puede actualizar después)
+  @IsOptional()
   @IsArray()
-  @ArrayNotEmpty()
   @IsInt({ each: true })
-  categoryIds: number[];
+  categoryIds?: number[];
 
   @IsOptional()
   @IsString()

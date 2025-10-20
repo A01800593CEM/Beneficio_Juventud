@@ -20,7 +20,7 @@ object RemoteServiceRedeemedCoupon {
             .build()
     }
 
-    private val redeemedCouponApiService by lazy { retrofit.create(RedeemedCouponApiService::class.java)}
+    private val redeemedCouponApiService by lazy { retrofit.create(RedeemedCouponApiService::class.java) }
 
     suspend fun getRedeemedCouponsByUser(userId: String): List<RedeemedCoupon> {
         val response = redeemedCouponApiService.getRedeemedCouponsByUser(userId)

@@ -3,12 +3,14 @@ package mx.itesm.beneficiojuventud.view
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Favorite
@@ -74,10 +76,17 @@ fun Favorites(
     val user by userViewModel.userState.collectAsState()
     val favoritePromos by userViewModel.favoritePromotions.collectAsState()
     val favoriteCollabs by userViewModel.favoriteCollabs.collectAsState()
+    val reservedPromos by userViewModel.reservedPromotions.collectAsState()
+    val userBookings by userViewModel.userBookings.collectAsState()
 
     // Normaliza IDs favoritos de colaboradores a Set<String> para lookup O(1)
     val favoriteCollabIds: Set<String> = remember(favoriteCollabs) {
         favoriteCollabs.mapNotNull { it.cognitoId?.takeIf(String::isNotBlank) }.toSet()
+    }
+
+    // Set de IDs de promociones reservadas para lookup rápido
+    val reservedPromoIds: Set<Int> = remember(userBookings) {
+        userBookings.mapNotNull { it.promotionId }.toSet()
     }
 
     val scope = rememberCoroutineScope()
@@ -87,6 +96,17 @@ fun Favorites(
         if (cognitoId.isNotBlank()) {
             userViewModel.refreshFavorites(cognitoId)
         }
+    }
+
+    // ✅ MOVER ESTE CÁLCULO FUERA DEL BLOQUE DE LazyColumn
+    val allCoupons = remember(reservedPromos, favoritePromos, reservedPromoIds) {
+        // Primero los reservados
+        val reserved = reservedPromos.toList()
+        // Luego los favoritos que NO están reservados
+        val favoritesOnly = favoritePromos.filter { promo ->
+            promo.promotionId?.let { it !in reservedPromoIds } ?: true
+        }
+        reserved + favoritesOnly
     }
 
     Scaffold(
@@ -138,7 +158,7 @@ fun Favorites(
             item {
                 val count = when (mode) {
                     FavoriteMode.Businesses -> favoriteCollabIds.size
-                    FavoriteMode.Coupons    -> favoritePromos.size
+                    FavoriteMode.Coupons    -> allCoupons.size
                 }
                 val label = if (mode == FavoriteMode.Businesses)
                     "$count Negocios Guardados" else "$count Cupones Guardados"
@@ -199,7 +219,7 @@ fun Favorites(
                 }
 
                 FavoriteMode.Coupons -> {
-                    if (favoritePromos.isEmpty()) {
+                    if (allCoupons.isEmpty()) {
                         item {
                             EmptyState(
                                 title = "Sin cupones favoritos",
@@ -207,10 +227,19 @@ fun Favorites(
                             )
                         }
                     } else {
-                        items(favoritePromos, key = { it.promotionId ?: it.hashCode() }) { promo ->
+                        itemsIndexed(
+                            items = allCoupons,
+                            key = { index, promo ->
+                                // Usar índice + promotionId para garantizar unicidad
+                                "${index}_${promo.promotionId ?: promo.hashCode()}"
+                            }
+                        ) { index, promo ->
+                            val isReserved = promo.promotionId?.let { it in reservedPromoIds } ?: false
+
                             PromoImageBannerFav(
                                 promo = promo,
                                 isFavorite = true,
+                                isReserved = isReserved,
                                 onFavoriteClick = { p ->
                                     val id = p.promotionId ?: return@PromoImageBannerFav
                                     scope.launch { userViewModel.unfavoritePromotion(id, cognitoId) }
@@ -305,8 +334,10 @@ private fun TogglePill(
     }
 }
 
+// Función deprecated - ya no se usa, se usa MerchantCardHorizontalFav
+/*
 @Composable
-private fun FavoriteCard( // <- la puedes borrar si ya no la usas
+private fun FavoriteCard(
     merchant: FavoriteMerchant,
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit,
@@ -389,6 +420,7 @@ private fun FavoriteCard( // <- la puedes borrar si ya no la usas
         }
     }
 }
+*/
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable

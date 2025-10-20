@@ -749,7 +749,7 @@ private fun downloadProfileImageForDisplay(
     onError: (Throwable?) -> Unit,
     onLoading: (Boolean) -> Unit
 ) {
-    val key = StoragePath.fromString("public/profile/$userId.jpg")
+    val key = StoragePath.fromString("public/profile-images/$userId.jpg") // ← CORREGIDO
     try {
         onLoading(true)
         val localFile = File(context.cacheDir, "avatar_$userId.jpg")
@@ -771,3 +771,4 @@ private fun downloadProfileImageForDisplay(
         onError(e)
     }
 }
+

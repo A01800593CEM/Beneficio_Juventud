@@ -1,6 +1,8 @@
 package mx.itesm.beneficiojuventud.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -223,6 +225,7 @@ fun PromoImageBannerFav(
     isFavorite: Boolean,
     onFavoriteClick: (Promotions) -> Unit,
     modifier: Modifier = Modifier,
+    isReserved: Boolean = false,
     onClick: () -> Unit = {},
     themeResolver: (Promotions) -> PromoTheme = { it.theme ?: PromoTheme.light }
 ) {
@@ -308,6 +311,27 @@ fun PromoImageBannerFav(
                     }
             )
 
+            // Badge "Reservado" en TopStart
+            if (isReserved) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF4CAF50))
+                        .border(BorderStroke(1.dp, Color(0xFF45A049)), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "Reservado",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            // Botón de favorito en TopEnd
             Surface(
                 shape = RoundedCornerShape(24.dp),
                 color = Color.White.copy(alpha = 0.92f),

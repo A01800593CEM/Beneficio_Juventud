@@ -17,6 +17,7 @@ data class Collaborator(
     val registrationDate: String? = null,
     val state: CollaboratorsState? = null,
     val categories: List<Category>? = null,
+    val categoryIds: List<Int>? = null, // IDs de categorías para crear/actualizar
 )
 
 enum class CollaboratorsState{
