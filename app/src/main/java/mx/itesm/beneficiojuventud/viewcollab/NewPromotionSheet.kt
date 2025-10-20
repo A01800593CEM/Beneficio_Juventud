@@ -30,6 +30,8 @@ import mx.itesm.beneficiojuventud.model.promos.PromoTheme
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.model.webhook.ImageGenerationService
+import mx.itesm.beneficiojuventud.model.categories.Category
+import mx.itesm.beneficiojuventud.model.categories.RemoteServiceCategory
 
 private val TextGrey = Color(0xFF616161)
 private val LightGrey = Color(0xFFF5F5F5)
@@ -104,6 +106,20 @@ fun NewPromotionSheet(
     // Tema de la promoción
     var promoTheme by rememberSaveable {
         mutableStateOf(promo.theme ?: PromoTheme.light)
+    }
+
+    // Categorías y reservabilidad
+    var availableCategories by remember { mutableStateOf<List<Category>>(emptyList()) }
+    var selectedCategories by remember { mutableStateOf<Set<Int>>(promo.categories.mapNotNull { it.id }.toSet()) }
+    var isBookable by rememberSaveable { mutableStateOf(promo.isBookable ?: false) }
+
+    // Cargar categorías al iniciar
+    LaunchedEffect(Unit) {
+        runCatching {
+            availableCategories = RemoteServiceCategory.getCategories()
+        }.onFailure { error ->
+            android.util.Log.e("NewPromotionSheet", "Error loading categories", error)
+        }
     }
 
     var showStartPicker by remember { mutableStateOf(false) }
@@ -437,6 +453,93 @@ fun NewPromotionSheet(
                 }
 
                 Spacer(Modifier.height(24.dp))
+
+                // Categorías
+                Text("Categorías", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = DarkBlue)
+                Spacer(Modifier.height(8.dp))
+                Text("Selecciona al menos una categoría*", fontSize = 14.sp, color = TextGrey)
+                Spacer(Modifier.height(12.dp))
+
+                if (availableCategories.isEmpty()) {
+                    Text("Cargando categorías...", fontSize = 14.sp, color = Color.Gray)
+                } else {
+                    // Grid de categorías
+                    availableCategories.chunked(2).forEach { rowCategories ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            rowCategories.forEach { category ->
+                                category.id?.let { categoryId ->
+                                    PromotionStateChip(
+                                        text = category.name ?: "Sin nombre",
+                                        selected = selectedCategories.contains(categoryId),
+                                        onClick = {
+                                            selectedCategories = if (selectedCategories.contains(categoryId)) {
+                                                selectedCategories - categoryId
+                                            } else {
+                                                selectedCategories + categoryId
+                                            }
+                                        },
+                                        color = Purple,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                            // Relleno si hay impar
+                            if (rowCategories.size == 1) {
+                                Spacer(Modifier.weight(1f))
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // Reservabilidad
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = LightGrey
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "¿Cupón Reservable?",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = DarkBlue
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Permite a los usuarios reservar el cupón para usarlo después",
+                                fontSize = 12.sp,
+                                color = TextGrey
+                            )
+                        }
+                        Switch(
+                            checked = isBookable,
+                            onCheckedChange = { isBookable = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = Teal,
+                                uncheckedThumbColor = Color.White,
+                                uncheckedTrackColor = Color.LightGray
+                            )
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
             }
         }
 
@@ -491,6 +594,12 @@ fun NewPromotionSheet(
                     return@MainButton
                 }
 
+                if (selectedCategories.isEmpty()) {
+                    errorMessage = "Debes seleccionar al menos una categoría"
+                    showError = true
+                    return@MainButton
+                }
+
                 // Convertir fechas al formato ISO que espera el servidor
                 val isoStartDate = if (startDate.isNotBlank()) {
                     "${startDate}T00:00:00.000Z"
@@ -499,6 +608,11 @@ fun NewPromotionSheet(
                 val isoEndDate = if (endDate.isNotBlank()) {
                     "${endDate}T23:59:59.999Z"
                 } else endDate
+
+                // Crear lista de categorías
+                val categoryList = selectedCategories.mapNotNull { categoryId ->
+                    availableCategories.find { it.id == categoryId }
+                }
 
                 // Crear promoción
                 val newPromo = Promotions(
@@ -516,7 +630,8 @@ fun NewPromotionSheet(
                     dailyLimitPerUser = dlpu,
                     promotionState = promotionState,
                     theme = promoTheme,
-                    isBookable = false
+                    isBookable = isBookable,
+                    categories = categoryList
                 )
 
                 scope.launch {
