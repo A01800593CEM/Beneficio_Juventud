@@ -836,7 +836,6 @@ fun NewPromotionSheet(
                             android.util.Log.d("NewPromotionSheet", "Request JSON: ${gson.toJson(createRequest)}")
 
                             // Call API service directly
-                            mx.itesm.beneficiojuventud.model.promos.PromoApiService
                             val retrofit = retrofit2.Retrofit.Builder()
                                 .baseUrl(mx.itesm.beneficiojuventud.utils.Constants.BASE_URL)
                                 .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create(gson))
