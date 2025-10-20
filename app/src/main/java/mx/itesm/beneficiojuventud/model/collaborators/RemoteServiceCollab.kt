@@ -68,4 +68,16 @@ object RemoteServiceCollab {
         val response = collabApiService.emailExists(email)
         return response.body() ?: false
     }
+
+    suspend fun getNearbyCollaborators(
+        latitude: Double,
+        longitude: Double,
+        radius: Double = 3.0
+    ): List<NearbyCollaborator> {
+        val response = collabApiService.getNearbyCollaborators(latitude, longitude, radius)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        return response.body() ?: emptyList()
+    }
 }
