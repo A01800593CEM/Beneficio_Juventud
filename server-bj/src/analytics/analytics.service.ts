@@ -6,6 +6,7 @@ import { Booking } from '../bookings/entities/booking.entity';
 import { Redeemedcoupon } from '../redeemedcoupon/entities/redeemedcoupon.entity';
 import { Collaborator } from '../collaborators/entities/collaborator.entity';
 import { Favorite } from '../favorites/entities/favorite.entity';
+import { User } from '../users/entities/user.entity';
 import { PromotionState } from 'src/promotions/enums/promotion-state.enums';
 
 export interface VicoChartEntry {
@@ -25,6 +26,36 @@ export interface VicoMultiSeriesEntry {
   entries: VicoChartEntry[];
 }
 
+// Admin Dashboard Interfaces (Optimized for Recharts)
+export interface RechartsDataPoint {
+  name: string;
+  value: number;
+  [key: string]: any;
+}
+
+export interface RechartsTimeSeriesPoint {
+  date: string;
+  [key: string]: number | string;
+}
+
+export interface TopCollaboratorData {
+  collaboratorId: string;
+  businessName: string;
+  totalPromotions: number;
+  totalRedemptions: number;
+  totalBookings: number;
+  conversionRate: string;
+}
+
+export interface TopPromotionData {
+  promotionId: number;
+  title: string;
+  collaboratorName: string;
+  redemptionCount: number;
+  bookingCount: number;
+  conversionRate: string;
+}
+
 @Injectable()
 export class AnalyticsService {
   constructor(
@@ -38,6 +69,8 @@ export class AnalyticsService {
     private collaboratorsRepository: Repository<Collaborator>,
     @InjectRepository(Favorite)
     private favoritesRepository: Repository<Favorite>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) {}
 
   /**
@@ -530,6 +563,298 @@ export class AnalyticsService {
     });
 
     return Promise.all(seriesPromises);
+  }
+
+  /**
+   * Get comprehensive admin dashboard with platform-wide analytics.
+   * Optimized for Recharts (Web).
+   */
+  async getAdminDashboard(timeRange: string = 'month') {
+    const dateRange = this.getDateRange(timeRange);
+
+    // Fetch all admin analytics in parallel
+    const [
+      platformStats,
+      userGrowth,
+      topCollaborators,
+      topPromotions,
+      categoryDistribution,
+      redemptionTrends,
+    ] = await Promise.all([
+      this.getPlatformStatistics(dateRange),
+      this.getUserGrowthTrends(dateRange),
+      this.getTopCollaborators(dateRange),
+      this.getTopPromotions(dateRange),
+      this.getCategoryDistribution(),
+      this.getPlatformRedemptionTrends(dateRange),
+    ]);
+
+    return {
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        timeRange: timeRange,
+        period: {
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+        },
+      },
+      summary: {
+        totalUsers: platformStats.totalUsers,
+        totalCollaborators: platformStats.totalCollaborators,
+        totalPromotions: platformStats.totalPromotions,
+        activePromotions: platformStats.activePromotions,
+        totalRedemptions: platformStats.totalRedemptions,
+        totalBookings: platformStats.totalBookings,
+        platformConversionRate: this.calculateConversionRate(
+          platformStats.totalBookings,
+          platformStats.totalRedemptions,
+        ),
+      },
+      charts: {
+        // User growth over time - Line Chart
+        userGrowth: {
+          type: 'line',
+          title: 'User Growth',
+          description: 'New user registrations over time',
+          data: userGrowth,
+        },
+        // Top collaborators - Bar Chart
+        topCollaborators: {
+          type: 'bar',
+          title: 'Top 10 Collaborators',
+          description: 'Most active collaborators by redemptions',
+          data: topCollaborators,
+        },
+        // Top promotions - Bar Chart
+        topPromotions: {
+          type: 'bar',
+          title: 'Top 10 Promotions',
+          description: 'Most popular promotions platform-wide',
+          data: topPromotions,
+        },
+        // Category distribution - Pie Chart
+        categoryDistribution: {
+          type: 'pie',
+          title: 'Promotion Categories',
+          description: 'Distribution of promotions by category',
+          data: categoryDistribution,
+        },
+        // Platform redemption trends - Area Chart
+        redemptionTrends: {
+          type: 'area',
+          title: 'Platform Redemption Trends',
+          description: 'Daily redemptions across the platform',
+          data: redemptionTrends,
+        },
+      },
+    };
+  }
+
+  /**
+   * Get platform-wide statistics
+   */
+  private async getPlatformStatistics(dateRange: any) {
+    const totalUsers = await this.usersRepository.count();
+    const totalCollaborators = await this.collaboratorsRepository.count();
+    const totalPromotions = await this.promotionsRepository.count();
+    const activePromotions = await this.promotionsRepository.count({
+      where: { promotionState: PromotionState.ACTIVE },
+    });
+
+    const totalRedemptions = await this.redeemedcouponRepository
+      .createQueryBuilder('redeem')
+      .where('redeem.usedDate >= :startDate', { startDate: dateRange.startDate })
+      .andWhere('redeem.usedDate <= :endDate', { endDate: dateRange.endDate })
+      .getCount();
+
+    const totalBookings = await this.bookingsRepository
+      .createQueryBuilder('booking')
+      .where('booking.bookingDate >= :startDate', { startDate: dateRange.startDate })
+      .andWhere('booking.bookingDate <= :endDate', { endDate: dateRange.endDate })
+      .getCount();
+
+    return {
+      totalUsers,
+      totalCollaborators,
+      totalPromotions,
+      activePromotions,
+      totalRedemptions,
+      totalBookings,
+    };
+  }
+
+  /**
+   * Get user growth trends for Recharts line chart
+   */
+  private async getUserGrowthTrends(dateRange: any): Promise<RechartsTimeSeriesPoint[]> {
+    const days = this.getDaysBetween(dateRange.startDate, dateRange.endDate);
+
+    const userRegistrations = await this.usersRepository
+      .createQueryBuilder('user')
+      .where('user.registrationDate >= :startDate', { startDate: dateRange.startDate })
+      .andWhere('user.registrationDate <= :endDate', { endDate: dateRange.endDate })
+      .select('DATE(user.registrationDate)', 'date')
+      .addSelect('COUNT(user.id)', 'count')
+      .groupBy('DATE(user.registrationDate)')
+      .orderBy('date', 'ASC')
+      .getRawMany();
+
+    const dataMap = new Map(
+      userRegistrations.map((item) => [
+        new Date(item.date).toISOString().split('T')[0],
+        parseInt(item.count),
+      ]),
+    );
+
+    return days.map((day) => ({
+      date: day.toISOString().split('T')[0],
+      users: dataMap.get(day.toISOString().split('T')[0]) || 0,
+    }));
+  }
+
+  /**
+   * Get top 10 collaborators for Recharts bar chart
+   */
+  private async getTopCollaborators(dateRange: any): Promise<TopCollaboratorData[]> {
+    const topCollabs = await this.redeemedcouponRepository
+      .createQueryBuilder('redeem')
+      .leftJoinAndSelect('redeem.promotion', 'promo')
+      .leftJoinAndSelect('promo.collaborator', 'collab')
+      .where('redeem.usedDate >= :startDate', { startDate: dateRange.startDate })
+      .andWhere('redeem.usedDate <= :endDate', { endDate: dateRange.endDate })
+      .select('collab.cognitoId', 'collaboratorId')
+      .addSelect('collab.businessName', 'businessName')
+      .addSelect('COUNT(DISTINCT promo.promotionId)', 'totalPromotions')
+      .addSelect('COUNT(redeem.usedId)', 'totalRedemptions')
+      .groupBy('collab.cognitoId')
+      .addGroupBy('collab.businessName')
+      .orderBy('COUNT(redeem.usedId)', 'DESC')
+      .limit(10)
+      .getRawMany();
+
+    // Get booking counts for each collaborator
+    const collabsWithBookings = await Promise.all(
+      topCollabs.map(async (collab) => {
+        const bookingCount = await this.bookingsRepository
+          .createQueryBuilder('booking')
+          .leftJoin('booking.promotion', 'promo')
+          .where('promo.collaboratorId = :collaboratorId', {
+            collaboratorId: collab.collaboratorId,
+          })
+          .andWhere('booking.bookingDate >= :startDate', { startDate: dateRange.startDate })
+          .andWhere('booking.bookingDate <= :endDate', { endDate: dateRange.endDate })
+          .getCount();
+
+        return {
+          collaboratorId: collab.collaboratorId,
+          businessName: collab.businessName,
+          totalPromotions: parseInt(collab.totalPromotions),
+          totalRedemptions: parseInt(collab.totalRedemptions),
+          totalBookings: bookingCount,
+          conversionRate: this.calculateConversionRate(
+            bookingCount,
+            parseInt(collab.totalRedemptions),
+          ),
+        };
+      }),
+    );
+
+    return collabsWithBookings;
+  }
+
+  /**
+   * Get top 10 promotions for Recharts bar chart
+   */
+  private async getTopPromotions(dateRange: any): Promise<TopPromotionData[]> {
+    const topPromos = await this.redeemedcouponRepository
+      .createQueryBuilder('redeem')
+      .leftJoinAndSelect('redeem.promotion', 'promo')
+      .leftJoinAndSelect('promo.collaborator', 'collab')
+      .where('redeem.usedDate >= :startDate', { startDate: dateRange.startDate })
+      .andWhere('redeem.usedDate <= :endDate', { endDate: dateRange.endDate })
+      .select('promo.promotionId', 'promotionId')
+      .addSelect('promo.title', 'title')
+      .addSelect('collab.businessName', 'collaboratorName')
+      .addSelect('COUNT(redeem.usedId)', 'redemptionCount')
+      .groupBy('promo.promotionId')
+      .addGroupBy('promo.title')
+      .addGroupBy('collab.businessName')
+      .orderBy('COUNT(redeem.usedId)', 'DESC')
+      .limit(10)
+      .getRawMany();
+
+    // Get booking counts for each promotion
+    const promosWithBookings = await Promise.all(
+      topPromos.map(async (promo) => {
+        const bookingCount = await this.bookingsRepository.count({
+          where: { promotionId: promo.promotionId },
+        });
+
+        return {
+          promotionId: promo.promotionId,
+          title: promo.title,
+          collaboratorName: promo.collaboratorName,
+          redemptionCount: parseInt(promo.redemptionCount),
+          bookingCount,
+          conversionRate: this.calculateConversionRate(
+            bookingCount,
+            parseInt(promo.redemptionCount),
+          ),
+        };
+      }),
+    );
+
+    return promosWithBookings;
+  }
+
+  /**
+   * Get category distribution for Recharts pie chart
+   */
+  private async getCategoryDistribution(): Promise<RechartsDataPoint[]> {
+    const categoryStats = await this.promotionsRepository
+      .createQueryBuilder('promo')
+      .leftJoin('promo.categories', 'category')
+      .select('category.name', 'name')
+      .addSelect('COUNT(promo.promotionId)', 'value')
+      .groupBy('category.name')
+      .orderBy('value', 'DESC')
+      .getRawMany();
+
+    return categoryStats.map((cat) => ({
+      name: cat.name || 'Sin categoría',
+      value: parseInt(cat.value),
+    }));
+  }
+
+  /**
+   * Get platform-wide redemption trends for Recharts area chart
+   */
+  private async getPlatformRedemptionTrends(
+    dateRange: any,
+  ): Promise<RechartsTimeSeriesPoint[]> {
+    const days = this.getDaysBetween(dateRange.startDate, dateRange.endDate);
+
+    const redemptions = await this.redeemedcouponRepository
+      .createQueryBuilder('redeem')
+      .where('redeem.usedDate >= :startDate', { startDate: dateRange.startDate })
+      .andWhere('redeem.usedDate <= :endDate', { endDate: dateRange.endDate })
+      .select('DATE(redeem.usedDate)', 'date')
+      .addSelect('COUNT(redeem.usedId)', 'count')
+      .groupBy('DATE(redeem.usedDate)')
+      .orderBy('date', 'ASC')
+      .getRawMany();
+
+    const dataMap = new Map(
+      redemptions.map((item) => [
+        new Date(item.date).toISOString().split('T')[0],
+        parseInt(item.count),
+      ]),
+    );
+
+    return days.map((day) => ({
+      date: day.toISOString().split('T')[0],
+      redemptions: dataMap.get(day.toISOString().split('T')[0]) || 0,
+    }));
   }
 
   /**

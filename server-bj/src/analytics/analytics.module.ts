@@ -7,10 +7,11 @@ import { Booking } from '../bookings/entities/booking.entity';
 import { Redeemedcoupon } from '../redeemedcoupon/entities/redeemedcoupon.entity';
 import { Collaborator } from '../collaborators/entities/collaborator.entity';
 import { Favorite } from '../favorites/entities/favorite.entity';
+import { User } from '../users/entities/user.entity';
 
 /**
  * Analytics module for handling statistics and reporting.
- * Provides endpoints optimized for Vico (Android) charts.
+ * Provides endpoints optimized for Vico (Android) and Recharts (Web).
  */
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { Favorite } from '../favorites/entities/favorite.entity';
       Redeemedcoupon,
       Collaborator,
       Favorite,
+      User,
     ]),
   ],
   controllers: [AnalyticsController],
