@@ -8,6 +8,12 @@ import { Category } from 'src/categories/entities/category.entity';
 import { PromotionState } from './enums/promotion-state.enums';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { PromotionTheme } from './enums/promotion-theme.enum';
+import { Branch } from 'src/branch/entities/branch.entity';
+import {
+  calculateDistance,
+  parseLocationString,
+  Coordinates,
+} from 'src/common/location.utils';
 
 @Injectable()
 export class PromotionsService {
@@ -16,6 +22,8 @@ export class PromotionsService {
     private promotionsRepository: Repository<Promotion>,
     @InjectRepository(Category)
     private categoriesRepository: Repository<Category>,
+    @InjectRepository(Branch)
+    private branchRepository: Repository<Branch>,
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -151,5 +159,91 @@ export class PromotionsService {
     return this.promotionsRepository.find({
       where: { collaboratorId },
     });
+  }
+
+  /**
+   * Encuentra promociones cercanas a la ubicación del usuario
+   * @param latitude Latitud del usuario
+   * @param longitude Longitud del usuario
+   * @param radiusKm Radio de búsqueda en kilómetros (por defecto 3km)
+   * @returns Lista de promociones con distancia, ordenadas por proximidad
+   */
+  async findNearbyPromotions(
+    latitude: number,
+    longitude: number,
+    radiusKm: number = 3,
+  ): Promise<any[]> {
+    const userLocation: Coordinates = { latitude, longitude };
+
+    // Obtener todas las promociones activas con sus colaboradores y sucursales
+    const promotions = await this.promotionsRepository
+      .createQueryBuilder('promotion')
+      .leftJoinAndSelect('promotion.categories', 'category')
+      .leftJoin('promotion.collaborator', 'collaborator')
+      .leftJoinAndSelect('collaborator.branch', 'branch')
+      .addSelect([
+        'collaborator.businessName',
+        'collaborator.cognitoId',
+        'collaborator.logoUrl',
+      ])
+      .where('promotion.promotionState = :state', {
+        state: PromotionState.ACTIVE,
+      })
+      .andWhere('promotion.endDate >= :now', { now: new Date() })
+      .getMany();
+
+    // Calcular distancias y filtrar por proximidad
+    const promotionsWithDistance: any[] = [];
+
+    for (const promo of promotions as any[]) {
+      const { collaborator, ...promoData } = promo;
+
+      // Obtener todas las sucursales del colaborador con ubicación
+      const branches = collaborator?.branch || [];
+      const branchesWithLocation = branches.filter(
+        (b: any) => b.location !== null,
+      );
+
+      if (branchesWithLocation.length === 0) continue;
+
+      // Encontrar la sucursal más cercana
+      let closestDistance = Infinity;
+      let closestBranch = null;
+
+      for (const branch of branchesWithLocation) {
+        const branchCoords = parseLocationString(branch.location);
+        if (!branchCoords) continue;
+
+        const distance = calculateDistance(userLocation, branchCoords);
+
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestBranch = {
+            branchId: branch.branchId,
+            name: branch.name,
+            address: branch.address,
+            phone: branch.phone,
+            zipCode: branch.zipCode,
+            location: branch.location,
+          };
+        }
+      }
+
+      // Si la sucursal más cercana está dentro del radio, agregar la promoción
+      if (closestDistance <= radiusKm && closestBranch) {
+        promotionsWithDistance.push({
+          ...promoData,
+          businessName: collaborator?.businessName || null,
+          logoUrl: collaborator?.logoUrl || null,
+          distance: closestDistance,
+          closestBranch,
+        });
+      }
+    }
+
+    // Ordenar por distancia (más cercano primero)
+    promotionsWithDistance.sort((a, b) => a.distance - b.distance);
+
+    return promotionsWithDistance;
   }
 }

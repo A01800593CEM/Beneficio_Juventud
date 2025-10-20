@@ -125,6 +125,9 @@ dependencies {
     // 🔹 Permisos en Compose
     implementation("com.google.accompanist:accompanist-permissions:0.36.0")
 
+    // 🔹 Google Play Services Location
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
     // 🔹 Seguridad (EncryptedSharedPreferences)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 

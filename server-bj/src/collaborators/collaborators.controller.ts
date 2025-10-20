@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, BadRequestException } from '@nestjs/common';
 import { CollaboratorsService } from './collaborators.service';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
 import { UpdateCollaboratorDto } from './dto/update-collaborator.dto';
@@ -44,6 +44,40 @@ export class CollaboratorsController {
   getPromotions(@Param('id') id: string) {
     console.log(id)
     return this.promotionsService.promotionsByCollaborator(id)
+  }
+
+  @Get('nearby/search')
+  async findNearbyCollaborators(
+    @Query('latitude') latitude: string,
+    @Query('longitude') longitude: string,
+    @Query('radius') radius?: string,
+  ) {
+    // Validar que se proporcionen latitud y longitud
+    if (!latitude || !longitude) {
+      throw new BadRequestException(
+        'Latitude and longitude are required query parameters',
+      );
+    }
+
+    const lat = parseFloat(latitude);
+    const lon = parseFloat(longitude);
+    const radiusKm = radius ? parseFloat(radius) : 3;
+
+    // Validar que sean números válidos
+    if (isNaN(lat) || isNaN(lon) || isNaN(radiusKm)) {
+      throw new BadRequestException('Invalid coordinates or radius format');
+    }
+
+    // Validar rangos válidos
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      throw new BadRequestException('Coordinates out of valid range');
+    }
+
+    if (radiusKm <= 0 || radiusKm > 50) {
+      throw new BadRequestException('Radius must be between 0 and 50 km');
+    }
+
+    return this.collaboratorsService.findNearbyCollaborators(lat, lon, radiusKm);
   }
 
 }

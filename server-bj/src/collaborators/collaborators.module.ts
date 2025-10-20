@@ -7,6 +7,7 @@ import { CategoriesModule } from 'src/categories/categories.module';
 import { FavoritesModule } from 'src/favorites/favorites.module';
 import { BranchModule } from 'src/branch/branch.module';
 import { PromotionsModule } from 'src/promotions/promotions.module';
+import { Branch } from 'src/branch/entities/branch.entity';
 
 /**
  * Module responsible for managing collaborators functionality in the application.
@@ -30,7 +31,7 @@ import { PromotionsModule } from 'src/promotions/promotions.module';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Collaborator]),
+    TypeOrmModule.forFeature([Collaborator, Branch]),
     forwardRef(() => CategoriesModule),
     forwardRef(() => FavoritesModule),
     forwardRef(() => BranchModule) ,
