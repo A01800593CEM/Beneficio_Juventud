@@ -50,7 +50,7 @@ fun NewPromotionSheet(
     var endDate by rememberSaveable { mutableStateOf(initialPromotionData?.endDate ?: promo.endDate.orEmpty()) }
     var totalStock by rememberSaveable { mutableStateOf(initialPromotionData?.totalStock?.toString() ?: promo.totalStock?.toString().orEmpty()) }
     var limitPerUser by rememberSaveable { mutableStateOf(initialPromotionData?.limitPerUser?.toString() ?: promo.limitPerUser?.toString().orEmpty()) }
-    var imageUrl by rememberSaveable { mutableStateOf(initialPromotionData?.imageUrl ?: promo.imageUrl.orEmpty()) }
+    var imageUrl by rememberSaveable { mutableStateOf(promo.imageUrl.orEmpty()) }
 
     var showStartPicker by remember { mutableStateOf(false) }
     var showEndPicker by remember { mutableStateOf(false) }
