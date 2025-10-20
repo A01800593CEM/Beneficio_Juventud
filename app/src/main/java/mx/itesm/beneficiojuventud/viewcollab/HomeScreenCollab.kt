@@ -13,6 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.Settings
@@ -102,6 +104,13 @@ fun HomeScreenCollab(
             Spacer(Modifier.height(24.dp))
             CtaSectionCollab()
             Spacer(Modifier.height(24.dp))
+            InfoCardCollab(
+                icon = Icons.Outlined.Add,
+                title = "Crear Promoción",
+                description = "Crea una nueva promoción para tu negocio.",
+                onClick = { nav.navigate(Screens.GeneratePromotionScreen.route) }
+            )
+            Spacer(Modifier.height(16.dp))
             InfoCardCollab(
                 icon = Icons.Outlined.LocalOffer,
                 title = "Promociones Activas",
