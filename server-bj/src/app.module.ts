@@ -18,6 +18,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ExpirationsModule } from './expirations/expirations.module';
 import { PlacesModule } from './places/places.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 
 @Module({
@@ -57,7 +58,8 @@ import { PlacesModule } from './places/places.module';
     //Schedule
     ScheduleModule.forRoot(),
     ExpirationsModule,
-    PlacesModule
+    PlacesModule,
+    AnalyticsModule
   ],
   controllers: [AppController],
   providers: [AppService],
