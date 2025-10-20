@@ -25,6 +25,7 @@ import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.promos.PromotionType
 import mx.itesm.beneficiojuventud.model.promos.PromotionState
+import mx.itesm.beneficiojuventud.model.promos.PromoTheme
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.model.webhook.ImageGenerationService
@@ -97,6 +98,11 @@ fun NewPromotionSheet(
                 }
             } ?: promo.promotionState ?: PromotionState.activa
         )
+    }
+
+    // Tema de la promoción
+    var promoTheme by rememberSaveable {
+        mutableStateOf(promo.theme ?: PromoTheme.light)
     }
 
     var showStartPicker by remember { mutableStateOf(false) }
@@ -405,6 +411,31 @@ fun NewPromotionSheet(
                 }
 
                 Spacer(Modifier.height(24.dp))
+
+                // Tema de la promoción
+                Text("Tema Visual", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = DarkBlue)
+                Spacer(Modifier.height(8.dp))
+                Text("Selecciona el estilo visual del cupón", fontSize = 14.sp, color = TextGrey)
+                Spacer(Modifier.height(12.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PromotionStateChip(
+                        text = "Claro",
+                        selected = promoTheme == PromoTheme.light,
+                        onClick = { promoTheme = PromoTheme.light },
+                        color = Color(0xFF4CAF50),
+                        modifier = Modifier.weight(1f)
+                    )
+                    PromotionStateChip(
+                        text = "Oscuro",
+                        selected = promoTheme == PromoTheme.dark,
+                        onClick = { promoTheme = PromoTheme.dark },
+                        color = Color(0xFF424242),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
             }
         }
 
@@ -474,6 +505,7 @@ fun NewPromotionSheet(
                     limitPerUser = lpu,
                     dailyLimitPerUser = dlpu,
                     promotionState = promotionState,
+                    theme = promoTheme,
                     isBookable = false
                 )
 
