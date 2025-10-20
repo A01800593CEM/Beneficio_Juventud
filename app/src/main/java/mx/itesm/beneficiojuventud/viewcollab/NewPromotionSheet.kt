@@ -16,12 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.components.MainButton
@@ -30,6 +27,7 @@ import mx.itesm.beneficiojuventud.model.promos.PromotionType
 import mx.itesm.beneficiojuventud.model.promos.PromotionState
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.model.webhook.ImageGenerationService
 
 private val TextGrey = Color(0xFF616161)
 private val LightGrey = Color(0xFFF5F5F5)
@@ -37,6 +35,10 @@ private val DarkBlue = Color(0xFF4B4C7E)
 private val Teal = Color(0xFF008D96)
 private val Purple = Color(0xFF6200EE)
 
+/**
+ * Formulario completo para crear/editar promociones
+ * Basado en la funcionalidad de la página web con todos los campos requeridos por la API
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewPromotionSheet(
@@ -53,16 +55,23 @@ fun NewPromotionSheet(
     val currentUserId by authViewModel.currentUserId.collectAsState()
     val collaboratorId = currentUserId ?: "anonymous"
 
+    // Estados del formulario
     var title by rememberSaveable { mutableStateOf(initialPromotionData?.title ?: promo.title.orEmpty()) }
     var description by rememberSaveable { mutableStateOf(initialPromotionData?.description ?: promo.description.orEmpty()) }
     var startDate by rememberSaveable { mutableStateOf(initialPromotionData?.initialDate ?: promo.initialDate.orEmpty()) }
     var endDate by rememberSaveable { mutableStateOf(initialPromotionData?.endDate ?: promo.endDate.orEmpty()) }
-    var totalStock by rememberSaveable { mutableStateOf(initialPromotionData?.totalStock?.toString() ?: promo.totalStock?.toString().orEmpty()) }
-    var limitPerUser by rememberSaveable { mutableStateOf(initialPromotionData?.limitPerUser?.toString() ?: promo.limitPerUser?.toString().orEmpty()) }
-    var dailyLimitPerUser by rememberSaveable { mutableStateOf(initialPromotionData?.dailyLimitPerUser?.toString() ?: promo.dailyLimitPerUser?.toString().orEmpty()) }
+    var totalStock by rememberSaveable { mutableStateOf(initialPromotionData?.totalStock?.toString() ?: promo.totalStock?.toString() ?: "100") }
+    var limitPerUser by rememberSaveable { mutableStateOf(initialPromotionData?.limitPerUser?.toString() ?: promo.limitPerUser?.toString() ?: "1") }
+    var dailyLimitPerUser by rememberSaveable { mutableStateOf(initialPromotionData?.dailyLimitPerUser?.toString() ?: promo.dailyLimitPerUser?.toString() ?: "1") }
+    var promotionString by rememberSaveable { mutableStateOf(promo.promotionString.orEmpty()) }
     var imageUrl by rememberSaveable { mutableStateOf(promo.imageUrl.orEmpty()) }
 
-    // Campos con valores por defecto
+    // Estados de error y carga
+    var errorMessage by remember { mutableStateOf("") }
+    var showError by remember { mutableStateOf(false) }
+    var isGeneratingImage by remember { mutableStateOf(false) }
+
+    // Tipo de promoción
     var promotionType by rememberSaveable {
         mutableStateOf(
             initialPromotionData?.promotionType?.let {
@@ -75,6 +84,8 @@ fun NewPromotionSheet(
             } ?: promo.promotionType ?: PromotionType.descuento
         )
     }
+
+    // Estado de la promoción
     var promotionState by rememberSaveable {
         mutableStateOf(
             initialPromotionData?.promotionState?.let {
@@ -101,44 +112,241 @@ fun NewPromotionSheet(
             .imePadding()
             .padding(16.dp)
     ) {
+        // Header
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Regresar")
             }
-            Text("Nueva Promoción", fontSize = 20.sp, fontWeight = FontWeight.Black)
+            Text(
+                text = if (initialPromotionData != null) "Nueva Promoción (IA)" else "Nueva Promoción",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black
+            )
         }
         Spacer(Modifier.height(16.dp))
 
+        // Mensaje de error
+        if (showError && errorMessage.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+            ) {
+                Text(
+                    text = errorMessage,
+                    color = Color(0xFFC62828),
+                    modifier = Modifier.padding(12.dp),
+                    fontSize = 14.sp
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+
+        // Formulario
         LazyColumn(modifier = Modifier.weight(1f)) {
             item {
-                FormTextField(title, { title = it }, "Título de la Promoción*", "Ej. Martes 2x1")
+                // Título
+                Text("Información Básica", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = DarkBlue)
+                Spacer(Modifier.height(12.dp))
+
+                FormTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = "Título de la Promoción*",
+                    placeholder = "Ej. 2x1 en Pizzas Familiares"
+                )
                 Spacer(Modifier.height(16.dp))
 
-                FormTextField(description, { description = it }, "Descripción*", "Describe los detalles de la promoción", singleLine = false)
+                FormTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = "Descripción*",
+                    placeholder = "Describe los detalles de la promoción",
+                    singleLine = false
+                )
                 Spacer(Modifier.height(16.dp))
 
-                Row {
-                    DatePickerField("Fecha Inicio*", startDate, { startDate = it }, showStartPicker, { showStartPicker = true }, { showStartPicker = false }, Modifier.weight(1f))
-                    Spacer(Modifier.width(8.dp))
-                    DatePickerField("Fecha Final*", endDate, { endDate = it }, showEndPicker, { showEndPicker = true }, { showEndPicker = false }, Modifier.weight(1f))
+                // Tipo de Promoción
+                Text("Tipo de Promoción*", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextGrey)
+                Spacer(Modifier.height(4.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PromotionTypeChip(
+                        text = "Descuento",
+                        selected = promotionType == PromotionType.descuento,
+                        onClick = { promotionType = PromotionType.descuento },
+                        modifier = Modifier.weight(1f)
+                    )
+                    PromotionTypeChip(
+                        text = "Multicompra",
+                        selected = promotionType == PromotionType.multicompra,
+                        onClick = { promotionType = PromotionType.multicompra },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PromotionTypeChip(
+                        text = "Regalo",
+                        selected = promotionType == PromotionType.regalo,
+                        onClick = { promotionType = PromotionType.regalo },
+                        modifier = Modifier.weight(1f)
+                    )
+                    PromotionTypeChip(
+                        text = "Otro",
+                        selected = promotionType == PromotionType.otro,
+                        onClick = { promotionType = PromotionType.otro },
+                        modifier = Modifier.weight(1f)
+                    )
                 }
 
                 Spacer(Modifier.height(16.dp))
+
+                // Código Promocional (opcional)
+                FormTextField(
+                    value = promotionString,
+                    onValueChange = { promotionString = it.uppercase() },
+                    label = "Código Promocional (opcional)",
+                    placeholder = "Ej. PIZZA2X1"
+                )
+
+                Spacer(Modifier.height(24.dp))
+
+                // Vigencia
+                Text("Vigencia", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = DarkBlue)
+                Spacer(Modifier.height(12.dp))
+
                 Row {
-                    FormTextField(totalStock, { totalStock = it.filter(Char::isDigit) }, "Stock Total*", "Ej. 100", Modifier.weight(1f))
+                    DatePickerField(
+                        label = "Fecha Inicio*",
+                        value = startDate,
+                        onPicked = { startDate = it },
+                        show = showStartPicker,
+                        onOpen = { showStartPicker = true },
+                        onDismiss = { showStartPicker = false },
+                        modifier = Modifier.weight(1f)
+                    )
                     Spacer(Modifier.width(8.dp))
-                    FormTextField(limitPerUser, { limitPerUser = it.filter(Char::isDigit) }, "Max x Usuario*", "Ej. 2", Modifier.weight(1f))
+                    DatePickerField(
+                        label = "Fecha Final*",
+                        value = endDate,
+                        onPicked = { endDate = it },
+                        show = showEndPicker,
+                        onOpen = { showEndPicker = true },
+                        onDismiss = { showEndPicker = false },
+                        modifier = Modifier.weight(1f)
+                    )
                 }
 
-                Spacer(Modifier.height(16.dp))
-                FormTextField(dailyLimitPerUser, { dailyLimitPerUser = it.filter(Char::isDigit) }, "Límite Diario por Usuario (opcional)", "Ej. 1")
+                Spacer(Modifier.height(24.dp))
 
+                // Límites y Stock
+                Text("Límites y Stock", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = DarkBlue)
+                Spacer(Modifier.height(12.dp))
+
+                FormTextField(
+                    value = totalStock,
+                    onValueChange = { totalStock = it.filter(Char::isDigit) },
+                    label = "Stock Total*",
+                    placeholder = "100"
+                )
                 Spacer(Modifier.height(16.dp))
-                Text("Imagen de la promoción (URL opcional)", fontWeight = FontWeight.Bold, color = TextGrey)
+
+                Row {
+                    FormTextField(
+                        value = limitPerUser,
+                        onValueChange = { limitPerUser = it.filter(Char::isDigit) },
+                        label = "Límite por Usuario*",
+                        placeholder = "1",
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    FormTextField(
+                        value = dailyLimitPerUser,
+                        onValueChange = { dailyLimitPerUser = it.filter(Char::isDigit) },
+                        label = "Límite Diario*",
+                        placeholder = "1",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // Imagen
+                Text("Imagen de la Promoción", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = DarkBlue)
                 Spacer(Modifier.height(8.dp))
-                FormTextField(imageUrl, { imageUrl = it }, "URL de imagen", "https://...")
+                Text("URL de imagen (opcional)", fontSize = 14.sp, color = TextGrey)
                 Spacer(Modifier.height(8.dp))
 
+                FormTextField(
+                    value = imageUrl,
+                    onValueChange = { imageUrl = it },
+                    label = "",
+                    placeholder = "https://ejemplo.com/imagen.jpg"
+                )
+                Spacer(Modifier.height(12.dp))
+
+                // Botón de generar imagen con IA
+                Button(
+                    onClick = {
+                        if (title.isBlank() || description.isBlank()) {
+                            errorMessage = "Necesitas título y descripción para generar imagen"
+                            showError = true
+                            return@Button
+                        }
+
+                        scope.launch {
+                            isGeneratingImage = true
+                            errorMessage = ""
+                            showError = false
+
+                            val result = ImageGenerationService.generatePromotionImage(
+                                title = title,
+                                description = description
+                            )
+
+                            isGeneratingImage = false
+
+                            result.onSuccess { url ->
+                                imageUrl = url
+                            }.onFailure { error ->
+                                errorMessage = "Error al generar imagen: ${error.message}"
+                                showError = true
+                            }
+                        }
+                    },
+                    enabled = !isGeneratingImage && title.isNotBlank() && description.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Purple,
+                        disabledContainerColor = Color.LightGray
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        if (isGeneratingImage) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("🤖", fontSize = 18.sp)
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = if (isGeneratingImage) "Generando imagen..." else "Generar Imagen con IA",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // Preview de imagen
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -147,27 +355,67 @@ fun NewPromotionSheet(
                         .border(1.dp, Color.LightGray, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(if (imageUrl.isBlank()) "Sin Imagen" else "Vista previa no implementada", color = Color.Gray)
+                    if (imageUrl.isNotBlank()) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "✓ Imagen configurada",
+                                color = Teal,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = imageUrl.take(50) + if (imageUrl.length > 50) "..." else "",
+                                color = Color.Gray,
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "Sin Imagen",
+                            color = Color.Gray
+                        )
+                    }
                 }
-                Spacer(Modifier.height(8.dp))
 
-                Row {
-                    GradientButton("Generar con IA", Brush.horizontalGradient(listOf(Purple, DarkBlue)), Modifier.weight(1f))
-                    Spacer(Modifier.width(8.dp))
-                    GradientButton("Subir Imagen", Brush.horizontalGradient(listOf(DarkBlue, Teal)), Modifier.weight(1f))
+                Spacer(Modifier.height(24.dp))
+
+                // Estado de la promoción
+                Text("Estado", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = DarkBlue)
+                Spacer(Modifier.height(12.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PromotionStateChip(
+                        text = "Activa",
+                        selected = promotionState == PromotionState.activa,
+                        onClick = { promotionState = PromotionState.activa },
+                        color = Teal,
+                        modifier = Modifier.weight(1f)
+                    )
+                    PromotionStateChip(
+                        text = "Inactiva",
+                        selected = promotionState == PromotionState.inactiva,
+                        onClick = { promotionState = PromotionState.inactiva },
+                        color = Color(0xFFFFA726),
+                        modifier = Modifier.weight(1f)
+                    )
                 }
+
+                Spacer(Modifier.height(24.dp))
             }
         }
 
-        Spacer(Modifier.height(24.dp))
-
-        // ---------- BOTÓN PRINCIPAL ----------
+        // Botón de crear
         MainButton(
             text = "Crear Nueva Promoción",
             onClick = {
                 // Validar campos obligatorios
                 if (collaboratorId == "anonymous") {
-                    // TODO: mostrar error - usuario no autenticado
+                    errorMessage = "Usuario no autenticado"
+                    showError = true
                     return@MainButton
                 }
 
@@ -175,32 +423,69 @@ fun NewPromotionSheet(
                 val lpu = limitPerUser.toIntOrNull()
                 val dlpu = dailyLimitPerUser.toIntOrNull()
 
-                if (title.isBlank() || description.isBlank() || startDate.isBlank() || endDate.isBlank() || tStock == null || lpu == null) {
-                    // TODO: mostrar error - campos requeridos vacíos
+                if (title.isBlank()) {
+                    errorMessage = "El título es obligatorio"
+                    showError = true
                     return@MainButton
                 }
 
+                if (description.isBlank()) {
+                    errorMessage = "La descripción es obligatoria"
+                    showError = true
+                    return@MainButton
+                }
+
+                if (startDate.isBlank() || endDate.isBlank()) {
+                    errorMessage = "Las fechas son obligatorias"
+                    showError = true
+                    return@MainButton
+                }
+
+                if (tStock == null || tStock <= 0) {
+                    errorMessage = "El stock total debe ser mayor a 0"
+                    showError = true
+                    return@MainButton
+                }
+
+                if (lpu == null || lpu <= 0) {
+                    errorMessage = "El límite por usuario debe ser mayor a 0"
+                    showError = true
+                    return@MainButton
+                }
+
+                if (dlpu == null || dlpu <= 0) {
+                    errorMessage = "El límite diario debe ser mayor a 0"
+                    showError = true
+                    return@MainButton
+                }
+
+                // Crear promoción
                 val newPromo = Promotions(
                     collaboratorId = collaboratorId,
-                    title = title,
-                    description = description,
+                    title = title.trim(),
+                    description = description.trim(),
                     imageUrl = imageUrl.ifBlank { null },
                     initialDate = startDate,
                     endDate = endDate,
                     promotionType = promotionType,
+                    promotionString = promotionString.trim().ifBlank { null },
                     totalStock = tStock,
-                    availableStock = tStock, // Inicialmente el stock disponible es igual al total
+                    availableStock = tStock,
                     limitPerUser = lpu,
                     dailyLimitPerUser = dlpu,
                     promotionState = promotionState,
-                    isBookable = false // Por defecto las promociones no son reservables
+                    isBookable = false
                 )
 
                 scope.launch {
                     runCatching { viewModel.createPromotion(newPromo) }
-                        .onSuccess { onClose() }
+                        .onSuccess {
+                            showError = false
+                            onClose()
+                        }
                         .onFailure { error ->
-                            // TODO: mostrar error al usuario
+                            errorMessage = "Error al crear promoción: ${error.message}"
+                            showError = true
                             android.util.Log.e("NewPromotionSheet", "Error creating promotion", error)
                         }
                 }
@@ -209,7 +494,7 @@ fun NewPromotionSheet(
     }
 }
 
-// ------------------- HELPERS -------------------
+// Componentes auxiliares
 @Composable
 private fun FormTextField(
     value: String,
@@ -219,16 +504,35 @@ private fun FormTextField(
     modifier: Modifier = Modifier,
     singleLine: Boolean = true
 ) {
-    Column(modifier = modifier) {
-        Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextGrey)
-        Spacer(Modifier.height(4.dp))
+    if (label.isNotEmpty()) {
+        Column(modifier = modifier) {
+            Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextGrey)
+            Spacer(Modifier.height(4.dp))
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                placeholder = { Text(placeholder, color = Color.Gray) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                singleLine = singleLine,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Teal,
+                    unfocusedBorderColor = Color.LightGray
+                )
+            )
+        }
+    } else {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            placeholder = { Text(placeholder) },
-            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text(placeholder, color = Color.Gray) },
+            modifier = modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            singleLine = singleLine
+            singleLine = singleLine,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Teal,
+                unfocusedBorderColor = Color.LightGray
+            )
         )
     }
 }
@@ -255,7 +559,11 @@ private fun DatePickerField(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onOpen() },
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Teal,
+                unfocusedBorderColor = Color.LightGray
+            )
         )
     }
     if (show) {
@@ -281,54 +589,50 @@ private fun DatePickerField(
 }
 
 @Composable
-private fun GradientButton(
+private fun PromotionTypeChip(
     text: String,
-    brush: Brush,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit = {}
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Button(
-        onClick = onClick,
-        modifier = modifier.height(50.dp),
-        shape = RoundedCornerShape(16.dp),
-        contentPadding = PaddingValues(),
-        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) Teal else Color.LightGray.copy(alpha = 0.3f))
+            .clickable { onClick() }
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(brush),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text, color = Color.White, fontWeight = FontWeight.Bold)
-        }
+        Text(
+            text = text,
+            color = if (selected) Color.White else TextGrey,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            fontSize = 14.sp
+        )
     }
 }
 
-// ------------------- FULLSCREEN HOST -------------------
 @Composable
-fun NewPromotionHost(
-    onClose: () -> Unit
+private fun PromotionStateChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    color: Color,
+    modifier: Modifier = Modifier
 ) {
-    Dialog(
-        onDismissRequest = onClose,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,   // pantalla completa
-            decorFitsSystemWindows = false
-        )
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) color else Color.LightGray.copy(alpha = 0.3f))
+            .clickable { onClick() }
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.White)
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .imePadding(),
-            color = Color.White,
-            tonalElevation = 0.dp,
-            shape = RectangleShape
-        ) {
-            NewPromotionSheet(onClose = onClose)
-        }
+        Text(
+            text = text,
+            color = if (selected) Color.White else TextGrey,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            fontSize = 14.sp
+        )
     }
 }
