@@ -135,6 +135,7 @@ fun Home(
     // UBICACIÓN Y DATOS CERCANOS
     // ─────────────────────────────────────────────────────────────────────────────
     val context = LocalContext.current
+    val enableNearbyFeature = remember { true } // Cambiar a false para deshabilitar la función
     val locationManager = remember { LocationManager(context) }
     var userLocation by remember { mutableStateOf<UserLocation?>(null) }
     var nearbyPromotions by remember { mutableStateOf<List<NearbyPromotion>>(emptyList()) }
@@ -142,43 +143,65 @@ fun Home(
     var nearbyLoading by remember { mutableStateOf(false) }
     var nearbyError by remember { mutableStateOf<String?>(null) }
 
-    // Obtener ubicación del usuario
-    LaunchedEffect(Unit) {
-        if (locationManager.hasLocationPermission()) {
-            userLocation = locationManager.getLastKnownLocation()
+    // Obtener ubicación del usuario (en background para no bloquear)
+    LaunchedEffect(enableNearbyFeature) {
+        if (!enableNearbyFeature) return@LaunchedEffect
+
+        scope.launch {
+            try {
+                if (locationManager.hasLocationPermission()) {
+                    userLocation = locationManager.getLastKnownLocation()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("Home", "Error getting location", e)
+            }
         }
     }
 
     // Cargar promociones y colaboradores cercanos cuando tengamos ubicación
-    LaunchedEffect(userLocation) {
-        userLocation?.let { location ->
-            nearbyLoading = true
-            nearbyError = null
+    LaunchedEffect(userLocation, enableNearbyFeature) {
+        if (!enableNearbyFeature) return@LaunchedEffect
+        val location = userLocation ?: return@LaunchedEffect
 
-            runCatching {
-                // Llamar a los endpoints de nearby en paralelo
-                val promosJob = scope.async {
-                    promoViewModel.getNearbyPromotions(
-                        location.latitude,
-                        location.longitude,
-                        radius = 3.0
-                    )
+        nearbyLoading = true
+        nearbyError = null
+
+        scope.launch {
+            try {
+                // Llamar a los endpoints de nearby en paralelo con timeout
+                val promosDeferred = async {
+                    try {
+                        promoViewModel.getNearbyPromotions(
+                            location.latitude,
+                            location.longitude,
+                            radius = 3.0
+                        )
+                    } catch (e: Exception) {
+                        android.util.Log.e("Home", "Error loading nearby promos", e)
+                        emptyList()
+                    }
                 }
-                val collabsJob = scope.async {
-                    collabViewModel.getNearbyCollaborators(
-                        location.latitude,
-                        location.longitude,
-                        radius = 3.0
-                    )
+                val collabsDeferred = async {
+                    try {
+                        collabViewModel.getNearbyCollaborators(
+                            location.latitude,
+                            location.longitude,
+                            radius = 3.0
+                        )
+                    } catch (e: Exception) {
+                        android.util.Log.e("Home", "Error loading nearby collabs", e)
+                        emptyList()
+                    }
                 }
 
-                nearbyPromotions = promosJob.await()
-                nearbyCollaborators = collabsJob.await()
-            }.onFailure { e ->
-                nearbyError = e.message
+                nearbyPromotions = promosDeferred.await()
+                nearbyCollaborators = collabsDeferred.await()
+            } catch (e: Exception) {
+                android.util.Log.e("Home", "Error in nearby loading", e)
+                nearbyError = e.message ?: "Error desconocido"
+            } finally {
+                nearbyLoading = false
             }
-
-            nearbyLoading = false
         }
     }
 
@@ -566,7 +589,7 @@ fun Home(
             }
 
             // ─── Cerca de ti (MAPA) ─────────────────────────────────────────────
-            if (search.isBlank() && selectedCategoryName == null) {
+            if (enableNearbyFeature && search.isBlank() && selectedCategoryName == null) {
                 item {
                     SectionTitle(
                         "Cerca de ti",
