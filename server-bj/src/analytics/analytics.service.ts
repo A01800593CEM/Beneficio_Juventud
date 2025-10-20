@@ -78,14 +78,148 @@ export class AnalyticsService {
    * Vico expects chart data as arrays of x,y coordinates for line charts.
    */
   async getCollaboratorDashboard(collaboratorId: string, timeRange: string) {
-    return {
-      status: 'testing',
-      message: 'Analytics endpoint is being updated',
-      collaboratorId,
-      timeRange,
-      timestamp: new Date().toISOString(),
-      version: 'v3.0'
-    };
+    try {
+      // Verify collaborator exists
+      const collaborator = await this.collaboratorsRepository.findOne({
+        where: { cognitoId: collaboratorId },
+      });
+
+      if (!collaborator) {
+        throw new NotFoundException('Collaborator not found');
+      }
+
+      const dateRange = this.getDateRange(timeRange);
+
+      // Fetch collaborator-specific data with fallbacks
+      let redemptionTrends: VicoChartEntry[] = [];
+      let bookingTrends: VicoChartEntry[] = [];
+      let promotionStats: any[] = [];
+      let totalStats: any = {
+        totalPromotions: 0,
+        activePromotions: 0,
+        totalBookings: 0,
+        redeemedCoupons: 0,
+        totalFavorites: 0
+      };
+      let topRedeemedCoupons: VicoBarChartEntry[] = [];
+      let redemptionTrendsByPromotion: VicoMultiSeriesEntry[] = [];
+
+      try {
+        redemptionTrends = await this.getCollaboratorRedemptionTrends(collaboratorId, dateRange);
+      } catch (e) {
+        console.error('Error fetching redemption trends:', e.message);
+        redemptionTrends = [];
+      }
+
+      try {
+        bookingTrends = await this.getCollaboratorBookingTrends(collaboratorId, dateRange);
+      } catch (e) {
+        console.error('Error fetching booking trends:', e.message);
+        bookingTrends = [];
+      }
+
+      try {
+        promotionStats = await this.getCollaboratorPromotionStats(collaboratorId);
+      } catch (e) {
+        console.error('Error fetching promotion stats:', e.message);
+        promotionStats = [];
+      }
+
+      try {
+        totalStats = await this.getCollaboratorStatistics(collaboratorId, dateRange);
+      } catch (e) {
+        console.error('Error fetching total stats:', e.message);
+      }
+
+      try {
+        topRedeemedCoupons = await this.getTopRedeemedCoupons(collaboratorId, dateRange);
+      } catch (e) {
+        console.error('Error fetching top redeemed coupons:', e.message);
+        topRedeemedCoupons = [];
+      }
+
+      try {
+        redemptionTrendsByPromotion = await this.getRedemptionTrendsByPromotion(collaboratorId, dateRange);
+      } catch (e) {
+        console.error('Error fetching redemption trends by promotion:', e.message);
+        redemptionTrendsByPromotion = [];
+      }
+
+      return {
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          collaboratorId: collaboratorId,
+          collaboratorName: collaborator.businessName,
+          timeRange: timeRange,
+          period: {
+            startDate: dateRange.startDate,
+            endDate: dateRange.endDate,
+          },
+        },
+        summary: {
+          totalPromotions: totalStats.totalPromotions || 0,
+          activePromotions: totalStats.activePromotions || 0,
+          totalBookings: totalStats.totalBookings || 0,
+          redeemedCoupons: totalStats.redeemedCoupons || 0,
+          totalFavorites: totalStats.totalFavorites || 0,
+          conversionRate: this.calculateConversionRate(
+            totalStats.totalBookings || 0,
+            totalStats.redeemedCoupons || 0,
+          ),
+        },
+        charts: {
+          redemptionTrends: {
+            type: 'line',
+            title: 'Daily Redemptions',
+            description: 'Coupons redeemed per day',
+            entries: redemptionTrends,
+            xAxisLabel: 'Days',
+            yAxisLabel: 'Redemptions',
+            minY: 0,
+            maxY: redemptionTrends.length > 0 ? Math.max(...redemptionTrends.map((e) => e.y), 1) : 1,
+          },
+          bookingTrends: {
+            type: 'line',
+            title: 'Daily Bookings',
+            description: 'Coupons booked/reserved per day',
+            entries: bookingTrends,
+            xAxisLabel: 'Days',
+            yAxisLabel: 'Bookings',
+            minY: 0,
+            maxY: bookingTrends.length > 0 ? Math.max(...bookingTrends.map((e) => e.y), 1) : 1,
+          },
+          promotionStats: {
+            type: 'summary',
+            title: 'Active Promotions',
+            description: 'Detailed breakdown of promotions',
+            data: promotionStats,
+          },
+          topRedeemedCoupons: {
+            type: 'bar',
+            title: 'Top 5 Most Redeemed Coupons',
+            description: 'Most popular coupons by redemption count',
+            entries: topRedeemedCoupons,
+            xAxisLabel: 'Coupons',
+            yAxisLabel: 'Redemptions',
+          },
+          redemptionTrendsByPromotion: {
+            type: 'multiline',
+            title: 'Redemptions Over Time by Coupon',
+            description: 'Track redemption trends for top 5 coupons',
+            series: redemptionTrendsByPromotion,
+            xAxisLabel: 'Days',
+            yAxisLabel: 'Redemptions',
+          },
+        },
+        insights: this.generateCollaboratorInsights(
+          totalStats,
+          promotionStats,
+        ),
+      };
+    } catch (error) {
+      console.error('❌ ERROR in getCollaboratorDashboard:', error);
+      throw error;
+    }
   }
 
 
