@@ -28,6 +28,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BeneficioJuventud"
         android:usesCleartextTraffic="true">
+
+        <!-- Google Maps API Key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyCOe4P-4mbkN1eO0vjbV0BAV2Pe03gczXU" />
+
         <activity
             android:name=".view.MainActivity"
             android:exported="true"

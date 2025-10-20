@@ -105,7 +105,21 @@ Permisos agregados:
 **Archivo:** `app/build.gradle.kts`
 
 ```kotlin
+// Google Play Services Location
 implementation("com.google.android.gms:play-services-location:21.3.0")
+
+// Google Maps SDK for Android
+implementation("com.google.android.gms:play-services-maps:19.0.0")
+implementation("com.google.maps.android:maps-compose:4.4.1")
+implementation("com.google.maps.android:maps-ktx:5.1.1")
+implementation("com.google.maps.android:maps-utils-ktx:5.1.1")
+```
+
+**API Key configurada en AndroidManifest.xml:**
+```xml
+<meta-data
+    android:name="com.google.android.geo.API_KEY"
+    android:value="AIzaSyCOe4P-4mbkN1eO0vjbV0BAV2Pe03gczXU" />
 ```
 
 #### 3. LocationManager
@@ -173,7 +187,84 @@ data class NearbyCollaborator(
 }
 ```
 
-#### 5. Servicios de API
+#### 5. Componentes de Mapa con Google Maps
+
+**NearbyPromotionsMap** (`components/NearbyPromotionsMap.kt`):
+
+Mapa interactivo que muestra promociones cercanas con marcadores.
+
+```kotlin
+@Composable
+fun NearbyPromotionsMap(
+    userLocation: UserLocation?,
+    nearbyPromotions: List<NearbyPromotion>,
+    onPromotionMarkerClick: (NearbyPromotion) -> Unit = {},
+    modifier: Modifier = Modifier
+)
+```
+
+**Características:**
+- Muestra la ubicación del usuario
+- Marcadores para cada promoción cercana
+- Círculo de 3 km de radio de búsqueda
+- Círculos pequeños alrededor de cada promoción
+- Contador de promociones encontradas
+- Click en marcadores para ver detalles
+
+**NearbyCollaboratorsMap** (`components/NearbyCollaboratorsMap.kt`):
+
+Mapa para mostrar colaboradores (negocios) cercanos.
+
+```kotlin
+@Composable
+fun NearbyCollaboratorsMap(
+    userLocation: UserLocation?,
+    nearbyCollaborators: List<NearbyCollaborator>,
+    onCollaboratorMarkerClick: (NearbyCollaborator) -> Unit = {},
+    modifier: Modifier = Modifier
+)
+```
+
+**Características:**
+- Marcadores naranjas para colaboradores
+- Muestra nombre del negocio y sucursal más cercana
+- Contador de negocios y sucursales totales
+
+**CombinedNearbyMap** (`components/NearbyCollaboratorsMap.kt`):
+
+Mapa que muestra tanto promociones como colaboradores en un solo mapa.
+
+```kotlin
+@Composable
+fun CombinedNearbyMap(
+    userLocation: UserLocation?,
+    nearbyPromotions: List<NearbyPromotion>,
+    nearbyCollaborators: List<NearbyCollaborator>,
+    onPromotionMarkerClick: (NearbyPromotion) -> Unit = {},
+    onCollaboratorMarkerClick: (NearbyCollaborator) -> Unit = {},
+    modifier: Modifier = Modifier
+)
+```
+
+**Características:**
+- Marcadores azules para promociones 🎟️
+- Marcadores naranjas para colaboradores 🏢
+- Contador combinado
+- Callbacks separados para cada tipo
+
+**SimpleLocationMap** (`components/NearbyPromotionsMap.kt`):
+
+Mapa simple que solo muestra la ubicación del usuario (útil para perfiles o configuración).
+
+```kotlin
+@Composable
+fun SimpleLocationMap(
+    userLocation: UserLocation?,
+    modifier: Modifier = Modifier
+)
+```
+
+#### 6. Servicios de API
 
 **PromoApiService** (`model/promos/PromoApiService.kt`):
 ```kotlin
@@ -347,6 +438,155 @@ LazyColumn {
 }
 ```
 
+### 4. Usar Componentes de Mapa
+
+#### Mapa de Promociones Cercanas
+
+```kotlin
+@Composable
+fun NearbyPromotionsScreen(viewModel: PromosViewModel) {
+    val nearbyPromotions by viewModel.nearbyPromotions.collectAsState()
+    val userLocation by viewModel.userLocation.collectAsState()
+    val selectedPromotion = remember { mutableStateOf<NearbyPromotion?>(null) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Mapa con promociones
+        NearbyPromotionsMap(
+            userLocation = userLocation,
+            nearbyPromotions = nearbyPromotions,
+            onPromotionMarkerClick = { promo ->
+                selectedPromotion.value = promo
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Bottom Sheet con detalles de promoción seleccionada
+        selectedPromotion.value?.let { promo ->
+            PromotionDetailsSheet(
+                promotion = promo,
+                onDismiss = { selectedPromotion.value = null }
+            )
+        }
+    }
+}
+```
+
+#### Vista Combinada: Lista + Mapa
+
+```kotlin
+@Composable
+fun NearbyPromotionsWithMapScreen(viewModel: PromosViewModel) {
+    val nearbyPromotions by viewModel.nearbyPromotions.collectAsState()
+    val userLocation by viewModel.userLocation.collectAsState()
+    var showMap by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Toggle para cambiar entre lista y mapa
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Button(
+                onClick = { showMap = false },
+                enabled = showMap
+            ) {
+                Icon(Icons.Default.List, "Lista")
+                Text("Lista")
+            }
+            Button(
+                onClick = { showMap = true },
+                enabled = !showMap
+            ) {
+                Icon(Icons.Default.Map, "Mapa")
+                Text("Mapa")
+            }
+        }
+
+        // Contenido
+        if (showMap) {
+            NearbyPromotionsMap(
+                userLocation = userLocation,
+                nearbyPromotions = nearbyPromotions,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            LazyColumn {
+                items(nearbyPromotions) { promo ->
+                    PromotionCard(promotion = promo)
+                }
+            }
+        }
+    }
+}
+```
+
+#### Mapa Combinado (Promociones + Colaboradores)
+
+```kotlin
+@Composable
+fun ExploreNearbyScreen(
+    promosViewModel: PromosViewModel,
+    collabViewModel: CollaboratorsViewModel
+) {
+    val nearbyPromotions by promosViewModel.nearbyPromotions.collectAsState()
+    val nearbyCollaborators by collabViewModel.nearbyCollaborators.collectAsState()
+    val userLocation by promosViewModel.userLocation.collectAsState()
+
+    var selectedItem by remember { mutableStateOf<Any?>(null) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        CombinedNearbyMap(
+            userLocation = userLocation,
+            nearbyPromotions = nearbyPromotions,
+            nearbyCollaborators = nearbyCollaborators,
+            onPromotionMarkerClick = { promo ->
+                selectedItem = promo
+            },
+            onCollaboratorMarkerClick = { collab ->
+                selectedItem = collab
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Mostrar detalles según el tipo seleccionado
+        when (val item = selectedItem) {
+            is NearbyPromotion -> {
+                PromotionDetailsSheet(
+                    promotion = item,
+                    onDismiss = { selectedItem = null }
+                )
+            }
+            is NearbyCollaborator -> {
+                CollaboratorDetailsSheet(
+                    collaborator = item,
+                    onDismiss = { selectedItem = null }
+                )
+            }
+        }
+    }
+}
+```
+
+#### Mapa Simple (Solo Ubicación)
+
+```kotlin
+@Composable
+fun ProfileLocationSection(userLocation: UserLocation?) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp)
+    ) {
+        SimpleLocationMap(
+            userLocation = userLocation,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+```
+
 ## Consideraciones Importantes
 
 ### Backend
@@ -394,13 +634,83 @@ fun `test location manager returns coordinates`() = runTest {
 }
 ```
 
+## Integración con Google Maps
+
+### Configuración de API Key
+
+La API Key de Google Cloud está configurada en:
+- **AndroidManifest.xml**: Como meta-data
+- **Valor**: `AIzaSyCOe4P-4mbkN1eO0vjbV0BAV2Pe03gczXU`
+
+### APIs Habilitadas en Google Cloud
+
+Asegúrate de que las siguientes APIs estén habilitadas en tu proyecto de Google Cloud:
+1. **Maps SDK for Android**
+2. **Places API** (para geocoding en el backend)
+3. **Geolocation API** (opcional, para mejorar precisión)
+
+### Personalización de Mapas
+
+Los componentes de mapa incluyen varias opciones de personalización:
+
+```kotlin
+// Cambiar estilo del mapa
+GoogleMap(
+    properties = MapProperties(
+        mapType = MapType.NORMAL, // NORMAL, SATELLITE, TERRAIN, HYBRID
+        mapStyleOptions = MapStyleOptions.loadRawResourceStyle(context, R.raw.map_style)
+    )
+)
+
+// Controlar zoom y gestos
+GoogleMap(
+    uiSettings = MapUiSettings(
+        zoomControlsEnabled = true,
+        zoomGesturesEnabled = true,
+        scrollGesturesEnabled = true,
+        tiltGesturesEnabled = false,
+        rotateGesturesEnabled = false,
+        compassEnabled = true,
+        myLocationButtonEnabled = true
+    )
+)
+```
+
+### Tipos de Marcadores
+
+Los mapas usan diferentes colores de marcadores para distinguir tipos:
+
+| Tipo | Color | Ícono | Descripción |
+|------|-------|-------|-------------|
+| Usuario | Azul Claro | 🔵 | Ubicación actual del usuario |
+| Promoción | Azul | 🎟️ | Ofertas y descuentos |
+| Colaborador | Naranja | 🏢 | Negocios/sucursales |
+
+### Optimización de Rendimiento
+
+1. **Clustering**: Para muchos marcadores (>50), considera usar clustering:
+```kotlin
+// TODO: Implementar clustering con maps-utils-ktx
+implementation("com.google.maps.android:maps-utils-ktx:5.1.1")
+```
+
+2. **Límite de marcadores**: El endpoint ya limita resultados a 3 km, pero puedes ajustar:
+```kotlin
+getNearbyPromotions(latitude, longitude, radius = 1.5) // 1.5 km
+```
+
+3. **Cache de ubicación**: Usa `getLastKnownLocation()` primero, luego actualiza con `getCurrentLocation()`
+
 ## Próximos Pasos (Opcional)
 
 1. **Filtros combinados:** Búsqueda por categoría + ubicación
-2. **Mapa:** Integrar Google Maps para mostrar promociones en un mapa
-3. **Notificaciones:** Notificar cuando el usuario esté cerca de una promoción
-4. **Favoritos cercanos:** Mostrar solo favoritos que estén cerca
-5. **Historial:** Recordar ubicaciones frecuentes del usuario
+2. **Clustering de marcadores:** Agrupar marcadores cercanos para mejor rendimiento
+3. **Rutas:** Integrar Directions API para mostrar cómo llegar
+4. **Notificaciones:** Notificar cuando el usuario esté cerca de una promoción
+5. **Favoritos cercanos:** Mostrar solo favoritos que estén cerca
+6. **Historial:** Recordar ubicaciones frecuentes del usuario
+7. **Modo oscuro:** Estilo de mapa personalizado para tema oscuro
+8. **Heatmap:** Visualizar densidad de promociones por zona
 
 ## Arquitectura del Sistema
 
