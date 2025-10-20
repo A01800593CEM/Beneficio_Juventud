@@ -23,7 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import coil.request.ImageRequest
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
@@ -43,11 +44,9 @@ private fun collabKey(c: Collaborator): Any =
 
 /** Intenta resolver categorías si vienen como lista de String o de objetos con name. */
 private fun readableCategories(collab: Collaborator): String {
-    // Si tu modelo es List<String>:
     val s1 = (collab.categories as? List<String>)?.joinToString(", ")
     if (!s1.isNullOrBlank()) return s1
 
-    // Si tu modelo es List<AlgoConName?>:
     val listAny = collab.categories as? List<Any?>
     val s2 = listAny?.mapNotNull {
         runCatching {
@@ -61,10 +60,7 @@ private fun readableCategories(collab: Collaborator): String {
 }
 
 // ============================================================
-//  Card HORIZONTAL (como el screenshot)
-//  - imagen izquierda
-//  - textos derecha
-//  - corazón arriba-derecha
+//  Card HORIZONTAL (imagen izquierda + fav)
 // ============================================================
 
 @Composable
@@ -79,8 +75,8 @@ fun MerchantCardHorizontalFav(
     val imageUrl = collab.logoUrl
     val categories = readableCategories(collab)
     val locationText = collab.address ?: ""
-    val ratingText = "4.7" // conéctalo a tu rating real si lo tienes
-    val fallbackRes = R.drawable.brasa
+    val ratingText = "4.7"
+    val fallbackRes = R.drawable.el_fuego_sagrado
 
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -97,28 +93,33 @@ fun MerchantCardHorizontalFav(
                     .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Imagen a la izquierda
-                AsyncImage(
+                // Imagen con loading
+                SubcomposeAsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl.takeIf { !it.isNullOrBlank() } ?: fallbackRes)
                         .crossfade(true)
-                        .placeholder(fallbackRes)
                         .error(fallbackRes)
                         .build(),
                     contentDescription = name,
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(90.dp)
                         .clip(RoundedCornerShape(16.dp)),
-                    contentScale = ContentScale.Crop
+                    loading = {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(strokeWidth = 2.dp, color = Color(0xFF008D96))
+                        }
+                    },
+                    success = { SubcomposeAsyncImageContent() },
+                    error = { SubcomposeAsyncImageContent() }
                 )
 
                 Spacer(Modifier.width(12.dp))
 
-                // Textos a la derecha
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(end = 44.dp) // espacio para el corazón flotante
+                        .padding(end = 44.dp)
                 ) {
                     Text(
                         text = name,
@@ -168,7 +169,7 @@ fun MerchantCardHorizontalFav(
                 }
             }
 
-            // Corazón
+            // Botón favorito
             Surface(
                 shape = RoundedCornerShape(24.dp),
                 color = Color.White.copy(alpha = 0.96f),
@@ -192,7 +193,7 @@ fun MerchantCardHorizontalFav(
 }
 
 // ============================================================
-//  Card POSTER (imagen arriba, textos abajo) con fav
+//  Card POSTER (imagen arriba + fav)
 // ============================================================
 
 @Composable
@@ -215,31 +216,32 @@ fun MerchantCardPosterFav(
         border = ButtonDefaults.outlinedButtonBorder.copy(
             width = 1.dp, brush = SolidColor(Color(0xFFE6E6E6))
         ),
-        modifier = modifier
-            .clickable { onClick() }
+        modifier = modifier.clickable { onClick() }
     ) {
         Box {
             Column {
-                // Imagen arriba (más alta para minimizar el área blanca)
-                AsyncImage(
+                SubcomposeAsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl.takeIf { !it.isNullOrBlank() } ?: fallbackRes)
                         .crossfade(true)
-                        .placeholder(fallbackRes)
                         .error(fallbackRes)
                         .build(),
                     contentDescription = name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(118.dp) // <-- antes 82dp
-                        .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                        .height(118.dp)
+                        .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)),
+                    loading = {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(strokeWidth = 2.dp, color = Color(0xFF008D96))
+                        }
+                    },
+                    success = { SubcomposeAsyncImageContent() },
+                    error = { SubcomposeAsyncImageContent() }
                 )
 
-                // Zona de texto súper compacta
-                Column(
-                    Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
+                Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = name,
@@ -257,14 +259,9 @@ fun MerchantCardPosterFav(
                             modifier = Modifier.size(13.dp)
                         )
                         Spacer(Modifier.width(2.dp))
-                        Text(
-                            text = ratingText,
-                            fontSize = 10.5.sp,
-                            color = Color(0xFF7A7A7A)
-                        )
+                        Text(text = ratingText, fontSize = 10.5.sp, color = Color(0xFF7A7A7A))
                     }
 
-                    // Categorías muy discretas (si existen)
                     if (categories.isNotBlank()) {
                         Spacer(Modifier.height(2.dp))
                         Text(
@@ -278,7 +275,6 @@ fun MerchantCardPosterFav(
                 }
             }
 
-            // Corazón flotante (igual)
             Surface(
                 shape = RoundedCornerShape(24.dp),
                 color = Color.White.copy(alpha = 0.75f),
@@ -295,8 +291,7 @@ fun MerchantCardPosterFav(
                         imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                         contentDescription = "Favorito",
                         tint = if (isFavorite) Color(0xFFE53935) else Color(0xFF505050),
-                        modifier = modifier.size(20.dp)
-                            .padding(4.dp)
+                        modifier = modifier.size(20.dp).padding(4.dp)
                     )
                 }
             }
@@ -304,9 +299,8 @@ fun MerchantCardPosterFav(
     }
 }
 
-
 // ============================================================
-//  Wrapper para elegir diseño
+//  Wrapper + Row
 // ============================================================
 
 @Composable
@@ -326,10 +320,6 @@ fun MerchantCardSelectable(
     }
 }
 
-// ============================================================
-//  LazyRow reutilizable con selector de diseño
-// ============================================================
-
 @Composable
 fun MerchantRowSelectable(
     collaborators: List<Collaborator>,
@@ -348,10 +338,7 @@ fun MerchantRowSelectable(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(
-            items = collaborators,
-            key = { collabKey(it) }
-        ) { collab ->
+        items(items = collaborators, key = { collabKey(it) }) { collab ->
             MerchantCardSelectable(
                 design = design,
                 collab = collab,

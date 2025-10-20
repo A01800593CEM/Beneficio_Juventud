@@ -9,6 +9,7 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface UserApiService {
 
@@ -68,4 +69,11 @@ interface UserApiService {
     suspend fun getFavoriteCollabs(
         @Path("cognitoId") cognitoId: String
     ): Response<List<Collaborator>>
+
+    // Al final del archivo (o junto con el resto de endpoints)
+    data class ExistsResponse(val exists: Boolean)
+
+    @GET("users/email-exists")
+    suspend fun getEmailExists(@Query("email") email: String): Response<ExistsResponse>
+
 }

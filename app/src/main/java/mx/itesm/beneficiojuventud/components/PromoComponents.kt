@@ -1,6 +1,8 @@
 package mx.itesm.beneficiojuventud.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -9,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -27,7 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import coil.request.ImageRequest
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.model.promos.PromoTheme
@@ -57,9 +61,6 @@ private val DarkTextTheme = PromoTextColors(
 
 // -------------------- API pública --------------------
 
-/**
- * Carrusel de promociones reales desde la BD.
- */
 @Composable
 fun PromoCarousel(
     promos: List<Promotions>,
@@ -86,9 +87,8 @@ fun PromoCarousel(
     }
 }
 
-/**
- * Card individual para cada promoción.
- */
+// -------------------- Card de promoción --------------------
+
 @Composable
 fun PromoImageBanner(
     promo: Promotions,
@@ -125,7 +125,6 @@ fun PromoImageBanner(
         )
     }
 
-    // Mapeo directo desde tu entidad
     val title = promo.title ?: "Promoción"
     val subtitle = buildString {
         promo.promotionType?.let { append(it.displayName) }
@@ -135,8 +134,6 @@ fun PromoImageBanner(
         }
     }
     val body = promo.description.orEmpty()
-
-    // Soporta null/empty y falla con placeholder
     val dataToLoad = promo.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.bolos
 
     Surface(
@@ -148,16 +145,26 @@ fun PromoImageBanner(
     ) {
         Box(Modifier.clip(RoundedCornerShape(radius))) {
 
-            AsyncImage(
+            SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(dataToLoad)
                     .crossfade(true)
-                    .placeholder(R.drawable.bolos)
                     .error(R.drawable.bolos)
                     .build(),
                 contentDescription = title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                loading = {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            strokeWidth = 2.dp,
+                            color = if (theme == PromoTheme.light)
+                                Color.White.copy(alpha = 0.85f) else Color(0xFF505050)
+                        )
+                    }
+                },
+                success = { SubcomposeAsyncImageContent() },
+                error = { SubcomposeAsyncImageContent() }
             )
 
             Box(
@@ -218,8 +225,9 @@ fun PromoImageBannerFav(
     isFavorite: Boolean,
     onFavoriteClick: (Promotions) -> Unit,
     modifier: Modifier = Modifier,
+    isReserved: Boolean = false,
     onClick: () -> Unit = {},
-    themeResolver: (Promotions) -> PromoTheme = { it.theme ?: PromoTheme.light } // ⟵ aquí también
+    themeResolver: (Promotions) -> PromoTheme = { it.theme ?: PromoTheme.light }
 ) {
     val radius = 16.dp
     val theme = themeResolver(promo)
@@ -230,26 +238,24 @@ fun PromoImageBannerFav(
     }
 
     val gradientBrush = when (theme) {
-        PromoTheme.light -> /* mismo gradient oscuro */
-            Brush.horizontalGradient(
-                0.00f to Color(0xFF2B2B2B).copy(alpha = 1f),
-                0.15f to Color(0xFF2B2B2B).copy(alpha = .95f),
-                0.30f to Color(0xFF2B2B2B).copy(alpha = .70f),
-                0.45f to Color(0xFF2B2B2B).copy(alpha = .40f),
-                0.60f to Color(0xFF2B2B2B).copy(alpha = .25f),
-                0.75f to Color.Transparent,
-                1.00f to Color.Transparent
-            )
-        PromoTheme.dark -> /* mismo gradient claro */
-            Brush.horizontalGradient(
-                0.00f to Color.White.copy(alpha = 1f),
-                0.15f to Color.White.copy(alpha = .95f),
-                0.30f to Color.White.copy(alpha = .70f),
-                0.45f to Color.White.copy(alpha = .40f),
-                0.60f to Color.White.copy(alpha = .25f),
-                0.75f to Color.Transparent,
-                1.00f to Color.Transparent
-            )
+        PromoTheme.light -> Brush.horizontalGradient(
+            0.00f to Color(0xFF2B2B2B).copy(alpha = 1f),
+            0.15f to Color(0xFF2B2B2B).copy(alpha = .95f),
+            0.30f to Color(0xFF2B2B2B).copy(alpha = .70f),
+            0.45f to Color(0xFF2B2B2B).copy(alpha = .40f),
+            0.60f to Color(0xFF2B2B2B).copy(alpha = .25f),
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
+        PromoTheme.dark -> Brush.horizontalGradient(
+            0.00f to Color.White.copy(alpha = 1f),
+            0.15f to Color.White.copy(alpha = .95f),
+            0.30f to Color.White.copy(alpha = .70f),
+            0.45f to Color.White.copy(alpha = .40f),
+            0.60f to Color.White.copy(alpha = .25f),
+            0.75f to Color.Transparent,
+            1.00f to Color.Transparent
+        )
     }
 
     val title = promo.title ?: "Promoción"
@@ -272,20 +278,28 @@ fun PromoImageBannerFav(
     ) {
         Box(Modifier.clip(RoundedCornerShape(radius))) {
 
-            // Imagen
-            AsyncImage(
+            SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(dataToLoad)
                     .crossfade(true)
-                    .placeholder(R.drawable.bolos)
                     .error(R.drawable.bolos)
                     .build(),
                 contentDescription = title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                loading = {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            strokeWidth = 2.dp,
+                            color = if (theme == PromoTheme.light)
+                                Color.White.copy(alpha = 0.85f) else Color(0xFF505050)
+                        )
+                    }
+                },
+                success = { SubcomposeAsyncImageContent() },
+                error = { SubcomposeAsyncImageContent() }
             )
 
-            // Gradiente de texto
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -297,7 +311,27 @@ fun PromoImageBannerFav(
                     }
             )
 
-            // Corazón favorito (arriba-derecha)
+            // Badge "Reservado" en TopStart
+            if (isReserved) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF4CAF50))
+                        .border(BorderStroke(1.dp, Color(0xFF45A049)), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "Reservado",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            // Botón de favorito en TopEnd
             Surface(
                 shape = RoundedCornerShape(24.dp),
                 color = Color.White.copy(alpha = 0.92f),
@@ -315,7 +349,6 @@ fun PromoImageBannerFav(
                 }
             }
 
-            // Texto
             Column(
                 Modifier
                     .align(Alignment.CenterStart)
@@ -357,12 +390,8 @@ fun PromoImageBannerFav(
     }
 }
 
-
 // -------------------- Helpers de UI --------------------
 
-/**
- * Texto truncado en 2 líneas (con "…") usando cálculo de overflow real.
- */
 @Composable
 private fun TwoLineEllipsizedText(
     text: String,
@@ -395,7 +424,7 @@ private fun TwoLineEllipsizedText(
     )
 }
 
-// -------------------- Mappers bonitos para enums (opcional) --------------------
+// -------------------- Mappers de enums --------------------
 
 private val PromotionType.displayName: String
     get() = when (this) {

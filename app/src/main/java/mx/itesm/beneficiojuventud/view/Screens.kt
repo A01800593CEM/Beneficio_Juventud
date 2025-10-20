@@ -42,4 +42,29 @@ sealed class Screens(val route: String) {
     data object GenerarPromocionIA : Screens("generar_promocion_ia")
     data object EditPromotion : Screens("edit_promotion")
 
+    // Panel de Colaboradres
+    data object RegisterCollab : Screens("register_collab")
+    data object HomeScreenCollab : Screens("home_screen_collab")
+    data object QrScanner : Screens("qr_scanner")
+    data object ProfileCollab : Screens("profile_collab")
+    data object StatsScreen : Screens("stats_screen")
+    data object PromotionsScreen : Screens("promotions_screen/{collabId}") {
+        fun createRoute(collabId: String) =
+            "promotions_screen/${java.net.URLEncoder.encode(collabId, "UTF-8")}"
+        val arg = "collabId"
+    }
+    data object Terms : Screens("terms")
+    data object Status : Screens("status/{type}/{destination}") {
+        fun createRoute(type: StatusType, destination: String): String =
+            "status/${type.name}/${java.net.URLEncoder.encode(destination, "UTF-8")}"
+        val arguments = listOf(
+            navArgument("type") { type = NavType.StringType },
+            navArgument("destination") { type = NavType.StringType }
+        )
+    }
+
+    data object GeneratePromotionScreen : Screens("generate_promotion_screen")
+
+    data object EditProfileCollab : Screens("edit_profile_collab")
+
 }

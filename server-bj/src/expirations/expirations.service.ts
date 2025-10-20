@@ -1,14 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual } from 'typeorm';
+import { Repository, LessThanOrEqual, Between } from 'typeorm';
+
 import { Promotion } from '../promotions/entities/promotion.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { Notification } from '../notifications/entities/notification.entity';
+
 import { NotificationType } from '../notifications/enums/notification-type.enums';
 import { NotificationStatus } from '../notifications/enums/notification-status.enum';
 import { RecipientType } from '../notifications/enums/recipient-type.enums';
+
 import { NotificationsService } from '../notifications/notifications.service';
+import { BookStatus } from '../bookings/enums/book-status.enum';
 
 @Injectable()
 export class ExpirationsService {
@@ -24,13 +28,13 @@ export class ExpirationsService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  // ⚠️ Para pruebas: cada minuto. En producción vuelve a: CronExpression.EVERY_HOUR
+  // En producción puedes dejarlo cada hora. Para pruebas podrías cambiarlo a EVERY_MINUTE.
   @Cron(CronExpression.EVERY_HOUR)
   async checkExpirations() {
     return this._check({ collectResults: false });
   }
 
-  // Endpoint manual de prueba
+  // Endpoint manual de prueba (/expirations/check)
   async runManualCheck() {
     const result = await this._check({ collectResults: true });
     return result;
@@ -50,70 +54,90 @@ export class ExpirationsService {
       `🔎 Revisando expiraciones entre ${now.toISOString()} y ${in24h.toISOString()}`,
     );
 
-    // 1) Promos que vencen <= 24h
+    // =========================================================
+    // 1) Promociones que vencen <= 24h
+    //    → Notificar a usuarios con BOOKING PENDING de esa promo
+    // =========================================================
     const promosExpiring = await this.promoRepo.find({
       where: { endDate: LessThanOrEqual(in24h) },
     });
-    this.logger.log(`🔹 Promociones encontradas por expirar: ${promosExpiring.length}`);
+    this.logger.log(`🔹 Promociones por expirar: ${promosExpiring.length}`);
 
     for (const promo of promosExpiring) {
-      // recipientId para colaborador: tu esquema dice INT,
-      // pero en tus datos aparece string (ej: "us-east-1:...").
-      // Si no es numérico, lo dejamos en null para no romper el INSERT.
-      const recipientIdNum =
-        typeof promo.collaboratorId === 'number' ? promo.collaboratorId : null;
-
-      const exists = await this.notifRepo.findOne({
+      // Buscar bookings PENDING de esta promo (usuarios relacionados)
+      const userBookings = await this.bookingRepo.find({
         where: {
-          title: 'Promoción por expirar',
-          recipientId: recipientIdNum ?? undefined,
-          promotions: { promotionId: promo.promotionId },
+          promotionId: promo.promotionId,
+          status: BookStatus.PENDING,
+          limitUseDate: Between(now, in24h), // también dentro de 24h si quieres limitar
         },
+        relations: ['user'],
       });
-      if (exists) {
-        if (opts.collectResults) {
-          skipped.push({ reason: 'duplicate-promotion', kind: 'promotion' });
+
+      // Set único por usuario.id (podría haber varias reservas de la misma promo)
+      const uniqueUsers = new Map<number, { userId: number; name?: string }>();
+      for (const b of userBookings) {
+        const uid = b.user?.id;
+        if (uid != null && !uniqueUsers.has(uid)) {
+          uniqueUsers.set(uid, { userId: uid, name: b.user?.name });
         }
-        continue;
       }
 
-      const body = `La promoción "${promo.title}" vence el ${promo.endDate
-        .toISOString()
-        .slice(0, 10)}.`;
+      for (const { userId, name } of uniqueUsers.values()) {
+        // Deduplicación por recipient + kind + promoId
+        const exists = await this.notifRepo
+          .createQueryBuilder('n')
+          .where(`n."recipientType" = :rt`, { rt: RecipientType.USER })
+          .andWhere(`n."recipientId" = :rid`, { rid: userId })
+          .andWhere(`n."segmentCriteria"->>'kind' = :kind`, { kind: 'promotion-expiring' })
+          .andWhere(`n."segmentCriteria"->>'id' = :pid`, { pid: String(promo.promotionId) })
+          .getExists();
 
-      const saved = await this.notifRepo.save(
-        this.notifRepo.create({
-          title: 'Promoción por expirar',
-          message: body,
-          type: NotificationType.ALERT,
-          recipientType: RecipientType.COLLABORATOR,
-          recipientId: recipientIdNum, // puede ser null si no es numérico
-          status: NotificationStatus.PENDING,
-          segmentCriteria: { kind: 'promotion-expiring', id: promo.promotionId },
-          promotions: promo, // relación
-        }),
-      );
+        if (exists) {
+          if (opts.collectResults) skipped.push({ reason: 'duplicate-promotion', kind: 'promotion' });
+          continue;
+        }
 
-      this.logger.log(`✅ Notificación creada para promo ID ${promo.promotionId}`);
-      if (opts.collectResults) {
-        created.push({ id: saved.notificationId, body, kind: 'promotion' });
+        const body = `${name ?? 'Tu'}, la promoción "${promo.title}" vence el ${promo.endDate
+          .toISOString()
+          .slice(0, 10)}.`;
+
+        const saved = await this.notifRepo.save(
+          this.notifRepo.create({
+            title: 'Promoción por expirar',
+            message: body,
+            type: NotificationType.ALERT,
+            recipientType: RecipientType.USER, // 👈 ahora va a usuario (sí lo envía tu NotificationsService)
+            recipientId: userId,
+            status: NotificationStatus.PENDING,
+            segmentCriteria: { kind: 'promotion-expiring', id: promo.promotionId },
+            promotions: promo, // relación
+          }),
+        );
+
+        this.logger.log(`✅ Notificación creada (promo expiring) para user ${userId} - promo ${promo.promotionId}`);
+        if (opts.collectResults) {
+          created.push({ id: saved.notificationId, body, kind: 'promotion' });
+        }
       }
     }
 
-    // 2) Bookings que vencen <= 24h
-    // Ya puedes traer la relación 'user' porque tu FK va a cognitoId (varchar)
+    // =========================================================
+    // 2) Bookings que vencen en <= 24h (SOLO PENDING)
+    // =========================================================
     const bookingsExpiring = await this.bookingRepo.find({
-      where: { limitUseDate: LessThanOrEqual(in24h) },
+      where: {
+        status: BookStatus.PENDING,              // 👈 evitar usadas/canceladas
+        limitUseDate: Between(now, in24h),       // 👈 evitar ya vencidas
+      },
       relations: ['promotion', 'user'],
     });
-    this.logger.log(`🔹 Cupones encontrados por expirar: ${bookingsExpiring.length}`);
+    this.logger.log(`🔹 Cupones por expirar: ${bookingsExpiring.length}`);
 
     for (const book of bookingsExpiring) {
-      // personalizar con el nombre del usuario (si existe)
       const userName = book.user?.name ?? 'Tu';
-      const recipientIdNum = book.user?.id ?? null; // INT de la tabla usuario
+      const recipientIdNum = book.user?.id ?? null;
 
-      // si no hay promoción o recipient numérico, saltamos de forma segura
       if (!book.promotion || recipientIdNum === null) {
         if (opts.collectResults) {
           skipped.push({ reason: 'missing-promo-or-recipient', kind: 'booking' });
@@ -121,24 +145,21 @@ export class ExpirationsService {
         continue;
       }
 
-      const exists = await this.notifRepo.findOne({
-        where: {
-          title: 'Cupón por expirar',
-          recipientId: recipientIdNum,
-          promotions: { promotionId: book.promotion.promotionId },
-        },
-      });
+      // Deduplicación por recipient + kind + bookingId
+      const exists = await this.notifRepo
+        .createQueryBuilder('n')
+        .where(`n."recipientType" = :rt`, { rt: RecipientType.USER })
+        .andWhere(`n."recipientId" = :rid`, { rid: recipientIdNum })
+        .andWhere(`n."segmentCriteria"->>'kind' = :kind`, { kind: 'booking-expiring' })
+        .andWhere(`n."segmentCriteria"->>'id' = :bid`, { bid: String(book.bookingId) })
+        .getExists();
       if (exists) {
-        if (opts.collectResults) {
-          skipped.push({ reason: 'duplicate-booking', kind: 'booking' });
-        }
+        if (opts.collectResults) skipped.push({ reason: 'duplicate-booking', kind: 'booking' });
         continue;
       }
 
       const body = `${userName}, tu cupón de "${book.promotion.title}" está por expirar. ¡Canjéalo ahora! ${
-        book.limitUseDate
-          ? `(vence el ${book.limitUseDate.toISOString().slice(0, 10)})`
-          : ''
+        book.limitUseDate ? `(vence el ${book.limitUseDate.toISOString().slice(0, 10)})` : ''
       }`;
 
       const saved = await this.notifRepo.save(
@@ -154,7 +175,7 @@ export class ExpirationsService {
         }),
       );
 
-      this.logger.log(`✅ Notificación creada para booking ID ${book.bookingId}`);
+      this.logger.log(`✅ Notificación creada (booking expiring) para user ${recipientIdNum} - booking ${book.bookingId}`);
       if (opts.collectResults) {
         created.push({ id: saved.notificationId, body, kind: 'booking' });
       }

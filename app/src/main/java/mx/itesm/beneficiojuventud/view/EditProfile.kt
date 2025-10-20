@@ -1,6 +1,7 @@
 package mx.itesm.beneficiojuventud.view
 
-import android.annotation.SuppressLint
+import mx.itesm.beneficiojuventud.components.ProfileTextField
+import android.app.DatePickerDialog
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -9,6 +10,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -27,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -63,7 +66,7 @@ fun EditProfile(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel,
-    userViewModel: UserViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    userViewModel: UserViewModel
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Profile) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -83,6 +86,9 @@ fun EditProfile(
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var isUploading by remember { mutableStateOf(false) }
     var isDownloading by remember { mutableStateOf(false) }
+
+    // Flag para detectar confirmación de guardado
+    var justSaved by remember { mutableStateOf(false) }
 
     // ====== Load current Cognito user ======
     LaunchedEffect(Unit) { authViewModel.getCurrentUser() }
@@ -173,7 +179,7 @@ fun EditProfile(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()) // scrollable ✅
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -196,7 +202,9 @@ fun EditProfile(
                                 model = profileImageUrl,
                                 contentDescription = "Foto de perfil",
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.matchParentSize().clip(CircleShape)
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(CircleShape)
                             )
                         }
                         avatarUri != null -> {
@@ -204,7 +212,9 @@ fun EditProfile(
                                 model = avatarUri,
                                 contentDescription = "Foto de perfil",
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.matchParentSize().clip(CircleShape)
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(CircleShape)
                             )
                         }
                         else -> {
@@ -234,7 +244,7 @@ fun EditProfile(
 
                 Spacer(Modifier.height(20.dp))
 
-                // ===== Campos reales =====
+                // ===== Campos =====
                 ProfileTextField(
                     value = firstName,
                     onValueChange = { firstName = it },
@@ -267,12 +277,15 @@ fun EditProfile(
                     leadingIcon = Icons.Outlined.Phone,
                     keyboardType = KeyboardType.Phone
                 )
-                ProfileTextField(
+
+                // === Campo Fecha (abre DatePicker del sistema al tocar cualquier parte) ===
+                DatePickerField(
                     value = birthDisplay,
-                    onValueChange = { birthDisplay = it },
                     label = "Fecha de Nacimiento (dd/MM/yyyy)",
                     leadingIcon = Icons.Outlined.CalendarMonth,
-                    keyboardType = KeyboardType.Number
+                    onDateSelected = { newDisplay ->
+                        birthDisplay = newDisplay
+                    }
                 )
 
                 Spacer(Modifier.height(24.dp))
@@ -292,21 +305,24 @@ fun EditProfile(
                         }
 
                         val update = UserProfile(
-                            // No cambies id ni cognitoId aquí; el backend los toma del path
                             name = firstName.ifBlank { null },
                             lastNamePaternal = lastNamePat.ifBlank { null },
                             lastNameMaternal = lastNameMat.ifBlank { null },
                             email = email.ifBlank { null },
                             phoneNumber = phone.ifBlank { null },
-                            birthDate = birthIso // puede ser null si lo dejaste vacío
-                            // Si quieres guardar la key de la imagen:
-                            // profileImageKey = "public/profile-images/$actualUserId.jpg"
+                            birthDate = birthIso
                         )
 
+                        justSaved = true
                         userViewModel.updateUser(actualUserId, update)
 
                         scope.launch {
-                            snackbarHostState.showSnackbar("Guardando cambios…")
+                            snackbarHostState.currentSnackbarData?.dismiss() // cierra cualquier snackbar previo
+                            snackbarHostState.showSnackbar(
+                                message = "Guardando cambios…",
+                                withDismissAction = false,
+                                duration = SnackbarDuration.Indefinite
+                            )
                         }
                     },
                     enabled = !isLoading
@@ -343,29 +359,79 @@ fun EditProfile(
         }
     }
 
-    // Feedback de éxito cuando termine el loading sin error
+    // Feedback de éxito y navegación a Profile cuando termine el guardado sin error
     LaunchedEffect(isLoading, errorMsg, backendUser) {
-        if (!isLoading && errorMsg.isNullOrBlank() && backendUser.cognitoId == actualUserId) {
-            // Esto se activará tanto en carga inicial como tras update; validamos que hubo update por cambio de datos.
-            // Si quieres ser más estricto, compara campos antes/después.
-            // Aquí navegamos de regreso sólo después de un update (heurística: ya había datos y se volvió a cargar):
-            // Para simpleza: si no hay error y no está cargando al dar click, mostramos éxito.
+        if (justSaved && !isLoading) {
+            if (errorMsg.isNullOrBlank()) {
+                // Éxito: cerrar "Guardando…" y mostrar "Cambios guardados" sin bloquear
+                snackbarHostState.currentSnackbarData?.dismiss()
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = "Cambios guardados",
+                        withDismissAction = true,
+                        duration = SnackbarDuration.Short
+                    )
+                }
+
+                justSaved = false
+
+                // Navegar inmediatamente (sin esperar al snackbar)
+                nav.navigate(Screens.Profile.route) {
+                    popUpTo(Screens.Profile.route) { inclusive = true }
+                    launchSingleTop = true
+                }
+            } else {
+                // Error: sustituir snackbar y NO bloquear
+                snackbarHostState.currentSnackbarData?.dismiss()
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = errorMsg ?: "Error al guardar",
+                        withDismissAction = true,
+                        duration = SnackbarDuration.Long
+                    )
+                }
+                justSaved = false
+            }
         }
     }
+
 }
+
+
+
+// =================== Campo de Fecha con DatePicker del sistema ===================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileTextField(
+private fun DatePickerField(
     value: String,
-    onValueChange: (String) -> Unit,
     label: String,
-    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    keyboardType: KeyboardType = KeyboardType.Text
+    leadingIcon: ImageVector,
+    onDateSelected: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    val interaction = remember { MutableInteractionSource() }
+
+    fun showSystemDatePicker() {
+        val initial = runCatching { LocalDate.parse(value.trim(), displayFormatter) }
+            .getOrElse { LocalDate.now() }
+
+        DatePickerDialog(
+            context,
+            { _, year, monthOfYear, dayOfMonth ->
+                val picked = LocalDate.of(year, monthOfYear + 1, dayOfMonth)
+                onDateSelected(picked.format(displayFormatter))
+            },
+            initial.year,
+            initial.monthValue - 1,
+            initial.dayOfMonth
+        ).show()
+    }
+
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { /* read-only visual */ },
+        readOnly = true,
         label = {
             Text(
                 text = label,
@@ -379,15 +445,24 @@ fun ProfileTextField(
                 imageVector = leadingIcon,
                 contentDescription = null,
                 tint = Color(0xFF616161),
-                modifier = Modifier.size(35.dp)
+                modifier = Modifier
+                    .size(35.dp)
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = null
+                    ) { showSystemDatePicker() }
             )
         },
         singleLine = true,
         shape = RoundedCornerShape(12.dp),
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 6.dp)
+            .clickable( // <-- ahora toca en cualquier parte del campo
+                interactionSource = interaction,
+                indication = null
+            ) { showSystemDatePicker() },
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Color(0xFF008D96),
             unfocusedBorderColor = Color(0xFFD3D3D3),
@@ -411,7 +486,6 @@ private val isoDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("y
 private fun isoToDisplay(iso: String): String {
     val trimmed = iso.trim()
     return try {
-        // Caso con Z / milisegundos
         if (trimmed.contains("T")) {
             val odt = OffsetDateTime.parse(trimmed)
             odt.toLocalDate().format(displayFormatter)
@@ -419,10 +493,9 @@ private fun isoToDisplay(iso: String): String {
             LocalDate.parse(trimmed, isoDateFormatter).format(displayFormatter)
         }
     } catch (e: DateTimeParseException) {
-        // Fallback: intenta extraer yyyy-MM-dd al inicio
         runCatching {
             LocalDate.parse(trimmed.substring(0, 10), isoDateFormatter).format(displayFormatter)
-        }.getOrElse { trimmed } // si falla, regresa tal cual
+        }.getOrElse { trimmed }
     }
 }
 

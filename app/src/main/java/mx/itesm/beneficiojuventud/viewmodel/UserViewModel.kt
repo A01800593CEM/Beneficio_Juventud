@@ -7,8 +7,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import mx.itesm.beneficiojuventud.model.bookings.Booking
+import mx.itesm.beneficiojuventud.model.bookings.RemoteServiceBooking
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.Promotions
+import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
 import mx.itesm.beneficiojuventud.model.users.RemoteServiceUser
 import mx.itesm.beneficiojuventud.model.users.UserProfile
 
@@ -31,6 +34,14 @@ class UserViewModel : ViewModel() {
     // AHORA: lista de objetos Collaborator (antes List<Int>)
     private val _favoriteCollabs = MutableStateFlow<List<Collaborator>>(emptyList())
     val favoriteCollabs: StateFlow<List<Collaborator>> = _favoriteCollabs
+
+    // Reservaciones del usuario
+    private val _userBookings = MutableStateFlow<List<Booking>>(emptyList())
+    val userBookings: StateFlow<List<Booking>> = _userBookings
+
+    // Promociones reservadas (con detalles completos)
+    private val _reservedPromotions = MutableStateFlow<List<Promotions>>(emptyList())
+    val reservedPromotions: StateFlow<List<Promotions>> = _reservedPromotions
 
     /** Token para invalidar respuestas tardías cuando cambia de cuenta o se hace clear. */
     private var loadToken: Int = 0
@@ -123,6 +134,14 @@ class UserViewModel : ViewModel() {
         }
     }
 
+    suspend fun emailExists(email: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            runCatching { model.emailExists(email) }
+                .getOrElse { throw it } // deja que el UI muestre error si falla
+        }
+    }
+
+
     fun favoritePromotion(promotionId: Int, cognitoId: String) {
         _error.value = null
         // No activamos el loading global para no bloquear la UI por una acción rápida.
@@ -173,25 +192,6 @@ class UserViewModel : ViewModel() {
         }
     }
 
-    fun getFavoriteCollabs(cognitoId: String) {
-        val myToken = ++loadToken
-        _error.value = null
-        _isLoading.value = true
-
-        viewModelScope.launch {
-            val result = runCatching {
-                withContext(Dispatchers.IO) { model.getFavoriteCollabs(cognitoId) }
-            }
-            if (myToken != loadToken) return@launch
-
-            result.fold(
-                onSuccess = { list -> _favoriteCollabs.value = list }, // ahora es List<Collaborator>
-                onFailure = { e -> _error.value = e.message ?: "Error al obtener colaboradores favoritos" }
-            )
-            _isLoading.value = false
-        }
-    }
-
     /** Conveniencia para refrescar ambas listas de favoritos sin pelear con el token global. */
     fun refreshFavorites(cognitoId: String) {
         // No tocamos loadToken aquí para no invalidar otras cargas largas.
@@ -207,7 +207,48 @@ class UserViewModel : ViewModel() {
                 withContext(Dispatchers.IO) { model.getFavoriteCollabs(cognitoId) }
             }.onSuccess { _favoriteCollabs.value = it }
                 .onFailure { e -> _error.value = e.message ?: "Error al refrescar colaboradores favoritos" }
+
+            // Reservaciones
+            runCatching {
+                withContext(Dispatchers.IO) { RemoteServiceBooking.getUserBookings(cognitoId) }
+            }.onSuccess { bookings ->
+                _userBookings.value = bookings
+                // Cargar detalles de las promociones reservadas
+                loadReservedPromotionsDetails(bookings)
+            }.onFailure { e -> _error.value = e.message ?: "Error al refrescar reservaciones" }
         }
+    }
+
+    /** Carga los detalles completos de las promociones reservadas */
+    private suspend fun loadReservedPromotionsDetails(bookings: List<Booking>) {
+        val promos = bookings.mapNotNull { booking ->
+            booking.promotionId?.let { promotionId ->
+                runCatching {
+                    withContext(Dispatchers.IO) { RemoteServicePromos.getPromotionById(promotionId) }
+                }.getOrNull()
+            }
+        }
+        _reservedPromotions.value = promos
+    }
+
+    /** Obtiene las reservaciones del usuario */
+    fun getUserBookings(cognitoId: String) {
+        viewModelScope.launch {
+            _error.value = null
+            runCatching {
+                withContext(Dispatchers.IO) { RemoteServiceBooking.getUserBookings(cognitoId) }
+            }.onSuccess { bookings ->
+                _userBookings.value = bookings
+                loadReservedPromotionsDetails(bookings)
+            }.onFailure { e ->
+                _error.value = e.message ?: "Error al obtener reservaciones"
+            }
+        }
+    }
+
+    /** Verifica si una promoción está reservada por el usuario */
+    fun isPromotionReserved(promotionId: Int): Boolean {
+        return _userBookings.value.any { it.promotionId == promotionId }
     }
 
     // --- COLLABORATORS FAVORITES ---

@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.view
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -27,13 +28,19 @@ import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.CodeTextField
+import mx.itesm.beneficiojuventud.model.collaborators.CollaboratorsState
 import mx.itesm.beneficiojuventud.model.users.AccountState
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import java.time.Instant
 
 /**
- * Confirmación de registro: valida código, crea el usuario en BD usando el perfil pendiente y sub de Cognito, y navega a Home.
+ * Confirmación de registro: valida código OTP, detecta si es usuario o colaborador,
+ * crea el perfil correspondiente en BD usando el perfil pendiente y sub de Cognito.
+ * Maneja también el caso de usuarios ya confirmados (status CONFIRMED) haciendo sign-in directo.
+ * Navega a Onboarding (usuarios) o HomeScreenCollab (colaboradores) según el tipo de perfil.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,7 +49,8 @@ fun ConfirmSignUp(
     email: String,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = viewModel(),
-    userViewModel: UserViewModel = viewModel()
+    userViewModel: UserViewModel = viewModel(),
+    collabViewModel: CollabViewModel = viewModel()
 ) {
     var code by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
@@ -77,20 +85,23 @@ fun ConfirmSignUp(
         errorMessage = ""
     }
 
-    // Cuando confirmación sea exitosa, crea en BD con el perfil pendiente y navega a Home
+    // Cuando confirmación sea exitosa O sign-in exitoso (caso usuario ya confirmado),
+    // crea en BD con el perfil pendiente y navega a Home
     LaunchedEffect(authState.isSuccess, authState.error, authState.isLoading, authState.cognitoSub, currentSub) {
         if (didCreate) return@LaunchedEffect
 
+        // No procesar errores aquí; el otro LaunchedEffect se encarga
         if (authState.error != null) {
-            errorMessage = authState.error ?: "Error desconocido"
-            showError = true
             return@LaunchedEffect
         }
+
         if (!authState.isLoading && authState.isSuccess) {
-            val pending = authViewModel.consumePendingUserProfile()
+            // Detectar si es usuario o colaborador (usando las propiedades públicas)
+            val pendingUser = authViewModel.pendingUserProfile
+            val pendingCollab = authViewModel.pendingCollabProfile
             val sub = currentSub ?: authState.cognitoSub
 
-            if (pending == null) {
+            if (pendingUser == null && pendingCollab == null) {
                 // Si esto se dispara por segunda vez, evitamos ruido
                 return@LaunchedEffect
             }
@@ -104,21 +115,48 @@ fun ConfirmSignUp(
 
             scope.launch {
                 try {
-                    userViewModel.createUser(
-                        pending.copy(
+                    // Crear usuario o colaborador según lo que esté pendiente
+                    if (pendingUser != null) {
+                        userViewModel.createUser(
+                            pendingUser.copy(
+                                cognitoId = sub,
+                                email = email.trim(),
+                                accountState = AccountState.activo
+                            )
+                        )
+                        authViewModel.consumePendingUserProfile()
+                        authViewModel.clearPendingCredentials()
+
+                        // Navega a Onboarding para usuarios
+                        nav.navigate(Screens.Onboarding.route) {
+                            popUpTo(Screens.LoginRegister.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    } else if (pendingCollab != null) {
+                        Log.d("ConfirmSignUp", "Creando colaborador con datos:")
+                        Log.d("ConfirmSignUp", "  pendingCollab: $pendingCollab")
+                        Log.d("ConfirmSignUp", "  sub (cognitoId): $sub")
+                        Log.d("ConfirmSignUp", "  email: ${email.trim()}")
+
+                        val collabToCreate = pendingCollab.copy(
                             cognitoId = sub,
                             email = email.trim(),
-                            accountState = AccountState.activo
+                            state = CollaboratorsState.activo,
+                            registrationDate = Instant.now().toString()
+                            // categoryIds se puede agregar después mediante actualización
                         )
-                    )
-                    // Parche 4: safety cleanup por si quedó algo
-                    authViewModel.clearPendingCredentials()
 
-                    // Limpia estados de auth y navega a Home
-                    nav.navigate(Screens.Onboarding.route) {
-                        // Limpia del back stack el flujo de auth, no toda la gráfica ni a 0.
-                        popUpTo(Screens.LoginRegister.route) { inclusive = true }
-                        launchSingleTop = true
+                        Log.d("ConfirmSignUp", "  collabToCreate: $collabToCreate")
+
+                        collabViewModel.createCollaborator(collabToCreate)
+                        authViewModel.consumePendingCollabProfile()
+                        authViewModel.clearPendingCredentials()
+
+                        // Navega a HomeScreenCollab para colaboradores
+                        nav.navigate(Screens.HomeScreenCollab.route) {
+                            popUpTo(Screens.LoginRegister.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
                     }
 
                     authViewModel.clearState()
@@ -126,15 +164,32 @@ fun ConfirmSignUp(
                 } catch (e: Exception) {
                     didCreate = false // permitir reintento si quieres
                     showError = true
-                    errorMessage = e.message ?: "No se pudo crear el perfil en la BD."
+                    errorMessage = "Error al crear perfil: ${e.message ?: "desconocido"}\n${e.cause?.message ?: ""}"
+                    e.printStackTrace()
                 }
             }
         }
     }
 
     // Mostrar error del estado (si llega un error externo)
+    // CASO ESPECIAL: Si el usuario ya está confirmado, hacer sign-in directo
     LaunchedEffect(authState.error) {
         authState.error?.let { error ->
+            val lower = error.lowercase()
+
+            // Detectar si el usuario ya está confirmado
+            if ("current status is confirmed" in lower ||
+                ("user cannot be confirmed" in lower && "confirmed" in lower)) {
+
+                // El usuario ya está confirmado en Cognito, hacer sign-in directo
+                val (savedEmail, savedPassword) = authViewModel.getPendingCredentials()
+                if (savedEmail != null && savedPassword != null) {
+                    authViewModel.signIn(savedEmail, savedPassword)
+                    // El LaunchedEffect de éxito se encargará de crear el usuario en BD
+                    return@LaunchedEffect
+                }
+            }
+
             errorMessage = error
             showError = true
         }
@@ -148,6 +203,7 @@ fun ConfirmSignUp(
                     BackButton(nav = nav)
                 }
             )
+
         },
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
@@ -291,7 +347,7 @@ fun ConfirmSignUp(
 }
 
 /** Captura taps sin ripple, útil para "Reenviar código". */
-@Composable
+// ConfirmSignUp.kt
 private fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier =
     this.then(Modifier.pointerInput(Unit) {
         detectTapGestures(onTap = { onClick() })

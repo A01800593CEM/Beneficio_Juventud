@@ -5,97 +5,180 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Discount
+import androidx.compose.material.icons.outlined.DocumentScanner
+import androidx.compose.material.icons.outlined.Equalizer
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import mx.itesm.beneficiojuventud.components.GradientText
+import mx.itesm.beneficiojuventud.view.GradientIcon
+import mx.itesm.beneficiojuventud.view.Screens
 
-private val DarkBlue = Color(0xFF4B4C7E)
-private val Teal = Color(0xFF008D96)
-private val GradientBrush = Brush.horizontalGradient(listOf(DarkBlue, Teal))
+/** Tabs del panel colaborador (los 4 de la barra). El 5º ícono es el botón central QR. */
+enum class CollabTab(val label: String, val icon: ImageVector, val rootRoute: String) {
+    Menu("Menú",       Icons.Outlined.Home,       Screens.HomeScreenCollab.route),
+    Stats("Stats",     Icons.Outlined.Equalizer,  Screens.StatsScreen.route),
+    Promotions("Promos", Icons.Outlined.Discount, Screens.PromotionsScreen.route),
+    Profile("Perfil",  Icons.Outlined.Person,     Screens.ProfileCollab.route)
+}
 
-@Composable
-fun BJBottomBarCollab(
-    selected: BJTabCollab,
-    onSelect: (BJTabCollab) -> Unit,
-    onAddClick: () -> Unit
-) {
-    val tabs = listOf(BJTabCollab.Menu, BJTabCollab.Stats, BJTabCollab.Promotions, BJTabCollab.Profile)
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(80.dp),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        NavigationBar(
-            modifier = Modifier.height(60.dp),
-            containerColor = Color.White,
-            tonalElevation = 8.dp
-        ) {
-            NavigationBarItem(
-                selected = selected == tabs[0],
-                onClick = { onSelect(tabs[0]) },
-                icon = { Icon(tabs[0].icon, contentDescription = tabs[0].label) },
-                label = { Text(tabs[0].label, fontSize = 10.sp) },
-                colors = navigationBarItemColors()
-            )
-            NavigationBarItem(
-                selected = selected == tabs[1],
-                onClick = { onSelect(tabs[1]) },
-                icon = { Icon(tabs[1].icon, contentDescription = tabs[1].label) },
-                label = { Text(tabs[1].label, fontSize = 10.sp) },
-                colors = navigationBarItemColors()
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            NavigationBarItem(
-                selected = selected == tabs[2],
-                onClick = { onSelect(tabs[2]) },
-                icon = { Icon(tabs[2].icon, contentDescription = tabs[2].label) },
-                label = { Text(tabs[2].label, fontSize = 10.sp) },
-                colors = navigationBarItemColors()
-            )
-            NavigationBarItem(
-                selected = selected == tabs[3],
-                onClick = { onSelect(tabs[3]) },
-                icon = { Icon(tabs[3].icon, contentDescription = tabs[3].label) },
-                label = { Text(tabs[3].label, fontSize = 10.sp) },
-                colors = navigationBarItemColors()
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .offset(y = (-10).dp)
-                .size(52.dp)
-                .shadow(4.dp, CircleShape)
-                .clip(CircleShape)
-                .background(GradientBrush)
-                .clickable(onClick = onAddClick),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Agregar",
-                tint = Color.White,
-                modifier = Modifier.size(28.dp)
-            )
-        }
+/** Navegación entre tabs que:
+ * - Hace pop hasta el startDestination del grafo
+ * - Evita duplicados (singleTop)
+ * - Restaura estado de cada tab
+ */
+private fun NavHostController.navigateToTabRoot(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }
 
 @Composable
-private fun navigationBarItemColors() = NavigationBarItemDefaults.colors(
-    selectedIconColor = Teal,
-    unselectedIconColor = Color(0xFF969696),
-    selectedTextColor = Teal,
-    unselectedTextColor = Color(0xFF969696),
-    indicatorColor = Color.Transparent
-)
+fun BJBottomBarCollab(
+    nav: NavHostController,
+    containerColor: Color = Color(0xFFF6F6F6),
+    activeBrush: Brush = Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96))),
+    inactiveIconColor: Color = Color(0xFF616161),
+    inactiveTextColor: Color = Color(0xFF616161),
+    iconSize: Dp = 28.dp
+) {
+    val labelBase = MaterialTheme.typography.labelSmall
+
+    // Inset inferior real
+    val bottomInset = WindowInsets.navigationBars
+        .only(WindowInsetsSides.Bottom)
+        .asPaddingValues()
+        .calculateBottomPadding()
+
+    // Ruta/stack actual para marcar seleccionado correctamente
+    val backStackEntry by nav.currentBackStackEntryAsState()
+    val currentDestination = backStackEntry?.destination
+
+    Column(Modifier.fillMaxWidth()) {
+        // Barra + botón central
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(88.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                NavigationBar(
+                    containerColor = containerColor,
+                    tonalElevation = 0.dp,
+                    windowInsets = WindowInsets(0),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(68.dp)
+                ) {
+                    @Composable
+                    fun Label(text: String, isSelected: Boolean) {
+                        val mod = Modifier.offset(y = (-4).dp)
+                        if (isSelected) {
+                            GradientText(text, activeBrush, modifier = mod)
+                        } else {
+                            Text(
+                                text = text,
+                                style = labelBase.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
+                                color = inactiveTextColor,
+                                modifier = mod
+                            )
+                        }
+                    }
+
+                    @Composable
+                    fun IconC(icon: ImageVector, isSelected: Boolean) {
+                        val mod = Modifier
+                            .size(iconSize)
+                            .offset(y = 2.dp)
+                        if (isSelected) GradientIcon(icon, activeBrush, modifier = mod)
+                        else Icon(icon, null, tint = inactiveIconColor, modifier = mod)
+                    }
+
+                    @Composable
+                    fun Item(tab: CollabTab) {
+                        // Considera seleccionado si cualquier destino en la jerarquía coincide con la ruta raíz del tab.
+                        val isSel = currentDestination
+                            ?.hierarchy
+                            ?.any { dest -> dest.route == tab.rootRoute } == true
+
+                        NavigationBarItem(
+                            selected = isSel,
+                            onClick = { nav.navigateToTabRoot(tab.rootRoute) },
+                            icon = { IconC(tab.icon, isSel) },
+                            label = { Label(tab.label, isSel) },
+                            alwaysShowLabel = true,
+                            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
+                            modifier = Modifier.padding(vertical = 0.dp)
+                        )
+                    }
+
+                    // Lado izquierdo
+                    Item(CollabTab.Menu)
+                    Item(CollabTab.Stats)
+
+                    // Espacio para el botón central
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Lado derecho
+                    Item(CollabTab.Promotions)
+                    Item(CollabTab.Profile)
+                }
+
+                // Botón central (QR)
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = 4.dp)
+                        .size(62.dp)
+                        .shadow(4.dp, CircleShape)
+                        .clip(CircleShape)
+                        .background(activeBrush)
+                        .clickable {
+                            // Si el lector QR es pantalla aparte, evita apilar duplicados:
+                            nav.navigate(Screens.QrScanner.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.DocumentScanner,
+                        contentDescription = "Escanear",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+        }
+
+        if (bottomInset > 0.dp) {
+            Spacer(Modifier.height(bottomInset))
+        }
+    }
+}

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew :app:compileDebugKotlin)",
+      "Bash(dir \"d:\\GitHub\\Beneficio_Juventud\" /s /b)",
+      "Bash(find \"d:\\GitHub\\Beneficio_Juventud/app\" -type f ( -name \"*egister*\" -o -name \"*ConfirmSignUp*\" -o -name \"*RegisterCollab*\" ))",
+      "Bash(find \"d:\\GitHub\\Beneficio_Juventud/pagina-web\" -type f ( -name \"*egister*\" -o -name \"*ConfirmSignUp*\" -o -name \"*RegisterCollab*\" ))",
+      "Bash(find src/categories -name \"*.controller.ts\" -exec cat {} ;)",
+      "Bash(npm run build)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(find server-bj -name \"package.json\" -not -path \"*/node_modules/*\" -exec cat {} ;)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
