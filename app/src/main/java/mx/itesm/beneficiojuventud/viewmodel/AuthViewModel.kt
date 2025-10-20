@@ -521,6 +521,13 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
         _authState.update { it.copy(isLoading = false) }
     }
 
+    /**
+     * Elimina la cuenta del usuario de Cognito
+     */
+    suspend fun deleteUserAccount(): Result<Unit> {
+        return authRepository.deleteUser()
+    }
+
 
     /**
      * Maneja UsernameExistsException: intenta resend (si UNCONFIRMED) y setea needsConfirmation=true.

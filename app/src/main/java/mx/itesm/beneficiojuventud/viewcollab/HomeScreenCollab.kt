@@ -82,7 +82,7 @@ fun HomeScreenCollab(
             .only(WindowInsetsSides.Bottom)
             .asPaddingValues()
             .calculateBottomPadding()
-        val bottomBarHeight = 68.dp
+        val bottomBarHeight = 88.dp
 
         Column(
             modifier = Modifier

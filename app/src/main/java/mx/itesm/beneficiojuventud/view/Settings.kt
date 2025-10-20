@@ -19,8 +19,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
@@ -28,6 +30,8 @@ import mx.itesm.beneficiojuventud.components.BJTopHeader
 import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 
 /**
  * Pantalla de Configuración con preferencias de notificaciones, correo, ubicación y accesos a acciones de cuenta.
@@ -37,7 +41,12 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Settings(nav: NavHostController, modifier: Modifier = Modifier) {
+fun Settings(
+    nav: NavHostController,
+    modifier: Modifier = Modifier,
+    authViewModel: AuthViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel()
+) {
     var selectedTab by remember { mutableStateOf(BJTab.Profile) }
     val appVersion = "1.0.01"
 
@@ -45,6 +54,14 @@ fun Settings(nav: NavHostController, modifier: Modifier = Modifier) {
     var pushEnabled by remember { mutableStateOf(false) }
     var emailEnabled by remember { mutableStateOf(true) }
     var locationEnabled by remember { mutableStateOf(true) }
+
+    // Estado para el diálogo de confirmación de eliminación
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var isDeleting by remember { mutableStateOf(false) }
+
+    // Obtener el userId actual
+    val currentUserId by authViewModel.currentUserId.collectAsState()
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -129,7 +146,7 @@ fun Settings(nav: NavHostController, modifier: Modifier = Modifier) {
                     DangerItem(
                         icon = Icons.Outlined.DeleteOutline,
                         title = "Eliminar Cuenta",
-                        onClick = { /* TODO: confirmar y eliminar */ }
+                        onClick = { showDeleteDialog = true }
                     )
                 }
             }
@@ -149,6 +166,91 @@ fun Settings(nav: NavHostController, modifier: Modifier = Modifier) {
                 )
             }
         }
+    }
+
+    // Diálogo de confirmación para eliminar cuenta
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isDeleting) showDeleteDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.DeleteOutline,
+                    contentDescription = null,
+                    tint = Color(0xFFD32F2F),
+                    modifier = Modifier.size(48.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "¿Eliminar cuenta?",
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF616161)
+                )
+            },
+            text = {
+                Text(
+                    text = "Esta acción es permanente y no se puede deshacer. Se eliminarán todos tus datos, favoritos, reservaciones y cupones canjeados.",
+                    color = Color(0xFF616161),
+                    textAlign = TextAlign.Center
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (currentUserId != null) {
+                            isDeleting = true
+                            scope.launch {
+                                try {
+                                    // 1. Eliminar del backend (base de datos)
+                                    userViewModel.deleteUser(currentUserId!!)
+
+                                    // 2. Eliminar de Cognito
+                                    authViewModel.deleteUserAccount()
+
+                                    // 3. Cerrar sesión
+                                    authViewModel.signOut(globalSignOut = false)
+
+                                    isDeleting = false
+                                    showDeleteDialog = false
+
+                                    // 4. Navegar a la pantalla de inicio de sesión
+                                    nav.navigate(Screens.Login.route) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                } catch (e: Exception) {
+                                    // En caso de error, mostrar mensaje (opcional)
+                                    isDeleting = false
+                                    showDeleteDialog = false
+                                }
+                            }
+                        }
+                    },
+                    enabled = !isDeleting,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFD32F2F),
+                        contentColor = Color.White
+                    )
+                ) {
+                    if (isDeleting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(if (isDeleting) "Eliminando..." else "Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteDialog = false },
+                    enabled = !isDeleting
+                ) {
+                    Text("Cancelar", color = Color(0xFF008D96))
+                }
+            }
+        )
     }
 }
 

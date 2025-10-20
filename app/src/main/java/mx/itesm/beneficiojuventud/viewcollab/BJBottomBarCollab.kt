@@ -79,22 +79,16 @@ fun BJBottomBarCollab(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding(),
+                .height(88.dp),
             contentAlignment = Alignment.BottomCenter
         ) {
-            Box(
+            NavigationBar(
+                containerColor = containerColor,
+                tonalElevation = 0.dp,
+                windowInsets = WindowInsets(0),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(88.dp),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                NavigationBar(
-                    containerColor = containerColor,
-                    tonalElevation = 0.dp,
-                    windowInsets = WindowInsets(0),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(68.dp)
+                    .height(56.dp)
                 ) {
                     @Composable
                     fun Label(text: String, isSelected: Boolean) {
@@ -150,30 +144,29 @@ fun BJBottomBarCollab(
                     Item(CollabTab.Profile)
                 }
 
-                // Botón central (QR)
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .offset(y = 4.dp)
-                        .size(62.dp)
-                        .shadow(4.dp, CircleShape)
-                        .clip(CircleShape)
-                        .background(activeBrush)
-                        .clickable {
-                            // Si el lector QR es pantalla aparte, evita apilar duplicados:
-                            nav.navigate(Screens.QrScanner.route) {
-                                launchSingleTop = true
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.DocumentScanner,
-                        contentDescription = "Escanear",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
+            // Botón central (QR)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = 4.dp)
+                    .size(62.dp)
+                    .shadow(4.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(activeBrush)
+                    .clickable {
+                        // Si el lector QR es pantalla aparte, evita apilar duplicados:
+                        nav.navigate(Screens.QrScanner.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.DocumentScanner,
+                    contentDescription = "Escanear",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
             }
         }
 
