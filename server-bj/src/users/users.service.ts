@@ -106,10 +106,7 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
-    await this.usersRepository.update(
-      { cognitoId },
-      { accountState: UserState.INACTIVE }
-    );
+    await this.usersRepository.update(cognitoId, { accountState: UserState.INACTIVE });
   }
 
   async reActivate(cognitoId: string): Promise<User> {
@@ -117,10 +114,7 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException(`User with id ${cognitoId} not found`);
     }
-    await this.usersRepository.update(
-      { cognitoId },
-      { accountState: UserState.ACTIVE }
-    );
+    await this.usersRepository.update(cognitoId, { accountState: UserState.ACTIVE })
     return user;
   }
 

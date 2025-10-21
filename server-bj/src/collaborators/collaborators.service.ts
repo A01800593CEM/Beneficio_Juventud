@@ -95,8 +95,10 @@ export class CollaboratorsService {
    * @returns Promise<Collaborator> The found collaborator with favorites and categories
    */
   async trueFindOne(cognitoId: string): Promise<Collaborator | null> {
-    return this.collaboratorsRepository.findOne({
-      where: { cognitoId },
+    return this.collaboratorsRepository.findOne({ 
+      where: { cognitoId,
+               state: CollaboratorState.ACTIVE
+       },
       relations: ['favorites',
          'favorites.user',
          'categories'] });
@@ -141,10 +143,7 @@ export class CollaboratorsService {
     if (!collaborator) {
       throw new NotFoundException('Collaborator not found');
     }
-    await this.collaboratorsRepository.update(
-      { cognitoId },
-      { state: CollaboratorState.INACTIVE }
-    );
+    await this.collaboratorsRepository.update(cognitoId, { state: CollaboratorState.INACTIVE})
   }
 
   /**

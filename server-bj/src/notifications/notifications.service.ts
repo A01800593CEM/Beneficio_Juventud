@@ -10,6 +10,9 @@ import { NotificationType } from './enums/notification-type.enums';
 import { NotificationStatus } from './enums/notification-status.enum';
 import { RecipientType } from './enums/recipient-type.enums';
 
+
+const token = "feK8ozTcTd-5KsB5EqKxLS:APA91bFGQQAr2-OwmfhjCF3s78A-YG3Tb2HDuA82JYdoKxL7ndYy7I3wwE8TK6SRzaFBcqmFkjEUvX54VTzCJhr5_5-ZQTCNHcxBTky8gPnsJXflOHU3_CM";
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -109,9 +112,9 @@ export class NotificationsService {
   }
 }
 
-  async sendNotification(notificationToken: string) {
-    await this.admin.messaging().send({
-        token: notificationToken,
+  async sendNotification() {
+    await admin.messaging().send({
+        token: token,
         notification: {
             title: '¡Hola!',
             body: 'Esta es una notificación de prueba desde Javascript.'
@@ -122,10 +125,10 @@ export class NotificationsService {
             key2: 'value2'
         }
     });
-    this.logger.log("Notification sent successfully");
+    console.log("Termina el envío");
 
     // Tema
-    await this.admin.messaging().send({
+    await admin.messaging().send({
       topic: 'TarjetaJoven',
       notification: {
         title: '¡Noticia del día!',
@@ -165,7 +168,7 @@ export class NotificationsService {
 
           if (user?.notificationToken) {
             // Enviar push notification
-            await this.admin.messaging().send({
+            await admin.messaging().send({
               token: user.notificationToken,
               notification: {
                 title: notification.title,
@@ -208,7 +211,7 @@ export class NotificationsService {
     data: Record<string, string> = {}
   ) {
     try {
-      await this.admin.messaging().send({
+      await admin.messaging().send({
         token: userToken,
         notification: { title, body },
         data
@@ -221,3 +224,5 @@ export class NotificationsService {
     }
   }
 }
+
+//sendNotification().catch(console.error);
