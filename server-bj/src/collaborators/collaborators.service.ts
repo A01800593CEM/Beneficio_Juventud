@@ -209,11 +209,12 @@ export class CollaboratorsService {
     longitude: number,
     radiusKm: number = 3,
   ): Promise<any[]> {
-    const userLocation: Coordinates = { latitude, longitude };
+    try {
+      const userLocation: Coordinates = { latitude, longitude };
 
-    console.log('========== NEARBY COLLABORATORS DEBUG ==========');
-    console.log('User Location:', userLocation);
-    console.log('Search Radius:', radiusKm, 'km');
+      console.log('========== NEARBY COLLABORATORS DEBUG ==========');
+      console.log('User Location:', userLocation);
+      console.log('Search Radius:', radiusKm, 'km');
 
     // Obtener todos los colaboradores activos con sus sucursales
     const collaborators = await this.collaboratorsRepository
@@ -303,10 +304,15 @@ export class CollaboratorsService {
     console.log('Total collaborators within radius:', collaboratorsWithDistance.length);
     console.log('=====================================\n');
 
-    // Ordenar por distancia (más cercano primero)
-    collaboratorsWithDistance.sort((a, b) => a.distance - b.distance);
+      // Ordenar por distancia (más cercano primero)
+      collaboratorsWithDistance.sort((a, b) => a.distance - b.distance);
 
-    return collaboratorsWithDistance;
+      return collaboratorsWithDistance;
+    } catch (error) {
+      console.error('❌ ERROR in findNearbyCollaborators:', error);
+      console.error('Stack trace:', error.stack);
+      throw error;
+    }
   }
 
 }
