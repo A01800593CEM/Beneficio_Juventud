@@ -10,7 +10,8 @@ fun Booking.toEntity(): BookingEntity {
         promotionId = this.promotionId,
         bookingDate = this.bookingDate,
         limitUseDate = this.limitUseDate,
-        status = this.status
+        status = this.status,
+        cancelledDate = this.cancelledDate
     )
 }
 

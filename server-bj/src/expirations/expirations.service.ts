@@ -123,7 +123,26 @@ export class ExpirationsService {
     }
 
     // =========================================================
-    // 2) Bookings que vencen en <= 24h (SOLO PENDING)
+    // 2) Auto-cancelar bookings ya expirados (limitUseDate < now)
+    // =========================================================
+    const expiredBookings = await this.bookingRepo.find({
+      where: {
+        status: BookStatus.PENDING,
+        limitUseDate: LessThanOrEqual(now),
+      },
+    });
+
+    if (expiredBookings.length > 0) {
+      this.logger.log(`🔴 Auto-cancelando ${expiredBookings.length} reservas expiradas`);
+      for (const booking of expiredBookings) {
+        booking.status = BookStatus.CANCELLED;
+        booking.cancelledDate = now;
+        await this.bookingRepo.save(booking);
+      }
+    }
+
+    // =========================================================
+    // 3) Bookings que vencen en <= 24h (SOLO PENDING)
     // =========================================================
     const bookingsExpiring = await this.bookingRepo.find({
       where: {
