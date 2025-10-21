@@ -8,5 +8,7 @@ data class RedeemedCoupon(
     val userId: String? = null,
     val branchId: Int? = null,
     val promotion: Promotions? = null,
-    val usedAt: String? = null
+    val usedAt: String? = null,
+    val nonce: String? = null,
+    val qrTimestamp: Long? = null
 )

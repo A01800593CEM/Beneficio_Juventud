@@ -56,6 +56,7 @@ private fun NavHostController.navigateToTabRoot(route: String) {
 @Composable
 fun BJBottomBarCollab(
     nav: NavHostController,
+    branchId: Int = 1,
     containerColor: Color = Color(0xFFF6F6F6),
     activeBrush: Brush = Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96))),
     inactiveIconColor: Color = Color(0xFF616161),
@@ -155,7 +156,7 @@ fun BJBottomBarCollab(
                     .background(activeBrush)
                     .clickable {
                         // Si el lector QR es pantalla aparte, evita apilar duplicados:
-                        nav.navigate(Screens.QrScanner.route) {
+                        nav.navigate(Screens.QrScanner.createRoute(branchId)) {
                             launchSingleTop = true
                         }
                     },

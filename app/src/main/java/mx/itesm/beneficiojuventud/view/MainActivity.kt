@@ -322,10 +322,6 @@ private fun AppNav(
             }
         }
 
-        // --- Collaborator screens ---
-        composable("qr_scanner") {
-            QRScannerScreen(nav = nav)
-        }
         // --- App Colaborador ---
         composable(Screens.RegisterCollab.route) {
             RegisterCollab(
@@ -342,13 +338,14 @@ private fun AppNav(
             )
         }
         composable(Screens.ProfileCollab.route) { ProfileCollab(nav, authViewModel, collabViewModel) }
-        composable(Screens.QrScanner.route) {
-            QrScannerScreen(
-                onClose = { nav.popBackStack() },
-                onResult = { text ->
-                    nav.previousBackStackEntry?.savedStateHandle?.set("qr_result", text)
-                    nav.popBackStack()
-                }
+        composable(
+            route = Screens.QrScanner.route,
+            arguments = Screens.QrScanner.arguments
+        ) { backStackEntry ->
+            val branchId = backStackEntry.arguments?.getInt("branchId") ?: 1
+            QRScannerScreen(
+                nav = nav,
+                branchId = branchId
             )
         }
         composable(Screens.StatsScreen.route) {

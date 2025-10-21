@@ -216,7 +216,19 @@ private fun buildQrPayload(
     val ts = System.currentTimeMillis()
     val nonce = UUID.randomUUID().toString().substring(0, 8)
     val lpu = limitPerUser ?: -1
-    return "bj|v=$version|pid=$promotionId|uid=$userId|lpu=$lpu|ts=$ts|n=$nonce"
+    val payload = "bj|v=$version|pid=$promotionId|uid=$userId|lpu=$lpu|ts=$ts|n=$nonce"
+
+    Log.d(TAG, "========== QR GENERATION DEBUG ==========")
+    Log.d(TAG, "promotionId: $promotionId")
+    Log.d(TAG, "userId: $userId")
+    Log.d(TAG, "limitPerUser: $limitPerUser")
+    Log.d(TAG, "version: $version")
+    Log.d(TAG, "timestamp: $ts")
+    Log.d(TAG, "nonce: $nonce")
+    Log.d(TAG, "QR Payload: $payload")
+    Log.d(TAG, "=========================================")
+
+    return payload
 }
 
 private fun bitMatrixToBitmap(matrix: BitMatrix): Bitmap {
