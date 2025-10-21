@@ -153,7 +153,7 @@ class UserViewModel(private val repository: SavedCouponRepository) : ViewModel()
                 withContext(Dispatchers.IO) { repository.favoritePromotion(promotionId, cognitoId) }
             }
 
-            op.onFailure { e ->
+            result.onFailure { e ->
                 _error.value = e.message ?: "Error al marcar favorito"
             }.onSuccess {
                 // Recargar listas SINCRÓNICAMENTE y ACTUALIZAR estado antes de emitir evento
@@ -188,11 +188,16 @@ class UserViewModel(private val repository: SavedCouponRepository) : ViewModel()
     fun unfavoritePromotion(promotionId: Int, cognitoId: String) {
         _error.value = null
         viewModelScope.launch {
+            // Obtener datos de la promo ANTES de quitarla
+            val removed = _favoritePromotions.value.firstOrNull { it.promotionId == promotionId }
+            val titleBefore = removed?.title ?: "Promoción $promotionId"
+            val businessBefore = removed?.businessName
+
             val result = runCatching {
                 withContext(Dispatchers.IO) { repository.unfavoritePromotion(promotionId, cognitoId) }
             }
 
-            op.onFailure { e ->
+            result.onFailure { e ->
                 _error.value = e.message ?: "Error al quitar favorito"
             }.onSuccess {
                 // Recargar listas SINCRÓNICAMENTE y ACTUALIZAR estado antes de emitir evento

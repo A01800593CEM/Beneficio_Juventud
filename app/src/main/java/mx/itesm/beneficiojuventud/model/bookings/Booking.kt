@@ -4,11 +4,15 @@ package mx.itesm.beneficiojuventud.model.bookings
 data class Booking(
 
     val bookingId: Int? = null,
-    val userId: String? = null, // lo ocupamos
-    val promotionId: Int? = null, // lo ocupamos
-    val bookingDate: String? = null, // lo ocupamos
-    val limitUseDate: String? = null, // lo ocupamos
-    val status: BookingStatus? = null, // lo ocupamos
-    val cancelledDate: String? = null, // fecha de cancelación para cooldown
+    val userId: String? = null,
+    val promotionId: Int? = null,
+    val bookingDate: String? = null,
+    val limitUseDate: String? = null,
+    val status: BookingStatus? = null
 
+)
+
+data class UpdateBookingRequest(
+    val status: BookingStatus? = null,
+    val limitUseDate: String? = null
 )

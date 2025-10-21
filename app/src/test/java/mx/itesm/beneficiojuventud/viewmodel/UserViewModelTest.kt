@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.*
+import mx.itesm.beneficiojuventud.model.SavedCouponRepository
 import mx.itesm.beneficiojuventud.model.users.UserProfile
 import mx.itesm.beneficiojuventud.model.users.AccountState
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
@@ -13,6 +14,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.Assert.*
+import org.mockito.Mockito.mock
 
 /**
  * Pruebas unitarias para UserViewModel
@@ -32,11 +34,13 @@ class UserViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var viewModel: UserViewModel
+    private lateinit var mockRepository: SavedCouponRepository
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        viewModel = UserViewModel()
+        mockRepository = mock(SavedCouponRepository::class.java)
+        viewModel = UserViewModel(mockRepository)
     }
 
     @After

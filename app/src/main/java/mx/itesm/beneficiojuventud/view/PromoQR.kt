@@ -384,7 +384,7 @@ fun PromoQR(
     LaunchedEffect(userBookings) {
         Log.d(TAG, "Total userBookings: ${userBookings.size}")
         userBookings.forEach { booking ->
-            Log.d(TAG, "Booking: id=${booking.bookingId}, promotionId=${booking.promotionId}, status=${booking.status}, cancelledDate=${booking.cancelledDate}")
+            Log.d(TAG, "Booking: id=${booking.bookingId}, promotionId=${booking.promotionId}, status=${booking.status}")
         }
     }
 
@@ -399,12 +399,13 @@ fun PromoQR(
     }
 
     // Buscar booking cancelado para verificar cooldown
+    // Note: Backend doesn't track cancelledDate, so cooldown feature is disabled
     val cancelledBooking = remember(userBookings, promotionId) {
         val found = userBookings.find {
             it.promotionId == promotionId &&
             it.status == BookingStatus.CANCELLED
         }
-        Log.d(TAG, "Cancelled booking for promotion $promotionId: ${found?.bookingId}, cancelledDate=${found?.cancelledDate}")
+        Log.d(TAG, "Cancelled booking for promotion $promotionId: ${found?.bookingId}")
         found
     }
 
@@ -436,22 +437,10 @@ fun PromoQR(
                 }
             }
 
-            // Actualizar cooldown
-            val cooldownActive = cancelledBooking?.let {
-                Log.d(TAG, "Checking cooldown - cancelledDate: ${it.cancelledDate}, status: ${it.status}")
-                isInCooldown(it.cancelledDate)
-            } ?: false
-
-            inCooldown = cooldownActive
-            Log.d(TAG, "inCooldown result: $inCooldown")
-
-            cooldownTime = if (inCooldown) {
-                val time = cancelledBooking?.let { getTimeUntilCooldownEnd(it.cancelledDate) } ?: Pair(0L, 0L)
-                Log.d(TAG, "Cooldown time remaining: ${time.first}m ${time.second}s")
-                time
-            } else {
-                Pair(0L, 0L)
-            }
+            // Cooldown feature disabled - backend doesn't track cancelledDate
+            // TODO: If cooldown is needed, backend must be updated to track cancellation timestamps
+            inCooldown = false
+            cooldownTime = Pair(0L, 0L)
 
             kotlinx.coroutines.delay(1000) // Actualizar cada segundo
         }

@@ -1,6 +1,8 @@
 package mx.itesm.beneficiojuventud.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -9,13 +11,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import mx.itesm.beneficiojuventud.model.RoomDB.LocalDatabase
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.promos.PromotionState
 import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
+import mx.itesm.beneficiojuventud.utils.toPromotion
 
-class PromoViewModel : ViewModel() {
+class PromoViewModel(application: Application) : AndroidViewModel(application) {
 
     private val model = RemoteServicePromos
+    private val database = LocalDatabase.getDatabase(application)
+    private val promotionDao = database.promotionDao()
 
     private val _promoState = MutableStateFlow(Promotions())
     val promoState: StateFlow<Promotions> = _promoState
@@ -43,7 +49,26 @@ class PromoViewModel : ViewModel() {
     }
 
     suspend fun getPromotionById(id: Int) {
-        _promoState.value = model.getPromotionById(id)
+        try {
+            // Try to fetch from remote first
+            _promoState.value = model.getPromotionById(id)
+        } catch (e: Exception) {
+            // If remote fails (offline), try to get from local database
+            Log.w("PromoViewModel", "Failed to get promotion from remote, checking local cache", e)
+            try {
+                val localPromotion = promotionDao.findById(id)
+                if (localPromotion != null) {
+                    _promoState.value = localPromotion.toPromotion()
+                    Log.d("PromoViewModel", "Loaded promotion $id from local cache")
+                } else {
+                    Log.e("PromoViewModel", "Promotion $id not found in local cache")
+                    throw e
+                }
+            } catch (dbError: Exception) {
+                Log.e("PromoViewModel", "Error accessing local database", dbError)
+                throw e
+            }
+        }
     }
 
     /** Obtiene promociones por categoría - TODAS (para colaboradores) */

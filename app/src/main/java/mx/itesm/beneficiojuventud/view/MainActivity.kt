@@ -104,30 +104,25 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppContent(
-    userViewModel: UserViewModel = viewModel(),
-    collabViewModel: CollabViewModel = viewModel(),
-    categoryViewModel: CategoryViewModel = viewModel(),
-    promoViewModel: PromoViewModel = viewModel(),
-    bookingViewModel: BookingViewModel = viewModel()
-) {
-    val context = LocalContext.current
-    val authViewModel = remember { AuthViewModel(context) }
     promotionDao: mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionDao,
     categoryDao: mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryDao
 ) {
+    val context = LocalContext.current
+
     // Create repository with the DAO
     val repository = remember(promotionDao) {
         mx.itesm.beneficiojuventud.model.SavedCouponRepository(promotionDao)
     }
 
     // Create ViewModels
-    val authViewModel: AuthViewModel = viewModel()
+    val authViewModel = remember { AuthViewModel(context) }
     val userViewModel = remember(repository) {
         UserViewModel(repository = repository)
     }
     val collabViewModel: CollabViewModel = viewModel()
     val categoryViewModel: CategoryViewModel = viewModel()
     val promoViewModel: PromoViewModel = viewModel()
+    val bookingViewModel: BookingViewModel = viewModel()
 
     val nav = rememberNavController()
     AppNav(
@@ -303,7 +298,7 @@ private fun AppNav(
                     nav = nav,
                     promotionId = promotionId,
                     cognitoId = cognitoId!!,
-                    bookingViewModel = bookingViewModel
+                    bookingViewModel = bookingViewModel,
                     viewModel = promoViewModel,
                     userViewModel = userViewModel
                 )

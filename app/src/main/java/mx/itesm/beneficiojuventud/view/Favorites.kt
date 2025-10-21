@@ -89,6 +89,11 @@ fun Favorites(
         userBookings.mapNotNull { it.promotionId }.toSet()
     }
 
+    // Set de IDs de promociones favoritas para lookup rápido
+    val favoritePromoIds: Set<Int> = remember(favoritePromos) {
+        favoritePromos.mapNotNull { it.promotionId }.toSet()
+    }
+
     val scope = rememberCoroutineScope()
     val cognitoId = user.cognitoId.orEmpty()
 
@@ -235,14 +240,21 @@ fun Favorites(
                             }
                         ) { index, promo ->
                             val isReserved = promo.promotionId?.let { it in reservedPromoIds } ?: false
+                            val isFavorite = promo.promotionId?.let { it in favoritePromoIds } ?: false
 
                             PromoImageBannerFav(
                                 promo = promo,
-                                isFavorite = true,
+                                isFavorite = isFavorite,
                                 isReserved = isReserved,
                                 onFavoriteClick = { p ->
                                     val id = p.promotionId ?: return@PromoImageBannerFav
-                                    scope.launch { userViewModel.unfavoritePromotion(id, cognitoId) }
+                                    scope.launch {
+                                        if (isFavorite) {
+                                            userViewModel.unfavoritePromotion(id, cognitoId)
+                                        } else {
+                                            userViewModel.favoritePromotion(id, cognitoId)
+                                        }
+                                    }
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()

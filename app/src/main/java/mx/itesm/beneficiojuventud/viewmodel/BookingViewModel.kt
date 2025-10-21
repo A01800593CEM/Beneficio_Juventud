@@ -14,6 +14,7 @@ import mx.itesm.beneficiojuventud.model.RoomDB.LocalDatabase
 import mx.itesm.beneficiojuventud.model.SavedCouponRepository
 import mx.itesm.beneficiojuventud.model.bookings.Booking
 import mx.itesm.beneficiojuventud.model.bookings.BookingStatus
+import mx.itesm.beneficiojuventud.model.bookings.RemoteServiceBooking
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
 import kotlinx.coroutines.Dispatchers
@@ -54,10 +55,7 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
 
     private val repository: SavedCouponRepository by lazy {
         SavedCouponRepository(
-            promotionDao = database.promotionDao(),
-            categoryDao = database.categoryDao(),
-            promotionCategoriesDao = database.promotionCategoriesDao(),
-            bookingDao = database.bookingDao()
+            promotionDao = database.promotionDao()
         )
     }
 
@@ -138,7 +136,9 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
             _error.value = null
 
             try {
-                val bookings = repository.getBookings(userId)
+                val bookings = withContext(Dispatchers.IO) {
+                    RemoteServiceBooking.getUserBookings(userId)
+                }
                 _bookings.value = bookings
             } catch (e: Exception) {
                 _error.value = "Error al cargar reservaciones: ${e.message}"
@@ -186,11 +186,9 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
                     }
                 }
 
-                val cancelDate = getCurrentDateISO()
                 repository.cancelBooking(
                     bookingId = booking.bookingId ?: return@launch,
-                    promotionId = promotionId,
-                    cancelledDate = cancelDate
+                    promotionId = promotionId
                 )
 
                 _message.value = "Reservación cancelada"
@@ -220,15 +218,15 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Actualiza el estado de un booking (ej: de ACTIVE a USED)
+     * Actualiza el estado de un booking (ej: de PENDING a USED)
      */
-    fun updateBooking(bookingId: Int) {
+    fun updateBooking(bookingId: Int, status: BookingStatus) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
             try {
-                val updatedBooking = repository.updateBooking(bookingId)
+                val updatedBooking = repository.updateBooking(bookingId, status)
                 _message.value = "Booking actualizado"
             } catch (e: Exception) {
                 _error.value = "Error al actualizar: ${e.message}"

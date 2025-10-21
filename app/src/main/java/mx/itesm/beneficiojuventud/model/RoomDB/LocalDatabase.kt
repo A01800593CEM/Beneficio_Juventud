@@ -15,7 +15,7 @@ import mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionEntity
 @Database(entities = [
     PromotionEntity::class,
     CategoryEntity::class,
-    PromotionCategories::class], version = 1)
+    PromotionCategories::class], version = 2)
 abstract class LocalDatabase : RoomDatabase() {
     abstract fun promotionDao(): PromotionDao
     abstract fun categoryDao(): CategoryDao
@@ -29,8 +29,10 @@ abstract class LocalDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     LocalDatabase::class.java,
-                    "your_database_name"
-                ).build()
+                    "beneficio_juventud_db"
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }

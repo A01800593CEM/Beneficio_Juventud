@@ -1039,7 +1039,7 @@ private fun HomePreview() {
             return emptyList()
         }
 
-        override suspend fun findById(promotionId: Int): PromotionWithCategories {
+        override suspend fun findById(promotionId: Int): PromotionWithCategories? {
             // Return a dummy PromotionWithCategories for preview
             return PromotionWithCategories(
                 promotion = PromotionEntity(
@@ -1047,6 +1047,7 @@ private fun HomePreview() {
                     title = "Preview Promo",
                     description = null,
                     image = null,
+                    imageUrl = null,
                     initialDate = null,
                     endDate = null,
                     promotionType = null,
@@ -1065,11 +1066,31 @@ private fun HomePreview() {
             )
         }
 
+        override suspend fun exists(promotionId: Int): Boolean {
+            return false
+        }
+
         override suspend fun insertPromotions(vararg promotions: PromotionEntity) {
             // Do nothing for preview
         }
 
+        override suspend fun updatePromotion(promotion: PromotionEntity) {
+            // Do nothing for preview
+        }
+
         override suspend fun deletePromotions(promotion: PromotionEntity) {
+            // Do nothing for preview
+        }
+
+        override suspend fun deleteById(promotionId: Int) {
+            // Do nothing for preview
+        }
+
+        override suspend fun deleteAllFavorites() {
+            // Do nothing for preview
+        }
+
+        override suspend fun deleteAllReserved() {
             // Do nothing for preview
         }
     }
