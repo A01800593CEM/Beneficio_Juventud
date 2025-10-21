@@ -170,7 +170,7 @@ private fun buildDiscountLabel(p: Promotions): String {
 }
 
 private fun toUi(p: Promotions): PromoDetailUi {
-    val banner = p.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.bolos
+    val banner = p.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.no_promo_img
     val title  = p.title ?: "Promoción"
     val merch  = p.businessName ?: "Sin Nombre Negocio"
     val valid  = formatDate(parseDate(p.endDate))
@@ -530,7 +530,7 @@ fun PromoQR(
                                     model = ImageRequest.Builder(LocalContext.current)
                                         .data(dataToLoad)
                                         .crossfade(true)
-                                        .error(R.drawable.bolos)
+                                        .error(R.drawable.no_promo_img)
                                         .build(),
                                     contentDescription = detail.title,
                                     contentScale = ContentScale.Crop,
