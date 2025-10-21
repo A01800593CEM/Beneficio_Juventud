@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.view
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -115,17 +116,25 @@ fun StatusScreen(
     statusType: StatusType,
     destinationRoute: String
 ) {
+
     // Determina el ícono y el color basado en si el estado es de éxito o error
     val icon = if (statusType.isSuccess) Icons.Default.CheckCircle else Icons.Default.Error
     val iconColor = if (statusType.isSuccess) Color(0xFF4CAF50) else Color(0xFFD32F2F)
 
+    // Deshabilita el botón de retroceso mientras estamos en StatusScreen
+    BackHandler(enabled = true) {
+        // No hace nada - bloquea el botón de retroceso
+    }
+
     // Efecto que se lanza una sola vez para manejar la redirección automática
     LaunchedEffect(key1 = Unit) {
-        delay(3000L) // Espera 3 segundos
+        delay(1000L) // Espera 3 segundos
+        // Primero, elimina el StatusScreen de la pila
+        nav.popBackStack()
+        // Luego navega al destino
         nav.navigate(destinationRoute) {
-            // Limpia la pila de navegación para que el usuario no pueda volver a esta pantalla
-            popUpTo(nav.graph.startDestinationId) { inclusive = true }
             launchSingleTop = true
+            restoreState = false
         }
     }
 

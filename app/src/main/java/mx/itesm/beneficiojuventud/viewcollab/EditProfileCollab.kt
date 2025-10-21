@@ -322,11 +322,7 @@ fun EditProfileCollab(
                                 StatusType.USER_INFO_UPDATED,
                                 Screens.ProfileCollab.route
                             )
-                        ) {
-                            // Limpia la pila de navegación para que no se pueda volver a EditProfileCollab
-                            popUpTo(Screens.EditProfileCollab.route) { inclusive = true }
-                            launchSingleTop = true
-                        }
+                        )
                     } else {
                         // Error: navegar a StatusScreen que muestra error y luego vuelve a EditProfileCollab
                         nav.navigate(
@@ -334,11 +330,7 @@ fun EditProfileCollab(
                                 StatusType.USER_INFO_UPDATE_ERROR,
                                 Screens.EditProfileCollab.route
                             )
-                        ) {
-                            // Limpia la pila de navegación para que no se pueda volver atrás al EditProfileCollab anterior
-                            popUpTo(Screens.EditProfileCollab.route) { inclusive = true }
-                            launchSingleTop = true
-                        }
+                        )
                     }
 
                     // Reset flags

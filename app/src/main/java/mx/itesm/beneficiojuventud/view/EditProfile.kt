@@ -372,11 +372,7 @@ fun EditProfile(
                         StatusType.USER_INFO_UPDATED,
                         Screens.Profile.route
                     )
-                ) {
-                    // Limpia la pila de navegación para que no se pueda volver a EditProfile
-                    popUpTo(Screens.EditProfile.route) { inclusive = true }
-                    launchSingleTop = true
-                }
+                )
             } else {
                 // Error: navegar a StatusScreen que muestra error y luego vuelve a EditProfile
                 nav.navigate(
@@ -384,11 +380,7 @@ fun EditProfile(
                         StatusType.USER_INFO_UPDATE_ERROR,
                         Screens.EditProfile.route
                     )
-                ) {
-                    // Limpia la pila de navegación para que no se pueda volver atrás al EditProfile anterior
-                    popUpTo(Screens.EditProfile.route) { inclusive = true }
-                    launchSingleTop = true
-                }
+                )
             }
         }
     }
