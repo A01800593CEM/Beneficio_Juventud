@@ -45,6 +45,7 @@ import mx.itesm.beneficiojuventud.viewcollab.RegisterCollab
 import mx.itesm.beneficiojuventud.viewcollab.StatsScreen
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewcollab.PromotionsScreenCollab
+import mx.itesm.beneficiojuventud.viewmodel.StatsViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -103,7 +104,8 @@ private fun AppContent(
     userViewModel: UserViewModel = viewModel(),
     collabViewModel: CollabViewModel = viewModel(),
     categoryViewModel: CategoryViewModel = viewModel(),
-    promoViewModel: PromoViewModel = viewModel()
+    promoViewModel: PromoViewModel = viewModel(),
+    statsViewModel: StatsViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val authViewModel = remember { AuthViewModel(context) }
@@ -114,7 +116,8 @@ private fun AppContent(
         userViewModel = userViewModel,
         collabViewModel = collabViewModel,
         categoryViewModel = categoryViewModel,
-        promoViewModel = promoViewModel
+        promoViewModel = promoViewModel,
+        statsViewModel = statsViewModel
     )
 }
 
@@ -125,7 +128,8 @@ private fun AppNav(
     userViewModel: UserViewModel,
     collabViewModel: CollabViewModel,
     categoryViewModel: CategoryViewModel,
-    promoViewModel: PromoViewModel
+    promoViewModel: PromoViewModel,
+    statsViewModel: StatsViewModel
 ) {
     val appState by authViewModel.appState.collectAsState()
     val currentUserId by authViewModel.currentUserId.collectAsState()
@@ -294,7 +298,14 @@ private fun AppNav(
         }
         composable(Screens.StatsScreen.route) {
             val collabId by authViewModel.currentUserId.collectAsState()
-            StatsScreen(nav, collabId!!) }
+            if (!collabId.isNullOrBlank()) {
+                StatsScreen(nav, collabId!!, statsViewModel)
+            } else {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+        }
         composable(Screens.PromotionsScreen.route) {
             val collabId by authViewModel.currentUserId.collectAsState()
             PromotionsScreenCollab(
