@@ -208,7 +208,7 @@ fun MerchantCardPosterFav(
     val imageUrl = collab.logoUrl
     val categories = readableCategories(collab)
     val ratingText = "4.7"
-    val fallbackRes = R.drawable.brasa
+    val fallbackRes = R.drawable.no_vendor_img
 
     Surface(
         shape = RoundedCornerShape(14.dp),

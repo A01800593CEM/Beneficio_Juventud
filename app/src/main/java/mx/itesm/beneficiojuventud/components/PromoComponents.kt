@@ -175,7 +175,7 @@ fun PromoImageBanner(
         }
     }
     val body = promo.description.orEmpty()
-    val dataToLoad = promo.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.bolos
+    val dataToLoad = promo.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.no_promo_img
 
     Surface(
         shape = RoundedCornerShape(radius),
@@ -190,7 +190,7 @@ fun PromoImageBanner(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(dataToLoad)
                     .crossfade(true)
-                    .error(R.drawable.bolos)
+                    .error(R.drawable.no_promo_img)
                     .build(),
                 contentDescription = title,
                 contentScale = ContentScale.Crop,
@@ -318,7 +318,7 @@ fun PromoImageBannerFav(
         }
     }
     val body = promo.description.orEmpty()
-    val dataToLoad = promo.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.bolos
+    val dataToLoad = promo.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.no_promo_img
 
     Surface(
         shape = RoundedCornerShape(radius),
@@ -333,7 +333,7 @@ fun PromoImageBannerFav(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(dataToLoad)
                     .crossfade(true)
-                    .error(R.drawable.bolos)
+                    .error(R.drawable.no_promo_img)
                     .build(),
                 contentDescription = title,
                 contentScale = ContentScale.Crop,

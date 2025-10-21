@@ -14,10 +14,8 @@ import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.LocalOffer
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -205,14 +203,6 @@ private fun HeaderSectionCollab(collaborator: Collaborator?) {
                     maxLines = 1
                 )
             }
-            Icon(
-                imageVector = Icons.Outlined.Settings,
-                contentDescription = "Settings",
-                modifier = Modifier
-                    .size(32.dp)
-                    .clickable { /* TODO: Ajustes */ },
-                tint = TextGrey
-            )
         }
         Spacer(Modifier.height(16.dp))
         GradientDivider(modifier = Modifier.fillMaxWidth(), thickness = 1.dp)

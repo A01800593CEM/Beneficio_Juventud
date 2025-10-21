@@ -6,14 +6,21 @@ import androidx.lifecycle.ViewModelProvider
 import mx.itesm.beneficiojuventud.model.RoomDB.LocalDatabase
 import mx.itesm.beneficiojuventud.model.SavedCouponRepository
 
+/**
+ * Factory for creating UserViewModel with proper dependency injection.
+ * Provides Room database DAOs to the repository.
+ */
 class UserViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(UserViewModel::class.java)) {
             val database = LocalDatabase.getDatabase(context)
-            val repository = SavedCouponRepository(database.promotionDao())
+            val repository = SavedCouponRepository(
+                promotionDao = database.promotionDao(),
+                bookingDao = database.bookingDao()
+            )
             @Suppress("UNCHECKED_CAST")
             return UserViewModel(repository) as T
         }
-        throw IllegalArgumentException("Unknown ViewModel class")
+        throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
 }

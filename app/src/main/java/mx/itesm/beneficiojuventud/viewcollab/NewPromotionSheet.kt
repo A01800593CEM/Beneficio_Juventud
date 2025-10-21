@@ -35,7 +35,8 @@ import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.model.webhook.ImageGenerationService
 import mx.itesm.beneficiojuventud.model.categories.Category
 import mx.itesm.beneficiojuventud.model.categories.RemoteServiceCategory
-import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 
 private val TextGrey = Color(0xFF616161)
 private val LightGrey = Color(0xFFF5F5F5)
@@ -845,10 +846,7 @@ fun NewPromotionSheet(
 
                             // Para el update, usamos el mismo request pero con PATCH
                             val updateJson = gson.toJson(requestData)
-                            val requestBody = okhttp3.RequestBody.create(
-                                "application/json".toMediaType(),
-                                updateJson
-                            )
+                            val requestBody = updateJson.toRequestBody("application/json".toMediaTypeOrNull())
 
                             // Crear cliente OkHttp para hacer el PATCH
                             val client = okhttp3.OkHttpClient()

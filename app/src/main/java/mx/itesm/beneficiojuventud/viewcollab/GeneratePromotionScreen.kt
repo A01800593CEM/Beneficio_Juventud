@@ -56,7 +56,7 @@ fun GeneratePromotionScreen(nav: NavHostController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(16.dp))
-            Image(painter = painterResource(id = R.drawable.logo), contentDescription = "Logo de la App", modifier = Modifier.size(width = 45.dp, height = 33.dp))
+            Image(painter = painterResource(id = R.drawable.logo_beneficio_joven), contentDescription = "Logo de la App", modifier = Modifier.size(width = 45.dp, height = 33.dp))
             Spacer(Modifier.height(24.dp))
             GeneratePromotionHeader(nav = nav)
             Column(
