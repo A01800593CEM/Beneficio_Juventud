@@ -21,6 +21,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.collectLatest
@@ -34,6 +35,7 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.RedeemedCouponViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
 import androidx.compose.runtime.mutableStateListOf
 
 enum class HistoryType {
@@ -346,7 +348,7 @@ private fun HistoryPreview() {
     BeneficioJuventudTheme {
         val nav = rememberNavController()
         // Para preview, creamos un fake VM local (no hay eventos reales)
-        val fakeVm: UserViewModel = viewModel()
+        val fakeVm: UserViewModel = viewModel(factory = UserViewModelFactory(LocalContext.current))
         History(nav = nav, userId = "preview", userViewModel = fakeVm)
     }
 }

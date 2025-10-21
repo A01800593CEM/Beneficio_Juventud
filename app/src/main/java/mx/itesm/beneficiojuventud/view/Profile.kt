@@ -47,6 +47,7 @@ import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
 import java.io.File
 
 private val CardWhite     = Color(0xFFFFFFFF)
@@ -422,7 +423,7 @@ private fun ProfilePreview() {
         // Para preview únicamente, creamos un VM local con viewModel(),
         // en la app real pásalo desde AppContent/AppNav.
         val authVm: AuthViewModel = viewModel()
-        val userVm: UserViewModel = viewModel()
+        val userVm: UserViewModel = viewModel(factory = UserViewModelFactory(LocalContext.current))
         Profile(nav = nav, authViewModel = authVm, userViewModel = userVm)
     }
 }

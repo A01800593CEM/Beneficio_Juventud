@@ -59,6 +59,7 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
 import mx.itesm.beneficiojuventud.model.bookings.BookingStatus
 import java.text.SimpleDateFormat
 import java.util.*
@@ -257,7 +258,7 @@ fun PromoQR(
     cognitoId: String,
     modifier: Modifier = Modifier,
     viewModel: PromoViewModel = viewModel(),
-    userViewModel: UserViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel(factory = UserViewModelFactory(LocalContext.current)),
     bookingViewModel: BookingViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
