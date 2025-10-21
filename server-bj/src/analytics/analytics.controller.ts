@@ -51,5 +51,4 @@ export class AnalyticsController {
   async getAdminDashboard(@Query('timeRange') timeRange: string = 'month') {
     return this.analyticsService.getAdminDashboard(timeRange);
   }
-
 }
