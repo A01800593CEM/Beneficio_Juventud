@@ -1095,8 +1095,51 @@ private fun HomePreview() {
         }
     }
 
-    // 2. Create a repository with the fake DAO.
-    val fakeRepository = SavedCouponRepository(fakeDao)
+    // Create a fake BookingDao for preview
+    val fakeBookingDao = object : mx.itesm.beneficiojuventud.model.RoomDB.Bookings.BookingDao {
+        override suspend fun getBookingsByUser(userId: String): List<mx.itesm.beneficiojuventud.model.RoomDB.Bookings.BookingEntity> {
+            return emptyList()
+        }
+
+        override suspend fun getBookingById(bookingId: Int): mx.itesm.beneficiojuventud.model.RoomDB.Bookings.BookingEntity? {
+            return null
+        }
+
+        override suspend fun getBookingByPromotionAndUser(promotionId: Int, userId: String): mx.itesm.beneficiojuventud.model.RoomDB.Bookings.BookingEntity? {
+            return null
+        }
+
+        override suspend fun exists(bookingId: Int): Boolean {
+            return false
+        }
+
+        override suspend fun insertBooking(vararg bookings: mx.itesm.beneficiojuventud.model.RoomDB.Bookings.BookingEntity) {
+            // Do nothing for preview
+        }
+
+        override suspend fun updateBooking(booking: mx.itesm.beneficiojuventud.model.RoomDB.Bookings.BookingEntity) {
+            // Do nothing for preview
+        }
+
+        override suspend fun deleteBooking(booking: mx.itesm.beneficiojuventud.model.RoomDB.Bookings.BookingEntity) {
+            // Do nothing for preview
+        }
+
+        override suspend fun deleteById(bookingId: Int) {
+            // Do nothing for preview
+        }
+
+        override suspend fun deleteAllByUser(userId: String) {
+            // Do nothing for preview
+        }
+
+        override suspend fun deleteAll() {
+            // Do nothing for preview
+        }
+    }
+
+    // 2. Create a repository with the fake DAOs.
+    val fakeRepository = SavedCouponRepository(fakeDao, fakeBookingDao)
 
     // 3. Create the ViewModel with the fake repository.
     // NOTE: Your UserViewModel might need more fake dependencies if its constructor changed.

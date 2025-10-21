@@ -55,7 +55,8 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
 
     private val repository: SavedCouponRepository by lazy {
         SavedCouponRepository(
-            promotionDao = database.promotionDao()
+            promotionDao = database.promotionDao(),
+            bookingDao = database.bookingDao()
         )
     }
 

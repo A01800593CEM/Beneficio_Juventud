@@ -109,10 +109,14 @@ private fun AppContent(
     categoryDao: mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryDao
 ) {
     val context = LocalContext.current
+    val db = LocalDatabase.getDatabase(context)
 
-    // Create repository with the DAO
+    // Create repository with the DAOs
     val repository = remember(promotionDao) {
-        mx.itesm.beneficiojuventud.model.SavedCouponRepository(promotionDao)
+        mx.itesm.beneficiojuventud.model.SavedCouponRepository(
+            promotionDao = promotionDao,
+            bookingDao = db.bookingDao()
+        )
     }
 
     // Create ViewModels
