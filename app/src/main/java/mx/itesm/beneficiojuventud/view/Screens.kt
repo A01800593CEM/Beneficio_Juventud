@@ -11,6 +11,7 @@ sealed class Screens(val route: String) {
     data object RecoveryCode : Screens("recovery_code")
     data object ConfirmSignUp : Screens("confirm_signup")
     data object NewPassword : Screens("new_password")
+    data object PostLoginPermissions : Screens("post_login_permissions")
     data object Onboarding : Screens("onboarding")
 
     // Rutas con parámetros
@@ -66,5 +67,6 @@ sealed class Screens(val route: String) {
     data object GeneratePromotionScreen : Screens("generate_promotion_screen")
 
     data object EditProfileCollab : Screens("edit_profile_collab")
+    data object BranchManagement : Screens("branch_management")
 
 }

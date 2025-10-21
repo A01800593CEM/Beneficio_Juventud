@@ -36,6 +36,7 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewcollab.QRScannerScreen
 import mx.itesm.beneficiojuventud.viewcollab.EditProfileCollab
 import mx.itesm.beneficiojuventud.viewcollab.GeneratePromotionScreen
+import mx.itesm.beneficiojuventud.viewcollab.BranchManagementScreen
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
@@ -56,8 +57,7 @@ class MainActivity : ComponentActivity() {
         val categoryDao = db.categoryDao()
 
         enableEdgeToEdge()
-        solicitarPermiso()
-        obtenerToken()
+        // Los permisos y token ahora se manejan en PostLoginPermissions
         setContent {
             BeneficioJuventudTheme {
                 AppContent(
@@ -217,6 +217,16 @@ private fun AppNav(
             NewPassword(nav, emailArg = email, codeArg = code)
         }
 
+        // --- Post Login Permissions ---
+        composable(Screens.PostLoginPermissions.route) {
+            PostLoginPermissionsWithDestination(
+                nav = nav,
+                authViewModel = authViewModel,
+                userViewModel = userViewModel,
+                collabViewModel = collabViewModel
+            )
+        }
+
         // --- Onboarding ---
         composable(Screens.Onboarding.route) { Onboarding(nav) }
         composable(Screens.OnboardingCategories.route) {
@@ -350,6 +360,9 @@ private fun AppNav(
             )
         }
         composable(Screens.EditProfileCollab.route) { EditProfileCollab(nav) }
+        composable(Screens.BranchManagement.route) {
+            BranchManagementScreen(nav = nav)
+        }
 
         // Status Screen
         composable(
@@ -460,3 +473,53 @@ private fun StartupScreen(
 
 private fun parsePromotionDataFromJson(json: String): mx.itesm.beneficiojuventud.model.webhook.PromotionData =
     Gson().fromJson(json, PromotionData::class.java)
+
+/**
+ * Wrapper que determina el destino correcto basado en el tipo de usuario
+ * (normal o colaborador) después de solicitar permisos post-login.
+ */
+@Composable
+private fun PostLoginPermissionsWithDestination(
+    nav: NavHostController,
+    authViewModel: AuthViewModel,
+    userViewModel: UserViewModel,
+    collabViewModel: CollabViewModel
+) {
+    val currentUserId by authViewModel.currentUserId.collectAsState()
+    val userState by userViewModel.userState.collectAsState()
+    val collabState by collabViewModel.collabState.collectAsState()
+    val isLoadingUser by userViewModel.isLoading.collectAsState()
+
+    var hasLoadedProfiles by remember { mutableStateOf(false) }
+
+    // Cargar perfiles de usuario y colaborador cuando tenemos el ID
+    LaunchedEffect(currentUserId) {
+        val id = currentUserId
+        if (!id.isNullOrBlank() && !hasLoadedProfiles) {
+            userViewModel.clearUser()
+            collabViewModel.clearCollaborator()
+            userViewModel.getUserById(id)
+            try { collabViewModel.getCollaboratorById(id) } catch (_: Exception) {}
+            hasLoadedProfiles = true
+        }
+    }
+
+    // Determinar el destino basado en el tipo de usuario
+    val destinationRoute = remember(userState.cognitoId, collabState.cognitoId) {
+        when {
+            !collabState.cognitoId.isNullOrBlank() -> Screens.HomeScreenCollab.route
+            !userState.cognitoId.isNullOrBlank() -> Screens.Home.route
+            else -> Screens.Home.route // Fallback
+        }
+    }
+
+    // Mostrar splash mientras se carga
+    if (!hasLoadedProfiles || isLoadingUser) {
+        Startup(Modifier.fillMaxSize())
+    } else {
+        PostLoginPermissions(
+            nav = nav,
+            destinationRoute = destinationRoute
+        )
+    }
+}

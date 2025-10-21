@@ -53,10 +53,10 @@ fun Login(
     var errorMessage by remember { mutableStateOf("") }
     val authState by authViewModel.authState.collectAsState()
 
-    // ✅ Tras login exitoso, delegamos la decisión de destino a Startup (splash)
+    // ✅ Tras login exitoso, navegar a la pantalla de permisos
     LaunchedEffect(authState.isSuccess) {
         if (authState.isSuccess) {
-            nav.navigate("splash") {
+            nav.navigate(Screens.PostLoginPermissions.route) {
                 popUpTo(Screens.LoginRegister.route) { inclusive = true }
                 launchSingleTop = true
             }

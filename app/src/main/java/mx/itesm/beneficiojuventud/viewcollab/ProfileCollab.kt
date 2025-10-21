@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Store
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -200,6 +201,9 @@ fun ProfileCollab(
 
                 ProfileItemCard(Icons.Outlined.PersonOutline, "Editar Perfil", "Actualiza la información del negocio") {
                     nav.navigate(Screens.EditProfileCollab.route)
+                }
+                ProfileItemCard(Icons.Outlined.Store, "Gestionar Sucursales", "Ver y editar tus sucursales") {
+                    nav.navigate(Screens.BranchManagement.route)
                 }
                 ProfileItemCard(Icons.Outlined.Settings, "Configuración", "Preferencias y notificaciones") {
                     nav.navigate(Screens.Settings.route)

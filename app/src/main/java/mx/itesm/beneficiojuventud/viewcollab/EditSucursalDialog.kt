@@ -1,10 +1,13 @@
 package mx.itesm.beneficiojuventud.viewcollab
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,7 +39,9 @@ fun EditSucursalDialog(
     var address by remember { mutableStateOf(branch.address ?: "") }
     var phone by remember { mutableStateOf(branch.phone ?: "") }
     var zipCode by remember { mutableStateOf(branch.zipCode ?: "") }
+    var location by remember { mutableStateOf(branch.location) }
     var isActive by remember { mutableStateOf(branch.state == BranchState.ACTIVE) }
+    var showLocationPicker by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(shape = RoundedCornerShape(24.dp), color = Color.White) {
@@ -65,6 +70,13 @@ fun EditSucursalDialog(
                 StyledOutlinedTextField(value = phone, onValueChange = { phone = it }, label = "Teléfono")
                 Spacer(Modifier.height(16.dp))
                 StyledOutlinedTextField(value = zipCode, onValueChange = { zipCode = it }, label = "Código Postal")
+                Spacer(Modifier.height(16.dp))
+
+                // Location picker button
+                LocationPickerButton(
+                    location = location,
+                    onClick = { showLocationPicker = true }
+                )
                 Spacer(Modifier.height(16.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -96,6 +108,7 @@ fun EditSucursalDialog(
                                 address = address.trim(),
                                 phone = phone.trim(),
                                 zipCode = zipCode.trim(),
+                                location = location,
                                 state = if (isActive) BranchState.ACTIVE else BranchState.INACTIVE
                             )
                             onSave(updatedBranch)
@@ -107,6 +120,18 @@ fun EditSucursalDialog(
                     }
                 }
             }
+        }
+
+        // Location picker dialog
+        if (showLocationPicker) {
+            BranchLocationPickerDialog(
+                initialLocation = location,
+                onDismiss = { showLocationPicker = false },
+                onLocationSelected = { newLocation ->
+                    location = newLocation
+                    showLocationPicker = false
+                }
+            )
         }
     }
 }
@@ -179,5 +204,105 @@ private fun DeleteDialogButton(onClick: () -> Unit) {
             fontSize = 14.sp,
             fontWeight = FontWeight.ExtraBold
         )
+    }
+}
+
+@Composable
+private fun LocationPickerButton(
+    location: String?,
+    onClick: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            "Ubicación en el Mapa",
+            color = LabelColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clickable(onClick = onClick)
+                .border(
+                    width = 1.dp,
+                    color = if (location != null) Teal else Color.LightGray,
+                    shape = RoundedCornerShape(12.dp)
+                ),
+            shape = RoundedCornerShape(12.dp),
+            color = Color.Transparent
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.LocationOn,
+                    contentDescription = "Ubicación",
+                    tint = if (location != null) Teal else Color.Gray,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = if (location != null) {
+                        "Ubicación definida"
+                    } else {
+                        "Toca para seleccionar ubicación"
+                    },
+                    color = if (location != null) TextColor else Color.Gray,
+                    fontSize = 14.sp,
+                    fontWeight = if (location != null) FontWeight.Bold else FontWeight.Normal,
+                    modifier = Modifier.weight(1f)
+                )
+                if (location != null) {
+                    Icon(
+                        Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+
+        // Mostrar coordenadas si hay ubicación
+        if (location != null) {
+            parseLocationStringForDisplay(location)?.let { (lat, lon) ->
+                Text(
+                    text = "Lat: ${"%.6f".format(lat)}, Lon: ${"%.6f".format(lon)}",
+                    color = Color.Gray,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Parsea una cadena de ubicación en formato "(longitude,latitude)"
+ * y devuelve un par (latitude, longitude) para mostrar
+ */
+private fun parseLocationStringForDisplay(locationStr: String): Pair<Double, Double>? {
+    return try {
+        val cleaned = locationStr.trim().removePrefix("(").removeSuffix(")")
+        val parts = cleaned.split(",").map { it.trim().toDouble() }
+        if (parts.size == 2) {
+            val lon = parts[0]
+            val lat = parts[1]
+            if (lat in -90.0..90.0 && lon in -180.0..180.0) {
+                Pair(lat, lon)
+            } else {
+                null
+            }
+        } else {
+            null
+        }
+    } catch (e: Exception) {
+        null
     }
 }
