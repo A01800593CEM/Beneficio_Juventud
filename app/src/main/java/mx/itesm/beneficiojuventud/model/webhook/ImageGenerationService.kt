@@ -14,7 +14,17 @@ import java.util.concurrent.TimeUnit
  * Request para generar imagen con IA
  */
 data class ImageGenerationRequest(
-    val prompt: String
+    val text: String
+)
+
+/**
+ * Respuesta específica del webhook de N8N
+ */
+data class N8NImageResponse(
+    @SerializedName("codigoUnico")
+    val codigoUnico: String? = null,
+    val success: Boolean? = null,
+    val message: String? = null
 )
 
 /**
@@ -28,10 +38,16 @@ data class ImageGenerationResponse(
     @SerializedName("url")
     val url: String? = null,
     val success: Boolean? = null,
-    val message: String? = null
+    val message: String? = null,
+    val originalResponse: List<N8NImageResponse>? = null
 ) {
     // Obtener la URL de imagen independientemente del formato de respuesta
     fun extractImageUrl(): String? {
+        // Si tenemos la respuesta original de N8N, construir la URL
+        originalResponse?.firstOrNull()?.codigoUnico?.let { codigo ->
+            return "https://joven-atizapan-images.s3.us-east-2.amazonaws.com/${codigo}-image.png"
+        }
+
         return imageUrl ?: image_url ?: url
     }
 }
@@ -49,8 +65,7 @@ data class ImageGenerationResponse(
 object ImageGenerationService {
 
     // URL del webhook para generar imágenes con IA
-    // TODO: Configurar la URL correcta del webhook de generación de imágenes
-    private const val IMAGE_WEBHOOK_URL = "https://primary-production-0858b.up.railway.app/webhook/image-generation"
+    private const val IMAGE_WEBHOOK_URL = "https://primary-production-0858b.up.railway.app/webhook/feb97458-c7ba-4f4c-8b2b-2664935ac260"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS)
@@ -72,10 +87,10 @@ object ImageGenerationService {
         description: String
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
-            // Crear un prompt descriptivo para la IA
-            val prompt = buildImagePrompt(title, description)
+            // Crear el texto combinado para el webhook
+            val combinedText = buildImagePrompt(title, description)
 
-            val requestData = ImageGenerationRequest(prompt = prompt)
+            val requestData = ImageGenerationRequest(text = combinedText)
             val jsonBody = gson.toJson(requestData)
 
             val requestBody = jsonBody.toRequestBody(
@@ -100,12 +115,26 @@ object ImageGenerationService {
             val responseBody = response.body?.string()
                 ?: return@withContext Result.failure(Exception("Respuesta vacía del servidor"))
 
-            // Intentar parsear la respuesta
+            // Intentar parsear la respuesta como array de N8N
+            val n8nResponse = try {
+                gson.fromJson(responseBody, Array<N8NImageResponse>::class.java)
+            } catch (e: Exception) {
+                null
+            }
+
+            if (n8nResponse != null && n8nResponse.isNotEmpty()) {
+                val codigoUnico = n8nResponse.first().codigoUnico
+                if (!codigoUnico.isNullOrBlank()) {
+                    val imageUrl = "https://joven-atizapan-images.s3.us-east-2.amazonaws.com/${codigoUnico}-image.png"
+                    return@withContext Result.success(imageUrl)
+                }
+            }
+
+            // Fallback: intentar parsear como respuesta estándar
             val imageResponse = try {
                 gson.fromJson(responseBody, ImageGenerationResponse::class.java)
             } catch (e: Exception) {
-                // Si no es JSON, asumir que es directamente la URL
-                ImageGenerationResponse(url = responseBody)
+                ImageGenerationResponse(url = responseBody.trim().removeSurrounding("\""))
             }
 
             val imageUrl = imageResponse.extractImageUrl()
@@ -124,20 +153,11 @@ object ImageGenerationService {
     }
 
     /**
-     * Construye un prompt optimizado para generación de imágenes
+     * Construye el texto combinado para el webhook de generación de imágenes
      */
     private fun buildImagePrompt(title: String, description: String): String {
-        // Crear un prompt que genere una imagen atractiva para la promoción
-        return """
-            Crea una imagen promocional atractiva y profesional para:
-
-            Título: $title
-            Descripción: $description
-
-            Estilo: Moderno, colorido, atractivo para restaurantes y negocios.
-            Formato: Banner horizontal para redes sociales.
-            Elementos: Incluir el tema de la promoción de forma visual y llamativa.
-        """.trimIndent()
+        // Combinar título y descripción en un solo string como requiere el webhook
+        return "$title $description"
     }
 
     /**
