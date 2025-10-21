@@ -286,7 +286,8 @@ export class PromotionsService {
       let closestBranch = null;
 
       for (const branch of branchesWithLocation) {
-        console.log(`  Branch: "${branch.name}" - Location raw: "${branch.location}"`);
+        console.log(`  Branch: "${branch.name}" - Location raw:`, branch.location);
+        console.log(`  Location type: ${typeof branch.location}`);
 
         const branchCoords = parseLocationString(branch.location);
         if (!branchCoords) {

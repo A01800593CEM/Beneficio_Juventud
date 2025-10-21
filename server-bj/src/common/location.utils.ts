@@ -55,13 +55,35 @@ function toRadians(degrees: number): number {
 
 /**
  * Parsea una cadena de ubicación en formato PostgreSQL Point "(lon,lat)"
- * @param locationString Cadena en formato "(longitude,latitude)"
+ * También maneja objetos Point de PostgreSQL que vienen como {x, y}
+ * @param locationString Cadena en formato "(longitude,latitude)" o objeto Point
  * @returns Objeto con coordenadas o null si el formato es inválido
  */
 export function parseLocationString(
-  locationString: string | null,
+  locationString: string | any | null,
 ): Coordinates | null {
   if (!locationString) return null;
+
+  // Si es un objeto (Point de PostgreSQL), extraer x (longitude) e y (latitude)
+  if (typeof locationString === 'object' && locationString !== null) {
+    const { x, y } = locationString;
+
+    if (typeof x === 'number' && typeof y === 'number') {
+      // Validar rangos válidos
+      if (x < -180 || x > 180 || y < -90 || y > 90) {
+        return null;
+      }
+
+      return { latitude: y, longitude: x };
+    }
+
+    return null;
+  }
+
+  // Si no es string, no podemos parsearlo
+  if (typeof locationString !== 'string') {
+    return null;
+  }
 
   // Formato esperado: "(longitude,latitude)" o "(lon, lat)"
   const match = locationString.match(
