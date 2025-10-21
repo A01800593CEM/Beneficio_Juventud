@@ -8,11 +8,15 @@ import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import mx.itesm.beneficiojuventud.model.promos.PromoApiService
+import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
@@ -49,7 +53,37 @@ object S3ImageUploadService {
     private val gson = Gson()
 
     /**
-     * Sube una imagen a S3 desde una URI
+     * Sube una imagen a S3 desde una URI para una promoción específica
+     *
+     * @param context Contexto de la aplicación
+     * @param imageUri URI de la imagen seleccionada
+     * @param promotionId ID de la promoción
+     * @return URL de la imagen subida o error
+     */
+    suspend fun uploadPromotionImageFromUri(
+        context: Context,
+        imageUri: Uri,
+        promotionId: Int
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // Convertir URI a archivo temporal
+            val tempFile = createTempImageFile(context, imageUri)
+                ?: return@withContext Result.failure(Exception("Error al procesar la imagen"))
+
+            val result = uploadPromotionImageFile(tempFile, promotionId)
+
+            // Limpiar archivo temporal
+            tempFile.delete()
+
+            result
+
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Sube una imagen a S3 desde una URI (método legacy)
      *
      * @param context Contexto de la aplicación
      * @param imageUri URI de la imagen seleccionada
@@ -77,7 +111,69 @@ object S3ImageUploadService {
     }
 
     /**
-     * Sube una imagen a S3 desde un archivo
+     * Sube una imagen a S3 para una promoción específica usando la nueva API
+     *
+     * @param imageFile Archivo de imagen a subir
+     * @param promotionId ID de la promoción
+     * @return URL de la imagen subida o error
+     */
+    suspend fun uploadPromotionImageFile(
+        imageFile: File,
+        promotionId: Int
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            if (!imageFile.exists()) {
+                return@withContext Result.failure(Exception("El archivo no existe"))
+            }
+
+            // Validar tipo de archivo
+            val mimeType = getMimeType(imageFile.name)
+            if (!isValidImageType(mimeType)) {
+                return@withContext Result.failure(
+                    Exception("Tipo de archivo no válido. Solo se permiten JPG, PNG, WebP")
+                )
+            }
+
+            // Validar tamaño (5MB máximo)
+            val maxSize = 5 * 1024 * 1024 // 5MB
+            if (imageFile.length() > maxSize) {
+                return@withContext Result.failure(
+                    Exception("El archivo es demasiado grande. Máximo 5MB")
+                )
+            }
+
+            // Crear multipart body para la imagen
+            val imagePart = MultipartBody.Part.createFormData(
+                "image",
+                imageFile.name,
+                imageFile.asRequestBody(mimeType.toMediaType())
+            )
+
+            // Usar el servicio API para subir la imagen
+            val apiService = RemoteServicePromos.getService()
+            val response = apiService.savePromotionImage(promotionId, imagePart)
+
+            if (response.isSuccessful) {
+                val imageUrl = response.body()
+                if (!imageUrl.isNullOrBlank()) {
+                    Result.success(imageUrl)
+                } else {
+                    Result.failure(Exception("No se recibió URL de imagen en la respuesta"))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string() ?: "Error desconocido"
+                Result.failure(
+                    Exception("Error al subir imagen: ${response.code()} - $errorBody")
+                )
+            }
+
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Sube una imagen a S3 desde un archivo (método legacy)
      *
      * @param imageFile Archivo de imagen a subir
      * @return URL de la imagen subida o error

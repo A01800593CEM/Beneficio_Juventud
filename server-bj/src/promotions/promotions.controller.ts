@@ -9,16 +9,23 @@ import {
   Query,
   ValidationPipe,
   BadRequestException,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { PromotionsService } from './promotions.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
 import { CategoriesByNamePipe } from 'src/common/pipes/transform-to-id.pipe';
 import { Category } from 'src/categories/entities/category.entity';
+import { S3Service } from 'src/common/services/s3.service';
 
 @Controller('promotions')
 export class PromotionsController {
-  constructor(private readonly promotionsService: PromotionsService) {}
+  constructor(
+    private readonly promotionsService: PromotionsService,
+    private readonly s3Service: S3Service,
+  ) {}
 
   @Post()
   create(
@@ -86,11 +93,22 @@ export class PromotionsController {
   }
 
   @Patch('saveimage/promotion/:id')
-  async saveImage(@Param('id', ParseIntPipe) id: number,
+  @UseInterceptors(FileInterceptor('image'))
+  async saveImage(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
     @Body(new ValidationPipe({ whitelist: true, transform: true }))
     dto: UpdatePromotionDto,
   ) {
-    const promotion = await this.promotionsService.update(id, dto);
+    if (!file) {
+      throw new BadRequestException('No image file provided');
+    }
+
+    const imageUrl = await this.s3Service.uploadFile(file, 'promotions');
+
+    const updatedDto = { ...dto, imageUrl };
+    const promotion = await this.promotionsService.update(id, updatedDto);
+
     return promotion.imageUrl;
   }
 }

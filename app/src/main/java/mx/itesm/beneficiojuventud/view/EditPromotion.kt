@@ -54,6 +54,7 @@ fun EditPromotion(
 
     var title by remember { mutableStateOf(promotionData?.title ?: "") }
     var description by remember { mutableStateOf(promotionData?.description ?: "") }
+    var imageUrl by remember { mutableStateOf(promotionData?.imageUrl ?: "") }
     var initialDate by remember { mutableStateOf(promotionData?.initialDate ?: getDefaultInitialDate()) }
     var endDate by remember { mutableStateOf(promotionData?.endDate ?: getDefaultEndDate()) }
     var promotionType by remember { mutableStateOf(promotionData?.promotionType ?: "descuento") }
@@ -134,6 +135,28 @@ fun EditPromotion(
                         placeholder = "Describe los detalles de la promoción",
                         maxLines = 4
                     )
+                }
+            }
+
+            // Sección de imagen de promoción
+            PromotionImageUploadSection(
+                promotionId = promotionData?.promotionId,
+                imageUrl = imageUrl,
+                title = title,
+                description = description,
+                onImageChange = { newImageUrl -> imageUrl = newImageUrl }
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),

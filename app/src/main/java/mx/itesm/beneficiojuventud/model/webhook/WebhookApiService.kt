@@ -23,7 +23,9 @@ data class PromotionData(
     val limitPerUser: Int,
     val dailyLimitPerUser: Int,
     val promotionState: String,
-    val categories: List<WebhookCategory>
+    val categories: List<WebhookCategory>,
+    val imageUrl: String = "",
+    val promotionId: Int? = null
 )
 
 data class WebhookResponse(

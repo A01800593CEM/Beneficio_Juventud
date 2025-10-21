@@ -8,6 +8,7 @@ import { CategoriesModule } from 'src/categories/categories.module';
 import { NotificationsModule} from 'src/notifications/notifications.module';
 import { UsersModule } from 'src/users/users.module';
 import { Branch } from 'src/branch/entities/branch.entity';
+import { CommonModule } from 'src/common/common.module';
 
 /**
  * Promotions module responsible for handling all promotion-related functionality.
@@ -33,6 +34,7 @@ import { Branch } from 'src/branch/entities/branch.entity';
   providers: [PromotionsService],
   imports: [
     TypeOrmModule.forFeature([Promotion, Branch]),
+    CommonModule,
     forwardRef(() => PromotionsModule),
     forwardRef(() => BookingsModule),
     forwardRef(() => CategoriesModule),
