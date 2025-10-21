@@ -20,32 +20,6 @@ export class CollaboratorsController {
     return this.collaboratorsService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.collaboratorsService.findOne(id);
-  }
-
-  @Get('category/:categoryName')
-  findByCategory(@Param('categoryName') categoryName: string) {
-    return this.collaboratorsService.findByCategory(categoryName)
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCollaboratorDto: UpdateCollaboratorDto) {
-    return this.collaboratorsService.update(id, updateCollaboratorDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.collaboratorsService.remove(id);
-  }
-
-  @Get('promotions/:id')
-  getPromotions(@Param('id') id: string) {
-    console.log(id)
-    return this.promotionsService.promotionsByCollaborator(id)
-  }
-
   @Get('nearby/search')
   async findNearbyCollaborators(
     @Query('latitude') latitude: string,
@@ -78,6 +52,32 @@ export class CollaboratorsController {
     }
 
     return this.collaboratorsService.findNearbyCollaborators(lat, lon, radiusKm);
+  }
+
+  @Get('promotions/:id')
+  getPromotions(@Param('id') id: string) {
+    console.log(id)
+    return this.promotionsService.promotionsByCollaborator(id)
+  }
+
+  @Get('category/:categoryName')
+  findByCategory(@Param('categoryName') categoryName: string) {
+    return this.collaboratorsService.findByCategory(categoryName)
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.collaboratorsService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateCollaboratorDto: UpdateCollaboratorDto) {
+    return this.collaboratorsService.update(id, updateCollaboratorDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.collaboratorsService.remove(id);
   }
 
   
