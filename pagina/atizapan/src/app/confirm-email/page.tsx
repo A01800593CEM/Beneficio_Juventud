@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { confirmSignUp, resendSignUpCode, cognitoLogin, getCurrentUser } from "../../lib/cognito";
+import { confirmSignUp, resendSignUpCode, cognitoLogin, getCurrentUser, cognitoLogout } from "../../lib/cognito";
 import { apiService, UserRegistrationData, CollaboratorRegistrationData } from "../../lib/api";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 
@@ -176,6 +176,15 @@ function ConfirmEmailContent() {
         setApiRegistrationStatus('error');
       }
 
+      // Limpiar la sesión de Cognito antes de redirigir al login
+      try {
+        console.log('🧹 Limpiando sesión temporal de Cognito...');
+        await cognitoLogout();
+        console.log('✅ Sesión de Cognito limpiada exitosamente');
+      } catch (logoutError) {
+        console.warn('⚠️ Error limpiando sesión de Cognito (no crítico):', logoutError);
+      }
+
       // Redirigir al login después de 5 segundos para dar tiempo a la API
       setTimeout(() => {
         router.push('/login');
@@ -293,7 +302,15 @@ function ConfirmEmailContent() {
               </p>
               
               <button
-                onClick={() => router.push('/login')}
+                onClick={async () => {
+                  // Asegurar limpieza de sesión antes de ir al login
+                  try {
+                    await cognitoLogout();
+                  } catch (e) {
+                    console.warn('Error limpiando sesión:', e);
+                  }
+                  router.push('/login');
+                }}
                 className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
               >
                 Iniciar Sesión Ahora
