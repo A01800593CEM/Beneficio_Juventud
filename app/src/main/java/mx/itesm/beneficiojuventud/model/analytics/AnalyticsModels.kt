@@ -6,8 +6,8 @@ import com.google.gson.annotations.SerializedName
 data class AnalyticsDashboard(
     val metadata: Map<String, Any>,
     val summary: AnalyticsSummary,
-    val charts: Map<String, AnalyticsChart>,
-    val promotionStats: List<PromotionStatItem>
+    val charts: Map<String, Any>,  // Changed to Any to handle mixed chart types
+    val insights: List<Any>? = null  // Changed to Any since insights are objects, not strings
 )
 
 data class AnalyticsSummary(
@@ -44,6 +44,14 @@ data class PromotionStatItem(
     val stockRemaining: Int,
     val totalStock: Int,
     val stockUtilization: String
+)
+
+// Wrapper for promotionStats chart (which is nested in charts.promotionStats.data)
+data class PromotionStatsChart(
+    val type: String,
+    val title: String,
+    val description: String,
+    val data: List<PromotionStatItem>
 )
 
 // Promotion Analytics Response
