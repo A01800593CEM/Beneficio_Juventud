@@ -67,6 +67,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.delay
+import mx.itesm.beneficiojuventud.model.redeemedcoupon.RemoteServiceRedeemedCoupon
 
 // ---------- Log
 private const val TAG = "PromoQR"
@@ -170,7 +172,7 @@ private fun buildDiscountLabel(p: Promotions): String {
 }
 
 private fun toUi(p: Promotions): PromoDetailUi {
-    val banner = p.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.bolos
+    val banner = p.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.no_promo_img
     val title  = p.title ?: "Promoción"
     val merch  = p.businessName ?: "Sin Nombre Negocio"
     val valid  = formatDate(parseDate(p.endDate))
@@ -412,13 +414,12 @@ fun PromoQR(
     }
 
     // Buscar booking cancelado para verificar cooldown
-    // Note: Backend doesn't track cancelledDate, so cooldown feature is disabled
     val cancelledBooking = remember(userBookings, promotionId) {
         val found = userBookings.find {
             it.promotionId == promotionId &&
             it.status == BookingStatus.CANCELLED
         }
-        Log.d(TAG, "Cancelled booking for promotion $promotionId: ${found?.bookingId}")
+        Log.d(TAG, "Cancelled booking for promotion $promotionId: ${found?.bookingId}, cancelledDate: ${found?.cancelledDate}")
         found
     }
 
@@ -450,10 +451,10 @@ fun PromoQR(
                 }
             }
 
-            // Cooldown feature disabled - backend doesn't track cancelledDate
-            // TODO: If cooldown is needed, backend must be updated to track cancellation timestamps
-            inCooldown = false
-            cooldownTime = Pair(0L, 0L)
+            // Verificar cooldown si hay una reserva cancelada
+            val cancelled = cancelledBooking?.cancelledDate
+            inCooldown = isInCooldown(cancelled)
+            cooldownTime = getTimeUntilCooldownEnd(cancelled)
 
             kotlinx.coroutines.delay(1000) // Actualizar cada segundo
         }
@@ -528,7 +529,7 @@ fun PromoQR(
                                     model = ImageRequest.Builder(LocalContext.current)
                                         .data(dataToLoad)
                                         .crossfade(true)
-                                        .error(R.drawable.bolos)
+                                        .error(R.drawable.no_promo_img)
                                         .build(),
                                     contentDescription = detail.title,
                                     contentScale = ContentScale.Crop,
@@ -770,6 +771,44 @@ fun PromoQR(
     }
 
     if (showQrDialog) {
+        // Polling para detectar cuando el cupón es canjeado por otro dispositivo
+        val qrGenerationTime = remember { System.currentTimeMillis() }
+
+        LaunchedEffect(showQrDialog) {
+            while (showQrDialog && !isRedeemed) {
+                try {
+                    delay(3000L) // Consultar cada 3 segundos
+
+                    Log.d(TAG, "Polling: Verificando si el cupón fue canjeado...")
+                    val redeemedCoupons = RemoteServiceRedeemedCoupon.getRedeemedCouponsByUser(cognitoId)
+
+                    // Buscar si hay un cupón canjeado de esta promoción después del momento de generación del QR
+                    val wasRedeemed = redeemedCoupons.any { coupon ->
+                        coupon.promotionId == promotionId &&
+                        coupon.qrTimestamp != null &&
+                        coupon.qrTimestamp!! >= qrGenerationTime - 5000 // 5 segundos de margen
+                    }
+
+                    if (wasRedeemed) {
+                        Log.d(TAG, "¡Cupón detectado como canjeado! Mostrando pantalla de éxito")
+                        isRedeemed = true
+                        delay(1000L) // Dar tiempo para que se vea la animación
+                        showQrDialog = false
+                        nav.navigate(
+                            Screens.Status.createRoute(
+                                StatusType.COUPON_USE_SUCCESS,
+                                Screens.Home.route
+                            )
+                        ) {
+                            popUpTo(Screens.PromoQR.route) { inclusive = true }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error al verificar estado del cupón: ${e.message}")
+                }
+            }
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -816,24 +855,26 @@ fun PromoQR(
 
                     Spacer(Modifier.height(20.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(
-                            onClick = { isRedeemed = true },
-                            modifier = Modifier.weight(1f)
-                        ) { Text("Simular escaneo") }
-
-                        MainButton(
-                            text = "Cerrar",
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(52.dp),
-                            onClick = { showQrDialog = false }
-                        )
-                    }
+                    MainButton(
+                        text = if (isRedeemed) "Volver" else "Cerrar",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        onClick = {
+                            showQrDialog = false
+                            if (isRedeemed) {
+                                // Si el cupón fue canjeado, navegar a la pantalla de éxito
+                                nav.navigate(
+                                    Screens.Status.createRoute(
+                                        StatusType.COUPON_USE_SUCCESS,
+                                        Screens.Home.route
+                                    )
+                                ) {
+                                    popUpTo(Screens.PromoQR.route) { inclusive = true }
+                                }
+                            }
+                        }
+                    )
                 }
             }
         }

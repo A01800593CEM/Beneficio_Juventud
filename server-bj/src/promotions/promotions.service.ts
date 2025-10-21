@@ -232,7 +232,12 @@ export class PromotionsService {
     longitude: number,
     radiusKm: number = 3,
   ): Promise<any[]> {
-    const userLocation: Coordinates = { latitude, longitude };
+    try {
+      const userLocation: Coordinates = { latitude, longitude };
+
+      console.log('========== NEARBY PROMOTIONS DEBUG ==========');
+      console.log('User Location:', userLocation);
+      console.log('Search Radius:', radiusKm, 'km');
 
     // Obtener todas las promociones activas con sus colaboradores y sucursales
     const promotions = await this.promotionsRepository
@@ -251,29 +256,48 @@ export class PromotionsService {
       .andWhere('promotion.endDate >= :now', { now: new Date() })
       .getMany();
 
+    console.log('Total active promotions found:', promotions.length);
+
     // Calcular distancias y filtrar por proximidad
     const promotionsWithDistance: any[] = [];
 
     for (const promo of promotions as any[]) {
-      const { collaborator, ...promoData } = promo;
+      const { collaborator, ...promoData} = promo;
+
+      console.log('\n--- Processing Promotion:', promoData.title || promoData.promotionId);
+      console.log('Collaborator:', collaborator?.businessName);
 
       // Obtener todas las sucursales del colaborador con ubicación
       const branches = collaborator?.branch || [];
+      console.log('Total branches:', branches.length);
+
       const branchesWithLocation = branches.filter(
         (b: any) => b.location !== null,
       );
+      console.log('Branches with location:', branchesWithLocation.length);
 
-      if (branchesWithLocation.length === 0) continue;
+      if (branchesWithLocation.length === 0) {
+        console.log('⚠️  No branches with location, skipping...');
+        continue;
+      }
 
       // Encontrar la sucursal más cercana
       let closestDistance = Infinity;
       let closestBranch = null;
 
       for (const branch of branchesWithLocation) {
-        const branchCoords = parseLocationString(branch.location);
-        if (!branchCoords) continue;
+        console.log(`  Branch: "${branch.name}" - Location raw:`, branch.location);
+        console.log(`  Location type: ${typeof branch.location}`);
 
+        const branchCoords = parseLocationString(branch.location);
+        if (!branchCoords) {
+          console.log(`  ❌ Failed to parse location for branch "${branch.name}"`);
+          continue;
+        }
+
+        console.log(`  ✓ Parsed coords: lat=${branchCoords.latitude}, lon=${branchCoords.longitude}`);
         const distance = calculateDistance(userLocation, branchCoords);
+        console.log(`  Distance: ${distance} km`);
 
         if (distance < closestDistance) {
           closestDistance = distance;
@@ -288,8 +312,11 @@ export class PromotionsService {
         }
       }
 
+      console.log(`Closest distance: ${closestDistance} km (limit: ${radiusKm} km)`);
+
       // Si la sucursal más cercana está dentro del radio, agregar la promoción
       if (closestDistance <= radiusKm && closestBranch) {
+        console.log(`✅ ADDED to results (within ${radiusKm}km)`);
         promotionsWithDistance.push({
           ...promoData,
           businessName: collaborator?.businessName || null,
@@ -297,12 +324,23 @@ export class PromotionsService {
           distance: closestDistance,
           closestBranch,
         });
+      } else {
+        console.log(`❌ EXCLUDED (distance ${closestDistance} > ${radiusKm}km)`);
       }
     }
 
-    // Ordenar por distancia (más cercano primero)
-    promotionsWithDistance.sort((a, b) => a.distance - b.distance);
+    console.log('\n========== RESULTS ==========');
+    console.log('Total promotions within radius:', promotionsWithDistance.length);
+    console.log('=====================================\n');
 
-    return promotionsWithDistance;
+      // Ordenar por distancia (más cercano primero)
+      promotionsWithDistance.sort((a, b) => a.distance - b.distance);
+
+      return promotionsWithDistance;
+    } catch (error) {
+      console.error('❌ ERROR in findNearbyPromotions:', error);
+      console.error('Stack trace:', error.stack);
+      throw error;
+    }
   }
 }

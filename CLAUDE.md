@@ -17,10 +17,11 @@ NestJS application using Fastify adapter with TypeORM for PostgreSQL database ac
 
 **Module Structure:**
 - Core business modules follow NestJS convention: `<module>/entities/`, `<module>/dto/`, `<module>/<module>.controller.ts`, `<module>/<module>.service.ts`
-- Main modules: `users`, `collaborators`, `categories`, `promotions`, `bookings`, `favorites`, `administrators`, `redeemedcoupon`, `branch`, `notifications`, `expirations`, `places`
+- Main modules: `users`, `collaborators`, `categories`, `promotions`, `bookings`, `favorites`, `administrators`, `redeemedcoupon`, `branch`, `notifications`, `expirations`, `places`, `analytics`
 - Uses Firebase Admin SDK for push notifications (see `notifications/notifications.service.ts`, `enviar.ts`)
 - Authentication via AWS Cognito (entities use `cognitoId` field)
 - Scheduled tasks enabled via `@nestjs/schedule` (see `expirations` module)
+- Location services via `places` module for nearby promotions and collaborator discovery
 
 **Database:**
 - PostgreSQL with TypeORM (synchronize: false - migrations should be managed manually)
@@ -56,6 +57,11 @@ Android application using Kotlin and Jetpack Compose with MVVM architecture.
   - `viewmodel/` - ViewModels for business logic
   - `utils/` - Utility functions
 - Firebase integration via `google-services.json`
+- Room database for local persistence (user preferences, cached promotions)
+- Google Maps SDK and Play Services Location for nearby collaborator discovery
+- CameraX and ML Kit for QR code scanning (coupon redemption)
+- AWS Amplify for Cognito authentication
+- Retrofit for backend API communication
 
 ## Common Development Commands
 
@@ -78,9 +84,11 @@ npm run build
 npm run start:prod
 
 # Testing
-npm run test             # Unit tests
-npm run test:e2e         # E2E tests
-npm run test:cov         # Coverage
+npm run test             # Run all unit tests
+npm run test:watch       # Run tests in watch mode
+npm run test:cov         # Generate coverage report
+npm run test:debug       # Run tests with debugger
+npm run test:e2e         # Run E2E tests
 
 # Code quality
 npm run lint             # ESLint with auto-fix
@@ -114,11 +122,22 @@ npm run lint
 ### Mobile App
 
 ```bash
-# Build (from root or app/ directory)
-./gradlew build
+# Build (from root directory)
+./gradlew build                    # Build all variants
+./gradlew assembleDebug            # Build debug APK
+./gradlew assembleRelease          # Build release APK
 
-# Run on device/emulator
-./gradlew installDebug
+# Install and run
+./gradlew installDebug             # Install debug build on connected device
+
+# Testing
+./gradlew test                     # Run unit tests
+./gradlew testDebugUnitTest        # Run debug unit tests only
+./gradlew connectedAndroidTest     # Run instrumented tests on device/emulator
+./gradlew connectedDebugAndroidTest # Run debug instrumented tests
+
+# Clean
+./gradlew clean                    # Clean build artifacts
 ```
 
 ## Key Technical Patterns
@@ -150,17 +169,34 @@ npm run lint
 - Scheduled expiration reminders handled by `expirations` module using `@nestjs/schedule`
 - Service account credentials required for Firebase Admin initialization
 
+### Location-Based Services
+- Backend `places` module handles geospatial queries for nearby collaborators
+- Mobile app uses Google Maps SDK for displaying collaborator locations
+- Google Play Services Location API for user's current location
+- Promotions filtered by proximity to user's location
+
 ## Development Notes
 
 - Backend uses TypeScript with experimental decorators and metadata emission
 - PostgreSQL SSL connection enabled with `rejectUnauthorized: false` for development
-- Mobile app targets Android with Kotlin, uses Jetpack Compose for UI
-- Web dashboard uses Next.js App Router (not Pages Router)
+- Mobile app targets Android SDK 26+ (Android 8.0+), compile SDK 36
+- Mobile app uses Kotlin with JVM target 11, Jetpack Compose for UI
+- Web dashboard uses Next.js 15 App Router with Turbopack (not Pages Router)
 - All three platforms share the same backend API at https://localhost:3000 (dev)
+- Mobile app uses EncryptedSharedPreferences for secure local storage
+- QR code redemption flow: Mobile app scans QR → validates with backend → creates RedeemedCoupon entry
 
 ## Testing Notes
 
-- Backend: Jest configured with ts-jest, tests colocated with source in `*.spec.ts` files
+### Backend Testing
+- Jest configured with ts-jest, tests colocated with source in `*.spec.ts` files
 - E2E tests use `@nestjs/testing` and `supertest`
 - Test database should be separate from development database
 - Run `npm run test:cov` to check coverage before committing
+
+### Mobile Testing
+- Unit tests: MockK for mocking, Turbine for Flow testing, kotlinx-coroutines-test for coroutines
+- UI tests: Compose UI testing framework with `ui-test-junit4`
+- Instrumented tests: Espresso for UI interactions, Navigation Testing for navigation flows
+- Room database testing with in-memory database
+- API mocking with MockWebServer for Retrofit testing

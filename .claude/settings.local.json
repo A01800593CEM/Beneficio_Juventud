@@ -4,7 +4,9 @@
       "Bash(./gradlew build:*)",
       "Bash(./gradlew assembleDebug:*)",
       "Bash(npm run start:dev:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run test:*)"
     ],
     "deny": [],
     "ask": []

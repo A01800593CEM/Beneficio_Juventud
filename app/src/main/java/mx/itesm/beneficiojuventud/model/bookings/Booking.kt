@@ -8,7 +8,8 @@ data class Booking(
     val promotionId: Int? = null,
     val bookingDate: String? = null,
     val limitUseDate: String? = null,
-    val status: BookingStatus? = null
+    val status: BookingStatus? = null,
+    val cancelledDate: String? = null
 
 )
 

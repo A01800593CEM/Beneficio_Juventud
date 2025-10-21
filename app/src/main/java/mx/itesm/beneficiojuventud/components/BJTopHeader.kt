@@ -36,7 +36,7 @@ fun BJTopHeader(
     title: String,
     nav: NavHostController,
     modifier: Modifier = Modifier,
-    showNotificationsIcon: Boolean = true
+    showNotificationsIcon: Boolean = false
 ) {
     Column(
         modifier

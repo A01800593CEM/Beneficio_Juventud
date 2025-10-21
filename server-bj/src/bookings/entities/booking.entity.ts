@@ -39,9 +39,12 @@ export class Booking {
   @Column({ name: 'promocion_reservada', type: 'int', nullable: true })
   bookedPromotion: number | null;
 
+  @Column({ name: 'fecha_cancelacion', type: 'timestamp', nullable: true })
+  cancelledDate: Date | null;
+
   //Relations
   @ManyToOne(() => User, users => users.bookings)
-  @JoinColumn({ name: 'usuario_id', 
+  @JoinColumn({ name: 'usuario_id',
                 referencedColumnName: 'cognitoId' })
   user: Relation<User>;
 
