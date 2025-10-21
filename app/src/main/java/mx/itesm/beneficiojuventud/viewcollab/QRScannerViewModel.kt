@@ -65,10 +65,22 @@ class QRScannerViewModel : ViewModel() {
                     qrTimestamp = parsedData.timestamp
                 )
 
-                Log.d(TAG, "Redeeming coupon: promotionId=${parsedData.promotionId}, userId=${parsedData.userId}, branchId=$branchId, nonce=${parsedData.nonce}")
+                Log.d(TAG, "========== REDEEMING COUPON ==========")
+                Log.d(TAG, "RedeemedCoupon object:")
+                Log.d(TAG, "  userId: ${redeemedCoupon.userId}")
+                Log.d(TAG, "  promotionId: ${redeemedCoupon.promotionId}")
+                Log.d(TAG, "  branchId: ${redeemedCoupon.branchId}")
+                Log.d(TAG, "  nonce: ${redeemedCoupon.nonce}")
+                Log.d(TAG, "  qrTimestamp: ${redeemedCoupon.qrTimestamp}")
+                Log.d(TAG, "Calling API endpoint: POST /redeemedcoupon")
 
                 // Call API to redeem coupon
                 val result = redeemedCouponService.createRedeemedCoupon(redeemedCoupon)
+
+                Log.d(TAG, "API Response:")
+                Log.d(TAG, "  usedId: ${result?.usedId}")
+                Log.d(TAG, "  Result: $result")
+                Log.d(TAG, "=======================================")
 
                 if (result != null) {
                     _scanResult.value = result
@@ -95,10 +107,15 @@ class QRScannerViewModel : ViewModel() {
      */
     private fun parseQRCode(qrData: String): QRData {
         try {
+            Log.d(TAG, "========== QR SCANNING DEBUG ==========")
+            Log.d(TAG, "Raw QR Data: $qrData")
+
             val parts = qrData.split("|")
+            Log.d(TAG, "Split parts: $parts")
 
             // Verify prefix
             if (parts.isEmpty() || parts[0] != "bj") {
+                Log.e(TAG, "Invalid prefix: ${parts.getOrNull(0)}")
                 throw QRValidationException("Código QR inválido: formato no reconocido")
             }
 
@@ -107,6 +124,7 @@ class QRScannerViewModel : ViewModel() {
                 val (key, value) = part.split("=")
                 key to value
             }
+            Log.d(TAG, "Parsed data map: $data")
 
             // Extract and validate required fields
             val version = data["v"]?.toIntOrNull()
@@ -127,7 +145,7 @@ class QRScannerViewModel : ViewModel() {
             val nonce = data["n"]
                 ?: throw QRValidationException("Código QR inválido: nonce faltante")
 
-            return QRData(
+            val qrDataParsed = QRData(
                 version = version,
                 promotionId = promotionId,
                 userId = userId,
@@ -135,7 +153,19 @@ class QRScannerViewModel : ViewModel() {
                 timestamp = timestamp,
                 nonce = nonce
             )
+
+            Log.d(TAG, "Parsed QRData:")
+            Log.d(TAG, "  version: $version")
+            Log.d(TAG, "  promotionId: $promotionId")
+            Log.d(TAG, "  userId: $userId")
+            Log.d(TAG, "  limitPerUser: $limitPerUser")
+            Log.d(TAG, "  timestamp: $timestamp")
+            Log.d(TAG, "  nonce: $nonce")
+            Log.d(TAG, "=========================================")
+
+            return qrDataParsed
         } catch (e: Exception) {
+            Log.e(TAG, "Error parsing QR: ${e.message}", e)
             if (e is QRValidationException) throw e
             throw QRValidationException("Error al parsear el código QR: ${e.message}")
         }

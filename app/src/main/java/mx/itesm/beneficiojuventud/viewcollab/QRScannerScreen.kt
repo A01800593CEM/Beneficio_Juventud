@@ -34,6 +34,8 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import mx.itesm.beneficiojuventud.components.BJTopHeader
 import mx.itesm.beneficiojuventud.components.MainButton
+import mx.itesm.beneficiojuventud.view.Screens
+import mx.itesm.beneficiojuventud.view.StatusType
 import java.util.concurrent.Executors
 
 private const val TAG = "QRScannerScreen"
@@ -49,9 +51,6 @@ fun QRScannerScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var hasCameraPermission by remember { mutableStateOf(false) }
-    var showSuccessDialog by remember { mutableStateOf(false) }
-    var successMessage by remember { mutableStateOf("") }
-    var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
     val isProcessing by viewModel.isProcessing.collectAsState()
@@ -69,19 +68,36 @@ fun QRScannerScreen(
         permissionLauncher.launch(Manifest.permission.CAMERA)
     }
 
-    // Handle scan result
+    // Handle scan result - Navigate to Status screen
     LaunchedEffect(scanResult) {
         scanResult?.let {
-            showSuccessDialog = true
-            successMessage = "Cupón canjeado exitosamente"
+            Log.d(TAG, "Scan successful, navigating to Status screen")
+            viewModel.clearResult()
+            nav.navigate(
+                Screens.Status.createRoute(
+                    StatusType.QR_SCAN_SUCCESS,
+                    Screens.HomeScreenCollab.route
+                )
+            ) {
+                popUpTo(Screens.QrScanner.route) { inclusive = true }
+            }
         }
     }
 
-    // Handle errors
+    // Handle errors - Navigate to Status screen
     LaunchedEffect(error) {
         error?.let {
-            showErrorDialog = true
+            Log.e(TAG, "Scan error: $it")
             errorMessage = it
+            viewModel.clearError()
+            nav.navigate(
+                Screens.Status.createRoute(
+                    StatusType.QR_SCAN_ERROR,
+                    Screens.HomeScreenCollab.route
+                )
+            ) {
+                popUpTo(Screens.QrScanner.route) { inclusive = true }
+            }
         }
     }
 
@@ -141,88 +157,6 @@ fun QRScannerScreen(
                 }
             }
         }
-    }
-
-    // Success Dialog
-    if (showSuccessDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showSuccessDialog = false
-                viewModel.clearResult()
-                nav.popBackStack()
-            },
-            icon = {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = Color(0xFF22C55E),
-                    modifier = Modifier.size(56.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = "¡Éxito!",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
-                )
-            },
-            text = {
-                Text(
-                    text = successMessage,
-                    textAlign = TextAlign.Center
-                )
-            },
-            confirmButton = {
-                MainButton(
-                    text = "Aceptar",
-                    onClick = {
-                        showSuccessDialog = false
-                        viewModel.clearResult()
-                        nav.popBackStack()
-                    }
-                )
-            }
-        )
-    }
-
-    // Error Dialog
-    if (showErrorDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showErrorDialog = false
-                viewModel.clearError()
-            },
-            icon = {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = Color.Red,
-                    modifier = Modifier.size(56.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = "Error",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
-                )
-            },
-            text = {
-                Text(
-                    text = errorMessage,
-                    textAlign = TextAlign.Center
-                )
-            },
-            confirmButton = {
-                MainButton(
-                    text = "Intentar de Nuevo",
-                    onClick = {
-                        showErrorDialog = false
-                        viewModel.clearError()
-                    }
-                )
-            }
-        )
     }
 }
 
