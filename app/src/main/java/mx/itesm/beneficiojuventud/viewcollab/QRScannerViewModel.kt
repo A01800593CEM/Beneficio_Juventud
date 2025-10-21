@@ -39,14 +39,16 @@ class QRScannerViewModel : ViewModel() {
 
     /**
      * Process scanned QR code data
+     * @param qrData The QR code string to process
+     * @param branchId The branch ID where the QR is being scanned (from logged-in collaborator)
      */
-    fun processQRCode(qrData: String) {
+    fun processQRCode(qrData: String, branchId: Int) {
         viewModelScope.launch {
             try {
                 _isProcessing.value = true
                 _error.value = null
 
-                Log.d(TAG, "Processing QR Code: $qrData")
+                Log.d(TAG, "Processing QR Code: $qrData at branchId: $branchId")
 
                 // Parse QR code
                 val parsedData = parseQRCode(qrData)
@@ -54,23 +56,23 @@ class QRScannerViewModel : ViewModel() {
                 // Validate QR code
                 validateQRCode(parsedData)
 
-                // TODO: Get branchId from current collaborator session
-                // For now, using a placeholder - this should come from the logged-in collaborator
-                val branchId = 1
-
-                // Create redeemed coupon
+                // Create redeemed coupon with all QR data
                 val redeemedCoupon = RedeemedCoupon(
                     userId = parsedData.userId,
                     promotionId = parsedData.promotionId,
-                    branchId = branchId
+                    branchId = branchId,
+                    nonce = parsedData.nonce,
+                    qrTimestamp = parsedData.timestamp
                 )
+
+                Log.d(TAG, "Redeeming coupon: promotionId=${parsedData.promotionId}, userId=${parsedData.userId}, branchId=$branchId, nonce=${parsedData.nonce}")
 
                 // Call API to redeem coupon
                 val result = redeemedCouponService.createRedeemedCoupon(redeemedCoupon)
 
                 if (result != null) {
                     _scanResult.value = result
-                    Log.d(TAG, "Coupon redeemed successfully: ${result.usedId}")
+                    Log.d(TAG, "Coupon redeemed successfully: usedId=${result.usedId}")
                 } else {
                     _error.value = "Error al canjear el cupón. Intente nuevamente."
                 }

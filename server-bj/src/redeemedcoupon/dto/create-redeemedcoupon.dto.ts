@@ -1,4 +1,4 @@
-import { IsInt, IsString,} from 'class-validator';
+import { IsInt, IsString, IsOptional, IsNumber} from 'class-validator';
 
 /**
  * DTO representing the data required to register a redeemed coupon.
@@ -13,10 +13,11 @@ import { IsInt, IsString,} from 'class-validator';
  * @example
  * ```json
  * {
- *   "userId": 14,
- *   "collaboratorId": 3,
+ *   "userId": "a1fbe500-a091-70e3-5a7b-3b1f4537f10f",
  *   "branchId": 8,
- *   "promotionId": 27
+ *   "promotionId": 27,
+ *   "nonce": "abc12345",
+ *   "qrTimestamp": 1729458361234
  * }
  * ```
  */
@@ -29,4 +30,12 @@ export class CreateRedeemedcouponDto {
 
   @IsInt()
   promotionId: number;
+
+  @IsOptional()
+  @IsString()
+  nonce?: string;
+
+  @IsOptional()
+  @IsNumber()
+  qrTimestamp?: number;
 }

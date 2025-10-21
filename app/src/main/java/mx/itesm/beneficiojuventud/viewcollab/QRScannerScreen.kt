@@ -42,6 +42,7 @@ private const val TAG = "QRScannerScreen"
 @Composable
 fun QRScannerScreen(
     nav: NavHostController,
+    branchId: Int,
     viewModel: QRScannerViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -99,7 +100,8 @@ fun QRScannerScreen(
                     modifier = Modifier.fillMaxSize(),
                     onQRCodeScanned = { qrData ->
                         if (!isProcessing) {
-                            viewModel.processQRCode(qrData)
+                            Log.d(TAG, "QR Code scanned, processing with branchId: $branchId")
+                            viewModel.processQRCode(qrData, branchId)
                         }
                     }
                 )

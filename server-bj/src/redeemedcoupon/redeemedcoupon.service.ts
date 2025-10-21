@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Redeemedcoupon } from './entities/redeemedcoupon.entity';
@@ -20,25 +20,102 @@ export class RedeemedcouponService {
    * Creates an instance of RedeemedcouponService.
    *
    * @param reedemedcouponsRepository - TypeORM repository for {@link Redeemedcoupon} entities.
+   * @param promotionsRepository - TypeORM repository for {@link Promotion} entities.
    */
   constructor(
     @InjectRepository(Redeemedcoupon)
     private reedemedcouponsRepository: Repository<Redeemedcoupon>,
+    @InjectRepository(Promotion)
+    private promotionsRepository: Repository<Promotion>,
   ) {}
   /**
    * Creates and saves a new redeemed coupon in the database.
    *
    * @param createRedeemedcouponDto - Data Transfer Object containing redemption details.
    * @returns The created {@link Redeemedcoupon} record.
+   * @throws {NotFoundException} If promotion doesn't exist
+   * @throws {BadRequestException} If promotion is inactive, expired, or out of stock
+   * @throws {ConflictException} If nonce was already used (replay attack)
    *
    * @example
    * await redeemedcouponService.create({
-   *   userId: 5,
+   *   userId: "a1fbe500-a091-70e3-5a7b-3b1f4537f10f",
    *   branchId: 3,
-   *   promotionId: 7
+   *   promotionId: 7,
+   *   nonce: "abc12345",
+   *   qrTimestamp: 1729458361234
    * });
    */
   async create(createRedeemedcouponDto: CreateRedeemedcouponDto): Promise<Redeemedcoupon> {
+    const { userId, promotionId, nonce } = createRedeemedcouponDto;
+
+    // 1. Verificar que la promoción existe
+    const promotion = await this.promotionsRepository.findOne({
+      where: { promotionId }
+    });
+
+    if (!promotion) {
+      throw new NotFoundException(`Promoción con ID ${promotionId} no encontrada`);
+    }
+
+    // 2. Verificar que la promoción está activa
+    if (promotion.promotionState !== 'activa') {
+      throw new BadRequestException(`La promoción no está activa. Estado actual: ${promotion.promotionState}`);
+    }
+
+    // 3. Verificar stock disponible (si la promoción tiene stock limitado)
+    if (promotion.availableStock !== null && promotion.availableStock !== undefined) {
+      if (promotion.availableStock <= 0) {
+        throw new BadRequestException('No hay stock disponible para esta promoción');
+      }
+    }
+
+    // 4. Validar que el nonce no haya sido usado (prevenir replay attacks)
+    if (nonce) {
+      const existingWithNonce = await this.reedemedcouponsRepository.findOne({
+        where: { nonce, promotionId }
+      });
+
+      if (existingWithNonce) {
+        throw new ConflictException('Este código QR ya fue utilizado');
+      }
+    }
+
+    // 5. Verificar límite por usuario (si aplica)
+    if (promotion.limitPerUser !== null && promotion.limitPerUser !== undefined && promotion.limitPerUser > 0) {
+      const userRedemptions = await this.reedemedcouponsRepository.count({
+        where: { userId, promotionId }
+      });
+
+      if (userRedemptions >= promotion.limitPerUser) {
+        throw new BadRequestException(`Has alcanzado el límite de ${promotion.limitPerUser} usos para esta promoción`);
+      }
+    }
+
+    // 6. Verificar límite diario por usuario (si aplica)
+    if (promotion.dailyLimitPerUser !== null && promotion.dailyLimitPerUser !== undefined && promotion.dailyLimitPerUser > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const todayRedemptions = await this.reedemedcouponsRepository
+        .createQueryBuilder('rc')
+        .where('rc.usuario_id = :userId', { userId })
+        .andWhere('rc.promocion_id = :promotionId', { promotionId })
+        .andWhere('rc.fecha_uso >= :today', { today })
+        .getCount();
+
+      if (todayRedemptions >= promotion.dailyLimitPerUser) {
+        throw new BadRequestException(`Has alcanzado el límite diario de ${promotion.dailyLimitPerUser} usos para esta promoción`);
+      }
+    }
+
+    // 7. Decrementar stock disponible (si aplica)
+    if (promotion.availableStock !== null && promotion.availableStock !== undefined && promotion.availableStock > 0) {
+      promotion.availableStock -= 1;
+      await this.promotionsRepository.save(promotion);
+    }
+
+    // 8. Crear el cupón canjeado
     const redeemedcoupon = this.reedemedcouponsRepository.create(createRedeemedcouponDto);
     return this.reedemedcouponsRepository.save(redeemedcoupon);
   }

@@ -28,6 +28,12 @@ export class Redeemedcoupon {
   @Column({name: 'promocion_id'})
   promotionId: number
 
+  @Column({name: 'nonce', nullable: true})
+  nonce: string;
+
+  @Column({name: 'qr_timestamp', type: 'bigint', nullable: true})
+  qrTimestamp: number;
+
   //Relations
   @ManyToOne(() => User, users => users.redeemedcoupon)
   @JoinColumn({ name: 'usuario_id', referencedColumnName: 'cognitoId' })
