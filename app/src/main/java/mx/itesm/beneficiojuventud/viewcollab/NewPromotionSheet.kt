@@ -35,6 +35,7 @@ import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.model.webhook.ImageGenerationService
 import mx.itesm.beneficiojuventud.model.categories.Category
 import mx.itesm.beneficiojuventud.model.categories.RemoteServiceCategory
+import okhttp3.MediaType.Companion.toMediaType
 
 private val TextGrey = Color(0xFF616161)
 private val LightGrey = Color(0xFFF5F5F5)
@@ -845,7 +846,7 @@ fun NewPromotionSheet(
                             // Para el update, usamos el mismo request pero con PATCH
                             val updateJson = gson.toJson(requestData)
                             val requestBody = okhttp3.RequestBody.create(
-                                okhttp3.MediaType.parse("application/json"),
+                                "application/json".toMediaType(),
                                 updateJson
                             )
 
@@ -859,7 +860,7 @@ fun NewPromotionSheet(
 
                             val response = client.newCall(request).execute()
                             if (!response.isSuccessful) {
-                                throw Exception("Error ${response.code()}: ${response.body()?.string()}")
+                                throw Exception("Error ${response.code}: ${response.body?.string()}")
                             }
                         } else {
                             android.util.Log.d("NewPromotionSheet", "Creating promotion with branchIds: $branchIdsList")
