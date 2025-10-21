@@ -292,7 +292,7 @@ private fun BranchItemCard(
                 )
                 if (!branch.phone.isNullOrBlank()) {
                     Text(
-                        text = branch.phone,
+                        text = formatMxPhone(branch.phone),
                         color = TextSecondary,
                         fontSize = 12.sp,
                         maxLines = 1,
@@ -340,6 +340,19 @@ private fun BranchItemCard(
         )
     }
 }
+
+
+private fun formatMxPhone(raw: String): String {
+    val digits = raw.filter { it.isDigit() }.take(10)
+    return buildString {
+        for (i in digits.indices) {
+            append(digits[i])
+            if (i == 1 && digits.length > 2) append(' ')
+            if (i == 5 && digits.length > 6) append(' ')
+        }
+    }
+}
+
 
 @Composable
 private fun StatusBadge(text: String, color: Color) {

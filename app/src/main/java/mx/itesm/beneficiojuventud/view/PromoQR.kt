@@ -67,6 +67,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.delay
+import mx.itesm.beneficiojuventud.model.redeemedcoupon.RemoteServiceRedeemedCoupon
 
 // ---------- Log
 private const val TAG = "PromoQR"

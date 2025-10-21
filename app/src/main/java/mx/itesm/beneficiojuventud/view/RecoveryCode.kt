@@ -1,8 +1,9 @@
 package mx.itesm.beneficiojuventud.view
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -10,13 +11,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
-import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
-import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -24,36 +22,32 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.android.awaitFrame
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.navigation.NavHostController
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.BackButton
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.CodeTextField
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.ui.input.pointer.pointerInput
 
-/**
- * Pantalla para introducir y validar el código de recuperación de contraseña (OTP de 6 dígitos).
- * Muestra un temporizador para reenviar el código y navega al flujo de creación de nueva contraseña al verificar.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecoveryCode(
-    /**
-     * Controlador de navegación para retroceder y continuar al siguiente paso del flujo.
-     */
     nav: NavHostController,
-    /**
-     * Modificador externo para composición y pruebas.
-     */
     modifier: Modifier = Modifier,
-    /**
-     * Correo electrónico al cual se envió el código de verificación.
-     */
     emailArg: String = "beneficio_user@juventud.com",
-    /**
-     * ViewModel de autenticación que gestiona el estado y acciones de recuperación.
-     */
     viewModel: AuthViewModel = viewModel()
 ) {
     var email by remember { mutableStateOf(emailArg) }
@@ -75,7 +69,6 @@ fun RecoveryCode(
         }
     }
 
-    // Dispara el reenvío del código y reinicia el temporizador.
     fun handleResend() {
         if (canResend) {
             viewModel.resetPassword(email)
@@ -85,7 +78,11 @@ fun RecoveryCode(
         }
     }
 
+    val scroll = rememberScrollState()
+
     Scaffold(
+        // Evita doble padding del Scaffold con el sistema/IME
+        contentWindowInsets = WindowInsets(0),
         topBar = {
             TopAppBar(
                 title = {},
@@ -103,10 +100,12 @@ fun RecoveryCode(
         Column(
             modifier = modifier
                 .padding(innerPadding)
-                .fillMaxWidth()
+                .consumeWindowInsets(innerPadding)
+                .fillMaxSize()
                 .dismissKeyboardOnTap()
-                .padding(top = 85.dp)
-                .imePadding(),
+                .verticalScroll(scroll)           // Hace scroll del contenido
+                .imePadding()                     // Empuja el contenido arriba con el IME
+                .padding(top = 85.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
@@ -157,18 +156,20 @@ fun RecoveryCode(
                 )
             }
 
-            // ----- Fila de OTP -----
-            Row(modifier = modifier.fillMaxWidth(0.9f)) {
+            // ----- Fila de OTP (scroll into view cuando hay foco) -----
+            FocusBringIntoView(
+                modifier = Modifier.fillMaxWidth(0.9f)
+            ) {
                 CodeTextField(
                     value = code,
                     onValueChange = { code = it },
-                    length = 6,
+                    length = length,
                     isError = false,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 16.dp),
                     onFilled = { filled ->
-                        // Opcional: navegación automática al completar el código.
+                        // Si quieres navegación automática al llenar:
                         // nav.navigate(Screens.newPasswordWithEmailAndCode(email, filled))
                     }
                 )
@@ -198,8 +199,7 @@ fun RecoveryCode(
                 color = if (canResend) Color(0xFF008D96) else Color(0xFF7D7A7A),
                 fontSize = 13.sp,
                 modifier = Modifier
-                    .padding(top = 14.dp)
-                    .padding(bottom = 8.dp)
+                    .padding(top = 14.dp, bottom = 8.dp)
                     .noRippleClickable { handleResend() }
             )
         }
@@ -207,9 +207,37 @@ fun RecoveryCode(
 }
 
 /**
- * Extensión de Modifier para clicks sin efecto de ripple, útil en textos de acción secundarios.
- * @param onClick Acción a ejecutar al detectar un toque.
- * @return El mismo Modifier con soporte de gesto tap sin ripple.
+ * Envuelve contenido que debe mantenerse visible cuando aparece el teclado.
+ * Usa BringIntoViewRequester + pequeño delay para esperar el alzado del IME.
+ */
+@Composable
+private fun FocusBringIntoView(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+
+    Box(
+        modifier = modifier
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .onFocusEvent { state ->
+                if (state.isFocused) {
+                    scope.launch {
+                        // Espera al siguiente frame + un breve delay para que el IME se posicione
+                        awaitFrame()
+                        delay(140)
+                        bringIntoViewRequester.bringIntoView()
+                    }
+                }
+            }
+    ) {
+        content()
+    }
+}
+
+/**
+ * Click sin ripple.
  */
 @Composable
 private fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier =
@@ -217,9 +245,6 @@ private fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier =
         detectTapGestures(onTap = { onClick() })
     })
 
-/**
- * Vista previa de la pantalla RecoveryCode con tema y sistema UI visibles.
- */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun RecoveryCodePreview() {

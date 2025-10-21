@@ -2,6 +2,7 @@ package mx.itesm.beneficiojuventud.view
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -28,6 +29,9 @@ import mx.itesm.beneficiojuventud.components.PasswordTextField
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
 
 /**
  * Pantalla para establecer una nueva contraseña tras el flujo de “forgot password”.
@@ -76,7 +80,7 @@ fun NewPassword(
         }
     }
 
-    // Mostrar errores
+    // Mostrar errores (log simple)
     authState.error?.let { error ->
         LaunchedEffect(error) {
             println("Error confirmando nueva contraseña: $error")
@@ -85,120 +89,135 @@ fun NewPassword(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = {}, navigationIcon = { BackButton(nav = nav) },
-                modifier = Modifier.padding(10.dp, 16.dp ,0.dp, 0.dp))
-        }
+            TopAppBar(
+                title = {},
+                navigationIcon = { BackButton(nav = nav) },
+                modifier = Modifier.padding(10.dp, 16.dp, 0.dp, 0.dp)
+            )
+        },
+        // Evita que el Scaffold inyecte padding propio; nosotros lo gestionamos
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { inner ->
-        Column(
+        LazyColumn(
             modifier = modifier
+                .fillMaxSize()
+                // Aplicamos el padding del Scaffold y lo consumimos para no duplicarlo
                 .padding(inner)
-                .fillMaxWidth()
-                .dismissKeyboardOnTap()
-                .padding(top = 70.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .consumeWindowInsets(inner)
+                // Para que al aparecer el teclado, el contenido se recorra/ajuste
+                .imePadding()
+                .dismissKeyboardOnTap(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            // Imagen superior
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = imageRes),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxHeight()
-                )
-            }
-
-            // Títulos
-            Column(
-                modifier = Modifier.fillMaxWidth(0.85f),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    "Ingresa tu nueva contraseña",
-                    style = TextStyle(
-                        brush = Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96))),
-                        fontSize = 30.sp,
-                        fontWeight = FontWeight.Black
-                    ),
-                    modifier = Modifier.padding(20.dp),
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    "¡Guárdala mejor esta vez!",
-                    color = Color(0xFF7D7A7A),
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            // Formulario
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(0.95f)
-                    .padding(top = 24.dp)
-            ) {
-                Text(
-                    "Nueva Contraseña",
-                    color = Color(0xFF7D7A7A),
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
-                )
-                PasswordTextField(
-                    value = pass,
-                    onValueChange = { pass = it },
+            item {
+                // Imagen superior
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                )
-                if (pass.isNotEmpty() && !passValid) {
-                    Text(
-                        "Mínimo $minLength caracteres, al menos ${if (requireLetter) "1 letra" else ""}${if (requireLetter && requireDigit) " y " else ""}${if (requireDigit) "1 número" else ""}.",
-                        color = Color(0xFFD32F2F),
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(start = 24.dp, top = 6.dp)
-                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                Text(
-                    "Confirmar Contraseña",
-                    color = Color(0xFF7D7A7A),
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
-                )
-                PasswordTextField(
-                    value = confirm,
-                    onValueChange = { confirm = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                )
-                if (confirm.isNotEmpty() && !matches) {
-                    Text(
-                        "Las contraseñas no coinciden.",
-                        color = Color(0xFFD32F2F),
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(start = 24.dp, top = 6.dp)
-                    )
-                }
-
-                // Botón Confirmar
-                MainButton(
-                    text = "Confirmar",
-                    enabled = passValid && matches && !authState.isLoading,
-                    modifier = Modifier
-                        .padding(top = 24.dp)
-                        .fillMaxWidth(0.95f)
-                        .align(Alignment.CenterHorizontally)
+                        .height(180.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    viewModel.confirmResetPassword(emailArg, pass, codeArg)
+                    Image(
+                        painter = painterResource(id = imageRes),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxHeight()
+                    )
+                }
+            }
+
+            item {
+                // Títulos
+                Column(
+                    modifier = Modifier.fillMaxWidth(0.85f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "Ingresa tu nueva contraseña",
+                        style = TextStyle(
+                            brush = Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96))),
+                            fontSize = 30.sp,
+                            fontWeight = FontWeight.Black
+                        ),
+                        modifier = Modifier.padding(20.dp),
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        "¡Guárdala mejor esta vez!",
+                        color = Color(0xFF7D7A7A),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            item {
+                // Formulario completo
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth(0.95f)
+                        .padding(top = 24.dp)
+                ) {
+                    Text(
+                        "Nueva Contraseña",
+                        color = Color(0xFF7D7A7A),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
+                    )
+                    PasswordTextField(
+                        value = pass,
+                        onValueChange = { pass = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                    )
+                    if (pass.isNotEmpty() && !passValid) {
+                        Text(
+                            "Mínimo $minLength caracteres, al menos ${if (requireLetter) "1 letra" else ""}${if (requireLetter && requireDigit) " y " else ""}${if (requireDigit) "1 número" else ""}.",
+                            color = Color(0xFFD32F2F),
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(start = 24.dp, top = 6.dp)
+                        )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Text(
+                        "Confirmar Contraseña",
+                        color = Color(0xFF7D7A7A),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
+                    )
+                    PasswordTextField(
+                        value = confirm,
+                        onValueChange = { confirm = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                    )
+                    if (confirm.isNotEmpty() && !matches) {
+                        Text(
+                            "Las contraseñas no coinciden.",
+                            color = Color(0xFFD32F2F),
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(start = 24.dp, top = 6.dp)
+                        )
+                    }
+
+                    // Botón Confirmar
+                    MainButton(
+                        text = "Confirmar",
+                        enabled = passValid && matches && !authState.isLoading,
+                        modifier = Modifier
+                            .padding(top = 24.dp)
+                            .fillMaxWidth(0.95f)
+                            .align(Alignment.CenterHorizontally)
+                    ) {
+                        viewModel.confirmResetPassword(emailArg, pass, codeArg)
+                    }
                 }
             }
         }
