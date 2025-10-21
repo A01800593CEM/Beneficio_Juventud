@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.components.MainButton
+import mx.itesm.beneficiojuventud.components.ImageUploadSection
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.promos.PromotionType
 import mx.itesm.beneficiojuventud.model.promos.PromotionState
@@ -117,7 +118,6 @@ fun NewPromotionSheet(
     // Estados de error y carga
     var errorMessage by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
-    var isGeneratingImage by remember { mutableStateOf(false) }
 
     // Tipo de promoción (prioritizar existingPromotion)
     var promotionType by rememberSaveable {
@@ -370,114 +370,15 @@ fun NewPromotionSheet(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Imagen
-                Text("Imagen de la Promoción", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = DarkBlue)
-                Spacer(Modifier.height(8.dp))
-                Text("URL de imagen (opcional)", fontSize = 14.sp, color = TextGrey)
-                Spacer(Modifier.height(8.dp))
-
-                FormTextField(
-                    value = imageUrl,
-                    onValueChange = { imageUrl = it },
-                    label = "",
-                    placeholder = "https://ejemplo.com/imagen.jpg"
+                // Componente de imagen con AI y upload
+                ImageUploadSection(
+                    imageUrl = imageUrl,
+                    title = title,
+                    description = description,
+                    onImageChange = { newImageUrl ->
+                        imageUrl = newImageUrl
+                    }
                 )
-                Spacer(Modifier.height(12.dp))
-
-                // Botón de generar imagen con IA
-                Button(
-                    onClick = {
-                        if (title.isBlank() || description.isBlank()) {
-                            errorMessage = "Necesitas título y descripción para generar imagen"
-                            showError = true
-                            return@Button
-                        }
-
-                        scope.launch {
-                            isGeneratingImage = true
-                            errorMessage = ""
-                            showError = false
-
-                            val result = ImageGenerationService.generatePromotionImage(
-                                title = title,
-                                description = description
-                            )
-
-                            isGeneratingImage = false
-
-                            result.onSuccess { url ->
-                                imageUrl = url
-                            }.onFailure { error ->
-                                errorMessage = "Error al generar imagen: ${error.message}"
-                                showError = true
-                            }
-                        }
-                    },
-                    enabled = !isGeneratingImage && title.isNotBlank() && description.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Purple,
-                        disabledContainerColor = Color.LightGray
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        if (isGeneratingImage) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text("🤖", fontSize = 18.sp)
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = if (isGeneratingImage) "Generando imagen..." else "Generar Imagen con IA",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                // Preview de imagen
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp)
-                        .background(LightGrey, RoundedCornerShape(12.dp))
-                        .border(1.dp, Color.LightGray, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (imageUrl.isNotBlank()) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "✓ Imagen configurada",
-                                color = Teal,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = imageUrl.take(50) + if (imageUrl.length > 50) "..." else "",
-                                color = Color.Gray,
-                                fontSize = 12.sp,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    } else {
-                        Text(
-                            text = "Sin Imagen",
-                            color = Color.Gray
-                        )
-                    }
-                }
 
                 Spacer(Modifier.height(24.dp))
 
