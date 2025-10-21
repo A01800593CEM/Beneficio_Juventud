@@ -5,7 +5,7 @@ import { User, UserStats, AdminStats, CollaboratorStats } from "@/types/user";
 
 const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? '/api/proxy'  // Usar proxy local en desarrollo
-  : 'http://3.226.114.132:3000';  // Usar API directa en producción
+  : 'https://beneficiojoven.lat';  // Usar API directa en producción
 
 export interface UserRegistrationData {
   name: string;
@@ -16,6 +16,21 @@ export interface UserRegistrationData {
   email: string;
   cognitoId: string;
   accountState?: string;
+}
+
+export interface CollaboratorRegistrationData {
+  businessName: string;
+  cognitoId: string;
+  rfc: string;
+  representativeName: string;
+  phone: string;
+  email: string;
+  address: string;
+  postalCode: string;
+  state?: string;
+  categoryIds?: number[];
+  logoUrl?: string;
+  description: string;
 }
 
 export interface ApiError {
@@ -117,6 +132,23 @@ class ApiService {
     console.log('👤 API RegisterUser - JSON payload:', JSON.stringify(dataWithDefaults, null, 2));
 
     return this.request('/users', {
+      method: 'POST',
+      body: JSON.stringify(dataWithDefaults),
+    });
+  }
+
+  async registerCollaborator(collaboratorData: CollaboratorRegistrationData): Promise<{ success: boolean; message?: string }> {
+    console.log('🏢 API RegisterCollaborator - Input data:', collaboratorData);
+
+    const dataWithDefaults = {
+      ...collaboratorData,
+      state: collaboratorData.state || 'activo'
+    };
+
+    console.log('🏢 API RegisterCollaborator - Data with defaults:', dataWithDefaults);
+    console.log('🏢 API RegisterCollaborator - JSON payload:', JSON.stringify(dataWithDefaults, null, 2));
+
+    return this.request('/collaborators', {
       method: 'POST',
       body: JSON.stringify(dataWithDefaults),
     });
