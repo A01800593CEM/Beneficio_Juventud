@@ -1,18 +1,19 @@
-import { IsInt, 
-    IsNotEmpty, 
-    IsObject, 
-    IsOptional, 
-    IsPhoneNumber, 
-    IsString, 
-    Matches} 
+import { IsEnum,
+    IsNotEmpty,
+    IsObject,
+    IsOptional,
+    IsPhoneNumber,
+    IsString,
+    Matches}
 from 'class-validator';
+import { BranchState } from '../enums/branch-state.enum';
 
 /**
  * Data Transfer Object (DTO) for creating a new branch.
  * Contains all necessary information for branch registration with validation rules.
  */
 export class CreateBranchDto {
-    @IsInt()
+    @IsString() @IsNotEmpty()
     collaboratorId: string;
     
     @IsString() @IsNotEmpty()
@@ -35,4 +36,8 @@ export class CreateBranchDto {
 
     @IsOptional() @IsObject()
     jsonSchedule?: Record<string, any>;
+
+    @IsOptional()
+    @IsEnum(BranchState)
+    state?: BranchState = BranchState.ACTIVE;
 }

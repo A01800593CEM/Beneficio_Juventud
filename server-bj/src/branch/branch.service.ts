@@ -36,7 +36,7 @@ export class BranchService {
    * @returns Promise resolving to an array of all branch entities
    */
   async findAll(): Promise<Branch[]> {
-    return this.branchRepository.find({relations: ['collaborator']});
+    return this.branchRepository.find({relations: ['collaborators']});
   }
 
   /**
@@ -48,7 +48,7 @@ export class BranchService {
   async findOne(id: number): Promise<Branch | null> {
     return this.branchRepository.findOne({
       where: {branchId: id},
-      relations: ['collaborator'],
+      relations: ['collaborators'],
     });
   }
 
