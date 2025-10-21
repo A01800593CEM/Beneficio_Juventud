@@ -74,10 +74,29 @@ object RemoteServiceCollab {
         longitude: Double,
         radius: Double = 3.0
     ): List<NearbyCollaborator> {
+        android.util.Log.d("RemoteServiceCollab", "========== NEARBY COLLABORATORS REQUEST ==========")
+        android.util.Log.d("RemoteServiceCollab", "Latitude: $latitude")
+        android.util.Log.d("RemoteServiceCollab", "Longitude: $longitude")
+        android.util.Log.d("RemoteServiceCollab", "Radius: $radius km")
+
         val response = collabApiService.getNearbyCollaborators(latitude, longitude, radius)
+
+        android.util.Log.d("RemoteServiceCollab", "Response Code: ${response.code()}")
+        android.util.Log.d("RemoteServiceCollab", "Response Success: ${response.isSuccessful}")
+
         if (!response.isSuccessful) {
-            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+            val errorBody = response.errorBody()?.string().orEmpty()
+            android.util.Log.e("RemoteServiceCollab", "Error Body: $errorBody")
+            throw Exception("Error ${response.code()}: $errorBody")
         }
-        return response.body() ?: emptyList()
+
+        val body = response.body() ?: emptyList()
+        android.util.Log.d("RemoteServiceCollab", "Collaborators found: ${body.size}")
+        body.forEach { collab ->
+            android.util.Log.d("RemoteServiceCollab", "  - ${collab.businessName} at ${collab.distance}km")
+        }
+        android.util.Log.d("RemoteServiceCollab", "==============================================")
+
+        return body
     }
 }

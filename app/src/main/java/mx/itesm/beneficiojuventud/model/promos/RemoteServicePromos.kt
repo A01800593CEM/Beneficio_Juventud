@@ -105,10 +105,29 @@ object RemoteServicePromos {
         longitude: Double,
         radius: Double = 3.0
     ): List<NearbyPromotion> {
+        android.util.Log.d("RemoteServicePromos", "========== NEARBY PROMOTIONS REQUEST ==========")
+        android.util.Log.d("RemoteServicePromos", "Latitude: $latitude")
+        android.util.Log.d("RemoteServicePromos", "Longitude: $longitude")
+        android.util.Log.d("RemoteServicePromos", "Radius: $radius km")
+
         val response = promoApiService.getNearbyPromotions(latitude, longitude, radius)
+
+        android.util.Log.d("RemoteServicePromos", "Response Code: ${response.code()}")
+        android.util.Log.d("RemoteServicePromos", "Response Success: ${response.isSuccessful}")
+
         if (!response.isSuccessful) {
-            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+            val errorBody = response.errorBody()?.string().orEmpty()
+            android.util.Log.e("RemoteServicePromos", "Error Body: $errorBody")
+            throw Exception("Error ${response.code()}: $errorBody")
         }
-        return response.body() ?: emptyList()
+
+        val body = response.body() ?: emptyList()
+        android.util.Log.d("RemoteServicePromos", "Promotions found: ${body.size}")
+        body.forEach { promo ->
+            android.util.Log.d("RemoteServicePromos", "  - ${promo.title} (${promo.businessName}) at ${promo.distance}km")
+        }
+        android.util.Log.d("RemoteServicePromos", "==============================================")
+
+        return body
     }
 }

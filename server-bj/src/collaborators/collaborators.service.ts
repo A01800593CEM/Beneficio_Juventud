@@ -211,6 +211,10 @@ export class CollaboratorsService {
   ): Promise<any[]> {
     const userLocation: Coordinates = { latitude, longitude };
 
+    console.log('========== NEARBY COLLABORATORS DEBUG ==========');
+    console.log('User Location:', userLocation);
+    console.log('Search Radius:', radiusKm, 'km');
+
     // Obtener todos los colaboradores activos con sus sucursales
     const collaborators = await this.collaboratorsRepository
       .createQueryBuilder('collaborator')
@@ -221,27 +225,44 @@ export class CollaboratorsService {
       })
       .getMany();
 
+    console.log('Total active collaborators found:', collaborators.length);
+
     // Calcular distancias y filtrar por proximidad
     const collaboratorsWithDistance: any[] = [];
 
     for (const collaborator of collaborators) {
+      console.log('\n--- Processing Collaborator:', collaborator.businessName);
+
       // Obtener todas las sucursales con ubicación
       const branches = collaborator.branch || [];
+      console.log('Total branches:', branches.length);
+
       const branchesWithLocation = branches.filter(
         (b: any) => b.location !== null,
       );
+      console.log('Branches with location:', branchesWithLocation.length);
 
-      if (branchesWithLocation.length === 0) continue;
+      if (branchesWithLocation.length === 0) {
+        console.log('⚠️  No branches with location, skipping...');
+        continue;
+      }
 
       // Encontrar la sucursal más cercana
       let closestDistance = Infinity;
       let closestBranch = null;
 
       for (const branch of branchesWithLocation) {
-        const branchCoords = parseLocationString(branch.location);
-        if (!branchCoords) continue;
+        console.log(`  Branch: "${branch.name}" - Location raw: "${branch.location}"`);
 
+        const branchCoords = parseLocationString(branch.location);
+        if (!branchCoords) {
+          console.log(`  ❌ Failed to parse location for branch "${branch.name}"`);
+          continue;
+        }
+
+        console.log(`  ✓ Parsed coords: lat=${branchCoords.latitude}, lon=${branchCoords.longitude}`);
         const distance = calculateDistance(userLocation, branchCoords);
+        console.log(`  Distance: ${distance} km`);
 
         if (distance < closestDistance) {
           closestDistance = distance;
@@ -256,8 +277,11 @@ export class CollaboratorsService {
         }
       }
 
+      console.log(`Closest distance: ${closestDistance} km (limit: ${radiusKm} km)`);
+
       // Si la sucursal más cercana está dentro del radio, agregar el colaborador
       if (closestDistance <= radiusKm && closestBranch) {
+        console.log(`✅ ADDED to results (within ${radiusKm}km)`);
         collaboratorsWithDistance.push({
           cognitoId: collaborator.cognitoId,
           businessName: collaborator.businessName,
@@ -270,8 +294,14 @@ export class CollaboratorsService {
           closestBranch,
           totalBranches: branchesWithLocation.length,
         });
+      } else {
+        console.log(`❌ EXCLUDED (distance ${closestDistance} > ${radiusKm}km)`);
       }
     }
+
+    console.log('\n========== RESULTS ==========');
+    console.log('Total collaborators within radius:', collaboratorsWithDistance.length);
+    console.log('=====================================\n');
 
     // Ordenar por distancia (más cercano primero)
     collaboratorsWithDistance.sort((a, b) => a.distance - b.distance);
