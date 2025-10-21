@@ -130,4 +130,7 @@ object RemoteServicePromos {
 
         return body
     }
+
+    // Expose the service for direct API calls (like image upload)
+    fun getService(): PromoApiService = promoApiService
 }

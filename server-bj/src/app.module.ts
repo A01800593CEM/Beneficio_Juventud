@@ -19,6 +19,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ExpirationsModule } from './expirations/expirations.module';
 import { PlacesModule } from './places/places.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { UploadModule } from './upload/upload.module';
 
 
 @Module({
@@ -58,7 +59,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
     ScheduleModule.forRoot(),
     ExpirationsModule,
     PlacesModule,
-    AnalyticsModule
+    AnalyticsModule,
+    UploadModule
   ],
   controllers: [AppController],
   providers: [AppService],
