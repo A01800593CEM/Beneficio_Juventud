@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Booking } from './entities/booking.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
+import { BookStatus } from './enums/book-status.enum';
 
 @Injectable()
 export class BookingsService {
@@ -36,6 +37,11 @@ export class BookingsService {
 
     if (!booking) {
       throw new NotFoundException(`Booking with id ${id} not found`);
+    }
+
+    // Si se está cancelando la reserva, guardar la fecha de cancelación
+    if (updateBookingDto.bookStatus === BookStatus.CANCELLED && !booking.cancelledDate) {
+      booking.cancelledDate = new Date();
     }
 
     return this.bookingsRepository.save(booking);

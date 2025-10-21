@@ -416,13 +416,12 @@ fun PromoQR(
     }
 
     // Buscar booking cancelado para verificar cooldown
-    // Note: Backend doesn't track cancelledDate, so cooldown feature is disabled
     val cancelledBooking = remember(userBookings, promotionId) {
         val found = userBookings.find {
             it.promotionId == promotionId &&
             it.status == BookingStatus.CANCELLED
         }
-        Log.d(TAG, "Cancelled booking for promotion $promotionId: ${found?.bookingId}")
+        Log.d(TAG, "Cancelled booking for promotion $promotionId: ${found?.bookingId}, cancelledDate: ${found?.cancelledDate}")
         found
     }
 
@@ -454,10 +453,10 @@ fun PromoQR(
                 }
             }
 
-            // Cooldown feature disabled - backend doesn't track cancelledDate
-            // TODO: If cooldown is needed, backend must be updated to track cancellation timestamps
-            inCooldown = false
-            cooldownTime = Pair(0L, 0L)
+            // Verificar cooldown si hay una reserva cancelada
+            val cancelled = cancelledBooking?.cancelledDate
+            inCooldown = isInCooldown(cancelled)
+            cooldownTime = getTimeUntilCooldownEnd(cancelled)
 
             kotlinx.coroutines.delay(1000) // Actualizar cada segundo
         }
