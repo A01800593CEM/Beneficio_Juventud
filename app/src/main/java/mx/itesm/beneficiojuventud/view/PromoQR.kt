@@ -59,6 +59,8 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
+import mx.itesm.beneficiojuventud.model.bookings.BookingStatus
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.ui.graphics.ImageBitmap
@@ -214,7 +216,19 @@ private fun buildQrPayload(
     val ts = System.currentTimeMillis()
     val nonce = UUID.randomUUID().toString().substring(0, 8)
     val lpu = limitPerUser ?: -1
-    return "bj|v=$version|pid=$promotionId|uid=$userId|lpu=$lpu|ts=$ts|n=$nonce"
+    val payload = "bj|v=$version|pid=$promotionId|uid=$userId|lpu=$lpu|ts=$ts|n=$nonce"
+
+    Log.d(TAG, "========== QR GENERATION DEBUG ==========")
+    Log.d(TAG, "promotionId: $promotionId")
+    Log.d(TAG, "userId: $userId")
+    Log.d(TAG, "limitPerUser: $limitPerUser")
+    Log.d(TAG, "version: $version")
+    Log.d(TAG, "timestamp: $ts")
+    Log.d(TAG, "nonce: $nonce")
+    Log.d(TAG, "QR Payload: $payload")
+    Log.d(TAG, "=========================================")
+
+    return payload
 }
 
 private fun bitMatrixToBitmap(matrix: BitMatrix): Bitmap {
@@ -256,7 +270,7 @@ fun PromoQR(
     cognitoId: String,
     modifier: Modifier = Modifier,
     viewModel: PromoViewModel = viewModel(),
-    userViewModel: UserViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel(factory = UserViewModelFactory(LocalContext.current)),
     bookingViewModel: BookingViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Coupons) }
@@ -266,13 +280,13 @@ fun PromoQR(
     val promo by viewModel.promoState.collectAsState()
     val favPromos by userViewModel.favoritePromotions.collectAsState()
     val userError by userViewModel.error.collectAsState()
-    val userBookings by userViewModel.userBookings.collectAsState()
 
     // Booking states
     val bookingSuccess by bookingViewModel.bookingSuccess.collectAsState()
     val bookingError by bookingViewModel.error.collectAsState()
     val bookingLoading by bookingViewModel.isLoading.collectAsState()
     val bookingMessage by bookingViewModel.message.collectAsState()
+    val userBookings by bookingViewModel.bookings.collectAsState()
 
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -292,13 +306,16 @@ fun PromoQR(
         }
     }
 
-    // Cargar favoritos y reservaciones del usuario
+    // Cargar favoritos del usuario
     LaunchedEffect(cognitoId) {
-        try {
-            userViewModel.getFavoritePromotions(cognitoId)
-            userViewModel.getUserBookings(cognitoId)
-        } catch (_: Exception) {}
+        try { userViewModel.getFavoritePromotions(cognitoId) } catch (_: Exception) {}
     }
+
+    // Cargar reservas del usuario
+    LaunchedEffect(cognitoId) {
+        try { bookingViewModel.loadUserBookings(cognitoId) } catch (_: Exception) {}
+    }
+
     LaunchedEffect(userError) {
         userError?.let { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
     }
@@ -306,9 +323,6 @@ fun PromoQR(
     // Manejar éxito de reservación
     LaunchedEffect(bookingSuccess) {
         if (bookingSuccess) {
-            // Recargar reservaciones después de crear/cancelar
-            userViewModel.getUserBookings(cognitoId)
-
             // Navegar a pantalla de éxito
             nav.navigate(
                 Screens.Status.createRoute(
@@ -336,13 +350,20 @@ fun PromoQR(
         }
     }
 
-    // Mostrar mensajes de reservación
+    // Mostrar mensajes de reservación y recargar bookings
     LaunchedEffect(bookingMessage) {
         bookingMessage?.let { msg ->
             scope.launch {
                 snackbarHostState.showSnackbar(msg)
             }
             bookingViewModel.clearMessage()
+
+            // Recargar bookings después de cancelación
+            if (msg.contains("cancelada", ignoreCase = true)) {
+                Log.d(TAG, "Recargando bookings después de cancelación")
+                kotlinx.coroutines.delay(500) // Pequeña espera para asegurar que el DB se actualizó
+                bookingViewModel.loadUserBookings(cognitoId)
+            }
         }
     }
 
@@ -370,6 +391,80 @@ fun PromoQR(
             else userViewModel.unfavoritePromotion(promotionId, cognitoId)
             userViewModel.refreshFavorites(cognitoId)
         } catch (_: Exception) {}
+    }
+
+    // Log de todos los bookings para debug
+    LaunchedEffect(userBookings) {
+        Log.d(TAG, "Total userBookings: ${userBookings.size}")
+        userBookings.forEach { booking ->
+            Log.d(TAG, "Booking: id=${booking.bookingId}, promotionId=${booking.promotionId}, status=${booking.status}")
+        }
+    }
+
+    // Verificar si la promoción está reservada (solo bookings activos)
+    val currentBooking = remember(userBookings, promotionId) {
+        val found = userBookings.find {
+            it.promotionId == promotionId &&
+            it.status != BookingStatus.CANCELLED
+        }
+        Log.d(TAG, "Current booking for promotion $promotionId: ${found?.bookingId}")
+        found
+    }
+
+    // Buscar booking cancelado para verificar cooldown
+    // Note: Backend doesn't track cancelledDate, so cooldown feature is disabled
+    val cancelledBooking = remember(userBookings, promotionId) {
+        val found = userBookings.find {
+            it.promotionId == promotionId &&
+            it.status == BookingStatus.CANCELLED
+        }
+        Log.d(TAG, "Cancelled booking for promotion $promotionId: ${found?.bookingId}")
+        found
+    }
+
+    // Estado de la reserva con expiración
+    val bookingExpired = remember(currentBooking) {
+        currentBooking?.let { isBookingExpired(it.bookingDate) } ?: false
+    }
+
+    val isReserved = currentBooking != null && !bookingExpired
+
+    // Estados mutables para actualización en tiempo real
+    var timeRemaining by remember { mutableStateOf(Pair(0L, 0L)) }
+    var inCooldown by remember { mutableStateOf(false) }
+    var cooldownTime by remember { mutableStateOf(Pair(0L, 0L)) }
+
+    // Actualizar contadores cada segundo
+    LaunchedEffect(currentBooking, cancelledBooking) {
+        while (true) {
+            // Actualizar tiempo restante de reserva
+            val newTimeRemaining = currentBooking?.let { getTimeUntilExpiration(it.bookingDate) } ?: Pair(0L, 0L)
+            timeRemaining = newTimeRemaining
+
+            // Auto-cancelar si el tiempo llegó a 0 y aún existe el booking
+            if (currentBooking != null && newTimeRemaining.first == 0L && newTimeRemaining.second == 0L) {
+                val expired = isBookingExpired(currentBooking.bookingDate)
+                if (expired) {
+                    Log.d(TAG, "Timer llegó a 0, auto-cancelando booking ${currentBooking.bookingId}")
+                    bookingViewModel.cancelBooking(currentBooking)
+                }
+            }
+
+            // Cooldown feature disabled - backend doesn't track cancelledDate
+            // TODO: If cooldown is needed, backend must be updated to track cancellation timestamps
+            inCooldown = false
+            cooldownTime = Pair(0L, 0L)
+
+            kotlinx.coroutines.delay(1000) // Actualizar cada segundo
+        }
+    }
+
+    // Auto-cancelar reservas expiradas cuando se abre la pantalla
+    LaunchedEffect(currentBooking, bookingExpired) {
+        if (currentBooking != null && bookingExpired) {
+            Log.d(TAG, "Reserva expirada detectada, cancelando automáticamente: ${currentBooking.bookingId}")
+            bookingViewModel.cancelBooking(currentBooking)
+        }
     }
 
     // Theme
@@ -465,7 +560,7 @@ fun PromoQR(
                                         }
                                 )
 
-                                // NUEVO: chip “Stock limitado” cuando es bookable
+                                // NUEVO: chip "Stock limitado" cuando es bookable
                                 if (detail.isBookable) {
                                     Box(
                                         modifier = Modifier
@@ -541,7 +636,7 @@ fun PromoQR(
                     item {
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            text = detail.stockLabel,            // ahora muestra “Usos disponibles” si no es bookable
+                            text = detail.stockLabel,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFF3C3C3C),
@@ -561,30 +656,60 @@ fun PromoQR(
                         if (detail.isBookable) {
                             Spacer(Modifier.height(8.dp))
 
-                            // Verificar si la promoción ya está reservada
-                            val currentBooking = remember(userBookings, promotionId) {
-                                userBookings.find { it.promotionId == promotionId }
-                            }
-                            val isReserved = currentBooking != null
-
                             // Botón con estado de carga
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
                             ) {
+                                val redGradient = Brush.linearGradient(
+                                    listOf(Color(0xFFDC2626), Color(0xFFEF4444))
+                                )
+
+                                val greyGradient = Brush.linearGradient(
+                                    listOf(Color(0xFF9CA3AF), Color(0xFF6B7280))
+                                )
+
                                 MainButton(
                                     text = when {
-                                        bookingLoading -> if (isReserved) "Cancelando..." else "Reservando..."
-                                        isReserved -> "Cancelar Reservación"
+                                        bookingLoading && !isReserved -> "Reservando..."
+                                        bookingLoading && isReserved -> "Cancelando..."
+                                        inCooldown -> {
+                                            val (m, s) = cooldownTime
+                                            "Cooldown (${formatTimeRemaining(m, s)})"
+                                        }
+                                        bookingExpired -> "Reserva Expirada"
+                                        isReserved -> {
+                                            val (m, s) = timeRemaining
+                                            if (m > 0 || s > 0) {
+                                                "Cancelar (${formatTimeRemaining(m, s)})"
+                                            } else {
+                                                "Cancelar Reservación"
+                                            }
+                                        }
                                         else -> "Reservar Cupón"
                                     },
                                     modifier = Modifier.fillMaxWidth(),
+                                    backgroundGradient = when {
+                                        inCooldown || bookingExpired -> greyGradient
+                                        isReserved -> redGradient
+                                        else -> null
+                                    },
+                                    enabled = !bookingExpired && !inCooldown && !bookingLoading,
                                     onClick = {
                                         if (isReserved) {
-                                            // Cancelar reservación
+                                            // Cancelar reservación (pero mantener en favoritos)
                                             currentBooking?.let { booking ->
                                                 bookingViewModel.cancelBooking(booking)
+                                            }
+                                        } else if (inCooldown) {
+                                            val (h, m) = cooldownTime
+                                            val timeMsg = formatTimeRemaining(h, m)
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    message = "Debes esperar $timeMsg antes de volver a reservar",
+                                                    duration = SnackbarDuration.Short
+                                                )
                                             }
                                         } else {
                                             // Verificar que hay stock disponible
@@ -597,6 +722,17 @@ fun PromoQR(
                                                     )
                                                 }
                                                 return@MainButton
+                                            }
+
+                                            // Agregar a favoritos si no está ya
+                                            if (!isFavoriteLocal) {
+                                                try {
+                                                    userViewModel.favoritePromotion(promotionId, cognitoId)
+                                                    isFavoriteLocal = true
+                                                    userViewModel.refreshFavorites(cognitoId)
+                                                } catch (e: Exception) {
+                                                    Log.e(TAG, "Error al agregar a favoritos", e)
+                                                }
                                             }
 
                                             // Reservar cupón
@@ -708,9 +844,7 @@ fun PromoQR(
 @Composable
 private fun InfoCardApi(detail: PromoDetailUi, texts: PromoTextColors) {
     Card(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .fillMaxWidth(),
+        modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F7F7))
     ) {
@@ -723,7 +857,7 @@ private fun InfoCardApi(detail: PromoDetailUi, texts: PromoTextColors) {
             )
             Text(
                 text = detail.description,
-                color = Color(0xFF616161),
+                color = texts.bodyColor,
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
                 modifier = Modifier.padding(top = 4.dp)
@@ -735,23 +869,15 @@ private fun InfoCardApi(detail: PromoDetailUi, texts: PromoTextColors) {
                 color = Color(0xFF454545),
                 fontSize = 14.sp
             )
-            // 👇 Campos fijos (no dependen del theme)
             Text(
                 text = "Vigencia: ${detail.validUntil}",
-                color = Color(0xFF616161),
+                color = texts.subtitleColor,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 4.dp)
             )
-            // ⭐ NUEVO: Usos diarios
-            Text(
-                text = "Usos diarios: ${detail.dailyLimitPerUser ?: "—"}",
-                color = Color(0xFF616161),
-                fontSize = 12.sp,
-                modifier = Modifier.padding(top = 2.dp)
-            )
             Text(
                 text = detail.terms,
-                color = Color(0xFF616161),
+                color = texts.bodyColor,
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
                 modifier = Modifier.padding(top = 4.dp)
@@ -772,9 +898,7 @@ private fun QRCardInner(
             elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
         ) {
             Box(
-                modifier = Modifier
-                    .size(220.dp)
-                    .padding(16.dp),
+                modifier = Modifier.size(220.dp).padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (qrBitmap != null) {
@@ -791,9 +915,7 @@ private fun QRCardInner(
             fontSize = 12.sp,
             lineHeight = 16.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier
-                .widthIn(max = 340.dp)
-                .padding(horizontal = 8.dp),
+            modifier = Modifier.widthIn(max = 340.dp).padding(horizontal = 8.dp),
             maxLines = 3,
             overflow = TextOverflow.Ellipsis
         )
@@ -827,6 +949,95 @@ private fun RedeemedCardInner() {
         Text("¡Cupón Canjeado!", color = Color(0xFF22C55E), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
         Spacer(Modifier.height(4.dp))
         Text("Gracias por usar nuestros servicios", color = Color.Gray, fontSize = 12.sp)
+    }
+}
+
+// ---------- Helpers de Expiración y Cooldown ----------
+
+/**
+ * Verifica si una reserva ha expirado (1 minuto desde bookingDate para pruebas)
+ */
+private fun isBookingExpired(bookingDate: String?): Boolean {
+    if (bookingDate.isNullOrBlank()) return false
+    return try {
+        val booking = parseDate(bookingDate) ?: return false
+        val now = Date()
+        val diffMillis = now.time - booking.time
+        val minute1InMillis = 1L * 60 * 1000  // 1 minuto para pruebas
+        diffMillis >= minute1InMillis
+    } catch (e: Exception) {
+        false
+    }
+}
+
+/**
+ * Calcula el tiempo restante hasta la expiración
+ * Retorna pair de (minutos, segundos) para pruebas
+ */
+private fun getTimeUntilExpiration(bookingDate: String?): Pair<Long, Long> {
+    if (bookingDate.isNullOrBlank()) return Pair(0L, 0L)
+    return try {
+        val booking = parseDate(bookingDate) ?: return Pair(0L, 0L)
+        val now = Date()
+        val diffMillis = now.time - booking.time
+        val minute1InMillis = 1L * 60 * 1000  // 1 minuto para pruebas
+        val remainingMillis = maxOf(0L, minute1InMillis - diffMillis)
+
+        val minutes = remainingMillis / (1000 * 60)
+        val seconds = (remainingMillis % (1000 * 60)) / 1000
+
+        Pair(minutes, seconds)
+    } catch (e: Exception) {
+        Pair(0L, 0L)
+    }
+}
+
+/**
+ * Formatea el tiempo restante en formato legible "Xm Ys" para pruebas
+ */
+private fun formatTimeRemaining(minutes: Long, seconds: Long): String {
+    return when {
+        minutes > 0 && seconds > 0 -> "${minutes}m ${seconds}s"
+        minutes > 0 -> "${minutes}m"
+        seconds > 0 -> "${seconds}s"
+        else -> "Expirando..."
+    }
+}
+
+/**
+ * Verifica si una reserva cancelada está en período de cooldown (1 minuto desde cancelación para pruebas)
+ */
+private fun isInCooldown(cancelledDate: String?): Boolean {
+    if (cancelledDate.isNullOrBlank()) return false
+    return try {
+        val cancelled = parseDate(cancelledDate) ?: return false
+        val now = Date()
+        val diffMillis = now.time - cancelled.time
+        val minute1InMillis = 1L * 60 * 1000  // 1 minuto cooldown para pruebas
+        diffMillis < minute1InMillis
+    } catch (e: Exception) {
+        false
+    }
+}
+
+/**
+ * Calcula el tiempo restante de cooldown en formato (minutos, segundos) para pruebas
+ */
+private fun getTimeUntilCooldownEnd(cancelledDate: String?): Pair<Long, Long> {
+    if (cancelledDate.isNullOrBlank()) return Pair(0L, 0L)
+    return try {
+        val cancelled = parseDate(cancelledDate) ?: return Pair(0L, 0L)
+        val now = Date()
+        val diffMillis = now.time - cancelled.time
+        val minute1InMillis = 1L * 60 * 1000  // 1 minuto para pruebas
+        val remainingMillis = maxOf(0L, minute1InMillis - diffMillis)
+
+        val minutes = remainingMillis / (1000 * 60)
+        val seconds = (remainingMillis % (1000 * 60)) / 1000
+
+        Pair(minutes, seconds)
+    } catch (e: Exception) {
+        Pair(0L, 0L)
     }
 }
 

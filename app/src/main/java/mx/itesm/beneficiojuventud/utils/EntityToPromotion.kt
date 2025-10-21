@@ -15,6 +15,7 @@ fun PromotionWithCategories.toPromotion(): Promotions {
         description = this.promotion.description,
         // The `image` field from the entity (ByteArray?) is not mapped back to the Promotions model,
         // which is common if the UI model uses an image URL or handles loading differently.
+        imageUrl = this.promotion.imageUrl,
         initialDate = this.promotion.initialDate,
         endDate = this.promotion.endDate,
         promotionType = this.promotion.promotionType,

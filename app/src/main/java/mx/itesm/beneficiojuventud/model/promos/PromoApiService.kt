@@ -7,6 +7,7 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface PromoApiService {
 
@@ -19,12 +20,19 @@ interface PromoApiService {
     suspend fun getPromotionByCategory(@Path("category") category: String): Response<List<Promotions>>
 
     @POST("promotions")
-    suspend fun createPromotion(@Body promotion: Promotions): Response<Promotions>
+    suspend fun createPromotion(@Body request: CreatePromotionRequest): Response<Promotions>
 
     @PATCH("promotions/{id}")
     suspend fun updatePromotion(@Path("id") id: Int, @Body update: Promotions) : Response<Promotions>
 
     @DELETE("promotions/{id}")
     suspend fun deletePromotion(@Path("id") id: Int): Response<Unit>
+
+    @GET("promotions/nearby/search")
+    suspend fun getNearbyPromotions(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("radius") radius: Double? = 3.0
+    ): Response<List<NearbyPromotion>>
 
 }

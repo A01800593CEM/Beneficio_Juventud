@@ -37,8 +37,9 @@ object RemoteServiceBooking {
         return response.body() ?: throw Exception("Respuesta vacía al al crear reservacion")
     }
 
-    suspend fun updateBooking(bookingId: Int): Booking {
-        val response = bookingApiService.updateBooking(bookingId)
+    suspend fun updateBooking(bookingId: Int, status: BookingStatus): Booking {
+        val updateData = UpdateBookingRequest(status = status)
+        val response = bookingApiService.updateBooking(bookingId, updateData)
         if (!response.isSuccessful) {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
         }
@@ -58,5 +59,21 @@ object RemoteServiceBooking {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
         }
         return response.body() ?: throw Exception("Respuesta vacía al obtener reservacion")
+    }
+
+    suspend fun getBookingById(bookingId: Int): Booking {
+        return getOneBooking(bookingId)
+    }
+
+    suspend fun getReservedPromotions(userId: String): List<mx.itesm.beneficiojuventud.model.promos.Promotions> {
+        val response = bookingApiService.getReservedPromotions(userId)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        return response.body() ?: emptyList()
+    }
+
+    suspend fun cancelBooking(bookingId: Int): Booking {
+        return updateBooking(bookingId, BookingStatus.CANCELLED)
     }
 }

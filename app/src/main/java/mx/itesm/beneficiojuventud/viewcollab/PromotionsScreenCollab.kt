@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.components.MainButton
@@ -51,6 +52,12 @@ fun PromotionsScreenCollab(
 
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    // Estado para el modal de edición
+    var showEditSheet by remember { mutableStateOf(false) }
+    var selectedPromoForEdit by remember { mutableStateOf<Promotions?>(null) }
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(collabId) {
         runCatching {
@@ -124,7 +131,11 @@ fun PromotionsScreenCollab(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(150.dp),
-                                    onClick = { promotion.promotionId?.let(onEditPromotion) }
+                                    onClick = {
+                                        selectedPromoForEdit = promotion
+                                        showEditSheet = true
+                                    },
+                                    showStateTag = true  // Mostrar tag de estado para colaboradores
                                 )
                             }
                         }
@@ -145,6 +156,35 @@ fun PromotionsScreenCollab(
                     Spacer(Modifier.height(8.dp))
                 }
             }
+        }
+    }
+
+    // Modal para editar promoción
+    if (showEditSheet && selectedPromoForEdit != null) {
+        ModalBottomSheet(
+            onDismissRequest = {
+                showEditSheet = false
+                selectedPromoForEdit = null
+            },
+            sheetState = sheetState
+        ) {
+            EditPromotionSheet(
+                promotion = selectedPromoForEdit!!,
+                onClose = {
+                    scope.launch {
+                        sheetState.hide()
+                    }.invokeOnCompletion {
+                        if (!sheetState.isVisible) {
+                            showEditSheet = false
+                            selectedPromoForEdit = null
+                            // Recargar promociones
+                            scope.launch {
+                                promoViewModel.getAllPromotions()
+                            }
+                        }
+                    }
+                }
+            )
         }
     }
 }

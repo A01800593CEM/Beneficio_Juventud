@@ -32,7 +32,8 @@ data class AnalyticsChart(
 
 data class ChartEntry(
     val x: Int,
-    val y: Int
+    val y: Int,
+    val xLabel: String? = null  // Optional label for x-axis (e.g., dates)
 )
 
 data class PromotionStatItem(

@@ -33,9 +33,12 @@ import kotlinx.coroutines.delay
 import mx.itesm.beneficiojuventud.model.RoomDB.LocalDatabase
 import mx.itesm.beneficiojuventud.model.webhook.PromotionData
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewcollab.QRScannerScreen
 import mx.itesm.beneficiojuventud.viewcollab.EditProfileCollab
 import mx.itesm.beneficiojuventud.viewcollab.GeneratePromotionScreen
+import mx.itesm.beneficiojuventud.viewcollab.BranchManagementScreen
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
@@ -45,21 +48,23 @@ import mx.itesm.beneficiojuventud.viewcollab.RegisterCollab
 import mx.itesm.beneficiojuventud.viewcollab.StatsScreen
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewcollab.PromotionsScreenCollab
+import mx.itesm.beneficiojuventud.viewmodel.StatsViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val localDatabase = Room.databaseBuilder(
-            applicationContext,
-            LocalDatabase::class.java,
-            "beneficio-joven-db"
-        ).build()
+        val db = LocalDatabase.getDatabase(this)
+        val promotionDao = db.promotionDao()
+        val categoryDao = db.categoryDao()
+
         enableEdgeToEdge()
-        solicitarPermiso()
-        obtenerToken()
+        // Los permisos y token ahora se manejan en PostLoginPermissions
         setContent {
             BeneficioJuventudTheme {
-                AppContent()
+                AppContent(
+                    promotionDao = promotionDao,
+                    categoryDao = categoryDao
+                )
             }
         }
     }
@@ -100,13 +105,27 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppContent(
-    userViewModel: UserViewModel = viewModel(),
-    collabViewModel: CollabViewModel = viewModel(),
-    categoryViewModel: CategoryViewModel = viewModel(),
-    promoViewModel: PromoViewModel = viewModel()
+    promotionDao: mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionDao,
+    categoryDao: mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryDao
 ) {
     val context = LocalContext.current
+
+    // Create repository with the DAO
+    val repository = remember(promotionDao) {
+        mx.itesm.beneficiojuventud.model.SavedCouponRepository(promotionDao)
+    }
+
+    // Create ViewModels
     val authViewModel = remember { AuthViewModel(context) }
+    val userViewModel = remember(repository) {
+        UserViewModel(repository = repository)
+    }
+    val collabViewModel: CollabViewModel = viewModel()
+    val categoryViewModel: CategoryViewModel = viewModel()
+    val promoViewModel: PromoViewModel = viewModel()
+    val bookingViewModel: BookingViewModel = viewModel()
+    val statsViewModel: StatsViewModel = viewModel()
+
     val nav = rememberNavController()
     AppNav(
         nav = nav,
@@ -114,7 +133,9 @@ private fun AppContent(
         userViewModel = userViewModel,
         collabViewModel = collabViewModel,
         categoryViewModel = categoryViewModel,
-        promoViewModel = promoViewModel
+        promoViewModel = promoViewModel,
+        bookingViewModel = bookingViewModel,
+        statsViewModel = statsViewModel
     )
 }
 
@@ -125,14 +146,13 @@ private fun AppNav(
     userViewModel: UserViewModel,
     collabViewModel: CollabViewModel,
     categoryViewModel: CategoryViewModel,
-    promoViewModel: PromoViewModel
+    promoViewModel: PromoViewModel,
+    bookingViewModel: BookingViewModel,
+    statsViewModel: StatsViewModel
 ) {
     val appState by authViewModel.appState.collectAsState()
     val currentUserId by authViewModel.currentUserId.collectAsState()
     val sessionKey by authViewModel.sessionKey.collectAsState()
-
-    val userState by userViewModel.userState.collectAsState()
-    val isLoading by userViewModel.isLoading.collectAsState()
 
     LaunchedEffect(appState.isAuthenticated, sessionKey) {
         if (appState.isAuthenticated) authViewModel.getCurrentUser()
@@ -198,6 +218,16 @@ private fun AppNav(
             NewPassword(nav, emailArg = email, codeArg = code)
         }
 
+        // --- Post Login Permissions ---
+        composable(Screens.PostLoginPermissions.route) {
+            PostLoginPermissionsWithDestination(
+                nav = nav,
+                authViewModel = authViewModel,
+                userViewModel = userViewModel,
+                collabViewModel = collabViewModel
+            )
+        }
+
         // --- Onboarding ---
         composable(Screens.Onboarding.route) { Onboarding(nav) }
         composable(Screens.OnboardingCategories.route) {
@@ -216,7 +246,21 @@ private fun AppNav(
         composable(Screens.EditProfile.route) {
             EditProfile(nav = nav, authViewModel = authViewModel, userViewModel = userViewModel)
         }
-        composable(Screens.History.route) { History(nav) }
+        composable(Screens.History.route) {
+            val cognitoId by authViewModel.currentUserId.collectAsState()
+            if (cognitoId.isNullOrBlank()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                History(
+                    nav = nav,
+                    userId = cognitoId!!,
+                    userViewModel = userViewModel,
+                    bookingVm = bookingViewModel
+                )
+            }
+        }
         composable(Screens.Settings.route) { Settings(nav) }
         composable(Screens.Help.route) { Help(nav) }
         composable(Screens.Favorites.route) { Favorites(nav, userViewModel = userViewModel) }
@@ -261,7 +305,14 @@ private fun AppNav(
             val promotionId = backStackEntry.arguments?.getInt("promotionId") ?: return@composable
             val cognitoId by authViewModel.currentUserId.collectAsState()
             if (!cognitoId.isNullOrBlank()) {
-                PromoQR(nav, promotionId, cognitoId!!)
+                PromoQR(
+                    nav = nav,
+                    promotionId = promotionId,
+                    cognitoId = cognitoId!!,
+                    bookingViewModel = bookingViewModel,
+                    viewModel = promoViewModel,
+                    userViewModel = userViewModel
+                )
             } else {
                 Startup()
             }
@@ -282,19 +333,27 @@ private fun AppNav(
                 collabViewModel = collabViewModel
             )
         }
-        composable(Screens.ProfileCollab.route) { ProfileCollab(nav = nav, collabViewModel = collabViewModel) }
-        composable(Screens.QrScanner.route) {
-            QrScannerScreen(
-                onClose = { nav.popBackStack() },
-                onResult = { text ->
-                    nav.previousBackStackEntry?.savedStateHandle?.set("qr_result", text)
-                    nav.popBackStack()
-                }
+        composable(Screens.ProfileCollab.route) { ProfileCollab(nav, authViewModel, collabViewModel) }
+        composable(
+            route = Screens.QrScanner.route,
+            arguments = Screens.QrScanner.arguments
+        ) { backStackEntry ->
+            val branchId = backStackEntry.arguments?.getInt("branchId") ?: 1
+            QRScannerScreen(
+                nav = nav,
+                branchId = branchId
             )
         }
         composable(Screens.StatsScreen.route) {
             val collabId by authViewModel.currentUserId.collectAsState()
-            StatsScreen(nav, collabId!!) }
+            if (!collabId.isNullOrBlank()) {
+                StatsScreen(nav, collabId!!, statsViewModel)
+            } else {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+        }
         composable(Screens.PromotionsScreen.route) {
             val collabId by authViewModel.currentUserId.collectAsState()
             PromotionsScreenCollab(
@@ -306,6 +365,9 @@ private fun AppNav(
             )
         }
         composable(Screens.EditProfileCollab.route) { EditProfileCollab(nav) }
+        composable(Screens.BranchManagement.route) {
+            BranchManagementScreen(nav = nav)
+        }
 
         // Status Screen
         composable(
@@ -416,3 +478,53 @@ private fun StartupScreen(
 
 private fun parsePromotionDataFromJson(json: String): mx.itesm.beneficiojuventud.model.webhook.PromotionData =
     Gson().fromJson(json, PromotionData::class.java)
+
+/**
+ * Wrapper que determina el destino correcto basado en el tipo de usuario
+ * (normal o colaborador) después de solicitar permisos post-login.
+ */
+@Composable
+private fun PostLoginPermissionsWithDestination(
+    nav: NavHostController,
+    authViewModel: AuthViewModel,
+    userViewModel: UserViewModel,
+    collabViewModel: CollabViewModel
+) {
+    val currentUserId by authViewModel.currentUserId.collectAsState()
+    val userState by userViewModel.userState.collectAsState()
+    val collabState by collabViewModel.collabState.collectAsState()
+    val isLoadingUser by userViewModel.isLoading.collectAsState()
+
+    var hasLoadedProfiles by remember { mutableStateOf(false) }
+
+    // Cargar perfiles de usuario y colaborador cuando tenemos el ID
+    LaunchedEffect(currentUserId) {
+        val id = currentUserId
+        if (!id.isNullOrBlank() && !hasLoadedProfiles) {
+            userViewModel.clearUser()
+            collabViewModel.clearCollaborator()
+            userViewModel.getUserById(id)
+            try { collabViewModel.getCollaboratorById(id) } catch (_: Exception) {}
+            hasLoadedProfiles = true
+        }
+    }
+
+    // Determinar el destino basado en el tipo de usuario
+    val destinationRoute = remember(userState.cognitoId, collabState.cognitoId) {
+        when {
+            !collabState.cognitoId.isNullOrBlank() -> Screens.HomeScreenCollab.route
+            !userState.cognitoId.isNullOrBlank() -> Screens.Home.route
+            else -> Screens.Home.route // Fallback
+        }
+    }
+
+    // Mostrar splash mientras se carga
+    if (!hasLoadedProfiles || isLoadingUser) {
+        Startup(Modifier.fillMaxSize())
+    } else {
+        PostLoginPermissions(
+            nav = nav,
+            destinationRoute = destinationRoute
+        )
+    }
+}

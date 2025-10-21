@@ -47,9 +47,40 @@ object RemoteServicePromos {
     }
 
     suspend fun createPromotion(promo: Promotions): Promotions {
-        val response = promoApiService.createPromotion(promo)
+        // Convert Promotions to CreatePromotionRequest (with category names as strings)
+        val request = promo.toCreateRequest()
+
+        // Log detallado para debug
+        android.util.Log.d("RemoteServicePromos", "=== Creating Promotion ===")
+        android.util.Log.d("RemoteServicePromos", "collaboratorId: ${request.collaboratorId}")
+        android.util.Log.d("RemoteServicePromos", "title: ${request.title}")
+        android.util.Log.d("RemoteServicePromos", "description: ${request.description}")
+        android.util.Log.d("RemoteServicePromos", "imageUrl: ${request.imageUrl}")
+        android.util.Log.d("RemoteServicePromos", "initialDate: ${request.initialDate}")
+        android.util.Log.d("RemoteServicePromos", "endDate: ${request.endDate}")
+        android.util.Log.d("RemoteServicePromos", "promotionType: ${request.promotionType}")
+        android.util.Log.d("RemoteServicePromos", "promotionString: ${request.promotionString}")
+        android.util.Log.d("RemoteServicePromos", "totalStock: ${request.totalStock}")
+        android.util.Log.d("RemoteServicePromos", "availableStock: ${request.availableStock}")
+        android.util.Log.d("RemoteServicePromos", "limitPerUser: ${request.limitPerUser}")
+        android.util.Log.d("RemoteServicePromos", "dailyLimitPerUser: ${request.dailyLimitPerUser}")
+        android.util.Log.d("RemoteServicePromos", "promotionState: ${request.promotionState}")
+        android.util.Log.d("RemoteServicePromos", "theme: ${request.theme}")
+        android.util.Log.d("RemoteServicePromos", "isBookable: ${request.isBookable}")
+        android.util.Log.d("RemoteServicePromos", "categoryIds: ${request.categoryIds}")
+        android.util.Log.d("RemoteServicePromos", "branchIds: ${request.branchIds}")
+        // Serializar a JSON para ver qué se envía
+        val jsonBody = gson.toJson(request)
+        android.util.Log.d("RemoteServicePromos", "JSON Body: $jsonBody")
+
+        val response = promoApiService.createPromotion(request)
+
+        android.util.Log.d("RemoteServicePromos", "Response code: ${response.code()}")
+
         if (!response.isSuccessful) {
-            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+            val errorBody = response.errorBody()?.string().orEmpty()
+            android.util.Log.e("RemoteServicePromos", "Error body: $errorBody")
+            throw Exception("Error ${response.code()}: $errorBody")
         }
         return response.body() ?: throw Exception("Respuesta vacía al crear la promoción")
     }
@@ -67,5 +98,17 @@ object RemoteServicePromos {
         if (!response.isSuccessful) {
             throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
         }
+    }
+
+    suspend fun getNearbyPromotions(
+        latitude: Double,
+        longitude: Double,
+        radius: Double = 3.0
+    ): List<NearbyPromotion> {
+        val response = promoApiService.getNearbyPromotions(latitude, longitude, radius)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        return response.body() ?: emptyList()
     }
 }

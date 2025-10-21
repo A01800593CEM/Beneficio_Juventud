@@ -13,6 +13,7 @@ data class PromotionEntity(
     val title: String?,
     val description: String?,
     @ColumnInfo(typeAffinity = ColumnInfo.Companion.BLOB) val image: ByteArray?,
+    val imageUrl: String?,
     val initialDate: String?,
     val endDate: String?,
     val promotionType: PromotionType?,

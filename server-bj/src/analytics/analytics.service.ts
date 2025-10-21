@@ -493,7 +493,7 @@ export class AnalyticsService {
       .addSelect('COUNT(redeem.usedId)', 'redemptionCount')
       .groupBy('promo.promotionId')
       .addGroupBy('promo.title')
-      .orderBy('redemptionCount', 'DESC')
+      .orderBy('"redemptionCount"', 'DESC')
       .limit(5)
       .getRawMany();
 

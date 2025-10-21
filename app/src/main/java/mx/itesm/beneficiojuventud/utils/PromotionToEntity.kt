@@ -12,6 +12,7 @@ fun Promotions.toEntity(isReserved: Boolean = false) : PromotionEntity {
         title = this.title,
         description = this.description,
         image = null,
+        imageUrl = this.imageUrl,
         initialDate = this.initialDate,
         endDate = this.endDate,
         promotionType = this.promotionType,

@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.model.bookings
 
+import mx.itesm.beneficiojuventud.model.promos.Promotions
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -22,9 +23,12 @@ interface BookingApiService {
     suspend fun getOneBooking(@Path("bookingId") bookingId: Int): Response<Booking>
 
     @PATCH("users/bookings/{bookingId}")
-    suspend fun updateBooking(@Path("bookingId") bookingId: Int): Response<Booking>
+    suspend fun updateBooking(@Path("bookingId") bookingId: Int, @Body updateData: UpdateBookingRequest): Response<Booking>
 
     @DELETE("users/bookings/{bookingId}")
     suspend fun deleteBooking(@Path("bookingId") bookingId: Int): Response<Unit>
+
+    @GET("users/bookings/reserved/{userId}")
+    suspend fun getReservedPromotions(@Path("userId") userId: String): Response<List<Promotions>>
 
 }

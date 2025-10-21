@@ -7,6 +7,7 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface CollabApiService {
 
@@ -27,4 +28,11 @@ interface CollabApiService {
 
     @GET("collaborators/email-exists/{email}")
     suspend fun emailExists(@Path("email") email: String): Response<Boolean>
+
+    @GET("collaborators/nearby/search")
+    suspend fun getNearbyCollaborators(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("radius") radius: Double? = 3.0
+    ): Response<List<NearbyCollaborator>>
 }

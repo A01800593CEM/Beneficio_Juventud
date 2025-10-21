@@ -7,6 +7,7 @@ import { BookingsModule } from 'src/bookings/bookings.module';
 import { CategoriesModule } from 'src/categories/categories.module';
 import { NotificationsModule} from 'src/notifications/notifications.module';
 import { UsersModule } from 'src/users/users.module';
+import { Branch } from 'src/branch/entities/branch.entity';
 
 /**
  * Promotions module responsible for handling all promotion-related functionality.
@@ -31,7 +32,7 @@ import { UsersModule } from 'src/users/users.module';
   controllers: [PromotionsController],
   providers: [PromotionsService],
   imports: [
-    TypeOrmModule.forFeature([Promotion]),
+    TypeOrmModule.forFeature([Promotion, Branch]),
     forwardRef(() => PromotionsModule),
     forwardRef(() => BookingsModule),
     forwardRef(() => CategoriesModule),

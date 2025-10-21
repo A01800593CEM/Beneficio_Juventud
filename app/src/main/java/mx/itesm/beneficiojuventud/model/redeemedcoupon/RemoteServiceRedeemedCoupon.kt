@@ -39,11 +39,27 @@ object RemoteServiceRedeemedCoupon {
     }
 
     suspend fun createRedeemedCoupon(redeemedCoupon: RedeemedCoupon): RedeemedCoupon {
+        android.util.Log.d("RemoteServiceRC", "========== API REQUEST ==========")
+        android.util.Log.d("RemoteServiceRC", "Endpoint: POST ${Constants.BASE_URL}redeemedcoupon")
+        android.util.Log.d("RemoteServiceRC", "Request Body: $redeemedCoupon")
+
         val response = redeemedCouponApiService.createRedeemedCoupon(redeemedCoupon)
+
+        android.util.Log.d("RemoteServiceRC", "Response Code: ${response.code()}")
+        android.util.Log.d("RemoteServiceRC", "Response Success: ${response.isSuccessful}")
+
         if (!response.isSuccessful) {
-            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+            val errorBody = response.errorBody()?.string().orEmpty()
+            android.util.Log.e("RemoteServiceRC", "Error Body: $errorBody")
+            android.util.Log.d("RemoteServiceRC", "=================================")
+            throw Exception("Error ${response.code()}: $errorBody")
         }
-        return response.body() ?: throw Exception("Respuesta vacía al canjear la promoción")
+
+        val body = response.body()
+        android.util.Log.d("RemoteServiceRC", "Response Body: $body")
+        android.util.Log.d("RemoteServiceRC", "=================================")
+
+        return body ?: throw Exception("Respuesta vacía al canjear la promoción")
     }
 
     suspend fun updateRedeemedCoupon(redeeemdCouponId: Int, redeemedCoupon: RedeemedCoupon): RedeemedCoupon {

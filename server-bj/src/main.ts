@@ -1,4 +1,3 @@
-
 import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
@@ -13,15 +12,6 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter()
   );
-  await app.listen(process.env.PORT ?? 3000, "0.0.0.0");
-
-  // setTimeout(async () => {
-  //   try {
-  //     await seedDatabase();
-  //     console.log('🌱 Database seeded successfully');
-  //   } catch (err) {
-  //     console.error('❌ Seed failed:', err);
-  //   }
-  // }, 1000);
+  await app.listen(process.env.PORT ?? 3000, "127.0.0.1");
 }
 bootstrap();

@@ -459,6 +459,19 @@ CREATE TABLE public.promocion_categoria (
 ALTER TABLE public.promocion_categoria OWNER TO neondb_owner;
 
 --
+-- Name: promocion_sucursal; Type: TABLE; Schema: public; Owner: neondb_owner
+--
+
+CREATE TABLE public.promocion_sucursal (
+    promocion_id integer NOT NULL,
+    sucursal_id integer NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.promocion_sucursal OWNER TO neondb_owner;
+
+--
 -- TOC entry 229 (class 1259 OID 74181)
 -- Name: promocion_promocion_id_seq; Type: SEQUENCE; Schema: public; Owner: neondb_owner
 --
@@ -1053,6 +1066,14 @@ ALTER TABLE ONLY public.promocion_categoria
 
 
 --
+-- Name: promocion_sucursal promocion_sucursal_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.promocion_sucursal
+    ADD CONSTRAINT promocion_sucursal_pkey PRIMARY KEY (promocion_id, sucursal_id);
+
+
+--
 -- TOC entry 3318 (class 2606 OID 74191)
 -- Name: promocion promocion_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
@@ -1176,6 +1197,22 @@ ALTER TABLE ONLY public.promocion_categoria
 
 ALTER TABLE ONLY public.promocion_categoria
     ADD CONSTRAINT promocion_categoria_promocion_id_fkey FOREIGN KEY (promocion_id) REFERENCES public.promocion(promocion_id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: promocion_sucursal promocion_sucursal_promocion_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.promocion_sucursal
+    ADD CONSTRAINT promocion_sucursal_promocion_id_fkey FOREIGN KEY (promocion_id) REFERENCES public.promocion(promocion_id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: promocion_sucursal promocion_sucursal_sucursal_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.promocion_sucursal
+    ADD CONSTRAINT promocion_sucursal_sucursal_id_fkey FOREIGN KEY (sucursal_id) REFERENCES public.sucursal(sucursal_id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --

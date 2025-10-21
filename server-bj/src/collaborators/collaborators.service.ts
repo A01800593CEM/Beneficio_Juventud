@@ -6,6 +6,12 @@ import { Collaborator } from './entities/collaborator.entity';
 import { Repository, In } from 'typeorm';
 import { Category } from 'src/categories/entities/category.entity';
 import { CollaboratorState } from './enums/collaborator-state.enum';
+import { Branch } from 'src/branch/entities/branch.entity';
+import {
+  calculateDistance,
+  parseLocationString,
+  Coordinates,
+} from 'src/common/location.utils';
 
 /**
  * Service responsible for managing collaborator operations.
@@ -23,7 +29,10 @@ export class CollaboratorsService {
     private collaboratorsRepository: Repository<Collaborator>,
 
     @InjectRepository(Category)
-    private categoriesRepository: Repository<Category>
+    private categoriesRepository: Repository<Category>,
+
+    @InjectRepository(Branch)
+    private branchRepository: Repository<Branch>,
   ) {}
   
   /**
@@ -187,5 +196,87 @@ export class CollaboratorsService {
       .where('category.name = :categoryName', { categoryName })
       .getMany();
 }
+
+  /**
+   * Encuentra colaboradores cercanos a la ubicación del usuario
+   * @param latitude Latitud del usuario
+   * @param longitude Longitud del usuario
+   * @param radiusKm Radio de búsqueda en kilómetros (por defecto 3km)
+   * @returns Lista de colaboradores con distancia a la sucursal más cercana
+   */
+  async findNearbyCollaborators(
+    latitude: number,
+    longitude: number,
+    radiusKm: number = 3,
+  ): Promise<any[]> {
+    const userLocation: Coordinates = { latitude, longitude };
+
+    // Obtener todos los colaboradores activos con sus sucursales
+    const collaborators = await this.collaboratorsRepository
+      .createQueryBuilder('collaborator')
+      .leftJoinAndSelect('collaborator.categories', 'category')
+      .leftJoinAndSelect('collaborator.branch', 'branch')
+      .where('collaborator.state = :state', {
+        state: CollaboratorState.ACTIVE,
+      })
+      .getMany();
+
+    // Calcular distancias y filtrar por proximidad
+    const collaboratorsWithDistance: any[] = [];
+
+    for (const collaborator of collaborators) {
+      // Obtener todas las sucursales con ubicación
+      const branches = collaborator.branch || [];
+      const branchesWithLocation = branches.filter(
+        (b: any) => b.location !== null,
+      );
+
+      if (branchesWithLocation.length === 0) continue;
+
+      // Encontrar la sucursal más cercana
+      let closestDistance = Infinity;
+      let closestBranch = null;
+
+      for (const branch of branchesWithLocation) {
+        const branchCoords = parseLocationString(branch.location);
+        if (!branchCoords) continue;
+
+        const distance = calculateDistance(userLocation, branchCoords);
+
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestBranch = {
+            branchId: branch.branchId,
+            name: branch.name,
+            address: branch.address,
+            phone: branch.phone,
+            zipCode: branch.zipCode,
+            location: branch.location,
+          };
+        }
+      }
+
+      // Si la sucursal más cercana está dentro del radio, agregar el colaborador
+      if (closestDistance <= radiusKm && closestBranch) {
+        collaboratorsWithDistance.push({
+          cognitoId: collaborator.cognitoId,
+          businessName: collaborator.businessName,
+          logoUrl: collaborator.logoUrl,
+          description: collaborator.description,
+          phone: collaborator.phone,
+          email: collaborator.email,
+          categories: collaborator.categories,
+          distance: closestDistance,
+          closestBranch,
+          totalBranches: branchesWithLocation.length,
+        });
+      }
+    }
+
+    // Ordenar por distancia (más cercano primero)
+    collaboratorsWithDistance.sort((a, b) => a.distance - b.distance);
+
+    return collaboratorsWithDistance;
+  }
 
 }

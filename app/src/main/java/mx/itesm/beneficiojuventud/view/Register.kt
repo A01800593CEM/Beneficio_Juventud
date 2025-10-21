@@ -20,6 +20,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -57,6 +58,7 @@ import mx.itesm.beneficiojuventud.model.users.AccountState
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
 import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -71,7 +73,7 @@ fun Register(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = viewModel(),
-    userViewModel: UserViewModel = viewModel()
+    userViewModel: UserViewModel = viewModel(factory = UserViewModelFactory(LocalContext.current))
 ) {
     var nombre by rememberSaveable { mutableStateOf("") }
     var apPaterno by rememberSaveable { mutableStateOf("") }

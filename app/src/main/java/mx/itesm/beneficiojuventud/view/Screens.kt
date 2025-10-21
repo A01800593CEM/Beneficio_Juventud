@@ -11,6 +11,7 @@ sealed class Screens(val route: String) {
     data object RecoveryCode : Screens("recovery_code")
     data object ConfirmSignUp : Screens("confirm_signup")
     data object NewPassword : Screens("new_password")
+    data object PostLoginPermissions : Screens("post_login_permissions")
     data object Onboarding : Screens("onboarding")
 
     // Rutas con parámetros
@@ -45,7 +46,10 @@ sealed class Screens(val route: String) {
     // Panel de Colaboradres
     data object RegisterCollab : Screens("register_collab")
     data object HomeScreenCollab : Screens("home_screen_collab")
-    data object QrScanner : Screens("qr_scanner")
+    data object QrScanner : Screens("qr_scanner/{branchId}") {
+        fun createRoute(branchId: Int) = "qr_scanner/$branchId"
+        val arguments = listOf(navArgument("branchId") { type = NavType.IntType })
+    }
     data object ProfileCollab : Screens("profile_collab")
     data object StatsScreen : Screens("stats_screen")
     data object PromotionsScreen : Screens("promotions_screen/{collabId}") {
@@ -66,5 +70,6 @@ sealed class Screens(val route: String) {
     data object GeneratePromotionScreen : Screens("generate_promotion_screen")
 
     data object EditProfileCollab : Screens("edit_profile_collab")
+    data object BranchManagement : Screens("branch_management")
 
 }

@@ -62,7 +62,7 @@ fun ProfileTextField(
         ),
         textStyle = LocalTextStyle.current.copy(
             fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             color = Color(0xFF616161)
         )
     )

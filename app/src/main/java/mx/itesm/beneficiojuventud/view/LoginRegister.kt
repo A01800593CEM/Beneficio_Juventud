@@ -43,7 +43,7 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
                 .fillMaxSize()
                 .imePadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 16.dp)
+                .padding(horizontal = 15.dp, vertical = 16.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -103,21 +103,20 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
                     "Continuar con Google",
                     onClick = { /* TODO login Google */ }
                 )
-                AltLoginButton(
-                    "Continuar con Facebook",
-                    painterResource(id = R.drawable.logo_facebook),
-                    "Continuar con Facebook",
-                    onClick = { /* TODO login Facebook */ },
-                    modifier = Modifier.padding(top = 16.dp)
-                )
+//                AltLoginButton(
+//                    "Continuar con Facebook",
+//                    painterResource(id = R.drawable.logo_facebook),
+//                    "Continuar con Facebook",
+//                    onClick = { /* TODO login Facebook */ },
+//                    modifier = Modifier.padding(top = 16.dp)
+//                )
             }
 
             Spacer(Modifier.height(32.dp))
 
             // Footer
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 10.dp, bottom = 8.dp)
@@ -125,15 +124,15 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
                 Text(
                     "¿Quieres ser colaborador?",
                     style = TextStyle(
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
                         color = Color(0xFF7D7A7A)
                     )
                 )
                 // Panel de Colaboradres Registro
                 TextButton(onClick = { nav.navigate(Screens.RegisterCollab.route) }) {
                     Text(
-                        "Ver más",
+                        "Registrate",
                         style = TextStyle(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.ExtraBold,

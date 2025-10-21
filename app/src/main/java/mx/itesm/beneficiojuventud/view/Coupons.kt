@@ -65,12 +65,12 @@ fun Coupons(
         if (categories.isEmpty()) vm.loadCategories()
     }
 
-    // Cargar promos (todas) al entrar
+    // Cargar promos (SOLO ACTIVAS) al entrar
     LaunchedEffect(Unit) {
         loadingPromos = true
         promosError = null
         try {
-            promoVm.getAllPromotions()
+            promoVm.getActivePromotions()
         } catch (e: Exception) {
             promosError = e.message ?: "Error loading promotions"
         } finally {
@@ -78,16 +78,16 @@ fun Coupons(
         }
     }
 
-    // Reaccionar a cambio de categoría
+    // Reaccionar a cambio de categoría (SOLO ACTIVAS)
     LaunchedEffect(selectedCategoryId) {
         loadingPromos = true
         promosError = null
         try {
             if (selectedCategoryId == null) {
-                promoVm.getAllPromotions()
+                promoVm.getActivePromotions()
             } else {
                 // Si tu backend espera el nombre, ajusta aquí; de momento usamos id -> toString()
-                promoVm.getPromotionByCategory(selectedCategoryId.toString())
+                promoVm.getActivePromotionsByCategory(selectedCategoryId.toString())
             }
         } catch (e: Exception) {
             promosError = e.message ?: "Error filtering promotions"

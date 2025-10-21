@@ -10,7 +10,7 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 
 interface RedeemedCouponApiService {
-    @POST("redeeemdcoupon")
+    @POST("redeemedcoupon")
     suspend fun createRedeemedCoupon(@Body redeemedCoupon: RedeemedCoupon): Response<RedeemedCoupon>
     @GET("redeemedcoupon/allcoupons/user/{userId}")
     suspend fun getRedeemedCouponsByUser(@Path("userId") userId: String): Response<List<RedeemedCoupon>>

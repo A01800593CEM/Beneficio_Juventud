@@ -87,6 +87,46 @@ fun PromoCarousel(
     }
 }
 
+// -------------------- Tag de Estado de Promoción --------------------
+
+@Composable
+fun PromotionStateTag(
+    state: PromotionState,
+    modifier: Modifier = Modifier
+) {
+    val (backgroundColor, textColor, label) = when (state) {
+        PromotionState.activa -> Triple(
+            Color(0xFF4CAF50),  // Verde
+            Color.White,
+            "Activa"
+        )
+        PromotionState.inactiva -> Triple(
+            Color(0xFFFFA726),  // Naranja
+            Color.White,
+            "Inactiva"
+        )
+        PromotionState.finalizada -> Triple(
+            Color(0xFF9E9E9E),  // Gris
+            Color.White,
+            "Finalizada"
+        )
+    }
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(4.dp),
+        color = backgroundColor
+    ) {
+        Text(
+            text = label,
+            color = textColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        )
+    }
+}
+
 // -------------------- Card de promoción --------------------
 
 @Composable
@@ -94,6 +134,7 @@ fun PromoImageBanner(
     promo: Promotions,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
+    showStateTag: Boolean = false,  // Nuevo parámetro para mostrar tag
     themeResolver: (Promotions) -> PromoTheme = { it.theme ?: PromoTheme.light }
 ) {
     val radius = 16.dp
@@ -177,6 +218,16 @@ fun PromoImageBanner(
                         }
                     }
             )
+
+            // Tag de estado (solo si showStateTag = true)
+            if (showStateTag && promo.promotionState != null) {
+                PromotionStateTag(
+                    state = promo.promotionState!!,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                )
+            }
 
             Column(
                 Modifier

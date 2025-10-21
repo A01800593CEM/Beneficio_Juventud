@@ -49,4 +49,13 @@ class CollabViewModel : ViewModel() {
     suspend fun getCategories(): List<Category> {
         return RemoteServiceCategory.getCategories()
     }
+
+    /** Obtiene colaboradores cercanos a una ubicación específica */
+    suspend fun getNearbyCollaborators(
+        latitude: Double,
+        longitude: Double,
+        radius: Double = 3.0
+    ): List<mx.itesm.beneficiojuventud.model.collaborators.NearbyCollaborator> {
+        return model.getNearbyCollaborators(latitude, longitude, radius)
+    }
 }

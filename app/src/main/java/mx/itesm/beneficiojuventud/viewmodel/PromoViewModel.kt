@@ -1,6 +1,8 @@
 package mx.itesm.beneficiojuventud.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -9,12 +11,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import mx.itesm.beneficiojuventud.model.RoomDB.LocalDatabase
 import mx.itesm.beneficiojuventud.model.promos.Promotions
+import mx.itesm.beneficiojuventud.model.promos.PromotionState
 import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
+import mx.itesm.beneficiojuventud.utils.toPromotion
 
-class PromoViewModel : ViewModel() {
+class PromoViewModel(application: Application) : AndroidViewModel(application) {
 
     private val model = RemoteServicePromos
+    private val database = LocalDatabase.getDatabase(application)
+    private val promotionDao = database.promotionDao()
 
     private val _promoState = MutableStateFlow(Promotions())
     val promoState: StateFlow<Promotions> = _promoState
@@ -22,19 +29,56 @@ class PromoViewModel : ViewModel() {
     private val _promoListState = MutableStateFlow<List<Promotions>>(emptyList())
     val promoListState: StateFlow<List<Promotions>> = _promoListState
 
+    // Helper para filtrar solo promociones activas
+    private fun List<Promotions>.onlyActive(): List<Promotions> {
+        return this.filter { it.promotionState == PromotionState.activa }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────────
     // CRUD/Queries base
     // ─────────────────────────────────────────────────────────────────────────────
+
+    /** Obtiene TODAS las promociones (para colaboradores) */
     suspend fun getAllPromotions() {
         _promoListState.value = model.getAllPromotions()
     }
 
-    suspend fun getPromotionById(id: Int) {
-        _promoState.value = model.getPromotionById(id)
+    /** Obtiene SOLO promociones activas (para usuarios) */
+    suspend fun getActivePromotions() {
+        _promoListState.value = model.getAllPromotions().onlyActive()
     }
 
+    suspend fun getPromotionById(id: Int) {
+        try {
+            // Try to fetch from remote first
+            _promoState.value = model.getPromotionById(id)
+        } catch (e: Exception) {
+            // If remote fails (offline), try to get from local database
+            Log.w("PromoViewModel", "Failed to get promotion from remote, checking local cache", e)
+            try {
+                val localPromotion = promotionDao.findById(id)
+                if (localPromotion != null) {
+                    _promoState.value = localPromotion.toPromotion()
+                    Log.d("PromoViewModel", "Loaded promotion $id from local cache")
+                } else {
+                    Log.e("PromoViewModel", "Promotion $id not found in local cache")
+                    throw e
+                }
+            } catch (dbError: Exception) {
+                Log.e("PromoViewModel", "Error accessing local database", dbError)
+                throw e
+            }
+        }
+    }
+
+    /** Obtiene promociones por categoría - TODAS (para colaboradores) */
     suspend fun getPromotionByCategory(category: String) {
         _promoListState.value = model.getPromotionByCategory(category)
+    }
+
+    /** Obtiene promociones por categoría - SOLO activas (para usuarios) */
+    suspend fun getActivePromotionsByCategory(category: String) {
+        _promoListState.value = model.getPromotionByCategory(category).onlyActive()
     }
 
     suspend fun createPromotion(promo: Promotions) {
@@ -49,25 +93,34 @@ class PromoViewModel : ViewModel() {
         model.deletePromotion(id)
     }
 
+    /** Obtiene promociones cercanas a una ubicación específica */
+    suspend fun getNearbyPromotions(
+        latitude: Double,
+        longitude: Double,
+        radius: Double = 3.0
+    ): List<mx.itesm.beneficiojuventud.model.promos.NearbyPromotion> {
+        return model.getNearbyPromotions(latitude, longitude, radius)
+    }
+
     // ─────────────────────────────────────────────────────────────────────────────
     // Recomendado para ti (intercalado por categorías favoritas)
     // ─────────────────────────────────────────────────────────────────────────────
     /**
-     * Obtiene promociones por cada categoría dada y las entrelaza (round-robin)
+     * Obtiene promociones ACTIVAS por cada categoría dada y las entrelaza (round-robin)
      * 1 de cada lista, repitiendo hasta agotar todas. Evita duplicados por promotionId.
      */
     suspend fun getRecommendedInterleaved(categories: List<String>) {
         if (categories.isEmpty()) {
-            // Fallback si el usuario no tiene categorías
-            _promoListState.value = model.getAllPromotions()
+            // Fallback si el usuario no tiene categorías - solo activas
+            _promoListState.value = model.getAllPromotions().onlyActive()
             return
         }
 
-        // Cargar en paralelo todas las listas por categoría
+        // Cargar en paralelo todas las listas por categoría (solo activas)
         val lists: List<List<Promotions>> = coroutineScope {
             categories.map { cat ->
                 async {
-                    runCatching { model.getPromotionByCategory(cat) }
+                    runCatching { model.getPromotionByCategory(cat).onlyActive() }
                         .getOrElse { emptyList() }
                 }
             }.map { it.await() }

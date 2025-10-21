@@ -34,6 +34,7 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
 import java.time.Instant
 
 /**
@@ -49,7 +50,7 @@ fun ConfirmSignUp(
     email: String,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = viewModel(),
-    userViewModel: UserViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel(factory = UserViewModelFactory(LocalContext.current)),
     collabViewModel: CollabViewModel = viewModel()
 ) {
     var code by remember { mutableStateOf("") }

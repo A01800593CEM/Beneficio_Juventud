@@ -327,4 +327,24 @@ class AuthRepository {
                 }
             )
         }
+
+    /**
+     * Eliminar la cuenta del usuario actual de Cognito
+     */
+    suspend fun deleteUser(): Result<Unit> = suspendCancellableCoroutine { continuation ->
+        Amplify.Auth.deleteUser(
+            {
+                Log.i(TAG, "✅ User account deleted successfully")
+                if (!continuation.isCancelled) {
+                    continuation.resume(Result.success(Unit))
+                }
+            },
+            { error ->
+                Log.e(TAG, "❌ Failed to delete user account: ${error.message}", error)
+                if (!continuation.isCancelled) {
+                    continuation.resume(Result.failure(error))
+                }
+            }
+        )
+    }
 }

@@ -36,7 +36,7 @@ export class BranchService {
    * @returns Promise resolving to an array of all branch entities
    */
   async findAll(): Promise<Branch[]> {
-    return this.branchRepository.find({relations: ['collaborator']});
+    return this.branchRepository.find({relations: ['collaborators']});
   }
 
   /**
@@ -48,7 +48,7 @@ export class BranchService {
   async findOne(id: number): Promise<Branch | null> {
     return this.branchRepository.findOne({
       where: {branchId: id},
-      relations: ['collaborator'],
+      relations: ['collaborators'],
     });
   }
 
@@ -68,6 +68,18 @@ export class BranchService {
       throw new NotFoundException(`Branch with id ${id} not found`)
     }
     return this.branchRepository.save(branch);
+  }
+
+  /**
+   * Retrieves all branches belonging to a specific collaborator.
+   * @param collaboratorId - The cognito ID of the collaborator
+   * @returns Promise resolving to an array of branch entities
+   */
+  async findByCollaborator(collaboratorId: string): Promise<Branch[]> {
+    return this.branchRepository.find({
+      where: { collaboratorId },
+      order: { name: 'ASC' }
+    });
   }
 
   /**

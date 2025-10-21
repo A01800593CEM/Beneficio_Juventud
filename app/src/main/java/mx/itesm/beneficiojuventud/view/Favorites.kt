@@ -31,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
@@ -43,6 +44,7 @@ import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.PromoTheme
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
 
 // 🚩 IMPORTA la card horizontal (la del screenshot)
 import mx.itesm.beneficiojuventud.components.MerchantCardHorizontalFav
@@ -68,7 +70,7 @@ fun Favorites(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     favoriteMerchants: List<FavoriteMerchant> = emptyList(),
-    userViewModel: UserViewModel = viewModel()
+    userViewModel: UserViewModel = viewModel(factory = UserViewModelFactory(LocalContext.current))
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Favorites) }
     var mode by remember { mutableStateOf(FavoriteMode.Coupons) }
@@ -87,6 +89,11 @@ fun Favorites(
     // Set de IDs de promociones reservadas para lookup rápido
     val reservedPromoIds: Set<Int> = remember(userBookings) {
         userBookings.mapNotNull { it.promotionId }.toSet()
+    }
+
+    // Set de IDs de promociones favoritas para lookup rápido
+    val favoritePromoIds: Set<Int> = remember(favoritePromos) {
+        favoritePromos.mapNotNull { it.promotionId }.toSet()
     }
 
     val scope = rememberCoroutineScope()
@@ -235,14 +242,21 @@ fun Favorites(
                             }
                         ) { index, promo ->
                             val isReserved = promo.promotionId?.let { it in reservedPromoIds } ?: false
+                            val isFavorite = promo.promotionId?.let { it in favoritePromoIds } ?: false
 
                             PromoImageBannerFav(
                                 promo = promo,
-                                isFavorite = true,
+                                isFavorite = isFavorite,
                                 isReserved = isReserved,
                                 onFavoriteClick = { p ->
                                     val id = p.promotionId ?: return@PromoImageBannerFav
-                                    scope.launch { userViewModel.unfavoritePromotion(id, cognitoId) }
+                                    scope.launch {
+                                        if (isFavorite) {
+                                            userViewModel.unfavoritePromotion(id, cognitoId)
+                                        } else {
+                                            userViewModel.favoritePromotion(id, cognitoId)
+                                        }
+                                    }
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()

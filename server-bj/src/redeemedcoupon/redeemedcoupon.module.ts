@@ -3,6 +3,7 @@ import { RedeemedcouponService } from './redeemedcoupon.service';
 import { RedeemedcouponController } from './redeemedcoupon.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Redeemedcoupon } from './entities/redeemedcoupon.entity';
+import { Promotion } from '../promotions/entities/promotion.entity';
 import { UsersModule } from 'src/users/users.module';
 import { PromotionsModule } from 'src/promotions/promotions.module';
 import { BranchModule } from '../branch/branch.module';
@@ -31,7 +32,7 @@ import { CollaboratorsModule } from 'src/collaborators/collaborators.module';
   controllers: [RedeemedcouponController],
   providers: [RedeemedcouponService],
   imports: [
-    TypeOrmModule.forFeature([Redeemedcoupon]),
+    TypeOrmModule.forFeature([Redeemedcoupon, Promotion]),
     forwardRef(() => UsersModule),
     forwardRef(() => PromotionsModule),
     forwardRef(() => BranchModule),
