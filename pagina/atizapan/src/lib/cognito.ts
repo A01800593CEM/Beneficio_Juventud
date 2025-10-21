@@ -46,6 +46,7 @@ export interface SignUpData {
   email: string;
   password: string;
   name: string;
+  profile?: string;
 }
 
 export interface SessionTokens {
@@ -134,12 +135,16 @@ export async function completeNewPassword(newPassword: string): Promise<SessionT
 }
 
 // ========= Registro / Confirmación =========
-export async function cognitoSignUp({ email, password, name }: SignUpData) {
+export async function cognitoSignUp({ email, password, name, profile }: SignUpData) {
   ensureAmplifyConfigured();
+  const userAttributes: Record<string, string> = { email, name };
+  if (profile) {
+    userAttributes.profile = profile;
+  }
   return await signUp({
     username: email,
     password,
-    options: { userAttributes: { email, name } },
+    options: { userAttributes },
   });
 }
 

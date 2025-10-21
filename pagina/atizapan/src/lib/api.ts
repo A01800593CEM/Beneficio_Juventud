@@ -16,7 +16,21 @@ export interface UserRegistrationData {
   email: string;
   cognitoId: string;
   accountState?: string;
-  userPrefCategories?: string[];
+}
+
+export interface CollaboratorRegistrationData {
+  businessName: string;
+  cognitoId: string;
+  rfc: string;
+  representativeName: string;
+  phone: string;
+  email: string;
+  address: string;
+  postalCode: string;
+  state?: string;
+  categoryIds?: number[];
+  logoUrl?: string;
+  description: string;
 }
 
 export interface ApiError {
@@ -29,7 +43,7 @@ export interface ApiError {
 export async function fetchFromApi(path: string) {
   const session = await getServerSession(authOptions);
   const token = (session as { accessToken?: string })?.accessToken;
-  const base = 'https://beneficiojoven.lat';
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL!;
   const res = await fetch(`${base}${path}`, {
     headers: { Authorization: token ? `Bearer ${token}` : "" },
     cache: "no-store",
@@ -111,14 +125,30 @@ class ApiService {
 
     const dataWithDefaults = {
       ...userData,
-      accountState: userData.accountState || 'activo',
-      userPrefCategories: ["Comida", "Entretenimiento"]
+      accountState: userData.accountState || 'activo'
     };
 
     console.log('👤 API RegisterUser - Data with defaults:', dataWithDefaults);
     console.log('👤 API RegisterUser - JSON payload:', JSON.stringify(dataWithDefaults, null, 2));
 
     return this.request('/users', {
+      method: 'POST',
+      body: JSON.stringify(dataWithDefaults),
+    });
+  }
+
+  async registerCollaborator(collaboratorData: CollaboratorRegistrationData): Promise<{ success: boolean; message?: string }> {
+    console.log('🏢 API RegisterCollaborator - Input data:', collaboratorData);
+
+    const dataWithDefaults = {
+      ...collaboratorData,
+      state: collaboratorData.state || 'activo'
+    };
+
+    console.log('🏢 API RegisterCollaborator - Data with defaults:', dataWithDefaults);
+    console.log('🏢 API RegisterCollaborator - JSON payload:', JSON.stringify(dataWithDefaults, null, 2));
+
+    return this.request('/collaborators', {
       method: 'POST',
       body: JSON.stringify(dataWithDefaults),
     });
