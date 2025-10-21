@@ -84,4 +84,13 @@ export class PromotionsController {
 
     return this.promotionsService.findNearbyPromotions(lat, lon, radiusKm);
   }
+
+  @Patch('saveimage/promotion/:id')
+  async saveImage(@Param('id', ParseIntPipe) id: number,
+    @Body(new ValidationPipe({ whitelist: true, transform: true }))
+    dto: UpdatePromotionDto,
+  ) {
+    const promotion = await this.promotionsService.update(id, dto);
+    return promotion.imageUrl;
+  }
 }
