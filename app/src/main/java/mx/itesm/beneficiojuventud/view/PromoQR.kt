@@ -330,7 +330,9 @@ fun PromoQR(
                     Screens.Favorites.route
                 )
             ) {
-                popUpTo(Screens.PromoQR.route) { inclusive = true }
+                // Limpia la pila de navegación para que no se pueda volver atrás
+                popUpTo(Screens.Home.route) { inclusive = false }
+                launchSingleTop = true
             }
             bookingViewModel.resetBookingSuccess()
         }
@@ -770,6 +772,46 @@ fun PromoQR(
     }
 
     if (showQrDialog) {
+        // Polling para detectar cuando el cupón es canjeado por otro dispositivo
+        val qrGenerationTime = remember { System.currentTimeMillis() }
+
+        LaunchedEffect(showQrDialog) {
+            while (showQrDialog && !isRedeemed) {
+                try {
+                    delay(3000L) // Consultar cada 3 segundos
+
+                    Log.d(TAG, "Polling: Verificando si el cupón fue canjeado...")
+                    val redeemedCoupons = RemoteServiceRedeemedCoupon.getRedeemedCouponsByUser(cognitoId)
+
+                    // Buscar si hay un cupón canjeado de esta promoción después del momento de generación del QR
+                    val wasRedeemed = redeemedCoupons.any { coupon ->
+                        coupon.promotionId == promotionId &&
+                        coupon.qrTimestamp != null &&
+                        coupon.qrTimestamp!! >= qrGenerationTime - 5000 // 5 segundos de margen
+                    }
+
+                    if (wasRedeemed) {
+                        Log.d(TAG, "¡Cupón detectado como canjeado! Mostrando pantalla de éxito")
+                        isRedeemed = true
+                        delay(1000L) // Dar tiempo para que se vea la animación
+                        showQrDialog = false
+                        nav.navigate(
+                            Screens.Status.createRoute(
+                                StatusType.COUPON_USE_SUCCESS,
+                                Screens.Home.route
+                            )
+                        ) {
+                            // Limpia la pila de navegación para que no se pueda volver atrás
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error al verificar estado del cupón: ${e.message}")
+                }
+            }
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -816,24 +858,28 @@ fun PromoQR(
 
                     Spacer(Modifier.height(20.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(
-                            onClick = { isRedeemed = true },
-                            modifier = Modifier.weight(1f)
-                        ) { Text("Simular escaneo") }
-
-                        MainButton(
-                            text = "Cerrar",
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(52.dp),
-                            onClick = { showQrDialog = false }
-                        )
-                    }
+                    MainButton(
+                        text = if (isRedeemed) "Volver" else "Cerrar",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        onClick = {
+                            showQrDialog = false
+                            if (isRedeemed) {
+                                // Si el cupón fue canjeado, navegar a la pantalla de éxito
+                                nav.navigate(
+                                    Screens.Status.createRoute(
+                                        StatusType.COUPON_USE_SUCCESS,
+                                        Screens.Home.route
+                                    )
+                                ) {
+                                    // Limpia la pila de navegación para que no se pueda volver atrás
+                                    popUpTo(Screens.Home.route) { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
+                    )
                 }
             }
         }

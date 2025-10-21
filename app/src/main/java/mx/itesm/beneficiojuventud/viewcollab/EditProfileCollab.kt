@@ -36,6 +36,8 @@ import mx.itesm.beneficiojuventud.model.categories.Category
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.collaborators.CollaboratorsState
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+import mx.itesm.beneficiojuventud.view.Screens
+import mx.itesm.beneficiojuventud.view.StatusType
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 
@@ -85,6 +87,11 @@ fun EditProfileCollab(
     var showCategoriesSheet by remember { mutableStateOf(false) }
     val stateSheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val catSheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Save state tracking
+    var justSaved by remember { mutableStateOf(false) }
+    var saveSuccess by remember { mutableStateOf(false) }
+    var saveError by remember { mutableStateOf<String?>(null) }
 
     // Cargar colaborador
     LaunchedEffect(currentUserId) {
@@ -284,17 +291,59 @@ fun EditProfileCollab(
                                 state = selectedState
                             )
 
+                            justSaved = true
                             scope.launch {
                                 runCatching { collabViewModel.updateCollaborator(id, update) }
-                                    .onSuccess { snackbarHostState.showSnackbar("Cambios guardados.") }
+                                    .onSuccess {
+                                        saveSuccess = true
+                                        saveError = null
+                                    }
                                     .onFailure {
-                                        snackbarHostState.showSnackbar("Error al guardar: ${it.message ?: "desconocido"}")
+                                        saveSuccess = false
+                                        saveError = it.message ?: "Error desconocido"
                                     }
                             }
                         }
                     )
 
                     Spacer(Modifier.height(92.dp)) // margen para no chocar con bottom bar
+                }
+            }
+
+            // Manejar navegación a StatusScreen cuando se guarda
+            LaunchedEffect(justSaved, saveSuccess, saveError) {
+                if (justSaved && (saveSuccess || saveError != null)) {
+                    justSaved = false
+
+                    if (saveSuccess) {
+                        // Éxito: navegar a StatusScreen que muestra éxito y luego va a ProfileCollab
+                        nav.navigate(
+                            Screens.Status.createRoute(
+                                StatusType.USER_INFO_UPDATED,
+                                Screens.ProfileCollab.route
+                            )
+                        ) {
+                            // Limpia la pila de navegación para que no se pueda volver a EditProfileCollab
+                            popUpTo(Screens.EditProfileCollab.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    } else {
+                        // Error: navegar a StatusScreen que muestra error y luego vuelve a EditProfileCollab
+                        nav.navigate(
+                            Screens.Status.createRoute(
+                                StatusType.USER_INFO_UPDATE_ERROR,
+                                Screens.EditProfileCollab.route
+                            )
+                        ) {
+                            // Limpia la pila de navegación para que no se pueda volver atrás al EditProfileCollab anterior
+                            popUpTo(Screens.EditProfileCollab.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+
+                    // Reset flags
+                    saveSuccess = false
+                    saveError = null
                 }
             }
 

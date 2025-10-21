@@ -89,6 +89,16 @@ enum class StatusType(
         isSuccess = false,
         title = "Verificación fallida",
         subtitle = "Los datos no son correctos"
+    ),
+    USER_INFO_UPDATED(
+        isSuccess = true,
+        title = "¡Información actualizada!",
+        subtitle = "Tus datos se han guardado correctamente"
+    ),
+    USER_INFO_UPDATE_ERROR(
+        isSuccess = false,
+        title = "Error al actualizar",
+        subtitle = "No se pudo guardar tu información, intenta de nuevo"
     )
 }
 
