@@ -11,18 +11,18 @@ import { Collaborator } from 'src/collaborators/entities/collaborator.entity';
 
 @Entity({ name: 'favorito' })
 export class Favorite {
-  @PrimaryColumn({ name: 'usuario_id', type: 'varchar' })
-  userId: string;
+  @PrimaryColumn({ name: 'usuario_id', type: 'int' })
+  userId: number;
 
-  @PrimaryColumn({ name: 'colaborador_id', type: 'varchar' })
-  collaboratorId: string;
+  @PrimaryColumn({ name: 'colaborador_id', type: 'int' })
+  collaboratorId: number;
 
   @ManyToOne(() => User, (user) => user.favorites, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'usuario_id', referencedColumnName: 'cognitoId' })
+  @JoinColumn({ name: 'usuario_id', referencedColumnName: 'id' })
   user: Relation<User>;
 
   @ManyToOne(() => Collaborator, (collaborator) => collaborator.favorites, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'colaborador_id', referencedColumnName: 'cognitoId' })
+  @JoinColumn({ name: 'colaborador_id', referencedColumnName: 'id' })
   collaborator: Relation<Collaborator>;
 
   @CreateDateColumn({

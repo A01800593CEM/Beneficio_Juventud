@@ -36,7 +36,7 @@ export class Redeemedcoupon {
 
   //Relations
   @ManyToOne(() => User, users => users.redeemedcoupon)
-  @JoinColumn({ name: 'usuario_id', referencedColumnName: 'cognitoId' })
+  @JoinColumn({ name: 'usuario_id', referencedColumnName: 'id' })
   user: Relation<User>;
 
   @ManyToOne(() => Branch, branches => branches.redeemedcoupon)
