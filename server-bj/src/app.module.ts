@@ -53,7 +53,6 @@ import { AnalyticsModule } from './analytics/analytics.module';
     //ReportsModule
     RedeemedcouponModule,
     BranchModule,
-    BranchModule,
     NotificationsModule,
     //Schedule
     ScheduleModule.forRoot(),
