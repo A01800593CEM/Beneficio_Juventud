@@ -101,6 +101,7 @@ export class PromotionsService {
     const promo = await this.promotionsRepository
       .createQueryBuilder('promotion')
       .leftJoinAndSelect('promotion.categories', 'category')
+      .leftJoinAndSelect('promotion.branches', 'branch')
       .leftJoin('promotion.collaborator', 'collaborator')
       .addSelect(['collaborator.businessName'])
       .addSelect('promotion.theme')
@@ -140,11 +141,11 @@ export class PromotionsService {
   async update(id: number, updatePromotionDto: UpdatePromotionDto): Promise<Promotion> {
     const promotion = await this.promotionsRepository.findOne({
       where: { promotionId: id },
-      relations: ['categories'],
+      relations: ['categories', 'branches'],
     });
     if (!promotion) throw new NotFoundException(`Promotion with ID ${id} not found`);
 
-    const { categoryIds, ...updateData } = updatePromotionDto;
+    const { categoryIds, branchIds, ...updateData } = updatePromotionDto;
 
     Object.assign(promotion, updateData, {
       theme: updateData.theme ?? (updateData as any).promotionTheme ?? promotion.theme,
@@ -153,6 +154,33 @@ export class PromotionsService {
     if (categoryIds && categoryIds.length > 0) {
       const categories = await this.categoriesRepository.findBy({ id: In(categoryIds) });
       promotion.categories = categories;
+    }
+
+    if (branchIds !== undefined) {
+      if (branchIds && branchIds.length > 0) {
+        // Actualizar con las sucursales especificadas
+        const branches = await this.branchRepository.findBy({ branchId: In(branchIds) });
+
+        // Verificar que todas las sucursales pertenezcan al colaborador
+        const invalidBranches = branches.filter(b => b.collaboratorId !== promotion.collaboratorId);
+        if (invalidBranches.length > 0) {
+          throw new NotFoundException(
+            'Cannot assign promotion to branches of another collaborator'
+          );
+        }
+
+        if (branches.length !== branchIds.length) {
+          throw new NotFoundException('Some branches were not found');
+        }
+
+        promotion.branches = branches;
+      } else {
+        // Si branchIds es un array vacío, aplicar a TODAS las sucursales del colaborador
+        const allBranches = await this.branchRepository.find({
+          where: { collaboratorId: promotion.collaboratorId }
+        });
+        promotion.branches = allBranches;
+      }
     }
 
     return this.promotionsRepository.save(promotion);

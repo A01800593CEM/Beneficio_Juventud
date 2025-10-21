@@ -167,7 +167,11 @@ fun NewPromotionSheet(
 
     // Sucursales (branches)
     var availableBranches by remember { mutableStateOf<List<mx.itesm.beneficiojuventud.model.Branch>>(emptyList()) }
-    var selectedBranches by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var selectedBranches by remember {
+        mutableStateOf<Set<Int>>(
+            existingPromotion?.branches?.mapNotNull { it.branchId }?.toSet() ?: emptySet()
+        )
+    }
 
     // Cargar categorías y sucursales al iniciar
     LaunchedEffect(Unit) {
@@ -800,48 +804,68 @@ fun NewPromotionSheet(
 
                 scope.launch {
                     runCatching {
-                        if (isEditMode && existingPromotion?.promotionId != null) {
-                            viewModel.updatePromotion(existingPromotion.promotionId!!, promoData)
-                        } else {
-                            // Prepare branch IDs list (if empty, server will apply to all branches)
-                            val branchIdsList = if (selectedBranches.isEmpty()) null else selectedBranches.toList()
-                            android.util.Log.d("NewPromotionSheet", "Creating promotion with branchIds: $branchIdsList")
+                        // Prepare branch IDs list (if empty, server will apply to all branches)
+                        val branchIdsList = if (selectedBranches.isEmpty()) null else selectedBranches.toList()
 
-                            // RemoteServicePromos.createPromotion calls toCreateRequest internally
-                            // We need to store branchIds somewhere accessible by toCreateRequest
-                            // For now, let's call the service directly with proper request
-                            val createRequest = mx.itesm.beneficiojuventud.model.promos.CreatePromotionRequest(
-                                collaboratorId = promoData.collaboratorId ?: "",
-                                title = promoData.title ?: "",
-                                description = promoData.description ?: "",
-                                imageUrl = promoData.imageUrl,
-                                initialDate = promoData.initialDate ?: "",
-                                endDate = promoData.endDate ?: "",
-                                promotionType = promoData.promotionType ?: mx.itesm.beneficiojuventud.model.promos.PromotionType.descuento,
-                                promotionString = promoData.promotionString,
-                                totalStock = promoData.totalStock ?: 0,
-                                availableStock = promoData.availableStock ?: 0,
-                                limitPerUser = promoData.limitPerUser ?: 0,
-                                dailyLimitPerUser = promoData.dailyLimitPerUser ?: 0,
-                                promotionState = promoData.promotionState ?: mx.itesm.beneficiojuventud.model.promos.PromotionState.activa,
-                                theme = promoData.theme,
-                                isBookable = promoData.isBookable ?: false,
-                                categoryIds = selectedCategories.toList(),
-                                branchIds = branchIdsList
+                        val requestData = mx.itesm.beneficiojuventud.model.promos.CreatePromotionRequest(
+                            collaboratorId = promoData.collaboratorId ?: "",
+                            title = promoData.title ?: "",
+                            description = promoData.description ?: "",
+                            imageUrl = promoData.imageUrl,
+                            initialDate = promoData.initialDate ?: "",
+                            endDate = promoData.endDate ?: "",
+                            promotionType = promoData.promotionType ?: mx.itesm.beneficiojuventud.model.promos.PromotionType.descuento,
+                            promotionString = promoData.promotionString,
+                            totalStock = promoData.totalStock ?: 0,
+                            availableStock = promoData.availableStock ?: 0,
+                            limitPerUser = promoData.limitPerUser ?: 0,
+                            dailyLimitPerUser = promoData.dailyLimitPerUser ?: 0,
+                            promotionState = promoData.promotionState ?: mx.itesm.beneficiojuventud.model.promos.PromotionState.activa,
+                            theme = promoData.theme,
+                            isBookable = promoData.isBookable ?: false,
+                            categoryIds = selectedCategories.toList(),
+                            branchIds = branchIdsList
+                        )
+
+                        val gson = com.google.gson.GsonBuilder()
+                            .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+                            .create()
+
+                        // Call API service directly
+                        val retrofit = retrofit2.Retrofit.Builder()
+                            .baseUrl(mx.itesm.beneficiojuventud.utils.Constants.BASE_URL)
+                            .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create(gson))
+                            .build()
+                        val apiService = retrofit.create(mx.itesm.beneficiojuventud.model.promos.PromoApiService::class.java)
+
+                        if (isEditMode && existingPromotion?.promotionId != null) {
+                            android.util.Log.d("NewPromotionSheet", "Updating promotion ${existingPromotion.promotionId} with branchIds: $branchIdsList")
+                            android.util.Log.d("NewPromotionSheet", "Update Request JSON: ${gson.toJson(requestData)}")
+
+                            // Para el update, usamos el mismo request pero con PATCH
+                            val updateJson = gson.toJson(requestData)
+                            val requestBody = okhttp3.RequestBody.create(
+                                okhttp3.MediaType.parse("application/json"),
+                                updateJson
                             )
 
-                            val gson = com.google.gson.GsonBuilder()
-                                .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-                                .create()
-                            android.util.Log.d("NewPromotionSheet", "Request JSON: ${gson.toJson(createRequest)}")
-
-                            // Call API service directly
-                            val retrofit = retrofit2.Retrofit.Builder()
-                                .baseUrl(mx.itesm.beneficiojuventud.utils.Constants.BASE_URL)
-                                .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create(gson))
+                            // Crear cliente OkHttp para hacer el PATCH
+                            val client = okhttp3.OkHttpClient()
+                            val request = okhttp3.Request.Builder()
+                                .url("${mx.itesm.beneficiojuventud.utils.Constants.BASE_URL}promotions/${existingPromotion.promotionId}")
+                                .patch(requestBody)
+                                .addHeader("Content-Type", "application/json")
                                 .build()
-                            val apiService = retrofit.create(mx.itesm.beneficiojuventud.model.promos.PromoApiService::class.java)
-                            val response = apiService.createPromotion(createRequest)
+
+                            val response = client.newCall(request).execute()
+                            if (!response.isSuccessful) {
+                                throw Exception("Error ${response.code()}: ${response.body()?.string()}")
+                            }
+                        } else {
+                            android.util.Log.d("NewPromotionSheet", "Creating promotion with branchIds: $branchIdsList")
+                            android.util.Log.d("NewPromotionSheet", "Request JSON: ${gson.toJson(requestData)}")
+
+                            val response = apiService.createPromotion(requestData)
 
                             if (!response.isSuccessful) {
                                 throw Exception("Error ${response.code()}: ${response.errorBody()?.string()}")

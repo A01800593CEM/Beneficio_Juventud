@@ -30,7 +30,8 @@ data class Promotions(
 
     val theme: PromoTheme? = null,
     val businessName: String? = null,
-    val categories: List<Category> = emptyList()
+    val categories: List<Category> = emptyList(),
+    val branches: List<mx.itesm.beneficiojuventud.model.Branch> = emptyList()
 )
 
 
