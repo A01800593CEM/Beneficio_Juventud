@@ -232,11 +232,12 @@ export class PromotionsService {
     longitude: number,
     radiusKm: number = 3,
   ): Promise<any[]> {
-    const userLocation: Coordinates = { latitude, longitude };
+    try {
+      const userLocation: Coordinates = { latitude, longitude };
 
-    console.log('========== NEARBY PROMOTIONS DEBUG ==========');
-    console.log('User Location:', userLocation);
-    console.log('Search Radius:', radiusKm, 'km');
+      console.log('========== NEARBY PROMOTIONS DEBUG ==========');
+      console.log('User Location:', userLocation);
+      console.log('Search Radius:', radiusKm, 'km');
 
     // Obtener todas las promociones activas con sus colaboradores y sucursales
     const promotions = await this.promotionsRepository
@@ -331,9 +332,14 @@ export class PromotionsService {
     console.log('Total promotions within radius:', promotionsWithDistance.length);
     console.log('=====================================\n');
 
-    // Ordenar por distancia (más cercano primero)
-    promotionsWithDistance.sort((a, b) => a.distance - b.distance);
+      // Ordenar por distancia (más cercano primero)
+      promotionsWithDistance.sort((a, b) => a.distance - b.distance);
 
-    return promotionsWithDistance;
+      return promotionsWithDistance;
+    } catch (error) {
+      console.error('❌ ERROR in findNearbyPromotions:', error);
+      console.error('Stack trace:', error.stack);
+      throw error;
+    }
   }
 }
