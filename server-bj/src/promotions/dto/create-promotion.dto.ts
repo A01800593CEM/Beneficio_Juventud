@@ -72,7 +72,6 @@ export class CreatePromotionDto {
 
   @IsOptional()
   @IsArray()
-  @ArrayNotEmpty()
   @IsInt({ each: true })
   categoryIds?: number[];
 

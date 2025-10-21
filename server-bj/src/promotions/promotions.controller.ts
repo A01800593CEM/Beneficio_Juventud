@@ -22,13 +22,10 @@ export class PromotionsController {
 
   @Post()
   create(
-    @Body('categories', CategoriesByNamePipe) categories: Category[],
     @Body(new ValidationPipe({ whitelist: true, transform: true }))
     dto: CreatePromotionDto,
   ) {
-    return this.promotionsService.create({
-      ...dto,
-      categoryIds: categories.map(category => category.id)});
+    return this.promotionsService.create(dto);
   }
 
   @Get()
