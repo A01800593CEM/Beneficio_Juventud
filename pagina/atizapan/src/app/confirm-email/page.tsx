@@ -2,8 +2,8 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { confirmSignUp, resendSignUpCode, cognitoLogin, getCurrentUser, cognitoLogout } from "../../lib/cognito";
-import { apiService, UserRegistrationData } from "../../lib/api";
+import { confirmSignUp, resendSignUpCode, cognitoLogin, getCurrentUser } from "../../lib/cognito";
+import { apiService, UserRegistrationData, CollaboratorRegistrationData } from "../../lib/api";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 
 function ConfirmEmailContent() {
@@ -15,6 +15,7 @@ function ConfirmEmailContent() {
   const [success, setSuccess] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
   const [apiRegistrationStatus, setApiRegistrationStatus] = useState<'pending' | 'loading' | 'success' | 'error'>('pending');
+  const [userType, setUserType] = useState<'user' | 'collaborator'>('user');
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -27,44 +28,88 @@ function ConfirmEmailContent() {
       // Si no hay email en la query, redirigir a registro
       router.push('/register');
     }
+
+    // Detectar tipo de usuario basado en localStorage
+    const tempUserData = localStorage.getItem('tempUserData');
+    const tempCollaboratorData = localStorage.getItem('tempCollaboratorData');
+
+    if (tempCollaboratorData) {
+      setUserType('collaborator');
+    } else if (tempUserData) {
+      setUserType('user');
+    }
   }, [searchParams, router]);
 
-  const registerUserInAPI = async (cognitoUserId: string) => {
-    console.log('🔑 Iniciando registro en API con Cognito ID:', cognitoUserId);
+  const registerInAPI = async (cognitoUserId: string) => {
+    console.log(`🔑 Iniciando registro de ${userType} en API con Cognito ID:`, cognitoUserId);
     setApiRegistrationStatus('loading');
 
     try {
-      // Obtener datos temporales del localStorage
-      const tempUserDataStr = localStorage.getItem('tempUserData');
-      if (!tempUserDataStr) {
-        throw new Error('No se encontraron datos de usuario temporales');
+      if (userType === 'user') {
+        // Obtener datos temporales del usuario
+        const tempUserDataStr = localStorage.getItem('tempUserData');
+        if (!tempUserDataStr) {
+          throw new Error('No se encontraron datos de usuario temporales');
+        }
+
+        const tempUserData = JSON.parse(tempUserDataStr);
+        console.log('📦 Datos de usuario recuperados de localStorage:', tempUserData);
+
+        // Preparar datos para la API de usuarios
+        const apiData: UserRegistrationData = {
+          name: tempUserData.name,
+          lastNamePaternal: tempUserData.lastNamePaternal,
+          lastNameMaternal: tempUserData.lastNameMaternal,
+          birthDate: tempUserData.birthDate,
+          phoneNumber: tempUserData.phoneNumber,
+          email: tempUserData.email,
+          cognitoId: cognitoUserId,
+        };
+
+        console.log('🌐 Enviando datos de usuario a la API:', apiData);
+        const apiResponse = await apiService.registerUser(apiData);
+        console.log('✅ Usuario registrado en API exitosamente:', apiResponse);
+
+        // Limpiar datos temporales
+        localStorage.removeItem('tempUserData');
+        console.log('🧹 Datos temporales de usuario limpiados');
+
+      } else if (userType === 'collaborator') {
+        // Obtener datos temporales del colaborador
+        const tempCollaboratorDataStr = localStorage.getItem('tempCollaboratorData');
+        if (!tempCollaboratorDataStr) {
+          throw new Error('No se encontraron datos de colaborador temporales');
+        }
+
+        const tempCollaboratorData = JSON.parse(tempCollaboratorDataStr);
+        console.log('📦 Datos de colaborador recuperados de localStorage:', tempCollaboratorData);
+
+        // Preparar datos para la API de colaboradores
+        const apiData: CollaboratorRegistrationData = {
+          businessName: tempCollaboratorData.businessName,
+          cognitoId: cognitoUserId,
+          rfc: tempCollaboratorData.rfc,
+          representativeName: tempCollaboratorData.representativeName,
+          phone: tempCollaboratorData.phone,
+          email: tempCollaboratorData.email,
+          address: tempCollaboratorData.address,
+          postalCode: tempCollaboratorData.postalCode,
+          description: tempCollaboratorData.description,
+          state: 'activo',
+        };
+
+        console.log('🌐 Enviando datos de colaborador a la API:', apiData);
+        const apiResponse = await apiService.registerCollaborator(apiData);
+        console.log('✅ Colaborador registrado en API exitosamente:', apiResponse);
+
+        // Limpiar datos temporales
+        localStorage.removeItem('tempCollaboratorData');
+        console.log('🧹 Datos temporales de colaborador limpiados');
       }
-
-      const tempUserData = JSON.parse(tempUserDataStr);
-      console.log('📦 Datos recuperados de localStorage:', tempUserData);
-
-      // Preparar datos para la API
-      const apiData: UserRegistrationData = {
-        name: tempUserData.name,
-        lastNamePaternal: tempUserData.lastNamePaternal,
-        lastNameMaternal: tempUserData.lastNameMaternal,
-        birthDate: tempUserData.birthDate,
-        phoneNumber: tempUserData.phoneNumber,
-        email: tempUserData.email,
-        cognitoId: cognitoUserId,
-      };
-
-      console.log('🌐 Enviando datos a la API:', apiData);
-      const apiResponse = await apiService.registerUser(apiData);
-      console.log('✅ Usuario registrado en API exitosamente:', apiResponse);
-
-      // Limpiar datos temporales
-      localStorage.removeItem('tempUserData');
-      console.log('🧹 Datos temporales limpiados');
 
       setApiRegistrationStatus('success');
     } catch (error) {
-      console.error('❌ Error registrando usuario en API:', error);
+      console.error(`❌ Error registrando ${userType} en API:`, error);
       setApiRegistrationStatus('error');
       // No mostrar error aquí, ya está confirmado en Cognito
     }
@@ -97,17 +142,20 @@ function ConfirmEmailContent() {
       // Obtener el sub del usuario autenticándose temporalmente
       console.log('🔐 Obteniendo sub del usuario de Cognito...');
       try {
-        // Obtener datos temporales incluyendo la contraseña
-        const tempUserDataStr = localStorage.getItem('tempUserData');
-        if (tempUserDataStr) {
-          const tempUserData = JSON.parse(tempUserDataStr);
-          console.log('📦 Datos recuperados para login:', { email: tempUserData.email });
+        // Obtener datos temporales incluyendo la contraseña basado en el tipo de usuario
+        const tempDataStr = userType === 'user'
+          ? localStorage.getItem('tempUserData')
+          : localStorage.getItem('tempCollaboratorData');
+
+        if (tempDataStr) {
+          const tempData = JSON.parse(tempDataStr);
+          console.log('📦 Datos recuperados para login:', { email: tempData.email, userType });
 
           // Hacer login temporal para obtener el sub
           console.log('🔑 Haciendo login temporal para obtener sub...');
           await cognitoLogin({
-            email: tempUserData.email,
-            password: tempUserData.password
+            email: tempData.email,
+            password: tempData.password
           });
 
           // Obtener el usuario actual que ahora debería estar autenticado
@@ -116,28 +164,22 @@ function ConfirmEmailContent() {
 
           if (currentUser && currentUser.userId) {
             console.log('🆔 Sub del usuario:', currentUser.userId);
-            await registerUserInAPI(currentUser.userId);
-
-            // Hacer logout para limpiar el token del caché
-            console.log('🧹 Limpiando sesión temporal...');
-            await cognitoLogout();
-            console.log('✅ Sesión temporal limpiada exitosamente');
+            await registerInAPI(currentUser.userId);
           } else {
             throw new Error('No se pudo obtener el sub del usuario');
           }
         } else {
-          throw new Error('No se encontraron datos de usuario temporales');
+          throw new Error(`No se encontraron datos de ${userType} temporales`);
         }
       } catch (userError) {
-        console.error('⚠️ Error obteniendo sub del usuario, pero la confirmación fue exitosa:', userError);
+        console.error(`⚠️ Error obteniendo sub del ${userType}, pero la confirmación fue exitosa:`, userError);
         setApiRegistrationStatus('error');
       }
 
-      // Redirigir al login después de 3 segundos para dar tiempo a la API
+      // Redirigir al login después de 5 segundos para dar tiempo a la API
       setTimeout(() => {
-        // Redirigir al login ya que se limpió la sesión temporal
         router.push('/login');
-      }, 3000);
+      }, 5000);
       
     } catch (err: unknown) {
       console.error("Error confirmando registro:", err);
@@ -208,9 +250,11 @@ function ConfirmEmailContent() {
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">¡Cuenta Confirmada!</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                ¡{userType === 'user' ? 'Usuario' : 'Colaborador'} Registrado!
+              </h1>
               <p className="text-gray-600">
-                Tu cuenta ha sido activada exitosamente.
+                Tu cuenta de {userType === 'user' ? 'usuario' : 'colaborador'} ha sido activada exitosamente.
               </p>
 
               {/* Estado del registro en API */}
@@ -247,7 +291,7 @@ function ConfirmEmailContent() {
               <p className="text-sm text-gray-500 mb-6">
                 Serás redirigido al login automáticamente...
               </p>
-
+              
               <button
                 onClick={() => router.push('/login')}
                 className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
@@ -294,6 +338,11 @@ function ConfirmEmailContent() {
               Hemos enviado un código de 6 dígitos a:
             </p>
             <p className="font-medium text-blue-600 mt-1">{email}</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Registrándote como: <span className="font-medium text-[#008D96]">
+                {userType === 'user' ? 'Usuario' : 'Colaborador'}
+              </span>
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
