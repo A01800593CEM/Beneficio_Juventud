@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* src/styles/globals.css - Agregar estas utilidades */
+
+/* Utilidades para truncar texto */
+.line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  /* Mejoras para el grid responsive */
+  @media (max-width: 768px) {
+    .comercios-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  @media (min-width: 769px) and (max-width: 1279px) {
+    .comercios-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .comercios-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  
+  /* Animaciones para las tarjetas */
+  .comercio-card {
+    transition: all 0.2s ease-in-out;
+  }
+  
+  .comercio-card:hover {
+    transform: translateY(-2px);
+  }
+  
+  /* Estado de verificación */
+  .verified-badge {
+    background: linear-gradient(135deg, #008D96, #00C0CC);
+    color: white;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-weight: 500;
+  }
