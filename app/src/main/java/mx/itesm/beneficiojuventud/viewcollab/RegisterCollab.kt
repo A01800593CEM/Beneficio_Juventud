@@ -78,6 +78,10 @@ fun RegisterCollab(
     var showError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
+    // RFC validation regex
+    val rfcRegex = Regex("^([A-ZÑ&]{3,4}) ?(?:- ?)?(\\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\\d|3[01])) ?(?:- ?)?([A-Z\\d]{2})([A\\d])$")
+    val isRfcValid = rfc.isNotBlank() && rfcRegex.matches(rfc)
+
     val authState by authViewModel.authState.collectAsState()
     val scope = rememberCoroutineScope()
 
@@ -166,7 +170,7 @@ fun RegisterCollab(
 
     // Validación del formulario
     val isFormValid = businessName.isNotBlank() &&
-            rfc.isNotBlank() &&
+            isRfcValid &&
             representativeName.isNotBlank() &&
             phone.length == 10 &&
             email.isNotBlank() &&
@@ -325,10 +329,14 @@ fun RegisterCollab(
                         singleLine = true,
                         modifier = it.fillMaxWidth().heightIn(min = TextFieldDefaults.MinHeight),
                         shape = RoundedCornerShape(18.dp),
-                        placeholder = { Text("RFC (12 o 13 caracteres)", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
+                        placeholder = { Text("Ej. XAXX010101000", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
                         textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        colors = textFieldColors()
+                        colors = textFieldColors(),
+                        isError = rfc.isNotBlank() && !isRfcValid,
+                        supportingText = if (rfc.isNotBlank() && !isRfcValid) {
+                            { Text("RFC inválido. Verifica el formato.", fontSize = 12.sp, color = Color(0xFFD32F2F)) }
+                        } else null
                     )
                 }
             }
