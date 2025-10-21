@@ -1,5 +1,7 @@
 package mx.itesm.beneficiojuventud.view
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,11 +12,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -49,6 +54,7 @@ data class FaqItem(val question: String, val answer: String)
 fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
     var selectedTab by remember { mutableStateOf(BJTab.Profile) }
     val appVersion = "1.0.01"
+    val context = LocalContext.current
 
     val faqs = remember {
         listOf(
@@ -97,21 +103,36 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
             ) {
                 // Contactar soporte
                 item {
+                    val email = "soporte@beneficio.com"
                     HelpActionItem(
                         icon = Icons.Outlined.Email,
                         title = "Contactar Soporte",
-                        subtitle = "soporte@beneficio.com",
-                        onClick = { /* TODO: abrir Intent.ACTION_SENDTO mailto: */ }
+                        subtitle = email,
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = Uri.parse("mailto:")
+                                putExtra(Intent.EXTRA_EMAIL, arrayOf(email))
+                                putExtra(Intent.EXTRA_SUBJECT, "Soporte App Beneficio Juventud - Duda/Problema")
+                                putExtra(Intent.EXTRA_TEXT, "Hola, tengo una consulta:\n\n[Describe tu problema aquí]\n\nGracias.")
+                            }
+                            context.startActivity(Intent.createChooser(intent, "Enviar correo con..."))
+                        }
                     )
                 }
 
                 // Línea de ayuda
                 item {
+                    val phoneNumber = "+525509876543"
                     HelpActionItem(
                         icon = Icons.Outlined.PhoneInTalk,
                         title = "Línea de Ayuda",
                         subtitle = "+52 55 0987 6543",
-                        onClick = { /* TODO: abrir Intent.ACTION_DIAL tel: */ }
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_DIAL).apply {
+                                data = Uri.parse("tel:$phoneNumber")
+                            }
+                            context.startActivity(intent)
+                        }
                     )
                 }
 
