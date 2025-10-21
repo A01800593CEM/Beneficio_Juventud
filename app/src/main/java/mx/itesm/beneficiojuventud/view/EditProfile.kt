@@ -359,38 +359,36 @@ fun EditProfile(
         }
     }
 
-    // Feedback de éxito y navegación a Profile cuando termine el guardado sin error
+    // Feedback de éxito y navegación a Profile cuando termine el guardado
     LaunchedEffect(isLoading, errorMsg, backendUser) {
         if (justSaved && !isLoading) {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            justSaved = false
+
             if (errorMsg.isNullOrBlank()) {
-                // Éxito: cerrar "Guardando…" y mostrar "Cambios guardados" sin bloquear
-                snackbarHostState.currentSnackbarData?.dismiss()
-                scope.launch {
-                    snackbarHostState.showSnackbar(
-                        message = "Cambios guardados",
-                        withDismissAction = true,
-                        duration = SnackbarDuration.Short
+                // Éxito: navegar a StatusScreen que muestra éxito y luego va a Profile
+                nav.navigate(
+                    Screens.Status.createRoute(
+                        StatusType.USER_INFO_UPDATED,
+                        Screens.Profile.route
                     )
-                }
-
-                justSaved = false
-
-                // Navegar inmediatamente (sin esperar al snackbar)
-                nav.navigate(Screens.Profile.route) {
-                    popUpTo(Screens.Profile.route) { inclusive = true }
+                ) {
+                    // Limpia la pila de navegación para que no se pueda volver a EditProfile
+                    popUpTo(Screens.EditProfile.route) { inclusive = true }
                     launchSingleTop = true
                 }
             } else {
-                // Error: sustituir snackbar y NO bloquear
-                snackbarHostState.currentSnackbarData?.dismiss()
-                scope.launch {
-                    snackbarHostState.showSnackbar(
-                        message = errorMsg ?: "Error al guardar",
-                        withDismissAction = true,
-                        duration = SnackbarDuration.Long
+                // Error: navegar a StatusScreen que muestra error y luego vuelve a EditProfile
+                nav.navigate(
+                    Screens.Status.createRoute(
+                        StatusType.USER_INFO_UPDATE_ERROR,
+                        Screens.EditProfile.route
                     )
+                ) {
+                    // Limpia la pila de navegación para que no se pueda volver atrás al EditProfile anterior
+                    popUpTo(Screens.EditProfile.route) { inclusive = true }
+                    launchSingleTop = true
                 }
-                justSaved = false
             }
         }
     }

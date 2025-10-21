@@ -332,7 +332,9 @@ fun PromoQR(
                     Screens.Favorites.route
                 )
             ) {
-                popUpTo(Screens.PromoQR.route) { inclusive = true }
+                // Limpia la pila de navegación para que no se pueda volver atrás
+                popUpTo(Screens.Home.route) { inclusive = false }
+                launchSingleTop = true
             }
             bookingViewModel.resetBookingSuccess()
         }
@@ -800,7 +802,9 @@ fun PromoQR(
                                 Screens.Home.route
                             )
                         ) {
-                            popUpTo(Screens.PromoQR.route) { inclusive = true }
+                            // Limpia la pila de navegación para que no se pueda volver atrás
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
                         }
                     }
                 } catch (e: Exception) {
@@ -870,7 +874,9 @@ fun PromoQR(
                                         Screens.Home.route
                                     )
                                 ) {
-                                    popUpTo(Screens.PromoQR.route) { inclusive = true }
+                                    // Limpia la pila de navegación para que no se pueda volver atrás
+                                    popUpTo(Screens.Home.route) { inclusive = false }
+                                    launchSingleTop = true
                                 }
                             }
                         }

@@ -79,7 +79,9 @@ fun QRScannerScreen(
                     Screens.HomeScreenCollab.route
                 )
             ) {
-                popUpTo(Screens.QrScanner.route) { inclusive = true }
+                // Limpia la pila de navegación para que no se pueda volver atrás
+                popUpTo(Screens.HomeScreenCollab.route) { inclusive = false }
+                launchSingleTop = true
             }
         }
     }
@@ -96,7 +98,9 @@ fun QRScannerScreen(
                     Screens.HomeScreenCollab.route
                 )
             ) {
-                popUpTo(Screens.QrScanner.route) { inclusive = true }
+                // Limpia la pila de navegación para que no se pueda volver atrás
+                popUpTo(Screens.HomeScreenCollab.route) { inclusive = false }
+                launchSingleTop = true
             }
         }
     }
