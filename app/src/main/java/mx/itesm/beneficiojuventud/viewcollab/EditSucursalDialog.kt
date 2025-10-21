@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
@@ -16,6 +17,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -37,8 +40,12 @@ fun EditSucursalDialog(
 ) {
     var name by remember { mutableStateOf(branch.name ?: "") }
     var address by remember { mutableStateOf(branch.address ?: "") }
-    var phone by remember { mutableStateOf(branch.phone ?: "") }
-    var zipCode by remember { mutableStateOf(branch.zipCode ?: "") }
+    var phoneRaw by remember { mutableStateOf(branch.phone?.filter { it.isDigit() }?.take(10) ?: "") }
+    var zipCode by remember { mutableStateOf(branch.zipCode?.filter { it.isDigit() }?.take(5) ?: "") }
+
+    var phoneError by remember { mutableStateOf(false) }
+    var zipError by remember { mutableStateOf(false) }
+
     var location by remember { mutableStateOf(branch.location) }
     var isActive by remember { mutableStateOf(branch.state == BranchState.ACTIVE) }
     var showLocationPicker by remember { mutableStateOf(false) }
@@ -46,6 +53,8 @@ fun EditSucursalDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(shape = RoundedCornerShape(24.dp), color = Color.White) {
             Column(modifier = Modifier.padding(24.dp)) {
+
+                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -61,59 +70,86 @@ fun EditSucursalDialog(
                         Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = TextColor)
                     }
                 }
+
                 Spacer(Modifier.height(16.dp))
 
-                StyledOutlinedTextField(value = name, onValueChange = { name = it }, label = "Nombre de la sucursal")
-                Spacer(Modifier.height(16.dp))
-                StyledOutlinedTextField(value = address, onValueChange = { address = it }, label = "Dirección")
-                Spacer(Modifier.height(16.dp))
-                StyledOutlinedTextField(value = phone, onValueChange = { phone = it }, label = "Teléfono")
-                Spacer(Modifier.height(16.dp))
-                StyledOutlinedTextField(value = zipCode, onValueChange = { zipCode = it }, label = "Código Postal")
-                Spacer(Modifier.height(16.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
-                // Location picker button
-                LocationPickerButton(
-                    location = location,
-                    onClick = { showLocationPicker = true }
-                )
-                Spacer(Modifier.height(16.dp))
+                    StyledOutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = "Nombre de la sucursal"
+                    )
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(
-                        checked = isActive,
-                        onCheckedChange = { isActive = it },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = Teal,
-                            uncheckedThumbColor = Color.White,
-                            uncheckedTrackColor = Color.LightGray
+                    StyledOutlinedTextField(
+                        value = address,
+                        onValueChange = { address = it },
+                        label = "Dirección"
+                    )
+
+                    PhoneMxField(
+                        valueRaw = phoneRaw,
+                        onValueRawChange = {
+                            phoneRaw = it
+                            if (phoneError && it.length == 10) phoneError = false
+                        },
+                        isError = phoneError
+                    )
+
+                    ZipMxField(
+                        value = zipCode,
+                        onValueChange = {
+                            zipCode = it
+                            if (zipError && it.length == 5) zipError = false
+                        },
+                        isError = zipError
+                    )
+
+                    LocationPickerButton(
+                        location = location,
+                        onClick = { showLocationPicker = true }
+                    )
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(
+                            checked = isActive,
+                            onCheckedChange = { isActive = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = Teal,
+                                uncheckedThumbColor = Color.White,
+                                uncheckedTrackColor = Color.LightGray
+                            )
                         )
-                    )
-                    Spacer(Modifier.width(16.dp))
-                    Text(
-                        "Sucursal Activa",
-                        color = TextColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
+                        Spacer(Modifier.width(16.dp))
+                        Text("Sucursal Activa", color = TextColor, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
                 }
+
                 Spacer(Modifier.height(24.dp))
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     SaveChangesDialogButton(
                         onClick = {
+                            val phoneOk = phoneRaw.length == 10
+                            val zipOk = zipCode.length == 5
+
+                            phoneError = !phoneOk
+                            zipError = !zipOk
+                            if (!phoneOk || !zipOk) return@SaveChangesDialogButton
+
                             val updatedBranch = branch.copy(
                                 name = name.trim(),
                                 address = address.trim(),
-                                phone = phone.trim(),
-                                zipCode = zipCode.trim(),
+                                phone = phoneRaw,
+                                zipCode = zipCode,
                                 location = location,
                                 state = if (isActive) BranchState.ACTIVE else BranchState.INACTIVE
                             )
                             onSave(updatedBranch)
                         }
                     )
+
                     if (branch.branchId != null) {
                         Spacer(Modifier.height(8.dp))
                         DeleteDialogButton(onClick = { onDelete(branch) })
@@ -122,7 +158,6 @@ fun EditSucursalDialog(
             }
         }
 
-        // Location picker dialog
         if (showLocationPicker) {
             BranchLocationPickerDialog(
                 initialLocation = location,
@@ -135,6 +170,8 @@ fun EditSucursalDialog(
         }
     }
 }
+
+
 
 @Composable
 private fun StyledOutlinedTextField(value: String, onValueChange: (String) -> Unit, label: String) {
@@ -282,6 +319,88 @@ private fun LocationPickerButton(
         }
     }
 }
+
+@Composable
+private fun PhoneMxField(
+    valueRaw: String,
+    onValueRawChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String = "Teléfono",
+    isError: Boolean = false
+) {
+    val formatted = remember(valueRaw) {
+        val digits = valueRaw.filter { it.isDigit() }.take(10)
+        buildString {
+            for (i in digits.indices) {
+                append(digits[i])
+                if (i == 1 && digits.length > 2) append(' ')
+                if (i == 5 && digits.length > 6) append(' ')
+            }
+        }
+    }
+
+    OutlinedTextField(
+        value = formatted,
+        onValueChange = { typed ->
+            // Extrae dígitos del texto tipeado y limita a 10
+            val onlyDigits = typed.filter { it.isDigit() }.take(10)
+            onValueRawChange(onlyDigits)
+        },
+        label = { Text(label, color = LabelColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
+        modifier = modifier.fillMaxWidth(),
+        isError = isError,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Number,
+            imeAction = ImeAction.Next
+        ),
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Teal,
+            unfocusedBorderColor = Color.LightGray,
+            focusedTextColor = TextColor,
+            unfocusedTextColor = TextColor
+        ),
+        textStyle = TextStyle(color = TextColor, fontSize = 14.sp, fontWeight = FontWeight.Bold),
+        supportingText = {
+            if (isError) Text("Debe tener 10 dígitos.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+        }
+    )
+}
+
+@Composable
+private fun ZipMxField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String = "Código Postal",
+    isError: Boolean = false
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { typed ->
+            onValueChange(typed.filter { it.isDigit() }.take(5))
+        },
+        label = { Text(label, color = LabelColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
+        modifier = modifier.fillMaxWidth(),
+        isError = isError,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Number,
+            imeAction = ImeAction.Next
+        ),
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Teal,
+            unfocusedBorderColor = Color.LightGray,
+            focusedTextColor = TextColor,
+            unfocusedTextColor = TextColor
+        ),
+        textStyle = TextStyle(color = TextColor, fontSize = 14.sp, fontWeight = FontWeight.Bold),
+        supportingText = {
+            if (isError) Text("Debe tener 5 dígitos.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+        }
+    )
+}
+
 
 /**
  * Parsea una cadena de ubicación en formato "(longitude,latitude)"
