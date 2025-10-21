@@ -107,11 +107,6 @@ class MainActivity : ComponentActivity() {
 private fun AppContent(
     promotionDao: mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionDao,
     categoryDao: mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryDao
-    userViewModel: UserViewModel = viewModel(),
-    collabViewModel: CollabViewModel = viewModel(),
-    categoryViewModel: CategoryViewModel = viewModel(),
-    promoViewModel: PromoViewModel = viewModel(),
-    statsViewModel: StatsViewModel = viewModel()
 ) {
     val context = LocalContext.current
 
@@ -129,6 +124,7 @@ private fun AppContent(
     val categoryViewModel: CategoryViewModel = viewModel()
     val promoViewModel: PromoViewModel = viewModel()
     val bookingViewModel: BookingViewModel = viewModel()
+    val statsViewModel: StatsViewModel = viewModel()
 
     val nav = rememberNavController()
     AppNav(
@@ -138,7 +134,7 @@ private fun AppContent(
         collabViewModel = collabViewModel,
         categoryViewModel = categoryViewModel,
         promoViewModel = promoViewModel,
-        bookingViewModel = bookingViewModel
+        bookingViewModel = bookingViewModel,
         statsViewModel = statsViewModel
     )
 }
@@ -151,15 +147,12 @@ private fun AppNav(
     collabViewModel: CollabViewModel,
     categoryViewModel: CategoryViewModel,
     promoViewModel: PromoViewModel,
-    bookingViewModel: BookingViewModel
+    bookingViewModel: BookingViewModel,
     statsViewModel: StatsViewModel
 ) {
     val appState by authViewModel.appState.collectAsState()
     val currentUserId by authViewModel.currentUserId.collectAsState()
     val sessionKey by authViewModel.sessionKey.collectAsState()
-
-    val userState by userViewModel.userState.collectAsState()
-    val isLoading by userViewModel.isLoading.collectAsState()
 
     LaunchedEffect(appState.isAuthenticated, sessionKey) {
         if (appState.isAuthenticated) authViewModel.getCurrentUser()
