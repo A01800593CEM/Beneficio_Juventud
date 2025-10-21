@@ -67,6 +67,28 @@ class StatsViewModel : ViewModel() {
                 // Parse the charts from dashboard
                 val gson = Gson()
 
+                // Parse redemption entries (daily redemptions line chart)
+                val redemptionEntries = try {
+                    val chartData = dashboard.charts["redemptionTrends"]
+                    val json = gson.toJson(chartData)
+                    val analyticsChart = gson.fromJson(json, mx.itesm.beneficiojuventud.model.analytics.AnalyticsChart::class.java)
+                    analyticsChart.entries.map { it.y }
+                } catch (e: Exception) {
+                    // Return a list with at least one point to avoid crash
+                    listOf(0)
+                }
+
+                // Parse booking entries (daily bookings line chart)
+                val bookingEntries = try {
+                    val chartData = dashboard.charts["bookingTrends"]
+                    val json = gson.toJson(chartData)
+                    val analyticsChart = gson.fromJson(json, mx.itesm.beneficiojuventud.model.analytics.AnalyticsChart::class.java)
+                    analyticsChart.entries.map { it.y }
+                } catch (e: Exception) {
+                    // Return a list with at least one point to avoid crash
+                    listOf(0)
+                }
+
                 // Parse bar chart data for top redeemed coupons
                 val topRedeemedCoupons = try {
                     val chartData = dashboard.charts["topRedeemedCoupons"]
@@ -108,13 +130,25 @@ class StatsViewModel : ViewModel() {
                             stockUtilization = promo.stockUtilization
                         )
                     },
+                    redemptionEntries = redemptionEntries,
+                    bookingEntries = bookingEntries,
                     topRedeemedCoupons = topRedeemedCoupons,
                     redemptionTrendsByPromotion = redemptionTrendsByPromotion
                 )
             } catch (e: Exception) {
+                val errorMessage = when {
+                    e is java.net.UnknownHostException || e.message?.contains("Unable to resolve host") == true ->
+                        "Sin conexión a internet. Por favor verifica tu conexión."
+                    e is java.net.SocketTimeoutException || e.message?.contains("timeout") == true ->
+                        "Tiempo de espera agotado. Por favor intenta de nuevo."
+                    e is java.net.ConnectException || e.message?.contains("Failed to connect") == true ->
+                        "No se pudo conectar al servidor. Verifica tu conexión a internet."
+                    else -> e.message ?: "Error desconocido al cargar estadísticas"
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Unknown error loading analytics"
+                    error = errorMessage
                 )
             }
         }
@@ -142,6 +176,28 @@ class StatsViewModel : ViewModel() {
                 // Parse the charts from dashboard
                 val gson = Gson()
 
+                // Parse redemption entries (daily redemptions line chart)
+                val redemptionEntries = try {
+                    val chartData = dashboard.charts["redemptionTrends"]
+                    val json = gson.toJson(chartData)
+                    val analyticsChart = gson.fromJson(json, mx.itesm.beneficiojuventud.model.analytics.AnalyticsChart::class.java)
+                    analyticsChart.entries.map { it.y }
+                } catch (e: Exception) {
+                    // Return a list with at least one point to avoid crash
+                    listOf(0)
+                }
+
+                // Parse booking entries (daily bookings line chart)
+                val bookingEntries = try {
+                    val chartData = dashboard.charts["bookingTrends"]
+                    val json = gson.toJson(chartData)
+                    val analyticsChart = gson.fromJson(json, mx.itesm.beneficiojuventud.model.analytics.AnalyticsChart::class.java)
+                    analyticsChart.entries.map { it.y }
+                } catch (e: Exception) {
+                    // Return a list with at least one point to avoid crash
+                    listOf(0)
+                }
+
                 // Parse bar chart data for top redeemed coupons
                 val topRedeemedCoupons = try {
                     val chartData = dashboard.charts["topRedeemedCoupons"]
@@ -183,13 +239,25 @@ class StatsViewModel : ViewModel() {
                             stockUtilization = promo.stockUtilization
                         )
                     },
+                    redemptionEntries = redemptionEntries,
+                    bookingEntries = bookingEntries,
                     topRedeemedCoupons = topRedeemedCoupons,
                     redemptionTrendsByPromotion = redemptionTrendsByPromotion
                 )
             } catch (e: Exception) {
+                val errorMessage = when {
+                    e is java.net.UnknownHostException || e.message?.contains("Unable to resolve host") == true ->
+                        "Sin conexión a internet. Por favor verifica tu conexión."
+                    e is java.net.SocketTimeoutException || e.message?.contains("timeout") == true ->
+                        "Tiempo de espera agotado. Por favor intenta de nuevo."
+                    e is java.net.ConnectException || e.message?.contains("Failed to connect") == true ->
+                        "No se pudo conectar al servidor. Verifica tu conexión a internet."
+                    else -> e.message ?: "Error al actualizar estadísticas"
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isRefreshing = false,
-                    error = e.message ?: "Error refreshing analytics"
+                    error = errorMessage
                 )
             }
         }
