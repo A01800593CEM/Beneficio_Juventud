@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import androidx.room.Room
 import kotlinx.coroutines.flow.collectLatest
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -37,6 +38,7 @@ import mx.itesm.beneficiojuventud.viewmodel.RedeemedCouponViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
 import androidx.compose.runtime.mutableStateListOf
+import mx.itesm.beneficiojuventud.model.RoomDB.LocalDatabase
 
 enum class HistoryType {
     CUPON_USADO,
@@ -70,15 +72,63 @@ fun History(
     redeemedVm: RedeemedCouponViewModel = viewModel(),
     bookingVm: BookingViewModel = viewModel()      // <= para eventos de reservas
 ) {
+    val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(BJTab.Profile) }
 
-    // 1) Canjes reales
+    // Database para cargar historial persistente
+    val database = remember {
+        Room.databaseBuilder(context, LocalDatabase::class.java, "beneficio_juventud_db")
+            .fallbackToDestructiveMigration()
+            .build()
+    }
+
+    // 1) Canjes reales desde backend
     val redeemedList by redeemedVm.redeemedListState.collectAsState()
     LaunchedEffect(userId) {
         runCatching { redeemedVm.getRedeemedByUser(userId) }
     }
 
-    // 2) Eventos de favoritos – in-memory
+    // 1b) Historial persistente desde Room (NUEVO)
+    val persistedHistory = remember { mutableStateListOf<HistoryEntry>() }
+
+    LaunchedEffect(userId) {
+        try {
+            database.historyDao().getHistoryByUser(userId).collectLatest { historyEntities ->
+                persistedHistory.clear()
+                historyEntities.forEach { entity ->
+                    val type = when (entity.type) {
+                        "CUPON_USADO" -> HistoryType.CUPON_USADO
+                        "CUPON_RESERVADO" -> HistoryType.CUPON_RESERVADO
+                        "RESERVA_CANCELADA" -> HistoryType.RESERVA_CANCELADA
+                        "FAVORITO_AGREGADO" -> HistoryType.FAVORITO_AGREGADO
+                        "FAVORITO_QUITADO" -> HistoryType.FAVORITO_QUITADO
+                        else -> HistoryType.CUPON_GUARDADO
+                    }
+                    persistedHistory.add(
+                        HistoryEntry(
+                            type = type,
+                            title = when (type) {
+                                HistoryType.CUPON_USADO -> "Cupón usado"
+                                HistoryType.CUPON_RESERVADO -> "Cupón reservado"
+                                HistoryType.RESERVA_CANCELADA -> "Reservación cancelada"
+                                HistoryType.FAVORITO_AGREGADO -> "Favorito agregado"
+                                HistoryType.FAVORITO_QUITADO -> "Favorito eliminado"
+                                else -> "Evento"
+                            },
+                            subtitle = entity.subtitle ?: "",
+                            date = entity.date ?: "",
+                            iso = entity.iso ?: ""
+                        )
+                    )
+                }
+                Log.d("History", "Historial persistente cargado: ${persistedHistory.size} entradas")
+            }
+        } catch (e: Exception) {
+            Log.e("History", "Error loading persisted history", e)
+        }
+    }
+
+    // 2) Eventos de favoritos – in-memory (nuevos eventos)
     val favoriteEntries = remember { mutableStateListOf<HistoryEntry>() }
 
     LaunchedEffect(userId, userViewModel) {
@@ -108,7 +158,7 @@ fun History(
         }
     }
 
-    // 2b) Eventos de reservas/cancelaciones – in-memory
+    // 2b) Eventos de reservas/cancelaciones – in-memory (nuevos eventos)
     val bookingEntries = remember { mutableStateListOf<HistoryEntry>() }
 
     LaunchedEffect(userId, bookingVm) {
@@ -167,10 +217,13 @@ fun History(
     // Usar derivedStateOf para que observe cambios en las listas mutables
     val entries: List<HistoryEntry> by remember {
         derivedStateOf {
-            val merged = (redeemedEntries + favoriteEntries + bookingEntries).sortedByDescending {
-                parseIso(it.iso) ?: OffsetDateTime.MIN
-            }
-            Log.d("History", "Entradas totales - Redeemed: ${redeemedEntries.size}, Favorites: ${favoriteEntries.size}, Bookings: ${bookingEntries.size}, Total: ${merged.size}")
+            // Combinar: historial persistente (antiguo) + eventos en memoria (nuevo) + cupones redimidos
+            val merged = (persistedHistory + redeemedEntries + favoriteEntries + bookingEntries)
+                .distinctBy { it.iso }  // Evitar duplicados (cupones redimidos pueden estar en ambas)
+                .sortedByDescending {
+                    parseIso(it.iso) ?: OffsetDateTime.MIN
+                }
+            Log.d("History", "Entradas totales - Persisted: ${persistedHistory.size}, Redeemed: ${redeemedEntries.size}, Favorites: ${favoriteEntries.size}, Bookings: ${bookingEntries.size}, Total: ${merged.size}")
             merged
         }
     }

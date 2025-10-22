@@ -7,7 +7,8 @@
       "Bash(curl:*)",
       "Bash(npm run build:*)",
       "Bash(npm run test:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(ls -la \"D:\\BeneficioJuventudGit\\app\\src\\main\\java\\mx\\itesm\\beneficiojuventud\"\" 2>/dev/null || ls -la \"D:BeneficioJuventudGitappsrcmainjavamxitesm\" 2>/dev/null || ls -la \"D:BeneficioJuventudGitappsrcmainjavamx\" 2>/dev/null || find \"D:BeneficioJuventudGitapp\" -type d -name \"itesm \")"
     ],
     "deny": [],
     "ask": []

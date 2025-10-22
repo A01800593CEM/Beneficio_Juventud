@@ -13,13 +13,17 @@ import mx.itesm.beneficiojuventud.model.bookings.Booking
 import mx.itesm.beneficiojuventud.model.bookings.RemoteServiceBooking
 import mx.itesm.beneficiojuventud.model.SavedCouponRepository
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
+import mx.itesm.beneficiojuventud.model.history.HistoryService
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
 import mx.itesm.beneficiojuventud.model.users.RemoteServiceUser
 import mx.itesm.beneficiojuventud.model.users.UserProfile
 import java.time.OffsetDateTime
 
-class UserViewModel(private val repository: SavedCouponRepository) : ViewModel() {
+class UserViewModel(
+    private val repository: SavedCouponRepository,
+    private val historyService: HistoryService? = null
+) : ViewModel() {
 
     private val model = RemoteServiceUser
 
@@ -208,13 +212,25 @@ class UserViewModel(private val repository: SavedCouponRepository) : ViewModel()
                 val title = added?.title ?: "Promoción $promotionId"
                 val business = added?.businessName
 
+                val timestampIso = OffsetDateTime.now().toString()
                 _favoritePromoEvents.emit(
                     FavoritePromoEvent.Added(
                         promotionId = promotionId,
                         title = title,
                         businessName = business,
-                        timestampIso = OffsetDateTime.now().toString()
+                        timestampIso = timestampIso
                     )
+                )
+
+                // Guardar en historial persistente
+                historyService?.addHistoryEvent(
+                    userId = cognitoId,
+                    type = "FAVORITO_AGREGADO",
+                    title = title,
+                    subtitle = business ?: "Negocio",
+                    iso = timestampIso,
+                    promotionId = promotionId,
+                    branchId = null
                 )
 
                 // Opcional: mantener también la lista de colaboradores favoritos al día
@@ -247,13 +263,25 @@ class UserViewModel(private val repository: SavedCouponRepository) : ViewModel()
 
                 _favoritePromotions.value = refreshedPromos
 
+                val timestampIso = OffsetDateTime.now().toString()
                 _favoritePromoEvents.emit(
                     FavoritePromoEvent.Removed(
                         promotionId = promotionId,
                         title = titleBefore,
                         businessName = businessBefore,
-                        timestampIso = OffsetDateTime.now().toString()
+                        timestampIso = timestampIso
                     )
+                )
+
+                // Guardar en historial persistente
+                historyService?.addHistoryEvent(
+                    userId = cognitoId,
+                    type = "FAVORITO_QUITADO",
+                    title = titleBefore,
+                    subtitle = businessBefore ?: "Negocio",
+                    iso = timestampIso,
+                    promotionId = promotionId,
+                    branchId = null
                 )
 
                 // Opcional: mantener también la lista de colaboradores favoritos al día

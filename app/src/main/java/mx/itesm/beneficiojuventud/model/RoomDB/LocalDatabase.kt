@@ -9,6 +9,8 @@ import mx.itesm.beneficiojuventud.model.RoomDB.Bookings.BookingDao
 import mx.itesm.beneficiojuventud.model.RoomDB.Bookings.BookingEntity
 import mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryDao
 import mx.itesm.beneficiojuventud.model.RoomDB.Categories.CategoryEntity
+import mx.itesm.beneficiojuventud.model.RoomDB.History.HistoryDao
+import mx.itesm.beneficiojuventud.model.RoomDB.History.HistoryEntity
 import mx.itesm.beneficiojuventud.model.RoomDB.PromotionsCategories.PromotionCategories
 import mx.itesm.beneficiojuventud.model.RoomDB.PromotionsCategories.PromotionCategoriesDao
 import mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionDao
@@ -20,9 +22,10 @@ import mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionEntity
         PromotionEntity::class,
         CategoryEntity::class,
         PromotionCategories::class,
-        BookingEntity::class
+        BookingEntity::class,
+        HistoryEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -31,6 +34,7 @@ abstract class LocalDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun bookingDao(): BookingDao
     abstract fun promotionCategoriesDao(): PromotionCategoriesDao
+    abstract fun historyDao(): HistoryDao
 
     companion object {
         @Volatile

@@ -3,14 +3,16 @@ package mx.itesm.beneficiojuventud.viewmodel
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import mx.itesm.beneficiojuventud.model.history.HistoryService
 import mx.itesm.beneficiojuventud.model.redeemedcoupon.RedeemedCoupon
 import mx.itesm.beneficiojuventud.model.redeemedcoupon.RemoteServiceRedeemedCoupon
+import android.util.Log
 
 /**
  * ViewModel para gestionar cupones canjeados (historial).
  * Basado en el patrón de PromoViewModel (StateFlow + métodos suspend).
  */
-class RedeemedCouponViewModel : ViewModel() {
+class RedeemedCouponViewModel(private val historyService: HistoryService? = null) : ViewModel() {
 
     private val model = RemoteServiceRedeemedCoupon
 
@@ -26,9 +28,32 @@ class RedeemedCouponViewModel : ViewModel() {
     // Consultas / CRUD
     // ─────────────────────────────────────────────────────────────────────────────
 
-    /** Obtiene todos los cupones canjeados por un usuario. */
+    /** Obtiene todos los cupones canjeados por un usuario y guarda en historial. */
     suspend fun getRedeemedByUser(userId: String) {
-        _redeemedListState.value = model.getRedeemedCouponsByUser(userId)
+        try {
+            val redeemedCoupons = model.getRedeemedCouponsByUser(userId)
+            _redeemedListState.value = redeemedCoupons
+
+            // Guardar cada cupón redimido en el historial persistente
+            redeemedCoupons.forEach { coupon ->
+                try {
+                    historyService?.addHistoryEvent(
+                        userId = userId,
+                        type = "CUPON_USADO",
+                        title = coupon.promotion?.title ?: "Cupón",
+                        subtitle = coupon.promotion?.businessName ?: "Negocio",
+                        iso = coupon.usedAt ?: java.time.OffsetDateTime.now().toString(),
+                        promotionId = coupon.promotionId,
+                        branchId = coupon.branchId
+                    )
+                } catch (e: Exception) {
+                    Log.e("RedeemedCouponViewModel", "Error saving redeemed coupon to history", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("RedeemedCouponViewModel", "Error getting redeemed coupons", e)
+            throw e
+        }
     }
 
     /** Obtiene detalle de un canje por ID de cupón (promotionId o usedId según API). */

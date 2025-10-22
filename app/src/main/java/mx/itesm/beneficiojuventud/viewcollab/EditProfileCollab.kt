@@ -1,6 +1,10 @@
 package mx.itesm.beneficiojuventud.viewcollab
 
+import android.net.Uri
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.amplifyframework.storage.StoragePath
+import com.amplifyframework.core.Amplify
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.model.categories.Category
@@ -40,6 +46,8 @@ import mx.itesm.beneficiojuventud.view.Screens
 import mx.itesm.beneficiojuventud.view.StatusType
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
+import java.io.File
+import java.io.FileOutputStream
 
 private val TextGrey = Color(0xFF616161)
 private val DarkBlue = Color(0xFF4B4C7E)
@@ -62,6 +70,8 @@ fun EditProfileCollab(
     // Imagen
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var isLoadingImage by remember { mutableStateOf(false) }
+    var isUploading by remember { mutableStateOf(false) }
+    var avatarUri by remember { mutableStateOf<Uri?>(null) }
 
     // Campos de formulario
     var contactName by rememberSaveable { mutableStateOf("") }
@@ -93,6 +103,9 @@ fun EditProfileCollab(
     var saveSuccess by remember { mutableStateOf(false) }
     var saveError by remember { mutableStateOf<String?>(null) }
 
+    // Snackbar State - Debe declararse aquí antes de ser usado
+    val snackbarHostState = remember { SnackbarHostState() }
+
     // Cargar colaborador
     LaunchedEffect(currentUserId) {
         currentUserId?.let { id ->
@@ -103,6 +116,31 @@ fun EditProfileCollab(
         runCatching { collabViewModel.getCategories() }
             .onSuccess { allCategories = it }
             .onFailure { Log.e("EditProfileCollab", "Error loading categories: ${it.message}") }
+    }
+
+    // Image picker launcher
+    val pickImage = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            avatarUri = uri
+            val s3Id = collab.cognitoId ?: currentUserId
+            if (!s3Id.isNullOrBlank()) {
+                uploadProfileImage(
+                    context,
+                    uri,
+                    s3Id,
+                    onSuccess = { url ->
+                        profileImageUrl = url
+                        scope.launch { snackbarHostState.showSnackbar("Foto de perfil actualizada correctamente") }
+                    },
+                    onError = { error ->
+                        scope.launch { snackbarHostState.showSnackbar("Error al subir la imagen: $error") }
+                    },
+                    onLoading = { loading -> isUploading = loading }
+                )
+            }
+        }
     }
 
     // Poblar campos e imagen al llegar collab
@@ -131,8 +169,7 @@ fun EditProfileCollab(
         when {
             !collab.logoUrl.isNullOrBlank() -> profileImageUrl = collab.logoUrl
             !s3Id.isNullOrBlank() -> runCatching {
-                // Implementación propia existente en tu proyecto:
-                downloadProfileImageForDisplay(
+                downloadProfileImageForDisplayCollab(
                     context = context,
                     userId = s3Id,
                     onSuccess = { localPath -> profileImageUrl = localPath },
@@ -152,8 +189,6 @@ fun EditProfileCollab(
             categoryDisplay = names.joinToString(" · ")
         }
     }
-
-    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -182,7 +217,18 @@ fun EditProfileCollab(
                         .dismissKeyboardOnTap(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    ProfileImageSection(isLoading = isLoadingImage, imageUrl = profileImageUrl)
+                    ProfileImageSection(
+                    isLoading = isLoadingImage,
+                    imageUrl = profileImageUrl,
+                    onChangePhoto = {
+                        if (!isUploading && !currentUserId.isNullOrBlank()) {
+                            pickImage.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    },
+                    isUploading = isUploading
+                )
                     Spacer(Modifier.height(24.dp))
 
                     // Representante / Negocio
@@ -421,7 +467,9 @@ fun EditProfileCollab(
 @Composable
 private fun ProfileImageSection(
     isLoading: Boolean,
-    imageUrl: String?
+    imageUrl: String?,
+    onChangePhoto: () -> Unit,
+    isUploading: Boolean = false
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
         Box(
@@ -458,7 +506,7 @@ private fun ProfileImageSection(
             text = "Cambiar Foto",
             color = Teal,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.clickable { /* TODO: flujo de cambio de foto */ }
+            modifier = Modifier.clickable(enabled = !isUploading) { onChangePhoto() }
         )
     }
 }
@@ -610,5 +658,103 @@ private fun ProfileScreenHeader(nav: NavHostController) {
         }
         Spacer(Modifier.height(16.dp))
         GradientDivider(modifier = Modifier.fillMaxWidth(), thickness = 1.dp)
+    }
+}
+
+/* ---------- Image Upload/Download Functions ---------- */
+
+fun uploadProfileImage(
+    context: android.content.Context,
+    imageUri: Uri,
+    userId: String,
+    onSuccess: (String) -> Unit,
+    onError: (String) -> Unit,
+    onLoading: (Boolean) -> Unit
+) {
+    try {
+        onLoading(true)
+        Log.d("CollabProfileUpload", "Starting upload for collaborator: $userId")
+
+        val inputStream = context.contentResolver.openInputStream(imageUri)
+        val tempFile = File(context.cacheDir, "profile_image_${System.currentTimeMillis()}.jpg")
+        val outputStream = FileOutputStream(tempFile)
+
+        inputStream?.use { input ->
+            outputStream.use { output ->
+                input.copyTo(output)
+            }
+        }
+
+        val storagePath = StoragePath.fromString("public/profile-images/$userId.jpg")
+        Log.d("CollabProfileUpload", "Storage path: public/profile-images/$userId.jpg")
+
+        Amplify.Storage.uploadFile(
+            storagePath,
+            tempFile,
+            { result ->
+                Log.d("CollabProfileUpload", "Upload completed: ${result.path}")
+                onLoading(false)
+                tempFile.delete()
+                getProfileImageUrlForCollab(storagePath, onSuccess, onError)
+            },
+            { error ->
+                Log.e("CollabProfileUpload", "Upload failed", error)
+                onLoading(false)
+                tempFile.delete()
+                onError(error.message ?: "Error desconocido")
+            }
+        )
+    } catch (e: Exception) {
+        Log.e("CollabProfileUpload", "Exception during upload", e)
+        onLoading(false)
+        onError(e.message ?: "Error desconocido")
+    }
+}
+
+private fun getProfileImageUrlForCollab(
+    storagePath: StoragePath,
+    onSuccess: (String) -> Unit,
+    onError: (String) -> Unit
+) {
+    Amplify.Storage.getUrl(
+        storagePath,
+        { result ->
+            Log.d("CollabProfileDownload", "Got URL: ${result.url}")
+            onSuccess(result.url.toString())
+        },
+        { error ->
+            Log.e("CollabProfileDownload", "Failed to get URL", error)
+            onError(error.message ?: "Error obteniendo URL")
+        }
+    )
+}
+
+fun downloadProfileImageForDisplayCollab(
+    context: android.content.Context,
+    userId: String,
+    onSuccess: (String) -> Unit,
+    onError: (String) -> Unit,
+    onLoading: (Boolean) -> Unit
+) {
+    try {
+        onLoading(true)
+        val storagePath = StoragePath.fromString("public/profile-images/$userId.jpg")
+        val localFile = File(context.cacheDir, "displayed_profile_$userId.jpg")
+
+        Amplify.Storage.downloadFile(
+            storagePath,
+            localFile,
+            {
+                onLoading(false)
+                onSuccess(localFile.absolutePath)
+            },
+            {
+                onLoading(false)
+                onError(it.message ?: "Error desconocido")
+            }
+        )
+    } catch (e: Exception) {
+        onLoading(false)
+        onError(e.message ?: "Error desconocido")
     }
 }

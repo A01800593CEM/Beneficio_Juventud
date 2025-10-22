@@ -17,6 +17,7 @@ import mx.itesm.beneficiojuventud.model.bookings.BookingStatus
 import mx.itesm.beneficiojuventud.model.bookings.RemoteServiceBooking
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
+import mx.itesm.beneficiojuventud.model.history.HistoryService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.util.Log
@@ -58,6 +59,10 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
             promotionDao = database.promotionDao(),
             bookingDao = database.bookingDao()
         )
+    }
+
+    private val historyService: HistoryService by lazy {
+        HistoryService(historyDao = database.historyDao())
     }
 
     // State Flows
@@ -118,6 +123,17 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
                 Log.d("BookingViewModel", "Emitiendo evento Reserved: title=${event.title}, business=${event.businessName}")
                 _bookingEvents.emit(event)
                 Log.d("BookingViewModel", "Evento Reserved emitido exitosamente")
+
+                // Guardar en historial persistente
+                historyService.addHistoryEvent(
+                    userId = userId,
+                    type = "CUPON_RESERVADO",
+                    title = promotion.title ?: "Cupón",
+                    subtitle = promotion.businessName ?: "Negocio",
+                    iso = event.timestampIso,
+                    promotionId = promotion.promotionId,
+                    branchId = null
+                )
 
             } catch (e: Exception) {
                 _error.value = "Error al reservar: ${e.message}"
@@ -203,6 +219,17 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
                 Log.d("BookingViewModel", "Emitiendo evento Cancelled: title=${event.title}, business=${event.businessName}")
                 _bookingEvents.emit(event)
                 Log.d("BookingViewModel", "Evento Cancelled emitido exitosamente")
+
+                // Guardar en historial persistente
+                historyService.addHistoryEvent(
+                    userId = booking.userId ?: "",
+                    type = "RESERVA_CANCELADA",
+                    title = promotion?.title ?: "Cupón",
+                    subtitle = promotion?.businessName ?: "Negocio",
+                    iso = event.timestampIso,
+                    promotionId = promotion?.promotionId,
+                    branchId = null
+                )
 
                 // Recargar bookings después de cancelar
                 booking.userId?.let { userId ->
