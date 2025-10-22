@@ -498,7 +498,13 @@ fun Register(
                             append("términos y condiciones")
                             pop()
                         },
-                        style = TextStyle(fontSize = 14.sp, color = Color(0xFF7D7A7A))
+                        style = TextStyle(fontSize = 14.sp, color = Color(0xFF7D7A7A)),
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            nav.navigate(Screens.Terms.route)
+                        }
                     )
                 }
             }

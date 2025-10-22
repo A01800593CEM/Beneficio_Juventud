@@ -1,6 +1,7 @@
 package mx.itesm.beneficiojuventud.viewcollab
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -491,7 +492,13 @@ fun RegisterCollab(
                             append("términos y condiciones")
                             pop()
                         },
-                        style = TextStyle(fontSize = 14.sp, color = Color(0xFF7D7A7A))
+                        style = TextStyle(fontSize = 14.sp, color = Color(0xFF7D7A7A)),
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            nav.navigate(Screens.Terms.route)
+                        }
                     )
                 }
             }

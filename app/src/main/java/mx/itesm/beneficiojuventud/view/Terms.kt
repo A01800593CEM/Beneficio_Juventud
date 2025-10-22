@@ -204,7 +204,7 @@ private fun getAppTerms(): List<TermSection> {
         ),
         TermSection(
             "22. CONTACTO",
-            "Para resolver una queja sobre los Servicios o para recibir más información sobre el uso de los mismos, contáctenos en:\n\nGobierno de Atizapán\nBlvd. Adolfo López Mateos 91, El Potrero, Méx.\nAtizapán de Zaragoza, Estado de México 52987\nMéxico\nTeléfono: [5512345678]\n[contact@example.com]"
+            "Para resolver una queja sobre los Servicios o para recibir más información sobre el uso de los mismos, contáctenos en:\n\nGobierno de Atizapán\nBlvd. Adolfo López Mateos 91, El Potrero, Méx.\nAtizapán de Zaragoza, Estado de México 52987\nMéxico\nTeléfono: [5536222800]\n[soporte@atizapan.gob.mx]"
         )
     )
 }
