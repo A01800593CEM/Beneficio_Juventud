@@ -107,17 +107,29 @@ fun NewPromotionSheet(
     }
     var totalStock by rememberSaveable {
         mutableStateOf(
-            existingPromotion?.totalStock?.toString() ?: initialPromotionData?.totalStock?.toString() ?: promo.totalStock?.toString() ?: "100"
+            if (isEditMode) {
+                existingPromotion?.totalStock?.toString() ?: ""
+            } else {
+                initialPromotionData?.totalStock?.toString() ?: ""
+            }
         )
     }
     var limitPerUser by rememberSaveable {
         mutableStateOf(
-            existingPromotion?.limitPerUser?.toString() ?: initialPromotionData?.limitPerUser?.toString() ?: promo.limitPerUser?.toString() ?: "1"
+            if (isEditMode) {
+                existingPromotion?.limitPerUser?.toString() ?: ""
+            } else {
+                initialPromotionData?.limitPerUser?.toString() ?: ""
+            }
         )
     }
     var dailyLimitPerUser by rememberSaveable {
         mutableStateOf(
-            existingPromotion?.dailyLimitPerUser?.toString() ?: initialPromotionData?.dailyLimitPerUser?.toString() ?: promo.dailyLimitPerUser?.toString() ?: "1"
+            if (isEditMode) {
+                existingPromotion?.dailyLimitPerUser?.toString() ?: ""
+            } else {
+                initialPromotionData?.dailyLimitPerUser?.toString() ?: ""
+            }
         )
     }
     var promotionString by rememberSaveable {
@@ -683,6 +695,12 @@ fun NewPromotionSheet(
 
                 if (dlpu == null || dlpu <= 0) {
                     errorMessage = "El límite diario debe ser mayor a 0"
+                    showError = true
+                    return@MainButton
+                }
+
+                if (dlpu > lpu) {
+                    errorMessage = "El límite diario no puede ser mayor al límite por usuario"
                     showError = true
                     return@MainButton
                 }

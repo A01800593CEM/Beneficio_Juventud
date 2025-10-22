@@ -1,11 +1,14 @@
 package mx.itesm.beneficiojuventud.model.analytics
 
+import android.util.Log
 import com.google.gson.GsonBuilder
 import mx.itesm.beneficiojuventud.utils.Constants
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RemoteServiceAnalytics {
+
+    private const val TAG = "RemoteServiceAnalytics"
 
     private val gson = GsonBuilder()
         .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
@@ -29,11 +32,28 @@ object RemoteServiceAnalytics {
         collaboratorId: String,
         timeRange: String
     ): AnalyticsDashboard {
+        Log.d(TAG, "Fetching dashboard for collaboratorId: $collaboratorId, timeRange: $timeRange")
+        Log.d(TAG, "Request URL: ${Constants.BASE_URL}analytics/collaborator/$collaboratorId?timeRange=$timeRange")
+
         val response = analyticsApiService.getCollaboratorDashboard(collaboratorId, timeRange)
+
+        Log.d(TAG, "Response code: ${response.code()}")
+
         if (!response.isSuccessful) {
-            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+            val errorBody = response.errorBody()?.string().orEmpty()
+            Log.e(TAG, "Error response: $errorBody")
+            throw Exception("Error ${response.code()}: $errorBody")
         }
-        return response.body() ?: throw Exception("Empty response getting analytics dashboard")
+
+        val body = response.body()
+        if (body == null) {
+            Log.e(TAG, "Response body is null")
+            throw Exception("Empty response getting analytics dashboard")
+        }
+
+        Log.d(TAG, "Successfully fetched dashboard")
+        Log.d(TAG, "Charts in response: ${body.charts.keys}")
+        return body
     }
 
     /**

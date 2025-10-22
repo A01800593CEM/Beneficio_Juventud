@@ -153,8 +153,8 @@ fun ConfirmSignUp(
                         authViewModel.consumePendingCollabProfile()
                         authViewModel.clearPendingCredentials()
 
-                        // Navega a HomeScreenCollab para colaboradores
-                        nav.navigate(Screens.HomeScreenCollab.route) {
+                        // Navega a StatusCollabSignup para mostrar pantalla de confirmación
+                        nav.navigate(Screens.StatusCollabSignup.route) {
                             popUpTo(Screens.LoginRegister.route) { inclusive = true }
                             launchSingleTop = true
                         }

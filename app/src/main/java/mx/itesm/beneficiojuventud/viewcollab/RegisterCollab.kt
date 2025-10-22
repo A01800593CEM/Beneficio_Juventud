@@ -48,6 +48,7 @@ import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.PasswordTextField
+import mx.itesm.beneficiojuventud.components.AddressAutocompleteTextField
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.collaborators.CollaboratorsState
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
@@ -386,21 +387,20 @@ fun RegisterCollab(
                 }
             }
 
-            // Dirección
+            // Dirección con autocompletado
             item { Label("Dirección del Negocio") }
             item {
                 FocusBringIntoView {
-                    OutlinedTextField(
+                    AddressAutocompleteTextField(
                         value = address,
                         onValueChange = { address = it },
-                        singleLine = true,
-                        modifier = it.fillMaxWidth().heightIn(min = TextFieldDefaults.MinHeight),
-                        shape = RoundedCornerShape(18.dp),
-                        leadingIcon = { Icon(Icons.Outlined.LocationOn, contentDescription = null) },
-                        placeholder = { Text("Calle, Número, Colonia, Ciudad", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-                        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xFF2F2F2F)),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        colors = textFieldColors()
+                        onAddressSelected = { selectedAddress ->
+                            address = selectedAddress
+                        },
+                        modifier = it.fillMaxWidth(),
+                        label = "Dirección del Negocio",
+                        placeholder = "Busca tu dirección...",
+                        country = "MX"
                     )
                 }
             }

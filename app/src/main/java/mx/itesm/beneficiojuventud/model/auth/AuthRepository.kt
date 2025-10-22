@@ -1,6 +1,8 @@
 package mx.itesm.beneficiojuventud.model.auth
 
+import android.app.Activity
 import android.util.Log
+import com.amplifyframework.auth.AuthProvider
 import com.amplifyframework.auth.AuthUser
 import com.amplifyframework.auth.AuthUserAttribute
 import com.amplifyframework.auth.AuthUserAttributeKey
@@ -116,6 +118,49 @@ class AuthRepository {
             }
         )
     }
+
+    /**
+     * Iniciar sesión con Google usando Cognito Hosted UI
+     * Requiere configuración previa en AWS Cognito y Firebase
+     */
+    suspend fun signInWithGoogle(activity: Activity): Result<AuthSignInResult> =
+        suspendCancellableCoroutine { continuation ->
+
+            Log.i(TAG, "🔵 Llamando a Amplify.Auth.signInWithSocialWebUI()")
+            Log.i(TAG, "Provider: Google")
+            Log.i(TAG, "Activity: ${activity.javaClass.simpleName}")
+
+            try {
+                Amplify.Auth.signInWithSocialWebUI(
+                    AuthProvider.google(),
+                    activity,
+                    { result ->
+                        Log.i(TAG, "✅ Google Sign in successful")
+                        Log.i(TAG, "Sign in complete: ${result.isSignedIn}")
+                        Log.i(TAG, "Next step: ${result.nextStep?.signInStep}")
+
+                        if (!continuation.isCancelled) {
+                            continuation.resume(Result.success(result))
+                        }
+                    },
+                    { error ->
+                        Log.e(TAG, "❌ Google Sign in failed")
+                        Log.e(TAG, "Error message: ${error.message}")
+                        Log.e(TAG, "Error cause: ${error.cause}")
+                        Log.e(TAG, "Error class: ${error.javaClass.simpleName}")
+
+                        if (!continuation.isCancelled) {
+                            continuation.resume(Result.failure(error))
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Exception al llamar signInWithSocialWebUI", e)
+                if (!continuation.isCancelled) {
+                    continuation.resume(Result.failure(e))
+                }
+            }
+        }
 
     // en AuthRepository
     suspend fun resendSignUpCode(email: String): Result<Unit> =
@@ -317,6 +362,32 @@ class AuthRepository {
 
                     if (!continuation.isCancelled) {
                         continuation.resume(Result.success(attributes))
+                    }
+                },
+                { error ->
+                    Log.e(TAG, "❌ Failed to fetch user attributes: ${error.message}", error)
+                    if (!continuation.isCancelled) {
+                        continuation.resume(Result.failure(error))
+                    }
+                }
+            )
+        }
+
+    /**
+     * Obtener atributos del usuario como mapa clave-valor para facilitar el acceso
+     */
+    suspend fun fetchUserAttributesMap(): Result<Map<String, String>> =
+        suspendCancellableCoroutine { continuation ->
+
+            Amplify.Auth.fetchUserAttributes(
+                { attributes ->
+                    val attributesMap = attributes.associate {
+                        it.key.keyString to it.value
+                    }
+                    Log.i(TAG, "✅ User attributes map retrieved: $attributesMap")
+
+                    if (!continuation.isCancelled) {
+                        continuation.resume(Result.success(attributesMap))
                     }
                 },
                 { error ->

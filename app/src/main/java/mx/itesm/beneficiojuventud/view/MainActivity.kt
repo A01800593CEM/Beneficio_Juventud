@@ -1,9 +1,11 @@
 package mx.itesm.beneficiojuventud.view
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.room.Room
+import com.amplifyframework.core.Amplify
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.Firebase
 import com.google.firebase.messaging.FirebaseMessaging
@@ -37,6 +40,7 @@ import mx.itesm.beneficiojuventud.viewcollab.QRScannerScreen
 import mx.itesm.beneficiojuventud.viewcollab.EditProfileCollab
 import mx.itesm.beneficiojuventud.viewcollab.GeneratePromotionScreen
 import mx.itesm.beneficiojuventud.viewcollab.BranchManagementScreen
+import mx.itesm.beneficiojuventud.viewcollab.StatusCollabSignup
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
@@ -51,6 +55,9 @@ import mx.itesm.beneficiojuventud.viewcollab.PromotionsScreenCollab
 import mx.itesm.beneficiojuventud.viewmodel.StatsViewModel
 
 class MainActivity : ComponentActivity() {
+    private val TAG = "MainActivity"
+    private var hasProcessedOAuthIntent = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val db = LocalDatabase.getDatabase(this)
@@ -65,6 +72,77 @@ class MainActivity : ComponentActivity() {
                     promotionDao = promotionDao,
                     categoryDao = categoryDao
                 )
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        Log.d(TAG, "🔵 onNewIntent llamado")
+        // CRÍTICO: Actualizar el intent de la activity
+        setIntent(intent)
+
+        // Resetear el flag cuando llega un nuevo intent
+        hasProcessedOAuthIntent = false
+        handleOAuthRedirect(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d(TAG, "🔵 onResume llamado")
+
+        // Solo procesar si no se ha procesado ya
+        if (!hasProcessedOAuthIntent) {
+            handleOAuthRedirect(intent)
+        }
+    }
+
+    private fun handleOAuthRedirect(intent: Intent?) {
+        if (intent?.data != null && intent.data?.scheme == "beneficiojoven") {
+            // Evitar procesar el mismo intent múltiples veces
+            if (hasProcessedOAuthIntent) {
+                Log.d(TAG, "⚠️ Intent OAuth ya procesado, saltando...")
+                return
+            }
+
+            Log.d(TAG, "🔵 Intent de OAuth detectado: ${intent.data}")
+            Log.d(TAG, "Scheme: ${intent.data?.scheme}")
+            Log.d(TAG, "Host: ${intent.data?.host}")
+            Log.d(TAG, "Full URI: ${intent.data}")
+
+            // Extraer parámetros para logging
+            val code = intent.data?.getQueryParameter("code")
+            val state = intent.data?.getQueryParameter("state")
+            val error = intent.data?.getQueryParameter("error")
+
+            if (error != null) {
+                Log.e(TAG, "❌ OAuth error recibido: $error")
+                Log.e(TAG, "Error description: ${intent.data?.getQueryParameter("error_description")}")
+            } else {
+                Log.d(TAG, "Code presente: ${!code.isNullOrBlank()}")
+                Log.d(TAG, "State presente: ${!state.isNullOrBlank()}")
+            }
+
+            // Marcar como procesado ANTES de llamar a Amplify
+            hasProcessedOAuthIntent = true
+
+            // Pasar el intent a Amplify para que complete el flujo OAuth
+            try {
+                Log.d(TAG, "⏳ Procesando OAuth con Amplify...")
+                Amplify.Auth.handleWebUISignInResponse(intent)
+                Log.d(TAG, "✅ Intent pasado a Amplify.Auth.handleWebUISignInResponse")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al pasar intent a Amplify: ${e.message}", e)
+                Log.e(TAG, "Exception class: ${e.javaClass.simpleName}")
+                Log.e(TAG, "Stack trace:", e)
+                // Resetear el flag en caso de error para permitir retry
+                hasProcessedOAuthIntent = false
+            }
+        } else {
+            if (intent?.data != null) {
+                Log.d(TAG, "Intent con data pero scheme diferente: ${intent.data?.scheme}")
+            } else {
+                Log.d(TAG, "Intent sin data (normal app launch)")
             }
         }
     }
@@ -163,20 +241,44 @@ private fun AppNav(
     }
     LaunchedEffect(sessionKey) {
         if (appState.isAuthenticated) {
-            userViewModel.clearUser()
-            collabViewModel.clearCollaborator()
             val id = authViewModel.currentUserId.value
-            if (!id.isNullOrBlank()) {
-                userViewModel.getUserById(id)
-                try { collabViewModel.getCollaboratorById(id) } catch (_: Exception) {}
+            val currentUser = userViewModel.userState.value
+
+            // Solo limpiar y recargar si el usuario cambió o no está cargado
+            if (currentUser == null || (id != null && currentUser.cognitoId != id)) {
+                Log.d("MainActivity", "🔄 SessionKey cambió - Recargando usuario")
+                userViewModel.clearUser()
+                collabViewModel.clearCollaborator()
+
+                if (!id.isNullOrBlank()) {
+                    userViewModel.getUserById(id)
+                    try { collabViewModel.getCollaboratorById(id) } catch (_: Exception) {}
+                }
+            } else {
+                Log.d("MainActivity", "✅ SessionKey cambió pero usuario ya está correcto - No recargar")
             }
         } else {
+            Log.d("MainActivity", "🚪 Usuario no autenticado - Limpiando datos")
             userViewModel.clearUser()
             collabViewModel.clearCollaborator()
         }
     }
     LaunchedEffect(currentUserId) {
-        if (!currentUserId.isNullOrBlank()) userViewModel.getUserById(currentUserId!!)
+        if (!currentUserId.isNullOrBlank()) {
+            // Solo cargar si el usuario NO está ya cargado
+            val currentUser = userViewModel.userState.value
+            Log.d("MainActivity", "🔍 LaunchedEffect(currentUserId) - currentUserId: $currentUserId")
+            Log.d("MainActivity", "🔍 currentUser?.cognitoId: ${currentUser?.cognitoId}")
+            Log.d("MainActivity", "🔍 currentUser == null: ${currentUser == null}")
+            Log.d("MainActivity", "🔍 cognitoId mismatch: ${currentUser != null && currentUser.cognitoId != currentUserId}")
+
+            if (currentUser == null || currentUser.cognitoId != currentUserId) {
+                Log.d("MainActivity", "📥 Cargando usuario por currentUserId: $currentUserId")
+                userViewModel.getUserById(currentUserId!!)
+            } else {
+                Log.d("MainActivity", "✅ Usuario ya está cargado, saltando getUserById")
+            }
+        }
     }
 
     NavHost(navController = nav, startDestination = "splash") {
@@ -190,9 +292,10 @@ private fun AppNav(
         }
 
         // --- Auth ---
-        composable(Screens.LoginRegister.route) { LoginRegister(nav) }
+        composable(Screens.LoginRegister.route) { LoginRegister(nav, authViewModel = authViewModel) }
         composable(Screens.Login.route) { Login(nav, authViewModel = authViewModel) }
         composable(Screens.Register.route) { Register(nav, authViewModel = authViewModel) }
+        composable(Screens.GoogleRegister.route) { GoogleRegister(nav, authViewModel = authViewModel) }
         composable(Screens.ForgotPassword.route) { ForgotPassword(nav) }
         composable(Screens.RecoveryCode.route) { RecoveryCode(nav) }
         composable("recovery_code/{email}") { backStackEntry ->
@@ -238,7 +341,8 @@ private fun AppNav(
             OnboardingCategories(
                 nav,
                 categoryViewModel = categoryViewModel,
-                userViewModel = userViewModel
+                userViewModel = userViewModel,
+                authViewModel = authViewModel
             )
         }
 
@@ -372,6 +476,9 @@ private fun AppNav(
         composable(Screens.BranchManagement.route) {
             BranchManagementScreen(nav = nav)
         }
+        composable(Screens.StatusCollabSignup.route) {
+            StatusCollabSignup(nav = nav)
+        }
 
         // Status Screen
         composable(
@@ -501,15 +608,83 @@ private fun PostLoginPermissionsWithDestination(
 
     var hasLoadedProfiles by remember { mutableStateOf(false) }
 
+    // Log cada vez que se recompone
+    android.util.Log.d("MainActivity", "🔄 PostLoginPermissionsWithDestination recompose")
+    android.util.Log.d("MainActivity", "  → currentUserId: $currentUserId ${if (currentUserId.isNullOrBlank()) "❌ NULL" else "✅"}")
+    android.util.Log.d("MainActivity", "  → userState.cognitoId: ${userState.cognitoId}")
+    android.util.Log.d("MainActivity", "  → hasLoadedProfiles: $hasLoadedProfiles")
+    android.util.Log.d("MainActivity", "  → isLoadingUser: $isLoadingUser")
+
     // Cargar perfiles de usuario y colaborador cuando tenemos el ID
     LaunchedEffect(currentUserId) {
         val id = currentUserId
         if (!id.isNullOrBlank() && !hasLoadedProfiles) {
-            userViewModel.clearUser()
-            collabViewModel.clearCollaborator()
-            userViewModel.getUserById(id)
-            try { collabViewModel.getCollaboratorById(id) } catch (_: Exception) {}
+            Log.d("MainActivity", "🔄 PostLoginPermissions - LaunchedEffect ejecutándose para: $id")
+
+            // Solo limpiar y recargar si el usuario NO está ya cargado con el ID correcto
+            val currentUser = userViewModel.userState.value
+            val currentCollab = collabViewModel.collabState.value
+
+            if (currentUser.cognitoId.isNullOrBlank() || currentUser.cognitoId != id) {
+                Log.d("MainActivity", "🔄 PostLoginPermissions - Cargando usuario: $id")
+                userViewModel.clearUser()
+
+                // Reintentar hasta 3 veces con delay entre intentos
+                var attempts = 0
+                var loaded = false
+                while (attempts < 3 && !loaded) {
+                    Log.d("MainActivity", "📥 Intento ${attempts + 1}/3 de cargar usuario")
+                    userViewModel.getUserById(id)
+
+                    // Esperar hasta 5 segundos por respuesta
+                    var waitTime = 0
+                    while (userViewModel.isLoading.value && waitTime < 5000) {
+                        kotlinx.coroutines.delay(100)
+                        waitTime += 100
+                    }
+
+                    // Log del timeout si aplica
+                    if (waitTime >= 5000) {
+                        Log.w("MainActivity", "⚠️ Timeout esperando getUserById (${waitTime}ms)")
+                    }
+
+                    val error = userViewModel.error.value
+                    val user = userViewModel.userState.value
+
+                    Log.d("MainActivity", "📋 Resultado: error=$error, userCognitoId=${user.cognitoId}")
+
+                    if (error != null && error.contains("404")) {
+                        attempts++
+                        Log.w("MainActivity", "⚠️ Usuario no encontrado (intento $attempts/3), reintentando en 2 segundos...")
+                        kotlinx.coroutines.delay(2000)
+                    } else if (!user.cognitoId.isNullOrBlank()) {
+                        loaded = true
+                        Log.d("MainActivity", "✅ Usuario cargado exitosamente")
+                    } else {
+                        Log.d("MainActivity", "⚠️ Usuario sin cognitoId, reintentando...")
+                        attempts++
+                        if (attempts < 3) {
+                            kotlinx.coroutines.delay(2000)
+                        }
+                    }
+                }
+            } else {
+                Log.d("MainActivity", "✅ PostLoginPermissions - Usuario ya cargado: $id")
+            }
+
+            if (currentCollab.cognitoId.isNullOrBlank() || currentCollab.cognitoId != id) {
+                Log.d("MainActivity", "🔄 PostLoginPermissions - Intentando cargar colaborador: $id")
+                collabViewModel.clearCollaborator()
+                try { collabViewModel.getCollaboratorById(id) } catch (_: Exception) {
+                    Log.d("MainActivity", "ℹ️ No es colaborador")
+                }
+            } else {
+                Log.d("MainActivity", "✅ PostLoginPermissions - Colaborador ya cargado: $id")
+            }
+
+            // CRÍTICO: Marcar como cargado SIEMPRE, independiente de si ya estaba o se cargó ahora
             hasLoadedProfiles = true
+            Log.d("MainActivity", "✅ PostLoginPermissions - hasLoadedProfiles = true")
         }
     }
 

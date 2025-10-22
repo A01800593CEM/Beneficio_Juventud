@@ -7,6 +7,7 @@ import { CategoriesModule } from 'src/categories/categories.module';
 import { FavoritesModule } from 'src/favorites/favorites.module';
 import { BranchModule } from 'src/branch/branch.module';
 import { PromotionsModule } from 'src/promotions/promotions.module';
+import { CommonModule } from 'src/common/common.module';
 import { Branch } from 'src/branch/entities/branch.entity';
 
 /**
@@ -34,8 +35,9 @@ import { Branch } from 'src/branch/entities/branch.entity';
     TypeOrmModule.forFeature([Collaborator, Branch]),
     forwardRef(() => CategoriesModule),
     forwardRef(() => FavoritesModule),
-    forwardRef(() => BranchModule) ,
-    forwardRef(() => PromotionsModule)
+    forwardRef(() => BranchModule),
+    forwardRef(() => PromotionsModule),
+    CommonModule // Provides GeocodingService
 ],
   controllers: [CollaboratorsController],
   providers: [CollaboratorsService],

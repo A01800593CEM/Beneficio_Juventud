@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { BranchService } from './branch.service';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
@@ -80,5 +80,24 @@ export class BranchController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.branchService.remove(+id);
+  }
+
+  /**
+   * Geocodes an address and updates the branch location with coordinates.
+   * @route PATCH /branch/:id/geocode
+   * @param id - The unique identifier of the branch to update
+   * @param address - The address to geocode
+   * @param country - Optional country code for geocoding (e.g., "MX" for Mexico)
+   * @returns The updated branch entity with new location coordinates
+   * @example
+   * PATCH /branch/1/geocode?address=Torre%20Eiffel&country=FR
+   */
+  @Patch(':id/geocode')
+  geocodeAndUpdateLocation(
+    @Param('id') id: string,
+    @Query('address') address: string,
+    @Query('country') country?: string,
+  ) {
+    return this.branchService.geocodeAndUpdateLocation(+id, address, country);
   }
 }

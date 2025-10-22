@@ -3,6 +3,7 @@ package mx.itesm.beneficiojuventud.view
 
 import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,6 +39,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.viewmodel.compose.viewModel
+import android.util.Log
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Pantalla de selección de categorías del Onboarding.
@@ -50,8 +55,10 @@ fun OnboardingCategories(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     categoryViewModel: CategoryViewModel,
-    userViewModel: UserViewModel
+    userViewModel: UserViewModel,
+    authViewModel: AuthViewModel = viewModel()
 ) {
+    val scope = rememberCoroutineScope()
     // Gradiente y colores como en el diseño anterior
     val gradient = remember {
         Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96)))
@@ -67,8 +74,29 @@ fun OnboardingCategories(
     val isSaving by userViewModel.isLoading.collectAsState()
     val saveError by userViewModel.error.collectAsState()
 
+    // ---- State: AuthViewModel para obtener currentUserId ----
+    val currentUserId by authViewModel.currentUserId.collectAsState()
+
     // Conjunto de IDs seleccionados
     var selected by rememberSaveable { mutableStateOf(setOf<Int>()) }
+
+    // ⭐️ IMPORTANTE: Cargar el usuario si NO está cargado aún
+    LaunchedEffect(currentUserId) {
+        if (!currentUserId.isNullOrBlank()) {
+            Log.d("OnboardingCategories", "🔵 OnboardingCategories - currentUserId: $currentUserId")
+            val currentUser = userViewModel.userState.value
+
+            // Si el usuario NO está cargado O no coincide con el currentUserId, cargar
+            if (currentUser == null || currentUser.cognitoId != currentUserId) {
+                Log.d("OnboardingCategories", "📥 Cargando usuario para categorías: $currentUserId")
+                userViewModel.getUserById(currentUserId!!)
+            } else {
+                Log.d("OnboardingCategories", "✅ Usuario ya cargado para categorías: ${currentUser.email}")
+            }
+        } else {
+            Log.e("OnboardingCategories", "❌ currentUserId es null - No se puede cargar usuario")
+        }
+    }
 
     Column(
         modifier = modifier
@@ -96,39 +124,43 @@ fun OnboardingCategories(
         )
         Spacer(Modifier.height(24.dp))
 
-        when {
-            isLoadingCategories -> {
-                CircularProgressIndicator()
-                Spacer(Modifier.height(16.dp))
-                Text("Cargando categorías...")
-            }
+        // ⭐️ IMPORTANTE: Mostrar carga si el usuario se está cargando
+        if (user == null || user.cognitoId.isNullOrBlank()) {
+            CircularProgressIndicator()
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Preparando tu perfil...",
+                style = TextStyle(fontSize = 14.sp, color = Color(0xFF7D7A7A)),
+                fontWeight = FontWeight.SemiBold
+            )
+        } else if (isLoadingCategories) {
+            CircularProgressIndicator()
+            Spacer(Modifier.height(16.dp))
+            Text("Cargando categorías...")
+        } else if (errorCategories != null) {
+            Text(
+                text = "Error al cargar categorías: ${errorCategories ?: ""}",
+                color = Color(0xFFB00020),
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = { categoryViewModel.loadCategories() }) { Text("Reintentar") }
+        } else {
+            // ✅ Mostrar categorías solo si el usuario Y las categorías se han cargado
+            categories.forEach { c ->
+                val id = c.id ?: return@forEach
+                val name = c.name ?: "Categoría"
+                val isSel = selected.contains(id)
 
-            errorCategories != null -> {
-                Text(
-                    text = "Error al cargar categorías: ${errorCategories ?: ""}",
-                    color = Color(0xFFB00020),
-                    fontWeight = FontWeight.SemiBold
+                CategoryItem(
+                    text = name,
+                    selected = isSel,
+                    gradient = gradient,
+                    onClick = {
+                        selected = if (isSel) selected - id else selected + id
+                    }
                 )
-                Spacer(Modifier.height(8.dp))
-                TextButton(onClick = { categoryViewModel.loadCategories() }) { Text("Reintentar") }
-            }
-
-            else -> {
-                categories.forEach { c ->
-                    val id = c.id ?: return@forEach
-                    val name = c.name ?: "Categoría"
-                    val isSel = selected.contains(id)
-
-                    CategoryItem(
-                        text = name,
-                        selected = isSel,
-                        gradient = gradient,
-                        onClick = {
-                            selected = if (isSel) selected - id else selected + id
-                        }
-                    )
-                    Spacer(Modifier.height(12.dp))
-                }
+                Spacer(Modifier.height(12.dp))
             }
         }
 
@@ -147,21 +179,35 @@ fun OnboardingCategories(
         Spacer(Modifier.height(8.dp))
 
         // Botón continuar — usando tu MainButton
+        // ⭐️ Deshabilitado mientras se carga el usuario O las categorías
         MainButton(
-            text = if (isSaving) "Guardando…" else "Continuar",
-            enabled = selected.size >= 3 && !isLoadingCategories && errorCategories == null && !isSaving,
+            text = when {
+                user == null || user.cognitoId.isNullOrBlank() -> "Preparando perfil..."
+                isSaving -> "Guardando…"
+                else -> "Continuar"
+            },
+            enabled = user != null &&
+                     !user.cognitoId.isNullOrBlank() &&
+                     selected.size >= 3 &&
+                     !isLoadingCategories &&
+                     errorCategories == null &&
+                     !isSaving,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 4.dp)
         ) {
             val cognitoId = user.cognitoId
             if (cognitoId.isNullOrBlank()) {
-                // Ajusta a tu flujo (snackbar / navegar a login, etc.)
+                Log.e("OnboardingCategories", "❌ No se puede continuar - cognitoId es null")
                 return@MainButton
             }
 
+            Log.d("OnboardingCategories", "✅ Guardando categorías para usuario: $cognitoId")
+
             // Construye la lista de categorías seleccionadas
             val selectedCats = categories.filter { it.id != null && selected.contains(it.id!!) }
+
+            Log.d("OnboardingCategories", "📦 Categorías seleccionadas: ${selectedCats.map { it.name }.joinToString(", ")}")
 
             // Copia del perfil con categories actualizadas
             val payload = user.copy(categories = selectedCats)
@@ -169,9 +215,15 @@ fun OnboardingCategories(
             // Llama a tu update de backend
             userViewModel.updateUser(cognitoId, payload)
 
-            // Navega a Home (si prefieres, puedes esperar confirmación con un LaunchedEffect)
-            nav.navigate(Screens.Home.route) {
-                popUpTo(0) { inclusive = true }
+            Log.d("OnboardingCategories", "🔄 updateUser llamado - Navegando a Home en 1 segundo...")
+
+            // Navega a Home después de un pequeño delay para permitir que se procese
+            // ⭐️ Usar scope.launch (Main Thread) en lugar de GlobalScope.launch
+            scope.launch {
+                delay(1000)
+                nav.navigate(Screens.Home.route) {
+                    popUpTo(0) { inclusive = true }
+                }
             }
         }
     }

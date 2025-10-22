@@ -71,13 +71,15 @@ export class UsersController {
   /**
    * Retrieves a specific user by ID.
    *
-   * @param id - The unique identifier of the user.
-   * @returns The user record if found.
+   * @param id - The unique identifier of the user (cognitoId).
+   * @returns The user record if found (including INACTIVE users for onboarding).
    * @example GET /users/12
+   * @remarks Uses trueFindOne() to allow fetching users regardless of accountState.
+   *          This is necessary for onboarding flows where users may not be ACTIVE yet.
    */
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+    return this.usersService.trueFindOne(id);
   }
 
   /**

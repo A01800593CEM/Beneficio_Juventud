@@ -54,6 +54,8 @@ class StatsViewModel : ViewModel() {
     fun loadAnalytics(collaboratorId: String, timeRange: String = "month") {
         viewModelScope.launch {
             try {
+                android.util.Log.d("StatsViewModel", "Loading analytics for collaborator: $collaboratorId, timeRange: $timeRange")
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = true,
                     error = null,
@@ -63,6 +65,12 @@ class StatsViewModel : ViewModel() {
                 val dashboard = withContext(Dispatchers.IO) {
                     remoteService.getCollaboratorDashboard(collaboratorId, timeRange)
                 }
+
+                android.util.Log.d("StatsViewModel", "Dashboard loaded successfully")
+                android.util.Log.d("StatsViewModel", "Summary - Promotions: ${dashboard.summary.totalPromotions}, " +
+                        "Bookings: ${dashboard.summary.totalBookings}, " +
+                        "Redeemed: ${dashboard.summary.redeemedCoupons}")
+                android.util.Log.d("StatsViewModel", "Charts available: ${dashboard.charts.keys}")
 
                 // Parse the charts from dashboard
                 val gson = Gson()
@@ -108,6 +116,17 @@ class StatsViewModel : ViewModel() {
                     null
                 }
 
+                // Parse promotionStats from nested structure: charts.promotionStats.data
+                val promotionStats = try {
+                    val chartData = dashboard.charts["promotionStats"]
+                    val json = gson.toJson(chartData)
+                    val promotionStatsChart = gson.fromJson(json, mx.itesm.beneficiojuventud.model.analytics.PromotionStatsChart::class.java)
+                    promotionStatsChart.data
+                } catch (e: Exception) {
+                    android.util.Log.e("StatsViewModel", "Error parsing promotionStats", e)
+                    emptyList()
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     dashboard = dashboard,
@@ -119,7 +138,7 @@ class StatsViewModel : ViewModel() {
                         totalFavorites = dashboard.summary.totalFavorites,
                         conversionRate = dashboard.summary.conversionRate
                     ),
-                    promotionStats = dashboard.promotionStats.map { promo ->
+                    promotionStats = promotionStats.map { promo ->
                         PromotionStatItem(
                             promotionId = promo.promotionId,
                             title = promo.title,
@@ -136,6 +155,10 @@ class StatsViewModel : ViewModel() {
                     redemptionTrendsByPromotion = redemptionTrendsByPromotion
                 )
             } catch (e: Exception) {
+                android.util.Log.e("StatsViewModel", "Error loading analytics", e)
+                android.util.Log.e("StatsViewModel", "Error type: ${e.javaClass.simpleName}")
+                android.util.Log.e("StatsViewModel", "Error message: ${e.message}")
+
                 val errorMessage = when {
                     e is java.net.UnknownHostException || e.message?.contains("Unable to resolve host") == true ->
                         "Sin conexión a internet. Por favor verifica tu conexión."
@@ -217,6 +240,17 @@ class StatsViewModel : ViewModel() {
                     null
                 }
 
+                // Parse promotionStats from nested structure: charts.promotionStats.data
+                val promotionStats = try {
+                    val chartData = dashboard.charts["promotionStats"]
+                    val json = gson.toJson(chartData)
+                    val promotionStatsChart = gson.fromJson(json, mx.itesm.beneficiojuventud.model.analytics.PromotionStatsChart::class.java)
+                    promotionStatsChart.data
+                } catch (e: Exception) {
+                    android.util.Log.e("StatsViewModel", "Error parsing promotionStats during refresh", e)
+                    emptyList()
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isRefreshing = false,
                     dashboard = dashboard,
@@ -228,7 +262,7 @@ class StatsViewModel : ViewModel() {
                         totalFavorites = dashboard.summary.totalFavorites,
                         conversionRate = dashboard.summary.conversionRate
                     ),
-                    promotionStats = dashboard.promotionStats.map { promo ->
+                    promotionStats = promotionStats.map { promo ->
                         PromotionStatItem(
                             promotionId = promo.promotionId,
                             title = promo.title,

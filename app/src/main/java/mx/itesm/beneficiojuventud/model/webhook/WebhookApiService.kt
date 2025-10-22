@@ -14,15 +14,22 @@ data class WebhookCategory(
 )
 
 data class PromotionData(
+    val promotionId: Int? = null,
+    val collaboratorId: String? = null,
     val title: String,
     val description: String,
+    val imageUrl: String? = null,
     val initialDate: String,
     val endDate: String,
     val promotionType: String,
+    val promotionString: String? = null,
     val totalStock: Int,
+    val availableStock: Int? = null,
     val limitPerUser: Int,
     val dailyLimitPerUser: Int,
     val promotionState: String,
+    val isBookable: Boolean? = null,
+    val theme: String? = null,
     val categories: List<WebhookCategory>
 )
 

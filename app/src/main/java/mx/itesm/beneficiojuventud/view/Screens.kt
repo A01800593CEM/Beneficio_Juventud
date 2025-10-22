@@ -6,6 +6,7 @@ import androidx.navigation.navArgument
 sealed class Screens(val route: String) {
     data object Login : Screens("login")
     data object Register : Screens("register")
+    data object GoogleRegister : Screens("google_register")
     data object LoginRegister : Screens("login_register")
     data object ForgotPassword : Screens("forgot_password")
     data object RecoveryCode : Screens("recovery_code")
@@ -71,5 +72,6 @@ sealed class Screens(val route: String) {
 
     data object EditProfileCollab : Screens("edit_profile_collab")
     data object BranchManagement : Screens("branch_management")
+    data object StatusCollabSignup : Screens("status_collab_signup")
 
 }

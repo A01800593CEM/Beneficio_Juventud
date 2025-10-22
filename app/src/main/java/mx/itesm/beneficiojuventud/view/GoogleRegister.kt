@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.view
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -12,11 +13,6 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material3.*
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
@@ -42,8 +38,6 @@ import kotlinx.coroutines.android.awaitFrame
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.OffsetMapping
@@ -52,7 +46,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
-import mx.itesm.beneficiojuventud.components.PasswordTextField
 import mx.itesm.beneficiojuventud.model.users.UserProfile
 import mx.itesm.beneficiojuventud.model.users.AccountState
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
@@ -64,136 +57,133 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Pantalla de registro de usuario con campos personales, fecha de nacimiento, contacto y credenciales.
- * Valida el formulario, persiste un perfil preliminar y dispara el sign-up; al requerir confirmación navega al OTP.
- * Maneja también el caso de signUp completo sin confirmación (auto sign-in, creación en BD y navegación).
+ * Pantalla de registro para usuarios que inician sesión con Google.
+ * Los campos de nombre, apellido y correo se autocompletan con datos de Google,
+ * pero el usuario puede modificarlos.
  */
 @Composable
-fun Register(
+fun GoogleRegister(
     nav: NavHostController,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = viewModel(),
     userViewModel: UserViewModel = viewModel(factory = UserViewModelFactory(LocalContext.current))
 ) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Obtener datos de Google (NO usar remember, leer directamente)
+    val googleData = authViewModel.pendingGoogleUserData
+
+    // Log inmediato para debugging
+    Log.d("GoogleRegister", "🔵 GoogleRegister iniciado")
+    Log.d("GoogleRegister", "🔍 AuthViewModel instance: ${authViewModel.hashCode()}")
+    Log.d("GoogleRegister", "📦 pendingGoogleUserData: ${if (googleData == null) "NULL ❌" else "OK ✅"}")
+    if (googleData != null) {
+        Log.d("GoogleRegister", "  → Email: ${googleData.email}")
+        Log.d("GoogleRegister", "  → Name: ${googleData.name}")
+        Log.d("GoogleRegister", "  → GivenName: ${googleData.givenName}")
+        Log.d("GoogleRegister", "  → FamilyName: ${googleData.familyName}")
+    }
+
+    // Estado para almacenar el cognitoSub
+    var cognitoSub by remember { mutableStateOf<String?>(null) }
+
+    // Estados del formulario
     var nombre by rememberSaveable { mutableStateOf("") }
     var apPaterno by rememberSaveable { mutableStateOf("") }
     var apMaterno by rememberSaveable { mutableStateOf("") }
-
-    // Fecha de nacimiento: display (UI) + db (ISO)
-    var fechaNacDisplay by rememberSaveable { mutableStateOf("") }     // ej. "01/02/2003"
-    var fechaNacDb by rememberSaveable { mutableStateOf("") }          // ej. "2003-02-01"
-    // Error visible inmediato bajo el campo
-    var birthDateErrorMessage by rememberSaveable { mutableStateOf<String?>(null) }
-
     var email by rememberSaveable { mutableStateOf("") }
-    var phone by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var acceptTerms by rememberSaveable { mutableStateOf(false) }
-    var showError by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") }
 
-    val authState by authViewModel.authState.collectAsState()
-    val scope = rememberCoroutineScope()
-
-    // Latch: evita re-navegar automáticamente al volver de Confirm;
-    // se resetea en cada nuevo intento (al presionar "Continuar").
-    var didNavigateToConfirm by rememberSaveable { mutableStateOf(false) }
-
-    // Parche: si Cognito crea y confirma sin OTP
-    var didCreateDirect by rememberSaveable { mutableStateOf(false) }
-
-    // Edad válida si no hay error y hay fecha
-    val isAgeValid = birthDateErrorMessage == null && fechaNacDb.isNotBlank()
-
-    var isCheckingEmail by rememberSaveable { mutableStateOf(false) }
-
-    // Parche: al volver del ConfirmSignUp, aseguramos que no quede en "Registrando."
+    // Obtener el cognitoSub del usuario actual
     LaunchedEffect(Unit) {
-        authViewModel.markIdle()
-    }
-
-    // Navegación a Confirm (idempotente por intento)
-    LaunchedEffect(authState.needsConfirmation, didNavigateToConfirm) {
-        if (authState.needsConfirmation && !didNavigateToConfirm) {
-            didNavigateToConfirm = true
-            nav.navigate(Screens.confirmSignUpWithEmail(email)) {
-                // Mantener Register en el back stack para poder regresar
-                popUpTo(Screens.Register.route) { inclusive = false }
-                launchSingleTop = true
-            }
+        scope.launch {
+            Log.d("GoogleRegister", "🔵 Obteniendo cognitoSub del usuario actual")
+            authViewModel.getCurrentUser()
+            delay(200) // Espera para que se actualice
+            cognitoSub = authViewModel.currentUserId.value
+            Log.d("GoogleRegister", "✅ CognitoSub obtenido: $cognitoSub")
         }
     }
 
-    // SignUp completo sin confirmación (auto sign-in, crear usuario y navegar)
-    LaunchedEffect(authState.isSuccess, authState.needsConfirmation) {
-        if (didCreateDirect) return@LaunchedEffect
-        if (authState.isSuccess && !authState.needsConfirmation) {
-            val pending = authViewModel.consumePendingUserProfile()
-            val sub = authState.cognitoSub
+    // Autocompletar campos cuando lleguen los datos de Google
+    LaunchedEffect(googleData) {
+        Log.d("GoogleRegister", "🔵 LaunchedEffect ejecutado - googleData: ${if (googleData == null) "NULL" else "NOT NULL"}")
 
-            if (pending == null || sub.isNullOrBlank()) return@LaunchedEffect
+        if (googleData != null) {
+            Log.d("GoogleRegister", "📧 Google Data received:")
+            Log.d("GoogleRegister", "  Email: ${googleData.email}")
+            Log.d("GoogleRegister", "  Given Name: ${googleData.givenName}")
+            Log.d("GoogleRegister", "  Family Name: ${googleData.familyName}")
+            Log.d("GoogleRegister", "  Full Name: ${googleData.name}")
 
-            didCreateDirect = true
+            // Autocompletar email
+            if (email.isBlank() && googleData.email.isNotBlank()) {
+                email = googleData.email
+                Log.d("GoogleRegister", "✅ Email autocompletado: $email")
+            }
 
-            // Auto sign-in con lo que está en pantalla
-            authViewModel.signIn(email.trim(), password)
+            // Autocompletar nombre y apellidos
+            if (nombre.isBlank()) {
+                nombre = googleData.givenName ?: googleData.name?.split(" ")?.firstOrNull() ?: ""
+                Log.d("GoogleRegister", "✅ Nombre autocompletado: $nombre")
+            }
 
-            scope.launch {
-                try {
-                    // ⭐️ SINCRÓNICO: Esperar a que createUserAndWait() complete REALMENTE
-                    val (success, createdUser, error) = userViewModel.createUserAndWait(
-                        pending.copy(
-                            cognitoId = sub,
-                            email = email.trim(),
-                            accountState = AccountState.activo
-                        )
-                    )
+            if (apPaterno.isBlank()) {
+                apPaterno = googleData.familyName ?: googleData.name?.split(" ")?.getOrNull(1) ?: ""
+                Log.d("GoogleRegister", "✅ Apellido Paterno autocompletado: $apPaterno")
+            }
 
-                    if (!success || error != null) {
-                        throw Exception(error ?: "No se pudo crear el usuario en el servidor")
-                    }
-
-                    authViewModel.clearPendingCredentials()
-                    nav.navigate(Screens.Onboarding.route) {
-                        popUpTo(Screens.LoginRegister.route) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                } catch (e: Exception) {
-                    didCreateDirect = false
-                    showError = true
-                    errorMessage = e.message ?: "No se pudo crear el perfil en la BD."
+            // Apellido materno solo si hay más de 2 palabras en el nombre
+            if (apMaterno.isBlank() && googleData.name != null) {
+                val parts = googleData.name.split(" ").filter { it.isNotBlank() }
+                if (parts.size > 2) {
+                    apMaterno = parts.drop(2).joinToString(" ")
+                    Log.d("GoogleRegister", "✅ Apellido Materno autocompletado: $apMaterno")
                 }
             }
         }
     }
 
-    // Errores: deja que el VM resuelva UsernameExists (UNCONFIRMED vs CONFIRMED)
-    LaunchedEffect(authState.error) {
-        authState.error?.let { raw ->
-            val lower = raw.lowercase()
-            val looksLikeExists =
-                "usernameexistsexception" in lower ||
-                        "already exists" in lower ||
-                        ("email" in lower && "exists" in lower)
+    // Fecha de nacimiento: display (UI) + db (ISO)
+    var fechaNacDisplay by rememberSaveable { mutableStateOf("") }
+    var fechaNacDb by rememberSaveable { mutableStateOf("") }
+    var birthDateErrorMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var phone by rememberSaveable { mutableStateOf("") }
+    var acceptTerms by rememberSaveable { mutableStateOf(false) }
+    var showError by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
 
-            if (looksLikeExists) return@LaunchedEffect // VM hará resend + needsConfirmation o error confirmado
+    val authState by authViewModel.authState.collectAsState()
 
-            val friendly = mapAuthErrorToFriendly(raw)
-            errorMessage = friendly
-            showError = true
-        }
-    }
+    // Edad válida si no hay error y hay fecha
+    val isAgeValid = birthDateErrorMessage == null && fechaNacDb.isNotBlank()
 
-    // Validación
+    var isCreatingUser by rememberSaveable { mutableStateOf(false) }
+
+    // Validación (apellido materno es OPCIONAL)
     val isFormValid = nombre.isNotBlank() &&
             apPaterno.isNotBlank() &&
-            apMaterno.isNotBlank() &&
+            // apMaterno es OPCIONAL, no se requiere
             fechaNacDb.isNotBlank() &&
             email.isNotBlank() &&
             phone.isNotBlank() &&
-            password.isNotBlank() &&
             acceptTerms &&
             isAgeValid
+
+    // Log de validación para debugging
+    LaunchedEffect(nombre, apPaterno, apMaterno, fechaNacDb, email, phone, acceptTerms, isAgeValid, cognitoSub) {
+        Log.d("GoogleRegister", "🔍 Validación del formulario:")
+        Log.d("GoogleRegister", "  Nombre: ${nombre.isNotBlank()} ($nombre)")
+        Log.d("GoogleRegister", "  ApPaterno: ${apPaterno.isNotBlank()} ($apPaterno)")
+        Log.d("GoogleRegister", "  ApMaterno: ($apMaterno)")
+        Log.d("GoogleRegister", "  FechaNac: ${fechaNacDb.isNotBlank()} ($fechaNacDb)")
+        Log.d("GoogleRegister", "  Email: ${email.isNotBlank()} ($email)")
+        Log.d("GoogleRegister", "  Phone: ${phone.isNotBlank()} ($phone)")
+        Log.d("GoogleRegister", "  Terms: $acceptTerms")
+        Log.d("GoogleRegister", "  AgeValid: $isAgeValid (error: $birthDateErrorMessage)")
+        Log.d("GoogleRegister", "  CognitoSub: ${cognitoSub != null} ($cognitoSub)")
+        Log.d("GoogleRegister", "  ✅ isFormValid: $isFormValid")
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -207,11 +197,11 @@ fun Register(
             ) {
                 MainButton(
                     text = when {
-                        authState.isLoading -> "Registrando."
-                        isCheckingEmail     -> "Verificando correo."
-                        else                -> "Continuar"
+                        isCreatingUser -> "Creando perfil..."
+                        cognitoSub == null -> "Cargando..."
+                        else -> "Continuar"
                     },
-                    enabled = !authState.isLoading && !isCheckingEmail && isFormValid,
+                    enabled = !isCreatingUser && isFormValid && cognitoSub != null,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (!isAgeValid) {
@@ -220,42 +210,99 @@ fun Register(
                         return@MainButton
                     }
 
-                    // 👇 FIX: nuevo intento → resetea el latch para permitir re-navegar a Confirm
-                    didNavigateToConfirm = false
+                    if (cognitoSub.isNullOrBlank()) {
+                        Log.e("GoogleRegister", "❌ CognitoSub is null or blank!")
+                        Log.e("GoogleRegister", "CurrentUserId: ${authViewModel.currentUserId.value}")
+                        showError = true
+                        errorMessage = "Espera un momento mientras cargamos tu información..."
 
-                    // Guardar datos temporales como ya lo haces
-                    val userProfile = UserProfile(
-                        name = nombre,
-                        lastNamePaternal = apPaterno,
-                        lastNameMaternal = apMaterno,
-                        birthDate = fechaNacDb,
-                        phoneNumber = phone,
-                        email = email
-                    )
-                    authViewModel.savePendingUserProfile(userProfile)
-                    authViewModel.setPendingCredentials(email, password)
+                        // Intentar obtener el cognitoSub nuevamente
+                        scope.launch {
+                            delay(500)
+                            authViewModel.getCurrentUser()
+                            delay(200)
+                            val newSub = authViewModel.currentUserId.value
+                            if (!newSub.isNullOrBlank()) {
+                                cognitoSub = newSub
+                                showError = false
+                                Log.d("GoogleRegister", "✅ CognitoSub recuperado: $newSub")
+                            } else {
+                                errorMessage = "No se pudo obtener tu información. Por favor, intenta cerrar sesión e iniciar de nuevo."
+                            }
+                        }
+                        return@MainButton
+                    }
 
-                    // Pre-checar si el correo ya existe en la BD
+                    // Crear perfil de usuario en la BD
                     scope.launch {
                         showError = false
-                        isCheckingEmail = true
+                        isCreatingUser = true
                         try {
-                            val exists = userViewModel.emailExists(email.trim())
-                            if (exists) {
-                                showError = true
-                                errorMessage = "Este correo ya está registrado. Inicia sesión o restablece tu contraseña."
-                                return@launch
+                            Log.d("GoogleRegister", "🔄 Creando usuario en BD (SINCRÓNICO)...")
+                            Log.d("GoogleRegister", "  CognitoId: $cognitoSub")
+                            Log.d("GoogleRegister", "  Email: ${email.trim()}")
+                            Log.d("GoogleRegister", "  Nombre: ${nombre.trim()} ${apPaterno.trim()} ${apMaterno.trim()}")
+
+                            val userProfile = UserProfile(
+                                cognitoId = cognitoSub!!,
+                                name = nombre.trim(),
+                                lastNamePaternal = apPaterno.trim(),
+                                lastNameMaternal = apMaterno.trim().takeIf { it.isNotBlank() } ?: "",
+                                birthDate = fechaNacDb,
+                                phoneNumber = phone.trim(),
+                                email = email.trim(),
+                                accountState = AccountState.activo
+                            )
+
+                            // ⭐️ SINCRÓNICO: Esperar a que createUserAndWait() complete REALMENTE antes de continuar
+                            val (success, createdUser, error) = userViewModel.createUserAndWait(userProfile)
+
+                            if (!success || error != null) {
+                                Log.e("GoogleRegister", "❌ Error en createUserAndWait: $error")
+                                throw Exception(error ?: "No se pudo crear el usuario en el servidor")
+                            }
+
+                            if (createdUser?.cognitoId.isNullOrBlank()) {
+                                Log.e("GoogleRegister", "❌ Usuario no se creó correctamente")
+                                throw Exception("No se pudo crear el usuario en el servidor")
+                            }
+
+                            Log.d("GoogleRegister", "✅ Usuario creado exitosamente en servidor")
+                            Log.d("GoogleRegister", "  → UserId: ${createdUser?.cognitoId}")
+
+                            // ⭐️ IMPORTANT: MISMO THREAD - Después de crear el usuario en BD, hacer login automático
+                            // TODO ESTO OCURRE EN EL MISMO SCOPE.LAUNCH, GARANTIZANDO ORDEN
+                            Log.d("GoogleRegister", "🔄 Iniciando login automático como usuario existente...")
+
+                            // El usuario ya está autenticado en Cognito (por Google OAuth)
+                            // Solo necesitamos actualizar currentUserId y navegar
+                            authViewModel.getCurrentUser()
+                            delay(500) // Esperar a que se actualice el currentUserId en el MISMO thread
+
+                            val updatedUserId = authViewModel.currentUserId.value
+                            Log.d("GoogleRegister", "✅ CurrentUserId actualizado: $updatedUserId")
+
+                            // ⭐️ IMPORTANTE: Solo limpiar Google data, NO clearState()
+                            // clearState() borra currentUserId que necesitamos en OnboardingCategories
+                            authViewModel.clearPendingGoogleUserData()
+
+                            // También limpiar el error de auth
+                            authViewModel.clearError()
+
+                            // Navegar a Onboarding (mismo flujo que Register.kt)
+                            // NO ir a PostLoginPermissions porque necesitamos que complete OnboardingCategories
+                            Log.d("GoogleRegister", "✅ Navegando a Onboarding...")
+                            nav.navigate(Screens.Onboarding.route) {
+                                popUpTo(Screens.LoginRegister.route) { inclusive = true }
+                                launchSingleTop = true
                             }
                         } catch (e: Exception) {
+                            Log.e("GoogleRegister", "❌ Error creando usuario: ${e.message}", e)
                             showError = true
-                            errorMessage = "No se pudo verificar el correo. Revisa tu conexión e inténtalo de nuevo."
-                            return@launch
+                            errorMessage = e.message ?: "No se pudo crear el perfil en la BD."
                         } finally {
-                            isCheckingEmail = false
+                            isCreatingUser = false
                         }
-
-                        // Si no existe → continuar con registro Cognito
-                        authViewModel.signUp(email, password)
                     }
                 }
 
@@ -270,7 +317,12 @@ fun Register(
                         "¿Ya tienes cuenta?  ",
                         style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A))
                     )
-                    TextButton(onClick = { nav.navigate(Screens.Login.route) }) {
+                    TextButton(onClick = {
+                        authViewModel.signOut()
+                        nav.navigate(Screens.Login.route) {
+                            popUpTo(Screens.LoginRegister.route) { inclusive = true }
+                        }
+                    }) {
                         Text(
                             "Inicia Sesión",
                             style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF008D96))
@@ -310,13 +362,21 @@ fun Register(
             }
             item {
                 Text(
-                    "Regístrate",
+                    "Completa tu Perfil",
                     style = TextStyle(
                         brush = Brush.linearGradient(listOf(Color(0xFF4B4C7E), Color(0xFF008D96))),
                         fontSize = 30.sp,
                         fontWeight = FontWeight.Black
                     ),
                     modifier = Modifier.padding(top = 4.dp, bottom = 6.dp)
+                )
+            }
+
+            item {
+                Text(
+                    "Iniciaste sesión con Google. Por favor, completa tu información personal.",
+                    style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161)),
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
 
@@ -452,25 +512,13 @@ fun Register(
                 }
             }
 
-            // Correo
+            // Correo (autocompletado de Google pero editable)
             item { Label("Correo Electrónico") }
             item {
                 FocusBringIntoView {
                     EmailTextField(
                         value = email,
                         onValueChange = { email = it },
-                        modifier = it.fillMaxWidth()
-                    )
-                }
-            }
-
-            // Contraseña
-            item { Label("Contraseña") }
-            item {
-                FocusBringIntoView {
-                    PasswordTextField(
-                        value = password,
-                        onValueChange = { password = it },
                         modifier = it.fillMaxWidth()
                     )
                 }
@@ -503,7 +551,7 @@ fun Register(
                 }
             }
 
-            // Error global (auth / backend)
+            // Error global
             if (showError && errorMessage.isNotEmpty()) {
                 item {
                     Card(
@@ -526,7 +574,6 @@ fun Register(
                                 onClick = {
                                     showError = false
                                     errorMessage = ""
-                                    authViewModel.clearState()
                                 }
                             ) { Text("✕", color = Color(0xFFD32F2F)) }
                         }
@@ -539,212 +586,5 @@ fun Register(
     }
 }
 
-internal class MxPhoneVisualTransformation : VisualTransformation {
-    override fun filter(text: AnnotatedString): TransformedText {
-        val raw = text.text
-        val formatted = buildString {
-            for (i in raw.indices) {
-                append(raw[i])
-                if (i == 1 && raw.length > 2) append(' ')
-                if (i == 5 && raw.length > 6) append(' ')
-            }
-        }
-
-        val offsetMapping = object : OffsetMapping {
-            override fun originalToTransformed(offset: Int): Int {
-                var o = offset
-                if (offset > 2) o += 1   // espacio después de 2 dígitos
-                if (offset > 6) o += 1   // espacio después de 6 dígitos
-                return o
-            }
-            override fun transformedToOriginal(offset: Int): Int {
-                var o = offset
-                if (offset > 2) o -= 1   // quita espacio tras 2 dígitos
-                if (offset > 7) o -= 1   // quita espacio tras 6 dígitos (considerando el primer espacio)
-                return o.coerceIn(0, 10)
-            }
-        }
-        return TransformedText(AnnotatedString(formatted), offsetMapping)
-    }
-}
-
-/**
- * Helper que desplaza el campo enfocado dentro de la vista visible cuando aparece el IME.
- * Espera un frame y un pequeño retardo para evitar saltos y luego solicita bringIntoView.
- */
-@Composable
-internal fun FocusBringIntoView(
-    delayMs: Long = 140,
-    content: @Composable (Modifier) -> Unit
-) {
-    val requester = remember { BringIntoViewRequester() }
-    val scope = rememberCoroutineScope()
-
-    val mod = Modifier
-        .bringIntoViewRequester(requester)
-        .onFocusEvent { state ->
-            if (state.isFocused) {
-                scope.launch {
-                    awaitFrame()
-                    delay(delayMs)
-                    requester.bringIntoView()
-                }
-            }
-        }
-
-    content(mod)
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun BirthDateField(
-    value: String,
-    onDateSelected: (LocalDate) -> Unit,
-    errorMessage: String?,
-    modifier: Modifier = Modifier
-) {
-    val showDialog = remember { mutableStateOf(false) }
-
-    val today = remember { LocalDate.now() }
-    val zone = remember { ZoneId.systemDefault() }
-    val minMillis = remember { LocalDate.of(1900, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli() }
-    val maxMillis = remember { today.atStartOfDay(zone).toInstant().toEpochMilli() }
-
-    // El state del DatePicker se crea UNA vez y se usa en el diálogo
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = value.toMillisFromDisplayOrNull(zone),
-        yearRange = 1900..today.year,
-        selectableDates = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long): Boolean = utcTimeMillis in minMillis..maxMillis
-            override fun isSelectableYear(year: Int): Boolean = year in 1900..today.year
-        }
-    )
-
-    val interactionSource = remember { MutableInteractionSource() }
-
-    Column(modifier = modifier) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = { /* readOnly */ },
-            readOnly = true,
-            singleLine = true,
-            // El propio TextField es clickeable para abrir el diálogo
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = TextFieldDefaults.MinHeight)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null
-                ) { showDialog.value = true },
-            shape = RoundedCornerShape(18.dp),
-            // El icono izquierdo también abre el diálogo
-            leadingIcon = {
-                IconButton(onClick = { showDialog.value = true }) {
-                    Icon(Icons.Outlined.CalendarMonth, contentDescription = "Elegir fecha")
-                }
-            },
-            placeholder = { Text("DD/MM/AAAA", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-            textStyle = TextStyle(
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
-                color = Color(0xFF2F2F2F)
-            ),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            colors = textFieldColors(),
-            isError = errorMessage != null // activa borde rojo si hay error
-        )
-
-        // Mensaje visible justo debajo si hay error
-        if (errorMessage != null) {
-            Text(
-                text = errorMessage,
-                color = Color(0xFFD32F2F),
-                fontSize = 13.sp,
-                modifier = Modifier.padding(start = 8.dp, top = 4.dp)
-            )
-        }
-    }
-
-    if (showDialog.value) {
-        DatePickerDialog(
-            onDismissRequest = { showDialog.value = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        val localDate = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
-                        onDateSelected(localDate) // aquí se valida y se actualiza el error en Register
-                    }
-                    showDialog.value = false
-                }) { Text("Aceptar") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDialog.value = false }) { Text("Cancelar") }
-            }
-        ) {
-            DatePicker(
-                state = datePickerState,
-                showModeToggle = true
-            )
-        }
-    }
-}
-
-/** Locale ES-MX para formateo. */
-internal val localeEsMx: Locale = Locale.Builder().setLanguage("es").setRegion("MX").build()
-
-/** Formato UI dd/MM/yyyy. */
-internal val displayFormatterEs: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", localeEsMx)
-
-/** Formato ISO yyyy-MM-dd. */
-internal val storageFormatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
-
-internal fun String.toMillisFromDisplayOrNull(zone: ZoneId): Long? = runCatching {
-    if (this.isBlank()) return null
-    val parsed = LocalDate.parse(this, displayFormatterEs)
-    parsed.atStartOfDay(zone).toInstant().toEpochMilli()
-}.getOrNull()
-
-/** Calcula edad en años desde una fecha ISO (yyyy-MM-dd). Devuelve null si no es válida. */
-internal fun computeAgeFromIso(isoDate: String, today: LocalDate = LocalDate.now()): Int? = runCatching {
-    if (isoDate.isBlank()) return null
-    val birth = LocalDate.parse(isoDate, storageFormatter)
-    val p = Period.between(birth, today)
-    p.years
-}.getOrNull()
-
-/** Mapea errores de Auth a mensajes amigables. */
-private fun mapAuthErrorToFriendly(raw: String): String {
-    val lower = raw.lowercase()
-    return when {
-        // Ignorado aquí: lo resuelve el VM (UNCONFIRMED vs CONFIRMED)
-        "usernameexistsexception" in lower || "already exists" in lower || ("email" in lower && "exists" in lower) ->
-            raw
-        "invalidpassword" in lower || ("password" in lower && ("invalid" in lower || "weak" in lower)) ->
-            "La contraseña no cumple los requisitos. Prueba con una más fuerte."
-        else -> raw
-    }
-}
-
-@Composable
-internal fun Label(text: String, top: Dp = 0.dp) {
-    Text(
-        text,
-        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7D7A7A)),
-        modifier = Modifier.padding(top = top, bottom = 8.dp)
-    )
-}
-
-@Composable
-internal fun textFieldColors() = TextFieldDefaults.colors(
-    focusedContainerColor = Color.White,
-    unfocusedContainerColor = Color.White,
-    focusedIndicatorColor = Color(0xFFD3D3D3),
-    unfocusedIndicatorColor = Color(0xFFD3D3D3),
-    cursorColor = Color(0xFF008D96),
-    focusedLeadingIconColor = Color(0xFF7D7A7A),
-    unfocusedLeadingIconColor = Color(0xFF7D7A7A),
-    focusedTrailingIconColor = Color(0xFF7D7A7A),
-    unfocusedTrailingIconColor = Color(0xFF7D7A7A),
-    focusedPlaceholderColor = Color(0xFF7D7A7A),
-    unfocusedPlaceholderColor = Color(0xFF7D7A7A)
-)
+// Usar las mismas utilidades que Register.kt para evitar duplicación
+// Las clases y funciones están definidas en Register.kt
