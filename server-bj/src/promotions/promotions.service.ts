@@ -239,12 +239,15 @@ export class PromotionsService {
       console.log('User Location:', userLocation);
       console.log('Search Radius:', radiusKm, 'km');
 
-    // Obtener todas las promociones activas con sus colaboradores y sucursales
+    // Obtener todas las promociones activas con sus sucursales asignadas
+    // IMPORTANTE: Usamos promotion.branches (relación many-to-many) para obtener
+    // solo las sucursales específicas asociadas a cada promoción, no todas las
+    // sucursales del colaborador
     const promotions = await this.promotionsRepository
       .createQueryBuilder('promotion')
       .leftJoinAndSelect('promotion.categories', 'category')
+      .leftJoinAndSelect('promotion.branches', 'branch')
       .leftJoin('promotion.collaborator', 'collaborator')
-      .leftJoinAndSelect('collaborator.branch', 'branch')
       .addSelect([
         'collaborator.businessName',
         'collaborator.cognitoId',
@@ -267,9 +270,9 @@ export class PromotionsService {
       console.log('\n--- Processing Promotion:', promoData.title || promoData.promotionId);
       console.log('Collaborator:', collaborator?.businessName);
 
-      // Obtener todas las sucursales del colaborador con ubicación
-      const branches = collaborator?.branch || [];
-      console.log('Total branches:', branches.length);
+      // Obtener las sucursales asignadas a esta promoción específica
+      const branches = promoData.branches || [];
+      console.log('Total branches assigned to promotion:', branches.length);
 
       const branchesWithLocation = branches.filter(
         (b: any) => b.location !== null,

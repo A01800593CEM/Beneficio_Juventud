@@ -69,6 +69,17 @@ fun NewPromotionSheet(
     val currentUserId by authViewModel.currentUserId.collectAsState()
     val collaboratorId = currentUserId ?: "anonymous"
 
+    // Función auxiliar para extraer solo la fecha (YYYY-MM-DD) de un string ISO
+    fun extractDateOnly(dateString: String?): String {
+        if (dateString.isNullOrBlank()) return ""
+        // Si es formato ISO (2025-10-21T00:00:00.000Z), extraer solo la parte de fecha
+        return if (dateString.contains("T")) {
+            dateString.substringBefore("T")
+        } else {
+            dateString
+        }
+    }
+
     // Estados del formulario (prioritizar existingPromotion si existe)
     var title by rememberSaveable {
         mutableStateOf(
@@ -82,27 +93,43 @@ fun NewPromotionSheet(
     }
     var startDate by rememberSaveable {
         mutableStateOf(
-            existingPromotion?.initialDate ?: initialPromotionData?.initialDate ?: promo.initialDate.orEmpty()
+            extractDateOnly(
+                existingPromotion?.initialDate ?: initialPromotionData?.initialDate ?: promo.initialDate
+            )
         )
     }
     var endDate by rememberSaveable {
         mutableStateOf(
-            existingPromotion?.endDate ?: initialPromotionData?.endDate ?: promo.endDate.orEmpty()
+            extractDateOnly(
+                existingPromotion?.endDate ?: initialPromotionData?.endDate ?: promo.endDate
+            )
         )
     }
     var totalStock by rememberSaveable {
         mutableStateOf(
-            existingPromotion?.totalStock?.toString() ?: initialPromotionData?.totalStock?.toString() ?: promo.totalStock?.toString() ?: "100"
+            if (isEditMode) {
+                existingPromotion?.totalStock?.toString() ?: ""
+            } else {
+                initialPromotionData?.totalStock?.toString() ?: ""
+            }
         )
     }
     var limitPerUser by rememberSaveable {
         mutableStateOf(
-            existingPromotion?.limitPerUser?.toString() ?: initialPromotionData?.limitPerUser?.toString() ?: promo.limitPerUser?.toString() ?: "1"
+            if (isEditMode) {
+                existingPromotion?.limitPerUser?.toString() ?: ""
+            } else {
+                initialPromotionData?.limitPerUser?.toString() ?: ""
+            }
         )
     }
     var dailyLimitPerUser by rememberSaveable {
         mutableStateOf(
-            existingPromotion?.dailyLimitPerUser?.toString() ?: initialPromotionData?.dailyLimitPerUser?.toString() ?: promo.dailyLimitPerUser?.toString() ?: "1"
+            if (isEditMode) {
+                existingPromotion?.dailyLimitPerUser?.toString() ?: ""
+            } else {
+                initialPromotionData?.dailyLimitPerUser?.toString() ?: ""
+            }
         )
     }
     var promotionString by rememberSaveable {
@@ -170,9 +197,7 @@ fun NewPromotionSheet(
     // Sucursales (branches)
     var availableBranches by remember { mutableStateOf<List<mx.itesm.beneficiojuventud.model.Branch>>(emptyList()) }
     var selectedBranches by remember {
-        mutableStateOf<Set<Int>>(
-            existingPromotion?.branches?.mapNotNull { it.branchId }?.toSet() ?: emptySet()
-        )
+        mutableStateOf<Set<Int>>(emptySet())
     }
 
     // Cargar categorías y sucursales al iniciar
@@ -188,6 +213,13 @@ fun NewPromotionSheet(
         if (collaboratorId != "anonymous") {
             runCatching {
                 availableBranches = mx.itesm.beneficiojuventud.model.branch.RemoteServiceBranch.getBranchesByCollaborator(collaboratorId)
+
+                // Después de cargar las sucursales disponibles, actualizar las seleccionadas si estamos editando
+                if (isEditMode && existingPromotion != null) {
+                    val existingBranchIds = existingPromotion.branches.mapNotNull { it.branchId }.toSet()
+                    selectedBranches = existingBranchIds
+                    android.util.Log.d("NewPromotionSheet", "Loaded existing branches for edit mode: $existingBranchIds")
+                }
             }.onFailure { error ->
                 android.util.Log.e("NewPromotionSheet", "Error loading branches", error)
             }
@@ -498,6 +530,9 @@ fun NewPromotionSheet(
                         )
                     }
                 } else {
+                    // Log para debug
+                    android.util.Log.d("NewPromotionSheet", "availableBranches: ${availableBranches.map { it.branchId to it.name }}, selectedBranches: $selectedBranches")
+
                     // Opción "Todas las sucursales"
                     val allSelected = selectedBranches.isEmpty()
                     PromotionStateChip(
@@ -664,6 +699,12 @@ fun NewPromotionSheet(
                     return@MainButton
                 }
 
+                if (dlpu > lpu) {
+                    errorMessage = "El límite diario no puede ser mayor al límite por usuario"
+                    showError = true
+                    return@MainButton
+                }
+
                 if (selectedCategories.isEmpty()) {
                     errorMessage = "Debes seleccionar al menos una categoría"
                     showError = true
@@ -745,11 +786,10 @@ fun NewPromotionSheet(
                             android.util.Log.d("NewPromotionSheet", "Updating promotion ${existingPromotion.promotionId} with branchIds: $branchIdsList")
                             android.util.Log.d("NewPromotionSheet", "Update Request JSON: ${gson.toJson(requestData)}")
 
-                            // Para el update, usamos el mismo request pero con PATCH
+                            // Para el update, usamos OkHttp con enqueue (asíncrono)
                             val updateJson = gson.toJson(requestData)
                             val requestBody = updateJson.toRequestBody("application/json".toMediaTypeOrNull())
 
-                            // Crear cliente OkHttp para hacer el PATCH
                             val client = okhttp3.OkHttpClient()
                             val request = okhttp3.Request.Builder()
                                 .url("${mx.itesm.beneficiojuventud.utils.Constants.BASE_URL}promotions/${existingPromotion.promotionId}")
@@ -757,9 +797,28 @@ fun NewPromotionSheet(
                                 .addHeader("Content-Type", "application/json")
                                 .build()
 
-                            val response = client.newCall(request).execute()
-                            if (!response.isSuccessful) {
-                                throw Exception("Error ${response.code}: ${response.body?.string()}")
+                            // Usar suspendCancellableCoroutine para convertir callback a coroutine
+                            try {
+                                kotlinx.coroutines.suspendCancellableCoroutine<String> { continuation ->
+                                    client.newCall(request).enqueue(object : okhttp3.Callback {
+                                        override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
+                                            continuation.resumeWith(Result.failure(e))
+                                        }
+
+                                        override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                                            if (!response.isSuccessful) {
+                                                continuation.resumeWith(
+                                                    Result.failure(Exception("Error ${response.code}: ${response.body?.string()}"))
+                                                )
+                                            } else {
+                                                continuation.resumeWith(Result.success("Success"))
+                                            }
+                                            response.close()
+                                        }
+                                    })
+                                }
+                            } catch (e: Exception) {
+                                throw Exception("Error updating promotion: ${e.message}", e)
                             }
                         } else {
                             android.util.Log.d("NewPromotionSheet", "Creating promotion with branchIds: $branchIdsList")
@@ -880,9 +939,15 @@ private fun DatePickerField(
         // Si ya tienes un valor, úsalo como selección inicial
         val initialMillis = remember(value) {
             runCatching {
-                if (value.isNotBlank())
-                    java.time.LocalDate.parse(value).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
-                else null
+                if (value.isNotBlank()) {
+                    // Extraer solo la fecha (YYYY-MM-DD) si viene en formato ISO
+                    val dateOnlyStr = if (value.contains("T")) {
+                        value.substringBefore("T")
+                    } else {
+                        value
+                    }
+                    java.time.LocalDate.parse(dateOnlyStr).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                } else null
             }.getOrNull()
         }
         val state = rememberDatePickerState(initialSelectedDateMillis = initialMillis)

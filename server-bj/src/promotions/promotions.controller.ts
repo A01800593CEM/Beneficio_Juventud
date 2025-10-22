@@ -33,24 +33,6 @@ export class PromotionsController {
     return this.promotionsService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.promotionsService.findOne(id);
-  }
-
-  @Patch(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body(new ValidationPipe({ whitelist: true, transform: true }))
-    dto: UpdatePromotionDto,
-  ) {
-    return this.promotionsService.update(id, dto);
-  }
-  @Get('category/:category')
-  async promotionPerCategory(@Param('category') category: string) {
-    return this.promotionsService.promotionPerCategory(category);
-  }
-
   @Get('nearby/search')
   async findNearbyPromotions(
     @Query('latitude') latitude: string,
@@ -83,6 +65,25 @@ export class PromotionsController {
     }
 
     return this.promotionsService.findNearbyPromotions(lat, lon, radiusKm);
+  }
+
+  @Get('category/:category')
+  async promotionPerCategory(@Param('category') category: string) {
+    return this.promotionsService.promotionPerCategory(category);
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.promotionsService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ValidationPipe({ whitelist: true, transform: true }))
+    dto: UpdatePromotionDto,
+  ) {
+    return this.promotionsService.update(id, dto);
   }
 
   @Patch('saveimage/promotion/:id')

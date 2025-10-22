@@ -7,27 +7,48 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
-    background = Color(0xFF000000),
-    surface = Color(0xFF000000),
-    onBackground = Color(0xFFFFFFFF),
-    onSurface = Color(0xFFFFFFFF)
+    primary = Teal,
+    secondary = DarkBlue,
+    tertiary = Teal,
+    background = Color(0xFF1C1B1F),
+    surface = Color(0xFF1C1B1F),
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onTertiary = Color.White,
+    onBackground = Color(0xFFE6E1E5),
+    onSurface = Color(0xFFE6E1E5),
+    surfaceVariant = Color(0xFF49454F),
+    onSurfaceVariant = Color(0xFFCAC4D0)
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
+    primary = Teal,
+    secondary = DarkBlue,
+    tertiary = Teal,
 
-    // 🔹 Blanco puro para toda la app
-    background = Color(0xFFFFFFFF),
-    surface = Color(0xFFFFFFFF),
+    // Background and Surface - Pure white
+    background = Color.White,
+    surface = Color.White,
+    surfaceVariant = Color.White,
 
-    // 🔹 Texto oscuro sobre fondo blanco
-    onBackground = Color(0xFF000000),
-    onSurface = Color(0xFF000000)
+    // Surface containers - All white for clean look
+    surfaceContainer = Color.White,
+    surfaceContainerHigh = Color.White,
+    surfaceContainerHighest = Color.White,
+    surfaceContainerLow = Color.White,
+    surfaceContainerLowest = Color.White,
+
+    // Text on backgrounds
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onTertiary = Color.White,
+    onBackground = TextGrey,
+    onSurface = TextGrey,
+    onSurfaceVariant = TextGrey,
+
+    // Borders and outlines
+    outline = BorderGrey,
+    outlineVariant = LightGrey
 )
 
 @Composable
