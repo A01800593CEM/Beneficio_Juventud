@@ -140,13 +140,19 @@ fun Register(
 
             scope.launch {
                 try {
-                    userViewModel.createUser(
+                    // ⭐️ SINCRÓNICO: Esperar a que createUserAndWait() complete REALMENTE
+                    val (success, createdUser, error) = userViewModel.createUserAndWait(
                         pending.copy(
                             cognitoId = sub,
                             email = email.trim(),
                             accountState = AccountState.activo
                         )
                     )
+
+                    if (!success || error != null) {
+                        throw Exception(error ?: "No se pudo crear el usuario en el servidor")
+                    }
+
                     authViewModel.clearPendingCredentials()
                     nav.navigate(Screens.Onboarding.route) {
                         popUpTo(Screens.LoginRegister.route) { inclusive = true }

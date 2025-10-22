@@ -117,6 +117,26 @@ class UserViewModel(private val repository: SavedCouponRepository) : ViewModel()
         }
     }
 
+    /**
+     * Crea un usuario y espera a que se complete REALMENTE (bloqueante).
+     * Devuelve (success: Boolean, user: UserProfile?, error: String?)
+     * IMPORTANTE: Solo para GoogleRegister - NO usar en flujos normales
+     */
+    suspend fun createUserAndWait(user: UserProfile): Triple<Boolean, UserProfile?, String?> {
+        android.util.Log.d("UserViewModel", "🔄 Iniciando createUserAndWait (SINCRÓNICO) para: ${user.email}")
+        return try {
+            val created = withContext(Dispatchers.IO) {
+                model.createUser(user)
+            }
+            android.util.Log.d("UserViewModel", "✅ Usuario creado (sincrónico): ${created.email}, cognitoId: ${created.cognitoId}")
+            _userState.value = created
+            Triple(true, created, null)
+        } catch (e: Exception) {
+            android.util.Log.e("UserViewModel", "❌ Error creando usuario (sincrónico): ${e.message}", e)
+            Triple(false, null, e.message)
+        }
+    }
+
     fun updateUser(cognitoId: String, update: UserProfile) {
         val myToken = ++loadToken
         _error.value = null

@@ -238,7 +238,7 @@ fun GoogleRegister(
                         showError = false
                         isCreatingUser = true
                         try {
-                            Log.d("GoogleRegister", "🔄 Creando usuario en BD...")
+                            Log.d("GoogleRegister", "🔄 Creando usuario en BD (SINCRÓNICO)...")
                             Log.d("GoogleRegister", "  CognitoId: $cognitoSub")
                             Log.d("GoogleRegister", "  Email: ${email.trim()}")
                             Log.d("GoogleRegister", "  Nombre: ${nombre.trim()} ${apPaterno.trim()} ${apMaterno.trim()}")
@@ -254,42 +254,44 @@ fun GoogleRegister(
                                 accountState = AccountState.activo
                             )
 
-                            // Crear usuario en BD - MISMO FLUJO QUE Register.kt
-                            userViewModel.createUser(userProfile)
+                            // ⭐️ SINCRÓNICO: Esperar a que createUserAndWait() complete REALMENTE antes de continuar
+                            val (success, createdUser, error) = userViewModel.createUserAndWait(userProfile)
 
-                            // ESPERAR a que createUser() complete (máximo 10 segundos)
-                            Log.d("GoogleRegister", "⏳ Esperando a que createUser complete...")
-                            var attempts = 0
-                            while (userViewModel.isLoading.value && attempts < 100) {
-                                delay(100)
-                                attempts++
+                            if (!success || error != null) {
+                                Log.e("GoogleRegister", "❌ Error en createUserAndWait: $error")
+                                throw Exception(error ?: "No se pudo crear el usuario en el servidor")
                             }
 
-                            // Verificar si hubo error en la creación
-                            val creationError = userViewModel.error.value
-                            if (!creationError.isNullOrBlank()) {
-                                Log.e("GoogleRegister", "❌ Error en createUser: $creationError")
-                                throw Exception(creationError)
-                            }
-
-                            // Verificar que el usuario se creó correctamente
-                            val createdUser = userViewModel.userState.value
-                            if (createdUser.cognitoId.isNullOrBlank()) {
+                            if (createdUser?.cognitoId.isNullOrBlank()) {
                                 Log.e("GoogleRegister", "❌ Usuario no se creó correctamente")
                                 throw Exception("No se pudo crear el usuario en el servidor")
                             }
 
-                            authViewModel.clearPendingGoogleUserData()
                             Log.d("GoogleRegister", "✅ Usuario creado exitosamente en servidor")
-                            Log.d("GoogleRegister", "  → UserId: ${createdUser.cognitoId}")
+                            Log.d("GoogleRegister", "  → UserId: ${createdUser?.cognitoId}")
 
-                            // Actualizar currentUserId sin cambiar sessionKey
+                            // ⭐️ IMPORTANT: MISMO THREAD - Después de crear el usuario en BD, hacer login automático
+                            // TODO ESTO OCURRE EN EL MISMO SCOPE.LAUNCH, GARANTIZANDO ORDEN
+                            Log.d("GoogleRegister", "🔄 Iniciando login automático como usuario existente...")
+
+                            // El usuario ya está autenticado en Cognito (por Google OAuth)
+                            // Solo necesitamos actualizar currentUserId y navegar
                             authViewModel.getCurrentUser()
-                            delay(300)
+                            delay(500) // Esperar a que se actualice el currentUserId en el MISMO thread
 
-                            Log.d("GoogleRegister", "✅ CurrentUserId actualizado: ${authViewModel.currentUserId.value}")
+                            val updatedUserId = authViewModel.currentUserId.value
+                            Log.d("GoogleRegister", "✅ CurrentUserId actualizado: $updatedUserId")
 
-                            // Navegar directo a onboarding (igual que Register.kt)
+                            // ⭐️ IMPORTANTE: Solo limpiar Google data, NO clearState()
+                            // clearState() borra currentUserId que necesitamos en OnboardingCategories
+                            authViewModel.clearPendingGoogleUserData()
+
+                            // También limpiar el error de auth
+                            authViewModel.clearError()
+
+                            // Navegar a Onboarding (mismo flujo que Register.kt)
+                            // NO ir a PostLoginPermissions porque necesitamos que complete OnboardingCategories
+                            Log.d("GoogleRegister", "✅ Navegando a Onboarding...")
                             nav.navigate(Screens.Onboarding.route) {
                                 popUpTo(Screens.LoginRegister.route) { inclusive = true }
                                 launchSingleTop = true
