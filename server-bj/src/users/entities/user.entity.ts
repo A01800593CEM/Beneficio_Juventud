@@ -133,7 +133,7 @@ export class User {
         name: 'usuario_categoria',
     joinColumn: {
         name: 'usuario_id',
-        referencedColumnName: 'id',
+        referencedColumnName: 'cognitoId',
     },
     inverseJoinColumn: {
         name: 'categoria_id',
@@ -147,7 +147,7 @@ export class User {
         name: 'cupon_favorito',
     joinColumn: {
         name: 'usuario_id',
-        referencedColumnName: 'id',
+        referencedColumnName: 'cognitoId',
     },
     inverseJoinColumn: {
         name: 'promocion_id',
