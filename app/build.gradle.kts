@@ -134,6 +134,9 @@ dependencies {
     implementation("com.google.maps.android:maps-ktx:5.1.1")
     implementation("com.google.maps.android:maps-utils-ktx:5.1.1")
 
+    // 🔹 Google Places SDK for Android (Autocomplete & Details)
+    implementation("com.google.android.libraries.places:places:4.1.0")
+
     // 🔹 Seguridad (EncryptedSharedPreferences)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 

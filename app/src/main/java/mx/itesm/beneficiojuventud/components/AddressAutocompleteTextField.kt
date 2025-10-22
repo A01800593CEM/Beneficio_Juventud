@@ -1,6 +1,5 @@
 package mx.itesm.beneficiojuventud.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,35 +19,29 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.android.gms.maps.model.LatLng
-import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import mx.itesm.beneficiojuventud.viewmodel.PlacesAutocompleteViewModel
+import mx.itesm.beneficiojuventud.utils.PlacesPrediction
 
 /**
- * Datos de una predicción de dirección
- */
-data class AddressPrediction(
-    val mainText: String,
-    val secondaryText: String,
-    val fullText: String,
-    val latitude: Double? = null,
-    val longitude: Double? = null
-)
-
-/**
- * TextField con autocompletado de direcciones usando Google Maps SDK
- * Muestra sugerencias mientras el usuario escribe (implementado con simulación)
+ * TextField con autocompletado de direcciones usando Google Places SDK
+ * Proporciona sugerencias en tiempo real mientras el usuario escribe
  *
- * NOTA: Este componente usa SOLO Google Maps SDK for Android.
- * No requiere Places API. El autocompletado se simula mostrando direcciones
- * sugeridas basadas en coincidencias de texto.
+ * CARACTERÍSTICAS:
+ * - Usa Google Places Autocomplete SDK nativo de Android
+ * - No requiere backend o billing del servidor
+ * - Incluye debounce automático para optimizar requests
+ * - Manejo de sesiones para reducir costos
+ * - Integración con coroutines y StateFlow
  *
  * @param value Valor actual del campo
  * @param onValueChange Callback cuando cambia el valor
- * @param onAddressSelected Callback cuando se selecciona una dirección
+ * @param onAddressSelected Callback cuando se selecciona una dirección (devuelve dirección formateada)
  * @param modifier Modificador de Compose
  * @param label Etiqueta del campo
  * @param placeholder Texto placeholder
- * @param country Código de país para filtrar (ej: "MX", "US", "FR")
+ * @param country Código de país para filtrado (ej: "MX", "US")
+ * @param viewModel ViewModel de Places (se crea automáticamente si no se proporciona)
  */
 @Composable
 fun AddressAutocompleteTextField(
@@ -58,53 +51,13 @@ fun AddressAutocompleteTextField(
     modifier: Modifier = Modifier,
     label: String = "Dirección",
     placeholder: String = "Escribe tu dirección...",
-    country: String = "MX"
+    country: String = "MX",
+    viewModel: PlacesAutocompleteViewModel = viewModel()
 ) {
-    var suggestions by rememberSaveable { mutableStateOf<List<AddressPrediction>>(emptyList()) }
-    var isLoading by rememberSaveable { mutableStateOf(false) }
+    // Recolectar estado del ViewModel
+    val state by viewModel.state.collectAsState()
     var showSuggestions by rememberSaveable { mutableStateOf(false) }
-    var debounceJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-
-    val scope = rememberCoroutineScope()
-
-    // Datos de ejemplo para sugerencias (esto podría conectarse a un API backend)
-    val commonAddresses = listOf(
-        AddressPrediction(
-            mainText = "Av. Reforma",
-            secondaryText = "México, CDMX",
-            fullText = "Av. Reforma, Cuauhtémoc, 06500 CDMX, México",
-            latitude = 19.4263,
-            longitude = -99.1452
-        ),
-        AddressPrediction(
-            mainText = "Paseo de la Reforma",
-            secondaryText = "Benito Juárez, CDMX",
-            fullText = "Paseo de la Reforma 505, Benito Juárez, 06596 CDMX, México",
-            latitude = 19.4273,
-            longitude = -99.1562
-        ),
-        AddressPrediction(
-            mainText = "Av. Paseo de la Reforma",
-            secondaryText = "Polanco, CDMX",
-            fullText = "Av. Paseo de la Reforma 800, Polanco, 11560 CDMX, México",
-            latitude = 19.4343,
-            longitude = -99.1873
-        ),
-        AddressPrediction(
-            mainText = "Calle de la Paz",
-            secondaryText = "Centro, CDMX",
-            fullText = "Calle de la Paz 200, Centro, 06010 CDMX, México",
-            latitude = 19.4353,
-            longitude = -99.1345
-        ),
-        AddressPrediction(
-            mainText = "Av. Revolución",
-            secondaryText = "San Ángel, CDMX",
-            fullText = "Av. Revolución 1500, San Ángel, 01000 CDMX, México",
-            latitude = 19.3604,
-            longitude = -99.1873
-        )
-    )
+    var previousQuery by rememberSaveable { mutableStateOf("") }
 
     Column(modifier = modifier.fillMaxWidth()) {
         // TextField con autocompletado
@@ -112,35 +65,15 @@ fun AddressAutocompleteTextField(
             value = value,
             onValueChange = { newValue ->
                 onValueChange(newValue)
+                previousQuery = newValue
 
-                // Cancelar búsqueda anterior
-                debounceJob?.cancel()
-
+                // Mostrar sugerencias si hay texto suficiente
                 if (newValue.length >= 2) {
                     showSuggestions = true
-                    isLoading = true
-
-                    // Debounce: esperar 300ms después de dejar de escribir
-                    debounceJob = scope.launch {
-                        kotlinx.coroutines.delay(300)
-                        try {
-                            // Filtrar direcciones que coincidan con el texto ingresado
-                            suggestions = commonAddresses.filter { address ->
-                                address.mainText.contains(newValue, ignoreCase = true) ||
-                                address.secondaryText.contains(newValue, ignoreCase = true) ||
-                                address.fullText.contains(newValue, ignoreCase = true)
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            suggestions = emptyList()
-                        } finally {
-                            isLoading = false
-                        }
-                    }
+                    viewModel.searchAddresses(newValue, country)
                 } else {
-                    suggestions = emptyList()
                     showSuggestions = false
-                    isLoading = false
+                    viewModel.clearSearch()
                 }
             },
             singleLine = true,
@@ -166,8 +99,18 @@ fun AddressAutocompleteTextField(
             )
         )
 
+        // Mostrar error si existe
+        if (state.error != null) {
+            Text(
+                text = "Error: ${state.error}",
+                color = Color.Red,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
         // Mostrar sugerencias en dropdown
-        if (showSuggestions && suggestions.isNotEmpty()) {
+        if (showSuggestions && state.predictions.isNotEmpty()) {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -182,14 +125,17 @@ fun AddressAutocompleteTextField(
                         .fillMaxWidth()
                         .padding(8.dp)
                 ) {
-                    items(suggestions) { suggestion ->
-                        AddressSuggestionItem(
-                            suggestion = suggestion,
-                            onSelect = { selectedAddress ->
-                                onValueChange(selectedAddress)
-                                onAddressSelected(selectedAddress)
+                    items(state.predictions) { prediction ->
+                        PlacesSuggestionItem(
+                            prediction = prediction,
+                            onSelect = { selectedPlaceId ->
+                                // Obtener detalles del lugar seleccionado
+                                viewModel.selectAddress(selectedPlaceId)
                                 showSuggestions = false
-                                suggestions = emptyList()
+
+                                // Usar la dirección formateada desde la predicción
+                                onValueChange(prediction.fullText)
+                                onAddressSelected(prediction.fullText)
                             }
                         )
                     }
@@ -198,7 +144,7 @@ fun AddressAutocompleteTextField(
         }
 
         // Mostrar indicador de carga
-        if (isLoading && suggestions.isEmpty()) {
+        if (state.isLoading && state.predictions.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -212,38 +158,48 @@ fun AddressAutocompleteTextField(
                 )
             }
         }
+
+        // Mostrar "sin resultados" si no hay predicciones
+        if (showSuggestions && !state.isLoading && state.predictions.isEmpty() && previousQuery.length >= 2) {
+            Text(
+                text = "No se encontraron direcciones",
+                color = Color(0xFF999999),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
     }
 }
 
 /**
- * Item individual de una sugerencia de dirección
+ * Item individual de una sugerencia de dirección desde Google Places
  */
 @Composable
-private fun AddressSuggestionItem(
-    suggestion: AddressPrediction,
+private fun PlacesSuggestionItem(
+    prediction: PlacesPrediction,
     onSelect: (String) -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                onSelect(suggestion.fullText)
+                onSelect(prediction.placeId)
             }
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                suggestion.mainText,
+                prediction.mainText,
                 style = TextStyle(
                     fontSize = 14.sp,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                     color = Color(0xFF2F2F2F)
                 )
             )
-            if (suggestion.secondaryText.isNotEmpty()) {
+            if (prediction.secondaryText.isNotEmpty()) {
                 Text(
-                    suggestion.secondaryText,
+                    prediction.secondaryText,
                     style = TextStyle(
                         fontSize = 12.sp,
                         color = Color(0xFF999999)
