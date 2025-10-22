@@ -32,6 +32,9 @@ import mx.itesm.beneficiojuventud.components.*
 import mx.itesm.beneficiojuventud.model.webhook.PromotionData
 import mx.itesm.beneficiojuventud.model.webhook.WebhookCategory
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 import java.text.SimpleDateFormat
 import java.util.*
@@ -48,6 +51,7 @@ import java.util.*
 fun EditPromotion(
     nav: NavHostController,
     promotionData: PromotionData? = null,
+    viewModel: mx.itesm.beneficiojuventud.viewmodel.PromoViewModel? = null,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Home) }
@@ -62,12 +66,16 @@ fun EditPromotion(
     var dailyLimitPerUser by remember { mutableStateOf(promotionData?.dailyLimitPerUser?.toString() ?: "1") }
     var promotionState by remember { mutableStateOf(promotionData?.promotionState ?: "activa") }
 
+    var isSaving by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
     var showInitialDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     val datePickerStateInitial = rememberDatePickerState()
     val datePickerStateEnd = rememberDatePickerState()
 
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -213,7 +221,7 @@ fun EditPromotion(
                         DropdownField(
                             label = "Estado",
                             value = promotionState,
-                            options = listOf("activa", "inactiva", "pausada", "vencida"),
+                            options = listOf("activa", "inactiva", "finalizada"),
                             onValueChange = { promotionState = it },
                             modifier = Modifier.weight(1f)
                         )
@@ -266,11 +274,92 @@ fun EditPromotion(
 
                     Spacer(Modifier.height(8.dp))
 
+                    // Error message display
+                    errorMessage?.let { error ->
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+
                     Button(
                         onClick = {
-                            // TODO: Implementar guardado
-                            nav.popBackStack()
+                            if (promotionData != null && viewModel != null) {
+                                isSaving = true
+                                errorMessage = null
+
+                                coroutineScope.launch {
+                                    try {
+                                        // Convert promotionType string to enum
+                                        val typeEnum = when (promotionType) {
+                                            "descuento" -> mx.itesm.beneficiojuventud.model.promos.PromotionType.descuento
+                                            "multicompra" -> mx.itesm.beneficiojuventud.model.promos.PromotionType.multicompra
+                                            "regalo" -> mx.itesm.beneficiojuventud.model.promos.PromotionType.regalo
+                                            else -> mx.itesm.beneficiojuventud.model.promos.PromotionType.otro
+                                        }
+
+                                        // Convert promotionState string to enum
+                                        val stateEnum = when (promotionState) {
+                                            "activa" -> mx.itesm.beneficiojuventud.model.promos.PromotionState.activa
+                                            "inactiva" -> mx.itesm.beneficiojuventud.model.promos.PromotionState.inactiva
+                                            "finalizada" -> mx.itesm.beneficiojuventud.model.promos.PromotionState.finalizada
+                                            else -> mx.itesm.beneficiojuventud.model.promos.PromotionState.activa
+                                        }
+
+                                        // Create updated Promotions object
+                                        val updatedPromo = mx.itesm.beneficiojuventud.model.promos.Promotions(
+                                            promotionId = promotionData.promotionId,
+                                            collaboratorId = promotionData.collaboratorId,
+                                            title = title,
+                                            description = description,
+                                            imageUrl = promotionData.imageUrl,
+                                            initialDate = initialDate,
+                                            endDate = endDate,
+                                            promotionType = typeEnum,
+                                            promotionString = promotionData.promotionString,
+                                            totalStock = totalStock.toIntOrNull(),
+                                            availableStock = promotionData.availableStock,
+                                            limitPerUser = limitPerUser.toIntOrNull(),
+                                            dailyLimitPerUser = dailyLimitPerUser.toIntOrNull(),
+                                            promotionState = stateEnum,
+                                            isBookable = promotionData.isBookable,
+                                            theme = promotionData.theme?.let {
+                                                when (it) {
+                                                    "dark" -> mx.itesm.beneficiojuventud.model.promos.PromoTheme.dark
+                                                    "light" -> mx.itesm.beneficiojuventud.model.promos.PromoTheme.light
+                                                    else -> mx.itesm.beneficiojuventud.model.promos.PromoTheme.light
+                                                }
+                                            },
+                                            categories = promotionData.categories.map {
+                                                mx.itesm.beneficiojuventud.model.categories.Category(it.id, it.name)
+                                            },
+                                            branches = emptyList()
+                                        )
+
+                                        // Update promotion via ViewModel
+                                        promotionData.promotionId?.let { id ->
+                                            viewModel.updatePromotion(id, updatedPromo)
+                                        }
+
+                                        // Navigate back on success
+                                        withContext(Dispatchers.Main) {
+                                            isSaving = false
+                                            nav.popBackStack()
+                                        }
+                                    } catch (e: Exception) {
+                                        withContext(Dispatchers.Main) {
+                                            isSaving = false
+                                            errorMessage = "Error al guardar: ${e.message}"
+                                        }
+                                    }
+                                }
+                            } else {
+                                errorMessage = "No se puede guardar: datos incompletos"
+                            }
                         },
+                        enabled = !isSaving,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -283,15 +372,22 @@ fun EditPromotion(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Save,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            if (isSaving) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Save,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "Guardar Promoción",
+                                text = if (isSaving) "Guardando..." else "Guardar Promoción",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White

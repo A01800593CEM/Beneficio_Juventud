@@ -1,6 +1,7 @@
 package mx.itesm.beneficiojuventud.view
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -262,7 +263,15 @@ fun Login(
                         text = "Continuar con Google",
                         icon = painterResource(id = R.drawable.logo_google),
                         contentDescription = "Continuar con Google",
-                        onClick = { /* TODO */ },
+                        onClick = {
+                            val activity = context as? Activity
+                            if (activity != null) {
+                                authViewModel.signInWithGoogle(activity)
+                            } else {
+                                errorMessage = "Error: contexto de actividad no disponible"
+                                showError = true
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
                     )
                 }

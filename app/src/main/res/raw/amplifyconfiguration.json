@@ -35,7 +35,20 @@
             },
             "signupAttributes": ["EMAIL"],
             "usernameAttributes": ["EMAIL"],
-            "verificationMechanisms": ["EMAIL"]
+            "verificationMechanisms": ["EMAIL"],
+            "OAuth": {
+              "WebDomain": "beneficio.auth.us-east-2.amazoncognito.com",
+              "AppClientId": "uiiedfg4c2v6er11u55c0loeh",
+              "SignInRedirectURI": "beneficiojoven://callback",
+              "SignOutRedirectURI": "beneficiojoven://signout",
+              "Scopes": [
+                "email",
+                "openid",
+                "profile",
+                "aws.cognito.signin.user.admin",
+                "phone"
+              ]
+            }
           }
         }
       }

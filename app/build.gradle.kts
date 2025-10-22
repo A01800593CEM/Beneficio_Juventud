@@ -128,6 +128,9 @@ dependencies {
     // 🔹 Google Play Services Location
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
+    // 🔹 Google Play Services Auth (for Google Sign-In)
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+
     // 🔹 Google Maps SDK for Android
     implementation("com.google.android.gms:play-services-maps:19.0.0")
     implementation("com.google.maps.android:maps-compose:4.4.1")

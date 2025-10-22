@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.viewmodel
 
+import android.app.Activity
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -309,6 +310,62 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Error inesperado en signIn: ${e.message}", e)
                 _authState.value = AuthState(error = "Error de conexión. Verifica tu internet e intenta de nuevo.")
+            }
+        }
+    }
+
+    /**
+     * Iniciar sesión con Google usando AWS Cognito Hosted UI
+     * Requiere Activity context para mostrar el WebView de autenticación
+     */
+    fun signInWithGoogle(activity: Activity) {
+        viewModelScope.launch {
+            try {
+                Log.d("AuthViewModel", "🔵 Iniciando Google Sign-In")
+                Log.d("AuthViewModel", "Activity: ${activity.javaClass.simpleName}")
+                _authState.value = AuthState(isLoading = true)
+
+                val result = authRepository.signInWithGoogle(activity)
+                result.fold(
+                    onSuccess = { r ->
+                        Log.d("AuthViewModel", "✅ Google Sign-In exitoso: isSignedIn=${r.isSignedIn}")
+                        if (r.isSignedIn) {
+                            _authState.value = AuthState(isSuccess = true)
+                            _sessionKey.value = UUID.randomUUID().toString()
+                            refreshAuthState()
+                        } else {
+                            Log.w("AuthViewModel", "⚠️ Sign-In no completado")
+                            _authState.value = AuthState(
+                                error = "No se pudo completar el inicio de sesión con Google"
+                            )
+                        }
+                    },
+                    onFailure = { e ->
+                        Log.e("AuthViewModel", "❌ Google Sign-In falló: ${e.message}", e)
+                        Log.e("AuthViewModel", "Error completo: $e")
+
+                        val errorMsg = when {
+                            e.message?.contains("cancelled", true) == true ->
+                                "Inicio de sesión cancelado"
+                            e.message?.contains("network", true) == true ->
+                                "Error de conexión. Verifica tu internet"
+                            e.message?.contains("oauth", true) == true ||
+                            e.message?.contains("webdomain", true) == true ||
+                            e.message?.contains("hosted ui", true) == true ->
+                                "Google Sign-In no está configurado. Lee GOOGLE_SIGNIN_SETUP.md"
+                            e.message?.contains("invalidparameter", true) == true ->
+                                "Configuración de OAuth incompleta. Verifica amplifyconfiguration.json"
+                            else -> "Error: ${e.message ?: "Error desconocido"}. Revisa GOOGLE_SIGNIN_SETUP.md"
+                        }
+                        _authState.value = AuthState(error = errorMsg)
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "❌ Error inesperado en Google Sign-In: ${e.message}", e)
+                Log.e("AuthViewModel", "Stack trace: ", e)
+                _authState.value = AuthState(
+                    error = "Error: ${e.message ?: "Error desconocido"}. Verifica la configuración."
+                )
             }
         }
     }
