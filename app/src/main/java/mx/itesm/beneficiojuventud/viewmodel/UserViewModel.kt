@@ -65,14 +65,24 @@ class UserViewModel(private val repository: SavedCouponRepository) : ViewModel()
         _isLoading.value = true
 
         viewModelScope.launch {
+            android.util.Log.d("UserViewModel", "🔍 Iniciando getUserById para: $cognitoId")
             val result = runCatching {
                 withContext(Dispatchers.IO) { model.getUserById(cognitoId) }
             }
-            if (myToken != loadToken) return@launch // llegó tarde, se descarta
+            if (myToken != loadToken) {
+                android.util.Log.w("UserViewModel", "⚠️ Respuesta de getUserById llegó tarde, descartando")
+                return@launch // llegó tarde, se descarta
+            }
 
             result.fold(
-                onSuccess = { user -> _userState.value = user },
-                onFailure = { e -> _error.value = e.message ?: "Error al cargar usuario" }
+                onSuccess = { user ->
+                    android.util.Log.d("UserViewModel", "✅ Usuario cargado: ${user.email}, cognitoId: ${user.cognitoId}")
+                    _userState.value = user
+                },
+                onFailure = { e ->
+                    android.util.Log.e("UserViewModel", "❌ Error al cargar usuario: ${e.message}", e)
+                    _error.value = e.message ?: "Error al cargar usuario"
+                }
             )
             _isLoading.value = false
         }
@@ -84,14 +94,24 @@ class UserViewModel(private val repository: SavedCouponRepository) : ViewModel()
         _isLoading.value = true
 
         viewModelScope.launch {
+            android.util.Log.d("UserViewModel", "🔄 Iniciando createUser para: ${user.email}")
             val result = runCatching {
                 withContext(Dispatchers.IO) { model.createUser(user) }
             }
-            if (myToken != loadToken) return@launch
+            if (myToken != loadToken) {
+                android.util.Log.w("UserViewModel", "⚠️ Respuesta de createUser llegó tarde, descartando")
+                return@launch
+            }
 
             result.fold(
-                onSuccess = { created -> _userState.value = created },
-                onFailure = { e -> _error.value = e.message ?: "Error al crear usuario" }
+                onSuccess = { created ->
+                    android.util.Log.d("UserViewModel", "✅ Usuario creado exitosamente: ${created.email}, cognitoId: ${created.cognitoId}")
+                    _userState.value = created
+                },
+                onFailure = { e ->
+                    android.util.Log.e("UserViewModel", "❌ Error al crear usuario: ${e.message}", e)
+                    _error.value = e.message ?: "Error al crear usuario"
+                }
             )
             _isLoading.value = false
         }

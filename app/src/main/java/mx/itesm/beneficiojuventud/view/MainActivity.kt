@@ -240,20 +240,44 @@ private fun AppNav(
     }
     LaunchedEffect(sessionKey) {
         if (appState.isAuthenticated) {
-            userViewModel.clearUser()
-            collabViewModel.clearCollaborator()
             val id = authViewModel.currentUserId.value
-            if (!id.isNullOrBlank()) {
-                userViewModel.getUserById(id)
-                try { collabViewModel.getCollaboratorById(id) } catch (_: Exception) {}
+            val currentUser = userViewModel.userState.value
+
+            // Solo limpiar y recargar si el usuario cambió o no está cargado
+            if (currentUser == null || (id != null && currentUser.cognitoId != id)) {
+                Log.d("MainActivity", "🔄 SessionKey cambió - Recargando usuario")
+                userViewModel.clearUser()
+                collabViewModel.clearCollaborator()
+
+                if (!id.isNullOrBlank()) {
+                    userViewModel.getUserById(id)
+                    try { collabViewModel.getCollaboratorById(id) } catch (_: Exception) {}
+                }
+            } else {
+                Log.d("MainActivity", "✅ SessionKey cambió pero usuario ya está correcto - No recargar")
             }
         } else {
+            Log.d("MainActivity", "🚪 Usuario no autenticado - Limpiando datos")
             userViewModel.clearUser()
             collabViewModel.clearCollaborator()
         }
     }
     LaunchedEffect(currentUserId) {
-        if (!currentUserId.isNullOrBlank()) userViewModel.getUserById(currentUserId!!)
+        if (!currentUserId.isNullOrBlank()) {
+            // Solo cargar si el usuario NO está ya cargado
+            val currentUser = userViewModel.userState.value
+            Log.d("MainActivity", "🔍 LaunchedEffect(currentUserId) - currentUserId: $currentUserId")
+            Log.d("MainActivity", "🔍 currentUser?.cognitoId: ${currentUser?.cognitoId}")
+            Log.d("MainActivity", "🔍 currentUser == null: ${currentUser == null}")
+            Log.d("MainActivity", "🔍 cognitoId mismatch: ${currentUser != null && currentUser.cognitoId != currentUserId}")
+
+            if (currentUser == null || currentUser.cognitoId != currentUserId) {
+                Log.d("MainActivity", "📥 Cargando usuario por currentUserId: $currentUserId")
+                userViewModel.getUserById(currentUserId!!)
+            } else {
+                Log.d("MainActivity", "✅ Usuario ya está cargado, saltando getUserById")
+            }
+        }
     }
 
     NavHost(navController = nav, startDestination = "splash") {
@@ -267,9 +291,10 @@ private fun AppNav(
         }
 
         // --- Auth ---
-        composable(Screens.LoginRegister.route) { LoginRegister(nav) }
+        composable(Screens.LoginRegister.route) { LoginRegister(nav, authViewModel = authViewModel) }
         composable(Screens.Login.route) { Login(nav, authViewModel = authViewModel) }
         composable(Screens.Register.route) { Register(nav, authViewModel = authViewModel) }
+        composable(Screens.GoogleRegister.route) { GoogleRegister(nav, authViewModel = authViewModel) }
         composable(Screens.ForgotPassword.route) { ForgotPassword(nav) }
         composable(Screens.RecoveryCode.route) { RecoveryCode(nav) }
         composable("recovery_code/{email}") { backStackEntry ->
@@ -578,15 +603,71 @@ private fun PostLoginPermissionsWithDestination(
 
     var hasLoadedProfiles by remember { mutableStateOf(false) }
 
+    // Log cada vez que se recompone
+    android.util.Log.d("MainActivity", "🔄 PostLoginPermissionsWithDestination recompose")
+    android.util.Log.d("MainActivity", "  → currentUserId: $currentUserId")
+    android.util.Log.d("MainActivity", "  → userState.cognitoId: ${userState.cognitoId}")
+    android.util.Log.d("MainActivity", "  → hasLoadedProfiles: $hasLoadedProfiles")
+    android.util.Log.d("MainActivity", "  → isLoadingUser: $isLoadingUser")
+
     // Cargar perfiles de usuario y colaborador cuando tenemos el ID
     LaunchedEffect(currentUserId) {
         val id = currentUserId
         if (!id.isNullOrBlank() && !hasLoadedProfiles) {
-            userViewModel.clearUser()
-            collabViewModel.clearCollaborator()
-            userViewModel.getUserById(id)
-            try { collabViewModel.getCollaboratorById(id) } catch (_: Exception) {}
+            Log.d("MainActivity", "🔄 PostLoginPermissions - LaunchedEffect ejecutándose para: $id")
+
+            // Solo limpiar y recargar si el usuario NO está ya cargado con el ID correcto
+            val currentUser = userViewModel.userState.value
+            val currentCollab = collabViewModel.collabState.value
+
+            if (currentUser.cognitoId.isNullOrBlank() || currentUser.cognitoId != id) {
+                Log.d("MainActivity", "🔄 PostLoginPermissions - Cargando usuario: $id")
+                userViewModel.clearUser()
+
+                // Reintentar hasta 3 veces con delay entre intentos
+                var attempts = 0
+                var loaded = false
+                while (attempts < 3 && !loaded) {
+                    userViewModel.getUserById(id)
+
+                    // Esperar hasta 5 segundos por respuesta
+                    var waitTime = 0
+                    while (userViewModel.isLoading.value && waitTime < 5000) {
+                        kotlinx.coroutines.delay(100)
+                        waitTime += 100
+                    }
+
+                    val error = userViewModel.error.value
+                    val user = userViewModel.userState.value
+
+                    if (error != null && error.contains("404")) {
+                        attempts++
+                        Log.w("MainActivity", "⚠️ Usuario no encontrado (intento $attempts/3), reintentando en 2 segundos...")
+                        kotlinx.coroutines.delay(2000)
+                    } else if (!user.cognitoId.isNullOrBlank()) {
+                        loaded = true
+                        Log.d("MainActivity", "✅ Usuario cargado exitosamente")
+                    } else {
+                        break
+                    }
+                }
+            } else {
+                Log.d("MainActivity", "✅ PostLoginPermissions - Usuario ya cargado: $id")
+            }
+
+            if (currentCollab.cognitoId.isNullOrBlank() || currentCollab.cognitoId != id) {
+                Log.d("MainActivity", "🔄 PostLoginPermissions - Intentando cargar colaborador: $id")
+                collabViewModel.clearCollaborator()
+                try { collabViewModel.getCollaboratorById(id) } catch (_: Exception) {
+                    Log.d("MainActivity", "ℹ️ No es colaborador")
+                }
+            } else {
+                Log.d("MainActivity", "✅ PostLoginPermissions - Colaborador ya cargado: $id")
+            }
+
+            // CRÍTICO: Marcar como cargado SIEMPRE, independiente de si ya estaba o se cargó ahora
             hasLoadedProfiles = true
+            Log.d("MainActivity", "✅ PostLoginPermissions - hasLoadedProfiles = true")
         }
     }
 

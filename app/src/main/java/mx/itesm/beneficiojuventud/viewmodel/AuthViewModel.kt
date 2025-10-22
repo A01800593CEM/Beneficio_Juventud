@@ -19,6 +19,14 @@ import mx.itesm.beneficiojuventud.model.users.UserProfile
 import mx.itesm.beneficiojuventud.utils.UserPreferencesManager
 import java.util.UUID
 
+/** Datos del usuario obtenidos de Google Sign-In */
+data class GoogleUserData(
+    val email: String,
+    val givenName: String? = null,
+    val familyName: String? = null,
+    val name: String? = null
+)
+
 /** Estado global de la app. */
 data class AppState(
     val isLoading: Boolean = true,
@@ -56,6 +64,10 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
     // Datos temporales durante registro de colaboradores
     private var _pendingCollabProfile: Collaborator? = null
     val pendingCollabProfile: Collaborator? get() = _pendingCollabProfile
+
+    // Datos temporales de Google Sign-In
+    private var _pendingGoogleUserData: GoogleUserData? = null
+    val pendingGoogleUserData: GoogleUserData? get() = _pendingGoogleUserData
 
 
     // Credenciales temporales SOLO en memoria (no BD)
@@ -125,6 +137,28 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
 
     fun clearPendingCollabProfile() {
         _pendingCollabProfile = null
+    }
+
+    // Gestión de datos de Google Sign-In
+    fun savePendingGoogleUserData(googleData: GoogleUserData) {
+        Log.d("AuthViewModel", "💾 savePendingGoogleUserData() - Guardando: email=${googleData.email}, givenName=${googleData.givenName}, familyName=${googleData.familyName}")
+        _pendingGoogleUserData = googleData
+        Log.d("AuthViewModel", "💾 Después de guardar - _pendingGoogleUserData: ${_pendingGoogleUserData?.email}")
+    }
+
+    fun consumePendingGoogleUserData(): GoogleUserData? {
+        val data = _pendingGoogleUserData
+        Log.d("AuthViewModel", "📤 consumePendingGoogleUserData() - Consumiendo: ${data?.email}")
+        _pendingGoogleUserData = null
+        Log.d("AuthViewModel", "📤 Después de consumir - _pendingGoogleUserData: $_pendingGoogleUserData")
+        return data
+    }
+
+    fun clearPendingGoogleUserData() {
+        Log.d("AuthViewModel", "🗑️ clearPendingGoogleUserData() - Antes: ${_pendingGoogleUserData?.email}")
+        Log.d("AuthViewModel", "🗑️ Stack trace:", Exception("Trace"))
+        _pendingGoogleUserData = null
+        Log.d("AuthViewModel", "🗑️ Después de limpiar - _pendingGoogleUserData: $_pendingGoogleUserData")
     }
 
 
@@ -317,11 +351,17 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
     /**
      * Iniciar sesión con Google usando AWS Cognito Hosted UI
      * Requiere Activity context para mostrar el WebView de autenticación
+     *
+     * Tras el login exitoso:
+     * - Obtiene los atributos del usuario (email, nombre, apellidos)
+     * - Los guarda temporalmente en _pendingGoogleUserData
+     * - El estado isSuccess indica que la UI debe navegar (a GoogleRegister o PostLoginPermissions)
      */
     fun signInWithGoogle(activity: Activity) {
         viewModelScope.launch {
             try {
                 Log.d("AuthViewModel", "🔵 Iniciando Google Sign-In")
+                Log.d("AuthViewModel", "🔍 AuthViewModel instance: ${this@AuthViewModel.hashCode()}")
                 Log.d("AuthViewModel", "Activity: ${activity.javaClass.simpleName}")
                 _authState.value = AuthState(isLoading = true)
 
@@ -330,9 +370,44 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
                     onSuccess = { r ->
                         Log.d("AuthViewModel", "✅ Google Sign-In exitoso: isSignedIn=${r.isSignedIn}")
                         if (r.isSignedIn) {
-                            _authState.value = AuthState(isSuccess = true)
-                            _sessionKey.value = UUID.randomUUID().toString()
-                            refreshAuthState()
+                            // Obtener atributos del usuario de Google
+                            viewModelScope.launch {
+                                val attrsResult = authRepository.fetchUserAttributesMap()
+                                attrsResult.fold(
+                                    onSuccess = { attrs ->
+                                        val email = attrs["email"] ?: ""
+                                        val givenName = attrs["given_name"]
+                                        val familyName = attrs["family_name"]
+                                        val name = attrs["name"]
+
+                                        Log.d("AuthViewModel", "📧 Email: $email")
+                                        Log.d("AuthViewModel", "👤 Given Name: $givenName")
+                                        Log.d("AuthViewModel", "👤 Family Name: $familyName")
+                                        Log.d("AuthViewModel", "👤 Full Name: $name")
+
+                                        // Guardar datos de Google
+                                        Log.d("AuthViewModel", "💾 signInWithGoogle() - Asignando directamente _pendingGoogleUserData")
+                                        _pendingGoogleUserData = GoogleUserData(
+                                            email = email,
+                                            givenName = givenName,
+                                            familyName = familyName,
+                                            name = name
+                                        )
+                                        Log.d("AuthViewModel", "💾 Después de asignar - _pendingGoogleUserData: ${_pendingGoogleUserData?.email}")
+
+                                        _authState.value = AuthState(isSuccess = true)
+                                        _sessionKey.value = UUID.randomUUID().toString()
+                                        refreshAuthState()
+                                    },
+                                    onFailure = { e ->
+                                        Log.e("AuthViewModel", "❌ Error obteniendo atributos: ${e.message}", e)
+                                        // Continuar de todos modos pero sin datos prellenados
+                                        _authState.value = AuthState(isSuccess = true)
+                                        _sessionKey.value = UUID.randomUUID().toString()
+                                        refreshAuthState()
+                                    }
+                                )
+                            }
                         } else {
                             Log.w("AuthViewModel", "⚠️ Sign-In no completado")
                             _authState.value = AuthState(
@@ -400,10 +475,12 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
 
             result.fold(
                 onSuccess = {
+                    Log.d("AuthViewModel", "🚪 signOut() - Éxito, limpiando todos los datos")
                     _currentUser.value = null
                     _currentUserId.value = null
                     _pendingUserProfile = null
                     clearPendingCredentials()
+                    clearPendingGoogleUserData()
                     preferencesManager?.clearCredentials() // Limpiar credenciales guardadas
                     _sessionKey.value = UUID.randomUUID().toString()
                     _authState.value = AuthState(isLoading = false)
@@ -417,16 +494,19 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
                                 msg.contains("currently signed out", ignoreCase = true)
 
                     if (alreadySignedOut) {
+                        Log.d("AuthViewModel", "🚪 signOut() - Usuario ya deslogueado, limpiando datos")
                         _currentUser.value = null
                         _currentUserId.value = null
                         _pendingUserProfile = null
                         clearPendingCredentials()
+                        clearPendingGoogleUserData()
                         preferencesManager?.clearCredentials() // Limpiar credenciales guardadas
                         _sessionKey.value = UUID.randomUUID().toString()
                         _authState.value = AuthState(isLoading = false)
                         refreshAuthState()
                         clearPendingCollabProfile() // <-- MODIFICACIÓN
                     } else {
+                        Log.e("AuthViewModel", "🚪 signOut() - Error: $msg")
                         _authState.value = AuthState(
                             isLoading = false,
                             error = msg.ifEmpty { "Error al cerrar sesión" }
@@ -506,15 +586,21 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
     fun getCurrentUserId(): String? = _currentUserId.value
 
     fun clearState() {
+        Log.d("AuthViewModel", "🧹 clearState() - Limpiando estado completo")
+        Log.d("AuthViewModel", "🧹 Antes - _pendingGoogleUserData: ${_pendingGoogleUserData?.email}")
         _authState.value = AuthState()
         _currentUser.value = null
         _currentUserId.value = null
         _pendingUserProfile = null
         clearPendingCollabProfile() // <-- MODIFICACIÓN
+        // NOTE: NO limpia _pendingGoogleUserData
+        Log.d("AuthViewModel", "🧹 Después - _pendingGoogleUserData: ${_pendingGoogleUserData?.email}")
         Log.d("AuthViewModel", "State cleared")
     }
 
     fun clearError() {
+        Log.d("AuthViewModel", "❌ clearError() - Solo limpiando error, NO limpiando Google data")
+        Log.d("AuthViewModel", "❌ _pendingGoogleUserData: ${_pendingGoogleUserData?.email}")
         _authState.update { it.copy(error = null) }
     }
 

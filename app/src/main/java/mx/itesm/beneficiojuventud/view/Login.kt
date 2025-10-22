@@ -2,6 +2,7 @@ package mx.itesm.beneficiojuventud.view
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,6 +34,8 @@ import mx.itesm.beneficiojuventud.components.*
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
 
 /**
  * Pantalla de inicio de sesión con email y contraseña.
@@ -44,31 +47,105 @@ import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 fun Login(
     nav: NavHostController,
     modifier: Modifier = Modifier,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel(factory = UserViewModelFactory(LocalContext.current))
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
     var showError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    var isCheckingGoogleUser by remember { mutableStateOf(false) }
+    var canRetry by remember { mutableStateOf(false) }
     val authState by authViewModel.authState.collectAsState()
 
-    // ✅ Tras login exitoso, navegar a la pantalla de permisos
-    LaunchedEffect(authState.isSuccess) {
-        if (authState.isSuccess) {
-            nav.navigate(Screens.PostLoginPermissions.route) {
-                popUpTo(Screens.LoginRegister.route) { inclusive = true }
-                launchSingleTop = true
+    // Función para verificar y navegar según usuario de Google
+    fun checkAndNavigateGoogleUser(googleData: mx.itesm.beneficiojuventud.viewmodel.GoogleUserData) {
+        scope.launch {
+            Log.d("Login", "🔍 checkAndNavigateGoogleUser - AuthViewModel instance: ${authViewModel.hashCode()}")
+            Log.d("Login", "📦 Google data recibida: ${googleData.email}")
+            isCheckingGoogleUser = true
+            canRetry = false
+            try {
+                val exists = userViewModel.emailExists(googleData.email)
+
+                if (exists) {
+                    Log.d("Login", "✅ Usuario ya existe, navegando a PostLoginPermissions")
+                    authViewModel.clearPendingGoogleUserData()
+
+                    // Asegurar que currentUserId está actualizado antes de navegar
+                    authViewModel.getCurrentUser()
+                    delay(500) // Esperar a que se actualice
+
+                    Log.d("Login", "✅ CurrentUserId antes de navegar: ${authViewModel.currentUserId.value}")
+
+                    authViewModel.clearState()
+                    nav.navigate(Screens.PostLoginPermissions.route) {
+                        popUpTo(Screens.LoginRegister.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                } else {
+                    Log.d("Login", "📝 Primer login con Google, navegando a GoogleRegister")
+                    Log.d("Login", "📦 Antes de navegar - pendingGoogleUserData: ${authViewModel.pendingGoogleUserData?.email}")
+                    authViewModel.clearError()
+                    Log.d("Login", "📦 Después de clearError - pendingGoogleUserData: ${authViewModel.pendingGoogleUserData?.email}")
+                    nav.navigate(Screens.GoogleRegister.route) {
+                        popUpTo(Screens.Login.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                    Log.d("Login", "📦 Después de navegar - pendingGoogleUserData: ${authViewModel.pendingGoogleUserData?.email}")
+                }
+            } catch (e: Exception) {
+                Log.e("Login", "❌ Error verificando usuario: ${e.message}", e)
+
+                val isTimeout = e is java.net.SocketTimeoutException ||
+                               e.message?.contains("timeout", ignoreCase = true) == true
+
+                if (isTimeout) {
+                    errorMessage = "El servidor tardó mucho en responder. Por favor, intenta de nuevo."
+                    showError = true
+                    canRetry = true
+                    Log.w("Login", "⚠️ Timeout - permitiendo reintento")
+                } else {
+                    errorMessage = "Error verificando usuario: ${e.message}"
+                    showError = true
+                    authViewModel.signOut()
+                }
+            } finally {
+                isCheckingGoogleUser = false
             }
-            authViewModel.clearState()
+        }
+    }
+
+    // Manejar resultado de Google Sign-In
+    LaunchedEffect(authState.isSuccess) {
+        if (authState.isSuccess && !isCheckingGoogleUser) {
+            // Verificar si hay datos de Google (indica que fue login con Google)
+            val googleData = authViewModel.pendingGoogleUserData
+
+            if (googleData != null) {
+                Log.d("Login", "📧 Google Sign-In exitoso: ${googleData.email}")
+                isCheckingGoogleUser = true
+                checkAndNavigateGoogleUser(googleData)
+            } else {
+                // Login tradicional (email/contraseña)
+                nav.navigate(Screens.PostLoginPermissions.route) {
+                    popUpTo(Screens.LoginRegister.route) { inclusive = true }
+                    launchSingleTop = true
+                }
+                authViewModel.clearState()
+            }
         }
     }
 
     LaunchedEffect(authState.error) {
         authState.error?.let { error ->
+            Log.e("Login", "❌ Error en autenticación: $error")
             errorMessage = error
             showError = true
+            isCheckingGoogleUser = false
         }
     }
 
@@ -219,8 +296,8 @@ fun Login(
                 // BOTÓN PRINCIPAL EN EL CONTENIDO
                 item {
                     MainButton(
-                        text = if (authState.isLoading) "Iniciando sesión..." else "Inicia Sesión",
-                        enabled = !authState.isLoading && email.isNotEmpty() && password.isNotEmpty(),
+                        text = if (authState.isLoading && !isCheckingGoogleUser) "Iniciando sesión..." else "Inicia Sesión",
+                        enabled = !authState.isLoading && !isCheckingGoogleUser && email.isNotEmpty() && password.isNotEmpty(),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 6.dp, vertical = 12.dp)
@@ -230,59 +307,92 @@ fun Login(
                     }
                 }
 
-                if (showError && errorMessage.isNotEmpty()) {
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = errorMessage,
-                                    color = Color(0xFFD32F2F),
-                                    fontSize = 14.sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                IconButton(onClick = {
-                                    showError = false
-                                    errorMessage = ""
-                                    authViewModel.clearState()
-                                }) { Text("✕", color = Color(0xFFD32F2F)) }
-                            }
-                        }
-                    }
+                // Divisor "O"
+                item {
+                    GradientDivider_OR(modifier = Modifier.padding(vertical = 24.dp))
                 }
 
-                item { GradientDivider_OR(modifier = Modifier.padding(vertical = 16.dp)) }
-
+                // Botón de Google Sign-In
                 item {
                     AltLoginButton(
-                        text = "Continuar con Google",
+                        text = if (authState.isLoading || isCheckingGoogleUser) "Verificando..." else "Continuar con Google",
                         icon = painterResource(id = R.drawable.logo_google),
                         contentDescription = "Continuar con Google",
                         onClick = {
                             val activity = context as? Activity
                             if (activity != null) {
+                                Log.d("Login", "🔵 Iniciando Google Sign-In desde Login")
                                 authViewModel.signInWithGoogle(activity)
                             } else {
                                 errorMessage = "Error: contexto de actividad no disponible"
                                 showError = true
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
+                        modifier = Modifier.padding(horizontal = 6.dp)
                     )
                 }
+
+                // Mensaje de error
+                if (showError && errorMessage.isNotEmpty()) {
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = errorMessage,
+                                        color = Color(0xFFD32F2F),
+                                        fontSize = 14.sp,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            showError = false
+                                            errorMessage = ""
+                                            canRetry = false
+                                            authViewModel.clearError()
+                                        }
+                                    ) { Text("✕", color = Color(0xFFD32F2F)) }
+                                }
+
+                                // Botón de reintentar si hubo timeout
+                                if (canRetry) {
+                                    Spacer(Modifier.height(8.dp))
+                                    TextButton(
+                                        onClick = {
+                                            showError = false
+                                            val googleData = authViewModel.pendingGoogleUserData
+                                            if (googleData != null) {
+                                                checkAndNavigateGoogleUser(googleData)
+                                            }
+                                        },
+                                        modifier = Modifier.align(Alignment.End)
+                                    ) {
+                                        Text(
+                                            "Reintentar",
+                                            color = Color(0xFF008D96),
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Espaciador final
                 item {
-//                    AltLoginButton(
-//                        text = "Continuar con Facebook",
-//                        icon = painterResource(id = R.drawable.logo_facebook),
-//                        contentDescription = "Continuar con Facebook",
-//                        onClick = { /* TODO */ },
-//                        modifier = Modifier.fillMaxWidth()
-//                    )
+                    Spacer(Modifier.height(32.dp))
                 }
             }
         }
@@ -296,7 +406,6 @@ fun Login(
 fun PreviewLogin() {
     BeneficioJuventudTheme {
         val navController = rememberNavController()
-        val fakeAppViewModel = AuthViewModel()
-        Login(nav = navController, authViewModel = fakeAppViewModel)
+        Login(nav = navController)
     }
 }

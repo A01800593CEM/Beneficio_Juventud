@@ -1,20 +1,25 @@
 package mx.itesm.beneficiojuventud.view
 
+import android.app.Activity
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.AltLoginButton
 import mx.itesm.beneficiojuventud.components.GradientDivider_OR
@@ -25,6 +30,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.model.TestRemote
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
+import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
+import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
 
 /**
  * Pantalla inicial con opciones para iniciar sesión o registrarse.
@@ -32,7 +40,105 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
  * @param modifier Modificador opcional para personalizar el diseño.
  */
 @Composable
-fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
+fun LoginRegister(
+    nav: NavHostController,
+    modifier: Modifier = Modifier,
+    authViewModel: AuthViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel(factory = UserViewModelFactory(LocalContext.current))
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val authState by authViewModel.authState.collectAsState()
+
+    var showError by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+    var isCheckingGoogleUser by remember { mutableStateOf(false) }
+    var canRetry by remember { mutableStateOf(false) }
+
+    // Función para verificar y navegar según usuario de Google
+    fun checkAndNavigateGoogleUser(googleData: mx.itesm.beneficiojuventud.viewmodel.GoogleUserData) {
+        scope.launch {
+            Log.d("LoginRegister", "🔍 checkAndNavigateGoogleUser - AuthViewModel instance: ${authViewModel.hashCode()}")
+            Log.d("LoginRegister", "📦 Google data recibida: ${googleData.email}")
+            isCheckingGoogleUser = true
+            canRetry = false
+            try {
+                val exists = userViewModel.emailExists(googleData.email)
+
+                if (exists) {
+                    Log.d("LoginRegister", "✅ Usuario ya existe, navegando a PostLoginPermissions")
+                    authViewModel.clearPendingGoogleUserData()
+
+                    // Asegurar que currentUserId está actualizado antes de navegar
+                    authViewModel.getCurrentUser()
+                    delay(500)
+
+                    Log.d("LoginRegister", "✅ CurrentUserId antes de navegar: ${authViewModel.currentUserId.value}")
+
+                    authViewModel.clearState()
+                    nav.navigate(Screens.PostLoginPermissions.route) {
+                        popUpTo(Screens.LoginRegister.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                } else {
+                    Log.d("LoginRegister", "📝 Primer login con Google, navegando a GoogleRegister")
+                    Log.d("LoginRegister", "📦 Antes de navegar - pendingGoogleUserData: ${authViewModel.pendingGoogleUserData?.email}")
+                    authViewModel.clearError()
+                    Log.d("LoginRegister", "📦 Después de clearError - pendingGoogleUserData: ${authViewModel.pendingGoogleUserData?.email}")
+                    nav.navigate(Screens.GoogleRegister.route) {
+                        popUpTo(Screens.LoginRegister.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                    Log.d("LoginRegister", "📦 Después de navegar - pendingGoogleUserData: ${authViewModel.pendingGoogleUserData?.email}")
+                }
+            } catch (e: Exception) {
+                Log.e("LoginRegister", "❌ Error verificando usuario: ${e.message}", e)
+
+                val isTimeout = e is java.net.SocketTimeoutException ||
+                               e.message?.contains("timeout", ignoreCase = true) == true
+
+                if (isTimeout) {
+                    errorMessage = "El servidor tardó mucho en responder. Por favor, intenta de nuevo."
+                    showError = true
+                    canRetry = true
+                    Log.w("LoginRegister", "⚠️ Timeout - permitiendo reintento")
+                } else {
+                    errorMessage = "Error verificando usuario: ${e.message}"
+                    showError = true
+                    authViewModel.signOut()
+                }
+            } finally {
+                isCheckingGoogleUser = false
+            }
+        }
+    }
+
+    // Manejar resultado de Google Sign-In
+    LaunchedEffect(authState.isSuccess) {
+        if (authState.isSuccess && !isCheckingGoogleUser) {
+            isCheckingGoogleUser = true
+
+            // Verificar si hay datos de Google (indica que fue login con Google)
+            val googleData = authViewModel.pendingGoogleUserData
+
+            if (googleData != null) {
+                Log.d("LoginRegister", "📧 Google Sign-In exitoso: ${googleData.email}")
+                checkAndNavigateGoogleUser(googleData)
+            } else {
+                isCheckingGoogleUser = false
+                authViewModel.clearState() // Solo limpiar si NO es Google
+            }
+        }
+    }
+
+    LaunchedEffect(authState.error) {
+        authState.error?.let { error ->
+            Log.e("LoginRegister", "❌ Error en autenticación: $error")
+            errorMessage = error
+            showError = true
+            isCheckingGoogleUser = false
+        }
+    }
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets.systemBars
@@ -98,11 +204,76 @@ fun LoginRegister(nav: NavHostController, modifier: Modifier = Modifier) {
                 GradientDivider_OR(modifier = Modifier.padding(vertical = 32.dp))
 
                 AltLoginButton(
-                    "Continuar con Google",
-                    painterResource(id = R.drawable.logo_google),
-                    "Continuar con Google",
-                    onClick = { /* TODO login Google */ }
+                    text = if (authState.isLoading || isCheckingGoogleUser) "Verificando..." else "Continuar con Google",
+                    icon = painterResource(id = R.drawable.logo_google),
+                    contentDescription = "Continuar con Google",
+                    onClick = {
+                        val activity = context as? Activity
+                        if (activity != null) {
+                            Log.d("LoginRegister", "🔵 Iniciando Google Sign-In desde LoginRegister")
+                            authViewModel.signInWithGoogle(activity)
+                        } else {
+                            errorMessage = "Error: contexto de actividad no disponible"
+                            showError = true
+                        }
+                    }
                 )
+
+                // Error global
+                if (showError && errorMessage.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(0.94f),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = errorMessage,
+                                    color = Color(0xFFD32F2F),
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(
+                                    onClick = {
+                                        showError = false
+                                        errorMessage = ""
+                                        canRetry = false
+                                        authViewModel.clearError()
+                                    }
+                                ) { Text("✕", color = Color(0xFFD32F2F)) }
+                            }
+
+                            // Botón de reintentar si hubo timeout
+                            if (canRetry) {
+                                Spacer(Modifier.height(8.dp))
+                                TextButton(
+                                    onClick = {
+                                        showError = false
+                                        val googleData = authViewModel.pendingGoogleUserData
+                                        if (googleData != null) {
+                                            checkAndNavigateGoogleUser(googleData)
+                                        }
+                                    },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text(
+                                        "Reintentar",
+                                        color = Color(0xFF008D96),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
 //                AltLoginButton(
 //                    "Continuar con Facebook",
 //                    painterResource(id = R.drawable.logo_facebook),

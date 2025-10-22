@@ -374,6 +374,32 @@ class AuthRepository {
         }
 
     /**
+     * Obtener atributos del usuario como mapa clave-valor para facilitar el acceso
+     */
+    suspend fun fetchUserAttributesMap(): Result<Map<String, String>> =
+        suspendCancellableCoroutine { continuation ->
+
+            Amplify.Auth.fetchUserAttributes(
+                { attributes ->
+                    val attributesMap = attributes.associate {
+                        it.key.keyString to it.value
+                    }
+                    Log.i(TAG, "✅ User attributes map retrieved: $attributesMap")
+
+                    if (!continuation.isCancelled) {
+                        continuation.resume(Result.success(attributesMap))
+                    }
+                },
+                { error ->
+                    Log.e(TAG, "❌ Failed to fetch user attributes: ${error.message}", error)
+                    if (!continuation.isCancelled) {
+                        continuation.resume(Result.failure(error))
+                    }
+                }
+            )
+        }
+
+    /**
      * Eliminar la cuenta del usuario actual de Cognito
      */
     suspend fun deleteUser(): Result<Unit> = suspendCancellableCoroutine { continuation ->
