@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Store
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -210,6 +211,9 @@ fun ProfileCollab(
                 }
                 ProfileItemCard(Icons.AutoMirrored.Outlined.HelpOutline, "Ayuda y Soporte", "Preguntas frecuentes") {
                     nav.navigate(Screens.Help.route)
+                }
+                ProfileItemCard(Icons.Outlined.Info, "Créditos", "Conoce al equipo de desarrollo") {
+                    nav.navigate(Screens.Credits.route)
                 }
                 ProfileItemCard(Icons.AutoMirrored.Outlined.Logout, "Cerrar Sesión", "Hasta la próxima :)", isLogout = true) {
                     signOutRequested = true
