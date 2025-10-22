@@ -230,7 +230,7 @@ class ApiService {
     const allUsers: User[] = await this.request('/users');
     console.log(`🔍 Found ${allUsers.length} total users`);
 
-    const matchingUser = allUsers.find(user => user.sub === cognitoId || (user as Record<string, unknown>).cognitoId === cognitoId);
+    const matchingUser = allUsers.find(user => user.sub === cognitoId || (user as unknown as Record<string, unknown>).cognitoId === cognitoId);
 
     if (!matchingUser) {
       console.log('❌ User not found with cognitoId:', cognitoId);

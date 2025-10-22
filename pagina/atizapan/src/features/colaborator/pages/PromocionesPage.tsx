@@ -3,19 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import KPICard from '@/features/admin/components/KPICard';
-import {
-  TicketIcon
-} from '@heroicons/react/24/outline';
+import { TicketIcon } from '@heroicons/react/24/outline';
 
-// Estructura exacta según la documentación de la API
+// Interfaces
 interface ApiPromotion {
   promotionId: number;
   collaboratorId: number;
   title: string;
   description: string;
   imageUrl?: string;
-  initialDate: string; // ISO date
-  endDate: string; // ISO date
+  initialDate: string;
+  endDate: string;
   categoryId?: number;
   promotionType: 'descuento' | 'multicompra' | 'regalo' | 'otro';
   promotionString?: string;
@@ -27,11 +25,12 @@ interface ApiPromotion {
   categoryIds?: number[];
   created_at?: string;
   updated_at?: string;
+  theme?: 'light' | 'dark';
+  is_bookable?: boolean;
 }
 
-// Estructura para crear promoción según documentación
 interface CreatePromotionData {
-  collaboratorId: string; // cognitoId del colaborador
+  collaboratorId: string;
   title: string;
   description: string;
   imageUrl?: string;
@@ -49,7 +48,6 @@ interface CreatePromotionData {
   is_bookable: boolean;
 }
 
-// Estructura para respuesta del webhook IA
 interface AIPromotionResponse {
   title: string;
   description: string;
@@ -63,10 +61,9 @@ interface AIPromotionResponse {
   categories: Array<{ id: number; name: string }>;
 }
 
-// Estructura del colaborador según la API real
 interface ApiCollaborator {
   id: number;
-  cognitoId: string;  // Correcto: es cognitoId según tu API
+  cognitoId: string;
   businessName: string;
   rfc: string;
   representativeName: string;
@@ -85,7 +82,7 @@ interface ApiCollaborator {
   }>;
 }
 
-// API Service simplificado
+// API Service
 class SimpleApiService {
   private baseUrl = process.env.NODE_ENV === 'development' ? '/api/proxy' : 'https://beneficiojoven.lat';
   private aiWebhookUrl = 'https://primary-production-0858b.up.railway.app/webhook/bdd4b48a-4f48-430f-a443-a14a19009340';
@@ -94,7 +91,6 @@ class SimpleApiService {
     const url = `${this.baseUrl}${endpoint}`;
     console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
 
-    // Solo agregar Content-Type si hay body
     const headers: Record<string, string> = {};
     if (options.body) {
       headers['Content-Type'] = 'application/json';
@@ -121,7 +117,6 @@ class SimpleApiService {
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
 
-    // Para DELETE, la respuesta puede estar vacía
     const responseText = await response.text();
 
     if (responseText) {
@@ -139,7 +134,6 @@ class SimpleApiService {
     }
   }
 
-  // Webhook IA para generar promoción
   async generatePromotionWithAI(idea: string): Promise<AIPromotionResponse> {
     console.log(`🤖 AI Webhook Request: POST ${this.aiWebhookUrl}`);
     console.log('💡 Idea:', idea);
@@ -163,7 +157,6 @@ class SimpleApiService {
     const data = await response.json();
     console.log('🤖 AI Response data:', data);
 
-    // El webhook devuelve un array, tomamos el primer elemento
     if (Array.isArray(data) && data.length > 0) {
       return data[0];
     } else {
@@ -171,17 +164,14 @@ class SimpleApiService {
     }
   }
 
-  // GET /promotions - Listar Promociones
   async getPromotions(cognitoId: string): Promise<ApiPromotion[]> {
     return this.request(`/collaborators/promotions/${cognitoId}`);
   }
 
-  // GET /promotions/:id - Obtener Promoción
   async getPromotion(id: number): Promise<ApiPromotion> {
     return this.request(`/promotions/${id}`);
   }
 
-  // POST /promotions - Crear Promoción
   async createPromotion(data: CreatePromotionData): Promise<ApiPromotion> {
     return this.request('/promotions', {
       method: 'POST',
@@ -189,7 +179,6 @@ class SimpleApiService {
     });
   }
 
-  // PATCH /promotions/:id - Actualizar Promoción
   async updatePromotion(id: number, data: Partial<CreatePromotionData>): Promise<ApiPromotion> {
     return this.request(`/promotions/${id}`, {
       method: 'PATCH',
@@ -197,18 +186,15 @@ class SimpleApiService {
     });
   }
 
-  // DELETE /promotions/:id - Eliminar Promoción
   async deletePromotion(id: number): Promise<void> {
     return this.request(`/promotions/${id}`, {
       method: 'DELETE',
     });
   }
 
-  // GET /collaborators - Buscar colaborador por cognitoId
   async getCollaboratorByCognitoId(cognitoUsername: string): Promise<ApiCollaborator> {
     console.log('🔍 Searching collaborator with cognitoUsername:', cognitoUsername);
 
-    // Buscar todos los colaboradores y filtrar por cognitoId
     const collaborators: ApiCollaborator[] = await this.request('/collaborators');
     console.log(`🔍 Found ${collaborators.length} total collaborators`);
     console.log('🔍 All collaborators:', collaborators.map(c => ({ id: c.id, cognitoId: c.cognitoId, email: c.email })));
@@ -245,14 +231,13 @@ export default function PromocionesPage() {
   const [collaborator, setCollaborator] = useState<ApiCollaborator | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // Cargar promociones cuando el colaborador esté autenticado
   useEffect(() => {
     if (collaborator?.cognitoId) {
       loadPromotions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collaborator]);
 
-  // Autenticar colaborador al cargar session
   useEffect(() => {
     const authenticateCollaborator = async () => {
       console.log('🔍 Session data:', session);
@@ -263,23 +248,23 @@ export default function PromocionesPage() {
         return;
       }
 
-      // Extraer cognitoUsername de la sesión
-      const sessionData = session as unknown as Record<string, unknown>;
+      const sd = session as unknown as Record<string, unknown>;
 
-      // Buscar en todas las posibles ubicaciones
       console.log('🔍 DEBUGGING SESSION STRUCTURE:');
-      console.log('🔍 sessionData:', JSON.stringify(sessionData, null, 2));
-      console.log('🔍 sessionData.profile:', sessionData.profile);
-      console.log('🔍 sessionData.cognitoUsername:', sessionData.cognitoUsername);
-      console.log('🔍 sessionData.sub:', sessionData.sub);
-      console.log('🔍 sessionData.user:', sessionData.user);
-      console.log('🔍 sessionData.accessToken:', sessionData.accessToken);
+      console.log('🔍 sd:', JSON.stringify(sd, null, 2));
 
-      const cognitoUsername = sessionData.cognitoUsername || sessionData.sub || sessionData.user?.id || sessionData.user?.sub;
+      const cognitoUsername: string | undefined =
+        (sd?.cognitoUsername as string) ??
+        (sd?.sub as string) ??
+        ((sd?.user as Record<string, unknown>)?.id as string) ??
+        ((sd?.user as Record<string, unknown>)?.sub as string) ??
+        ((sd?.user as Record<string, unknown>)?.username as string) ??
+        ((sd?.profile as Record<string, unknown>)?.sub as string) ??
+        ((sd?.profile as Record<string, unknown>)?.username as string) ??
+        ((sd?.token as Record<string, unknown>)?.sub as string);
 
       console.log('🔍 Extracted cognitoUsername:', cognitoUsername);
 
-      // Intentar buscar colaborador siempre que tengamos cognitoUsername (sin verificar profile por ahora)
       if (cognitoUsername) {
         try {
           console.log('🔄 Authenticating collaborator with cognitoUsername:', cognitoUsername);
@@ -292,7 +277,7 @@ export default function PromocionesPage() {
         }
       } else {
         console.log('ℹ️ No cognitoUsername found in session');
-        console.log('🔍 Available session keys:', Object.keys(sessionData));
+        console.log('🔍 Available session keys:', Object.keys(sd));
       }
 
       setAuthLoading(false);
@@ -332,7 +317,6 @@ export default function PromocionesPage() {
     setShowForm(true);
   };
 
-
   const handleCreateWithAI = () => {
     console.log('🤖 Opening AI create form');
     setShowAIForm(true);
@@ -352,7 +336,7 @@ export default function PromocionesPage() {
       console.log('🗑️ Deleting promotion:', promotion.promotionId);
 
       await apiService.deletePromotion(promotion.promotionId);
-      await loadPromotions(); // Recargar lista
+      await loadPromotions();
       console.log('✅ Promotion deleted');
     } catch (err) {
       console.error('❌ Error deleting promotion:', err);
@@ -368,29 +352,26 @@ export default function PromocionesPage() {
       setError(null);
       console.log('🤖 Generating promotion with AI for idea:', idea);
 
-      // Llamar al webhook IA
       const aiResponse = await apiService.generatePromotionWithAI(idea);
       console.log('🤖 AI generated promotion:', aiResponse);
 
-      // Convertir respuesta IA a formato del formulario
-      const promotionData = {
+      const promotionData: Partial<ApiPromotion> = {
         title: aiResponse.title,
         description: aiResponse.description,
         imageUrl: 'https://example.com/ai-generated.jpg',
-        startDate: aiResponse.initialDate ? aiResponse.initialDate.split('T')[0] : '',
+        initialDate: aiResponse.initialDate ? aiResponse.initialDate.split('T')[0] : '',
         endDate: aiResponse.endDate ? aiResponse.endDate.split('T')[0] : '',
-        type: aiResponse.promotionType || 'descuento',
-        code: '',
-        stock: aiResponse.totalStock?.toString() || '100',
-        limitPerUser: aiResponse.limitPerUser?.toString() || '1',
-        dailyLimit: aiResponse.dailyLimitPerUser?.toString() || '1',
+        promotionType: (aiResponse.promotionType as 'descuento' | 'multicompra' | 'regalo' | 'otro') || 'descuento',
+        promotionString: '',
+        totalStock: aiResponse.totalStock || 100,
+        limitPerUser: aiResponse.limitPerUser || 1,
+        dailyLimitPerUser: aiResponse.dailyLimitPerUser || 1,
       };
 
       console.log('🤖 AI promotion data for form:', promotionData);
 
-      // Cerrar formulario IA y abrir formulario manual con datos prellenados
       setShowAIForm(false);
-      setEditingPromotion(promotionData as ApiPromotion); // Usar los datos IA como "promoción a editar"
+      setEditingPromotion(promotionData as ApiPromotion);
       setShowForm(true);
     } catch (err) {
       console.error('❌ Error generating promotion with AI:', err);
@@ -400,55 +381,51 @@ export default function PromocionesPage() {
     }
   };
 
-  const handleSave = async (formData: Record<string, unknown>) => {
+  const handleSave = async (formData: Record<string, string | number | boolean | string[]>) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Verificar que el colaborador esté autenticado
       if (!collaborator) {
         setError('Debe estar autenticado como colaborador para crear/editar promociones');
         return;
       }
 
-      // Estructura de datos según lo que acepta el servidor
       const promotionData: CreatePromotionData = {
         collaboratorId: collaborator.cognitoId,
-        title: formData.title,
-        description: formData.description,
-        imageUrl: formData.imageUrl || 'https://example.com/default.jpg',
-        initialDate: new Date(formData.startDate).toISOString(),
-        endDate: new Date(formData.endDate).toISOString(),
-        promotionType: formData.type || 'descuento',
-        promotionString: formData.code || '',
-        totalStock: parseInt(formData.stock) || 100,
-        availableStock: parseInt(formData.stock) || 100,
-        limitPerUser: parseInt(formData.limitPerUser) || 1,
-        dailyLimitPerUser: parseInt(formData.dailyLimit) || 1,
+        title: formData.title as string,
+        description: formData.description as string,
+        imageUrl: (formData.imageUrl as string) || 'https://example.com/default.jpg',
+        initialDate: new Date(formData.startDate as string).toISOString(),
+        endDate: new Date(formData.endDate as string).toISOString(),
+        promotionType: (formData.type as 'descuento' | 'multicompra' | 'regalo' | 'otro') || 'descuento',
+        promotionString: (formData.code as string) || '',
+        totalStock: parseInt(formData.stock as string) || 100,
+        availableStock: parseInt(formData.stock as string) || 100,
+        limitPerUser: parseInt(formData.limitPerUser as string) || 1,
+        dailyLimitPerUser: parseInt(formData.dailyLimit as string) || 1,
         promotionState: 'activa',
-        theme: (formData.promotionTheme as 'light' | 'dark') || 'light',
-        is_bookable: formData.isBookable || false
+        categories: (formData.categories as string[]) || ['COMIDA'],
+        promotionTheme: (formData.promotionTheme as 'light' | 'dark') || 'light',
+        is_bookable: (formData.isBookable as boolean) || false
       };
 
       console.log('💾 Saving promotion with cognitoId:', collaborator.cognitoId);
       console.log('💾 Promotion data:', promotionData);
 
-      // Verificar si es realmente una promoción existente (con promotionId) o datos de IA
-      const isExistingPromotion = editingPromotion && editingPromotion.promotionId;
+      const isExistingPromotion = editingPromotion && 'promotionId' in editingPromotion && editingPromotion.promotionId;
 
       if (isExistingPromotion) {
-        // Actualizar promoción existente
         await apiService.updatePromotion(editingPromotion.promotionId, promotionData);
         console.log('✅ Promotion updated');
       } else {
-        // Crear nueva promoción (incluyendo las generadas por IA)
         await apiService.createPromotion(promotionData);
         console.log('✅ Promotion created');
       }
 
       setShowForm(false);
       setEditingPromotion(null);
-      await loadPromotions(); // Recargar lista
+      await loadPromotions();
     } catch (err) {
       console.error('❌ Error saving promotion:', err);
       setError('Error al guardar la promoción');
@@ -461,14 +438,11 @@ export default function PromocionesPage() {
     return new Date(dateString).toLocaleDateString('es-ES');
   };
 
-  // Calcular estadísticas para KPIs
   const activePromotions = promotions.filter(p => p.promotionState === 'activa').length;
   const totalStock = promotions.reduce((sum, p) => sum + (p.totalStock || 0), 0);
 
-  // Componente de acciones para el header
   const headerActions = (
     <div className="flex items-center gap-4">
-      {/* Mostrar email del colaborador autenticado */}
       {authLoading ? (
         <div className="text-sm text-[#969696]">Verificando autenticación...</div>
       ) : collaborator ? (
@@ -502,7 +476,6 @@ export default function PromocionesPage() {
 
   return (
     <div>
-      {/* Header */}
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -516,13 +489,13 @@ export default function PromocionesPage() {
           </div>
         </div>
       </div>
-      {/* KPI Cards */}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <KPICard
-              title={"Total Promociones"}
-              value={promotions.length}
-              icon={<TicketIcon className="h-4 w-4" />}
-            />
+        <KPICard
+          title={"Total Promociones"}
+          value={promotions.length}
+          icon={<TicketIcon className="h-4 w-4" />}
+        />
         <KPICard
           title="Promociones Activas"
           value={activePromotions}
@@ -535,14 +508,12 @@ export default function PromocionesPage() {
         />
       </div>
 
-      {/* Error Message */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
           {error}
         </div>
       )}
 
-      {/* Loading State */}
       {loading && (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#008D96]"></div>
@@ -550,7 +521,6 @@ export default function PromocionesPage() {
         </div>
       )}
 
-      {/* Promociones Grid */}
       {!loading && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
@@ -622,7 +592,6 @@ export default function PromocionesPage() {
         </div>
       )}
 
-      {/* Formulario Modal Simple */}
       {showForm && (
         <PromotionFormModal
           promotion={editingPromotion}
@@ -634,7 +603,6 @@ export default function PromocionesPage() {
         />
       )}
 
-      {/* Formulario Modal IA */}
       {showAIForm && (
         <AIPromotionModal
           onGenerate={handleGenerateWithAI}
@@ -645,46 +613,34 @@ export default function PromocionesPage() {
   );
 }
 
-// Componente de formulario mejorado
 function PromotionFormModal({
   promotion,
   onSave,
   onCancel
 }: {
-  promotion: ApiPromotion | Record<string, unknown> | null;
-  onSave: (data: Record<string, unknown>) => void;
+  promotion: ApiPromotion | null;
+  onSave: (data: Record<string, string | number | boolean | string[]>) => void;
   onCancel: () => void;
 }) {
-  // Detectar si es una promoción existente (tiene promotionId) o datos de IA
   const isExistingPromotion = promotion && 'promotionId' in promotion;
+  const promoData = promotion as ApiPromotion | null;
 
   const [formData, setFormData] = useState({
-    title: isExistingPromotion ? promotion.title : (promotion?.title || ''),
-    description: isExistingPromotion ? promotion.description : (promotion?.description || ''),
-    imageUrl: isExistingPromotion ? promotion.imageUrl : (promotion?.imageUrl || ''),
-    startDate: isExistingPromotion
-      ? (promotion.initialDate ? promotion.initialDate.split('T')[0] : '')
-      : (promotion?.startDate || ''),
-    endDate: isExistingPromotion
-      ? (promotion.endDate ? promotion.endDate.split('T')[0] : '')
-      : (promotion?.endDate || ''),
-    type: isExistingPromotion ? promotion.promotionType : (promotion?.type || 'descuento'),
-    code: isExistingPromotion ? promotion.promotionString : (promotion?.code || ''),
-    stock: isExistingPromotion
-      ? (promotion.totalStock?.toString() || '100')
-      : (promotion?.stock || '100'),
-    limitPerUser: isExistingPromotion
-      ? (promotion.limitPerUser?.toString() || '1')
-      : (promotion?.limitPerUser || '1'),
-    dailyLimit: isExistingPromotion
-      ? (promotion.dailyLimitPerUser?.toString() || '1')
-      : (promotion?.dailyLimit || '1'),
-    categories: isExistingPromotion ? (promotion.categories || ['COMIDA']) : (promotion?.categories || ['COMIDA']),
-    promotionTheme: isExistingPromotion ? (promotion.theme || 'light') : (promotion?.promotionTheme || 'light'),
-    isBookable: isExistingPromotion ? (promotion.is_bookable || false) : (promotion?.isBookable || false),
+    title: promoData?.title || '',
+    description: promoData?.description || '',
+    imageUrl: promoData?.imageUrl || '',
+    startDate: promoData?.initialDate ? promoData.initialDate.split('T')[0] : '',
+    endDate: promoData?.endDate ? promoData.endDate.split('T')[0] : '',
+    type: promoData?.promotionType || 'descuento',
+    code: promoData?.promotionString || '',
+    stock: promoData?.totalStock?.toString() || '100',
+    limitPerUser: promoData?.limitPerUser?.toString() || '1',
+    dailyLimit: promoData?.dailyLimitPerUser?.toString() || '1',
+    categories: ['COMIDA'] as string[],
+    promotionTheme: (promoData?.theme || 'light') as 'light' | 'dark',
+    isBookable: promoData?.is_bookable || false,
   });
 
-  // Estados para manejo de imágenes
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -721,7 +677,6 @@ function PromotionFormModal({
     }));
   };
 
-  // Función para subir imagen a S3
   const uploadImageToS3 = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
@@ -740,7 +695,6 @@ function PromotionFormModal({
     return result.imageUrl;
   };
 
-  // Manejar selección de archivo
   const handleFileSelect = async (file: File) => {
     setUploading(true);
     setUploadError(null);
@@ -763,7 +717,6 @@ function PromotionFormModal({
     }
   };
 
-  // Manejar click en el área de imagen
   const handleImageAction = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -777,7 +730,6 @@ function PromotionFormModal({
     input.click();
   };
 
-  // Manejar drag & drop
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -805,9 +757,7 @@ function PromotionFormModal({
     }
   };
 
-  // Generar imagen con IA usando webhook de n8n
   const handleGenerateImageWithAI = async () => {
-    // Validar que haya título y descripción
     if (!formData.title.trim() || !formData.description.trim()) {
       setUploadError('Necesitas completar el título y descripción antes de generar una imagen con IA');
       return;
@@ -819,10 +769,8 @@ function PromotionFormModal({
     try {
       console.log('🤖 Generando imagen con IA para:', formData.title);
 
-      // Preparar el texto para el webhook
       const promptText = `${formData.title}. ${formData.description}`;
 
-      // Llamar al proxy local que se conecta al webhook de n8n
       const response = await fetch('/api/generate-image', {
         method: 'POST',
         headers: {
@@ -840,14 +788,12 @@ function PromotionFormModal({
       const result = await response.json();
       console.log('🤖 Respuesta del webhook:', result);
 
-      // Asumir que el webhook devuelve la URL de S3 en el campo imageUrl o uri
       const imageUrl = result.imageUrl || result.uri || result.url;
 
       if (!imageUrl) {
         throw new Error('El webhook no devolvió una URL de imagen válida');
       }
 
-      // Actualizar el formData con la nueva imagen
       setFormData(prev => ({
         ...prev,
         imageUrl
@@ -870,7 +816,6 @@ function PromotionFormModal({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-start justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white rounded-xl w-full max-w-6xl my-8 shadow-2xl border border-gray-100">
-        {/* Header simplificado */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-r from-[#4B4C7E] to-[#008D96] rounded-lg flex items-center justify-center">
@@ -897,12 +842,9 @@ function PromotionFormModal({
           </button>
         </div>
 
-        {/* Content */}
         <form onSubmit={handleSubmit} className="px-6 py-4">
           <div className="grid grid-cols-12 gap-6">
-            {/* Columna Principal - 8/12 */}
             <div className="col-span-12 lg:col-span-8 space-y-4">
-              {/* Información Básica */}
               <div className="bg-white border border-gray-200 rounded-lg p-5">
                 <h3 className="text-lg font-medium text-[#015463] mb-4 flex items-center gap-2">
                   <svg className="w-5 h-5 text-[#008D96]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -911,7 +853,7 @@ function PromotionFormModal({
                   Información Básica
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-[#015463] mb-2">
                       Título de la Promoción *
@@ -975,7 +917,6 @@ function PromotionFormModal({
                 </div>
               </div>
 
-              {/* Fechas y Stock */}
               <div className="bg-white border border-gray-200 rounded-lg p-5">
                 <h3 className="text-lg font-medium text-[#015463] mb-4 flex items-center gap-2">
                   <svg className="w-5 h-5 text-[#008D96]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1053,7 +994,6 @@ function PromotionFormModal({
                 </div>
               </div>
 
-              {/* Categorías y Configuración */}
               <div className="bg-white border border-gray-200 rounded-lg p-5">
                 <h3 className="text-lg font-medium text-[#015463] mb-4 flex items-center gap-2">
                   <svg className="w-5 h-5 text-[#008D96]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1063,7 +1003,6 @@ function PromotionFormModal({
                 </h3>
 
                 <div className="space-y-4">
-                  {/* Categorías */}
                   <div>
                     <label className="block text-sm font-medium text-[#015463] mb-3">
                       Categorías *
@@ -1089,7 +1028,6 @@ function PromotionFormModal({
                     </div>
                   </div>
 
-                  {/* Tema y Reservabilidad */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-[#015463] mb-2">
@@ -1136,39 +1074,35 @@ function PromotionFormModal({
               </div>
             </div>
 
-            {/* Sidebar - 4/12 */}
             <div className="col-span-12 lg:col-span-4 space-y-6">
-              {/* Imagen */}
               <div className="bg-white border border-gray-200 rounded-lg p-5">
-                <div className='flex flex-row justify-between '>
-                <h3 className="text-lg font-medium text-[#015463] mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-[#008D96]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Imagen
+                <div className='flex flex-row justify-between items-center mb-4'>
+                  <h3 className="text-lg font-medium text-[#015463] flex items-center gap-2">
+                    <svg className="w-5 h-5 text-[#008D96]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Imagen
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={handleGenerateImageWithAI}
+                    disabled={uploading || !formData.title.trim() || !formData.description.trim()}
+                    className={`px-3 py-1.5 rounded-lg transition-colors text-xs font-medium ${
+                      uploading || !formData.title.trim() || !formData.description.trim()
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-[#008D96] text-white hover:bg-[#00565B]'
+                    }`}
+                  >
+                    {uploading ? '🤖 Generando...' : '🤖 IA'}
+                  </button>
+                </div>
 
-                  
-                </h3>
-                <button
-                  onClick={handleGenerateImageWithAI}
-                  disabled={uploading || !formData.title.trim() || !formData.description.trim()}
-                  className={`px-4 py-2 mb-2 rounded-lg transition-colors text-sm font-medium ${
-                    uploading || !formData.title.trim() || !formData.description.trim()
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-[#008D96] text-white hover:bg-[#00565B]'
-                  }`}
-                >
-                  {uploading ? '🤖 Generando...' : '🤖 Genera con IA'}
-                </button>
-</div>
-                {/* Error Message */}
                 {uploadError && (
                   <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-red-600 text-sm">{uploadError}</p>
                   </div>
                 )}
 
-                {/* Upload Area */}
                 <div
                   onClick={!uploading ? handleImageAction : undefined}
                   onDragOver={handleDragOver}
@@ -1211,10 +1145,10 @@ function PromotionFormModal({
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-700">
-                            Suelta aquí la imagen o
+                            Suelta aquí la imagen
                           </p>
                           <p className="text-sm font-medium text-[#008D96]">
-                            genera con IA
+                            o haz clic para subir
                           </p>
                         </div>
                         <p className="text-xs text-gray-500">
@@ -1225,7 +1159,6 @@ function PromotionFormModal({
                   </div>
                 </div>
 
-                {/* Image Preview */}
                 {formData.imageUrl && (
                   <div className="mt-4 relative">
                     <img
@@ -1249,7 +1182,6 @@ function PromotionFormModal({
                 )}
               </div>
 
-              {/* Tips */}
               <div className="bg-[#008D96]/5 border border-[#008D96]/20 rounded-lg p-5">
                 <h4 className="font-medium text-[#015463] mb-3 flex items-center gap-2">
                   <svg className="w-4 h-4 text-[#008D96]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1277,33 +1209,29 @@ function PromotionFormModal({
                 </ul>
               </div>
 
-               {/* Footer Buttons */}
-          <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-6 py-2.5 border-2 border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-8 py-2.5 bg-gradient-to-r from-[#4B4C7E] to-[#008D96] text-white rounded-lg hover:shadow-lg transition-all font-medium"
-            >
-              {isExistingPromotion ? 'Actualizar Promoción' : 'Crear Promoción'}
-            </button>
-          </div>
+              <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="px-6 py-2.5 border-2 border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-8 py-2.5 bg-gradient-to-r from-[#4B4C7E] to-[#008D96] text-white rounded-lg hover:shadow-lg transition-all font-medium"
+                >
+                  {isExistingPromotion ? 'Actualizar' : 'Crear'}
+                </button>
+              </div>
             </div>
           </div>
-
-         
         </form>
       </div>
     </div>
   );
 }
 
-// Componente modal para crear promoción con IA
 function AIPromotionModal({
   onGenerate,
   onCancel

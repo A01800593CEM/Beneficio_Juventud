@@ -10,39 +10,123 @@ import CategoriesSection from './CategoriesSection';
 import ImageUploadSection from './ImageUploadSection';
 
 export default function PromotionFormModal({ promotion, onSave, onCancel }: PromotionFormModalProps) {
-  // Detectar si es una promoción existente (tiene promotionId) o datos de IA
+  // Detectar si es una promoción existente y hacer type assertion segura
   const isExistingPromotion = promotion && 'promotionId' in promotion;
+  
+  // Helper para extraer fecha de forma segura
+  const getStartDate = () => {
+    if (!promotion) return '';
+    if ('initialDate' in promotion && promotion.initialDate) {
+      return promotion.initialDate.split('T')[0];
+    }
+    if ('startDate' in promotion && promotion.startDate) {
+      return typeof promotion.startDate === 'string' ? promotion.startDate : '';
+    }
+    return '';
+  };
+
+  const getEndDate = () => {
+    if (!promotion) return '';
+    if ('endDate' in promotion && promotion.endDate) {
+      return promotion.endDate.split('T')[0];
+    }
+    return '';
+  };
+
+  const getType = () => {
+    if (!promotion) return 'descuento';
+    if ('promotionType' in promotion) return promotion.promotionType;
+    if ('type' in promotion) {
+      const type = (promotion as Record<string, unknown>).type;
+      return typeof type === 'string' ? type : 'descuento';
+    }
+    return 'descuento';
+  };
+
+  const getCode = () => {
+    if (!promotion) return '';
+    if ('promotionString' in promotion) return promotion.promotionString || '';
+    if ('code' in promotion) {
+      const code = (promotion as Record<string, unknown>).code;
+      return typeof code === 'string' ? code : '';
+    }
+    return '';
+  };
+
+  const getStock = () => {
+    if (!promotion) return '100';
+    if ('totalStock' in promotion) return promotion.totalStock?.toString() || '100';
+    if ('stock' in promotion) {
+      const stock = (promotion as Record<string, unknown>).stock;
+      return typeof stock === 'string' ? stock : stock?.toString() || '100';
+    }
+    return '100';
+  };
+
+  const getDailyLimit = () => {
+    if (!promotion) return '1';
+    if ('dailyLimitPerUser' in promotion) {
+      const val = promotion.dailyLimitPerUser;
+      return val?.toString() || '1';
+    }
+    if ('dailyLimit' in promotion) {
+      const val = (promotion as Record<string, unknown>).dailyLimit;
+      return typeof val === 'string' ? val : val?.toString() || '1';
+    }
+    return '1';
+  };
+
+  const getTheme = () => {
+    if (!promotion) return 'light';
+    if ('theme' in promotion) return promotion.theme || 'light';
+    if ('promotionTheme' in promotion) {
+      const theme = (promotion as Record<string, unknown>).promotionTheme;
+      return typeof theme === 'string' ? theme : 'light';
+    }
+    return 'light';
+  };
+
+  const getIsBookable = () => {
+    if (!promotion) return false;
+    if ('is_bookable' in promotion) return promotion.is_bookable || false;
+    if ('isBookable' in promotion) {
+      const isBookable = (promotion as Record<string, unknown>).isBookable;
+      return typeof isBookable === 'boolean' ? isBookable : false;
+    }
+    return false;
+  };
+
+  const getCategories = (): string[] => {
+    if (!promotion?.categories) return ['COMIDA'];
+
+    // Las categorías vienen como array de objetos con id/name, extraer solo los nombres
+    if (Array.isArray(promotion.categories) && promotion.categories.length > 0) {
+      return promotion.categories.map((cat) => cat.name);
+    }
+
+    return ['COMIDA'];
+  };
 
   const [formData, setFormData] = useState<PromotionFormData>({
-    title: isExistingPromotion ? promotion.title : (promotion?.title || ''),
-    description: isExistingPromotion ? promotion.description : (promotion?.description || ''),
-    imageUrl: isExistingPromotion ? promotion.imageUrl || '' : (promotion?.imageUrl || ''),
-    startDate: isExistingPromotion
-      ? (promotion.initialDate ? promotion.initialDate.split('T')[0] : '')
-      : (promotion?.startDate || ''),
-    endDate: isExistingPromotion
-      ? (promotion.endDate ? promotion.endDate.split('T')[0] : '')
-      : (promotion?.endDate || ''),
-    type: isExistingPromotion ? promotion.promotionType : (promotion?.type || 'descuento'),
-    code: isExistingPromotion ? promotion.promotionString || '' : (promotion?.code || ''),
-    stock: isExistingPromotion
-      ? (promotion.totalStock?.toString() || '100')
-      : (promotion?.stock || '100'),
-    limitPerUser: isExistingPromotion
-      ? (promotion.limitPerUser?.toString() || '1')
-      : (promotion?.limitPerUser || '1'),
-    dailyLimit: isExistingPromotion
-      ? (promotion.dailyLimitPerUser?.toString() || '1')
-      : (promotion?.dailyLimit || '1'),
-    categories: isExistingPromotion ? (promotion.categories || ['COMIDA']) : (promotion?.categories || ['COMIDA']),
-    promotionTheme: isExistingPromotion ? (promotion.promotionTheme || 'light') : (promotion?.promotionTheme || 'light'),
-    isBookable: isExistingPromotion ? (promotion.is_bookable || false) : (promotion?.isBookable || false),
+    title: promotion?.title || '',
+    description: promotion?.description || '',
+    imageUrl: promotion?.imageUrl || '',
+    startDate: getStartDate(),
+    endDate: getEndDate(),
+    type: getType(),
+    code: getCode(),
+    stock: getStock(),
+    limitPerUser: promotion?.limitPerUser?.toString() || '1',
+    dailyLimit: getDailyLimit(),
+    categories: getCategories(),
+    promotionTheme: getTheme(),
+    isBookable: getIsBookable(),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('📋 Form submitted:', formData);
-    onSave(formData);
+    onSave({...formData} as Record<string, unknown>);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
