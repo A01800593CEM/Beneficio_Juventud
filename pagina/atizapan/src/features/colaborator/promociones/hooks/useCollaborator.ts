@@ -24,7 +24,7 @@ export const useCollaborator = () => {
       }
 
       // Extraer cognitoUsername de la sesión
-      const sessionData = session as any;
+      const sessionData = session as unknown as Record<string, unknown>;
 
       // Buscar en todas las posibles ubicaciones
       console.log('🔍 DEBUGGING SESSION STRUCTURE:');

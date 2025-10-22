@@ -4,12 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import KPICard from '@/features/admin/components/KPICard';
 import {
-  ChartBarIcon,
-  ArrowTrendingUpIcon,
-  CurrencyDollarIcon,
-  UsersIcon,
-  TicketIcon,
-  StarIcon
+  TicketIcon
 } from '@heroicons/react/24/outline';
 
 // Estructura exacta según la documentación de la API
@@ -269,7 +264,7 @@ export default function PromocionesPage() {
       }
 
       // Extraer cognitoUsername de la sesión
-      const sessionData = session as any;
+      const sessionData = session as unknown as Record<string, unknown>;
 
       // Buscar en todas las posibles ubicaciones
       console.log('🔍 DEBUGGING SESSION STRUCTURE:');
@@ -395,7 +390,7 @@ export default function PromocionesPage() {
 
       // Cerrar formulario IA y abrir formulario manual con datos prellenados
       setShowAIForm(false);
-      setEditingPromotion(promotionData as any); // Usar los datos IA como "promoción a editar"
+      setEditingPromotion(promotionData as ApiPromotion); // Usar los datos IA como "promoción a editar"
       setShowForm(true);
     } catch (err) {
       console.error('❌ Error generating promotion with AI:', err);
@@ -405,7 +400,7 @@ export default function PromocionesPage() {
     }
   };
 
-  const handleSave = async (formData: any) => {
+  const handleSave = async (formData: Record<string, unknown>) => {
     try {
       setLoading(true);
       setError(null);
@@ -469,7 +464,6 @@ export default function PromocionesPage() {
   // Calcular estadísticas para KPIs
   const activePromotions = promotions.filter(p => p.promotionState === 'activa').length;
   const totalStock = promotions.reduce((sum, p) => sum + (p.totalStock || 0), 0);
-  const usedStock = promotions.reduce((sum, p) => sum + ((p.totalStock || 0) - (p.availableStock || 0)), 0);
 
   // Componente de acciones para el header
   const headerActions = (
@@ -657,8 +651,8 @@ function PromotionFormModal({
   onSave,
   onCancel
 }: {
-  promotion: ApiPromotion | any | null;
-  onSave: (data: any) => void;
+  promotion: ApiPromotion | Record<string, unknown> | null;
+  onSave: (data: Record<string, unknown>) => void;
   onCancel: () => void;
 }) {
   // Detectar si es una promoción existente (tiene promotionId) o datos de IA

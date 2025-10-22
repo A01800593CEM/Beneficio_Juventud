@@ -35,37 +35,52 @@ export default function UsuarioNormal() {
   const [showQRCode, setShowQRCode] = useState<string | null>(null);
 
   // Convert API promotion to usuario page format
-  const convertApiPromotionForUser = (apiPromotion: any): Promotion => {
+  const convertApiPromotionForUser = (apiPromotion: Record<string, unknown>): Promotion => {
     // Extract discount percentage from promotionString
     let discount = 0;
-    if (apiPromotion.promotionString) {
-      const percentMatch = apiPromotion.promotionString.match(/(\d+)%/);
-      const offMatch = apiPromotion.promotionString.match(/(\d+)% OFF/);
+    const promotionString = apiPromotion.promotionString as string | undefined;
+    if (promotionString) {
+      const percentMatch = promotionString.match(/(\d+)%/);
+      const offMatch = promotionString.match(/(\d+)% OFF/);
       if (percentMatch || offMatch) {
         discount = parseInt(percentMatch?.[1] || offMatch?.[1] || '0');
-      } else if (apiPromotion.promotionString.includes('2x1')) {
+      } else if (promotionString.includes('2x1')) {
         discount = 50; // 2x1 is essentially 50% off
       }
     }
 
+    const promotionId = apiPromotion.promotionId as number | string | undefined;
+    const title = apiPromotion.title as string | undefined;
+    const collaboratorId = apiPromotion.collaboratorId as number | string | undefined;
+    const description = apiPromotion.description as string | undefined;
+    const categories = apiPromotion.categories as Array<{ name: string }> | undefined;
+    const initialDate = apiPromotion.initialDate as string | undefined;
+    const endDate = apiPromotion.endDate as string | undefined;
+    const availableStock = apiPromotion.availableStock as number | undefined;
+    const totalStock = apiPromotion.totalStock as number | undefined;
+    const limitPerUser = apiPromotion.limitPerUser as number | undefined;
+    const promotionState = apiPromotion.promotionState as string | undefined;
+    const created_at = apiPromotion.created_at as string | undefined;
+    const updated_at = apiPromotion.updated_at as string | undefined;
+
     return {
-      id: apiPromotion.promotionId?.toString() || '',
-      title: apiPromotion.title || '',
-      subtitle: apiPromotion.promotionString || `${discount}% de descuento`,
-      body: apiPromotion.description || '',
+      id: promotionId?.toString() || '',
+      title: title || '',
+      subtitle: promotionString || `${discount}% de descuento`,
+      body: description || '',
       theme: 'light' as const,
-      businessId: apiPromotion.collaboratorId?.toString() || '',
-      businessName: `Negocio ${apiPromotion.collaboratorId || 'Local'}`,
-      category: apiPromotion.categories?.[0]?.name || 'General',
+      businessId: collaboratorId?.toString() || '',
+      businessName: `Negocio ${collaboratorId || 'Local'}`,
+      category: categories?.[0]?.name || 'General',
       discount: discount,
-      validFrom: apiPromotion.initialDate || '',
-      validTo: apiPromotion.endDate || '',
-      terms: `Stock disponible: ${apiPromotion.availableStock}/${apiPromotion.totalStock}. Límite por usuario: ${apiPromotion.limitPerUser}`,
-      isActive: apiPromotion.promotionState === 'activa',
-      createdAt: apiPromotion.created_at || new Date().toISOString(),
-      updatedAt: apiPromotion.updated_at || new Date().toISOString(),
-      maxRedemptions: apiPromotion.totalStock || 0,
-      currentRedemptions: (apiPromotion.totalStock || 0) - (apiPromotion.availableStock || 0),
+      validFrom: initialDate || '',
+      validTo: endDate || '',
+      terms: `Stock disponible: ${availableStock}/${totalStock}. Límite por usuario: ${limitPerUser}`,
+      isActive: promotionState === 'activa',
+      createdAt: created_at || new Date().toISOString(),
+      updatedAt: updated_at || new Date().toISOString(),
+      maxRedemptions: totalStock || 0,
+      currentRedemptions: (totalStock || 0) - (availableStock || 0),
     };
   };
 
@@ -79,10 +94,10 @@ export default function UsuarioNormal() {
         const promotionsData = await apiService.getPromotions();
         console.log('📦 Raw API promotions for usuario:', promotionsData);
 
-        const convertedPromotions = promotionsData.map(convertApiPromotionForUser).filter(p => p.isActive);
+        const convertedPromotions = (promotionsData as unknown as Record<string, unknown>[]).map(convertApiPromotionForUser).filter(p => p.isActive);
         setPromotions(convertedPromotions);
         console.log('✅ Loaded and converted promotions for usuario:', convertedPromotions.length);
-      } catch (error) {
+      } catch {
         console.log('API promotions not available, using fallback data');
         // Fallback promotions data
         const fallbackPromotions: Promotion[] = [
@@ -154,16 +169,16 @@ export default function UsuarioNormal() {
         console.log('📦 Raw API categories:', categoriesData);
 
         // Convert API categories to the expected format
-        const convertedCategories = categoriesData.map((cat: any) => ({
-          id: cat.id.toString(),
-          name: cat.name,
-          description: `Categoría ${cat.name}`,
+        const convertedCategories = (categoriesData as unknown as Record<string, unknown>[]).map((cat) => ({
+          id: (cat.id as number | string).toString(),
+          name: cat.name as string,
+          description: `Categoría ${cat.name as string}`,
           icon: cat.name === 'Comida' ? '🍽️' : cat.name === 'Entretenimiento' ? '🎭' : '🏷️'
         }));
 
         setCategories(convertedCategories);
         console.log('✅ Loaded categories:', convertedCategories);
-      } catch (error) {
+      } catch {
         console.log('API categories not available, using fallback data');
         const fallbackCategories: Category[] = [
           { id: "1", name: "Comida", description: "Restaurantes y comida", icon: "🍽️" },
@@ -176,11 +191,11 @@ export default function UsuarioNormal() {
       }
 
       // Load user data from API - try multiple possible sources for cognito ID
-      const sessionData = session as any;
-      const sub = sessionData.sub ||
-                 sessionData.cognitoUsername ||
-                 sessionData.user?.id ||
-                 sessionData.user?.sub ||
+      const sessionData = session as unknown as Record<string, unknown>;
+      const sub = (sessionData.sub as string | undefined) ||
+                 (sessionData.cognitoUsername as string | undefined) ||
+                 ((sessionData.user as Record<string, unknown> | undefined)?.id as string | undefined) ||
+                 ((sessionData.user as Record<string, unknown> | undefined)?.sub as string | undefined) ||
                  '';
 
       console.log('🔄 Loading user profile from API...');
@@ -217,7 +232,7 @@ export default function UsuarioNormal() {
             const statsData = await apiService.getUserStats(userData.id);
             setUserStats(statsData);
             console.log('✅ User stats loaded successfully:', statsData);
-          } catch (statsError) {
+          } catch {
             console.log('⚠️ User stats not available from API, using calculated data');
             const fallbackStats: UserStats = {
               totalPromotions: promotions.length || 3,

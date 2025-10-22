@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
@@ -10,11 +10,6 @@ import {
   BuildingStorefrontIcon,
   Bars3Icon,
   XMarkIcon,
-  BellIcon,
-  CogIcon,
-  UserIcon,
-  ChartPieIcon,
-  HomeIcon,
   ArrowLeftEndOnRectangleIcon
 } from "@heroicons/react/24/outline";
 
@@ -39,22 +34,17 @@ export default function ColaboratorLayout({
 }: ColaboratorLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(3);
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
 
-  // Mock: Simular carga de notificaciones no leídas
-  useEffect(() => {
-    // Aquí iría la llamada a la API para obtener notificaciones no leídas
-    const mockFetchUnreadCount = () => {
-      setUnreadNotifications(3);
-    };
-
-    mockFetchUnreadCount();
-  }, []);
-
-  const navigation = [
+  const navigation: Array<{
+    name: string;
+    href: string;
+    icon: typeof TagIcon;
+    current: boolean;
+    badge?: number;
+  }> = [
     {
       name: "Promociones",
       href: "/colaborator",

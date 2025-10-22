@@ -8,9 +8,6 @@ import {
   CheckBadgeIcon,
   BuildingStorefrontIcon,
   EnvelopeIcon,
-  PhoneIcon,
-  MapPinIcon,
-  GlobeAltIcon,
   ClockIcon
 } from "@heroicons/react/24/outline";
 import { BusinessProfile } from "../types/business";
@@ -49,7 +46,7 @@ const mockBusiness: BusinessProfile = {
 export default function PerfilPage() {
   const { data: session } = useSession();
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
-  const [collaborator, setCollaborator] = useState<ApiCollaborator | null>(null);
+  const [_collaborator, setCollaborator] = useState<ApiCollaborator | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -70,8 +67,11 @@ export default function PerfilPage() {
     setError(null);
 
     try {
-      const sessionData = session as any;
-      const cognitoUsername = sessionData.cognitoUsername || sessionData.sub || sessionData.user?.id || sessionData.user?.sub;
+      const sessionData = session as unknown as Record<string, unknown>;
+      const cognitoUsername = (sessionData.cognitoUsername as string | undefined) ||
+                             (sessionData.sub as string | undefined) ||
+                             ((sessionData.user as Record<string, unknown> | undefined)?.id as string | undefined) ||
+                             ((sessionData.user as Record<string, unknown> | undefined)?.sub as string | undefined);
 
       if (cognitoUsername) {
         console.log('🔄 Loading collaborator profile...');
@@ -126,7 +126,7 @@ export default function PerfilPage() {
 
   const handleEdit = () => {
     setIsEditing(true);
-    setEditData({ ...business });
+    setEditData(business ? { ...business } : null);
   };
 
   const handleSave = () => {
@@ -137,29 +137,29 @@ export default function PerfilPage() {
   };
 
   const handleCancel = () => {
-    setEditData({ ...business });
+    setEditData(business ? { ...business } : null);
     setIsEditing(false);
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setEditData(prev => ({
+    setEditData(prev => prev ? ({
       ...prev,
       [field]: value
-    }));
+    }) : null);
   };
 
   const handleSocialMediaChange = (platform: string, value: string) => {
-    setEditData(prev => ({
+    setEditData(prev => prev ? ({
       ...prev,
       socialMedia: {
         ...prev.socialMedia,
         [platform]: value
       }
-    }));
+    }) : null);
   };
 
   const handleScheduleChange = (day: string, field: string, value: string | boolean) => {
-    setEditData(prev => ({
+    setEditData(prev => prev ? ({
       ...prev,
       schedule: {
         ...prev.schedule,
@@ -168,7 +168,7 @@ export default function PerfilPage() {
           [field]: value
         }
       }
-    }));
+    }) : null);
   };
 
   const formatPhone = (phone: string) => {
@@ -223,6 +223,10 @@ export default function PerfilPage() {
   }
 
   const currentData = isEditing ? editData : business;
+
+  if (!currentData) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">

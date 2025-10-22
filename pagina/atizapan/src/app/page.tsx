@@ -31,7 +31,7 @@ export default function HomePage() {
   if (!mounted) return null;
 
   // ===== Variants (reutilizables) =====
-  const EASE: number[] = [0.22, 1, 0.36, 1];
+  const EASE = [0.22, 1, 0.36, 1] as const;
 
   const fadeUp: Variants = {
     hidden: { opacity: 0, y: 24 },

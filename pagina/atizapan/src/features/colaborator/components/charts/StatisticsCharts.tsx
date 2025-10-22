@@ -214,15 +214,15 @@ export function CategoryBreakdownChart({ data, title }: CategoryBreakdownChartPr
                 borderRadius: '8px',
                 fontSize: '12px'
               }}
-              formatter={(value: number, name: string, props: { payload: { category: string; percentage: number } }) => [
+              formatter={(value: number, name: string, props?: { payload?: { category?: string; percentage?: number } }) => [
                 `$${value.toLocaleString()}`,
-                `${props.payload.category} (${props.payload.percentage.toFixed(1)}%)`
+                `${props?.payload?.category || name} (${props?.payload?.percentage?.toFixed(1) || '0'}%)`
               ]}
             />
             <Legend
               verticalAlign="bottom"
               height={36}
-              formatter={(value, entry) => entry.payload.category}
+              formatter={(value, entry) => (entry.payload as { category?: string } | undefined)?.category || value}
             />
           </PieChart>
         </ResponsiveContainer>

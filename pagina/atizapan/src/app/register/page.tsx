@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cognitoSignUp, SignUpData } from '@/lib/cognito';
-import { apiService, CollaboratorRegistrationData } from '@/lib/api';
 import { EyeIcon, EyeSlashIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 
 interface ExtendedFormData extends SignUpData {

@@ -17,14 +17,12 @@ import {
 } from "@heroicons/react/24/outline";
 import { apiService } from "@/lib/api";
 import { AdminStats } from "@/types/user";
+import { Promotion } from "@/types/promotion";
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
-  const [promotions, setPromotions] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [businesses, setBusinesses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,23 +41,19 @@ export default function AdminDashboard() {
         apiService.getBusinesses().catch(() => [])
       ]);
 
-      setPromotions(promotionsData);
-      setUsers(usersData);
-      setBusinesses(businessesData);
-
       // Try to load admin stats
       try {
         const stats = await apiService.getAdminStats();
         setAdminStats(stats);
-      } catch (error) {
+      } catch {
         console.log('Admin stats not available, calculating from data');
         // Calculate stats from available data
         const calculatedStats: AdminStats = {
           totalUsers: usersData.length,
           totalBusinesses: businessesData.length,
           totalPromotions: promotionsData.length,
-          totalRedemptions: promotionsData.reduce((sum: number, p: any) =>
-            sum + ((p.totalStock || 0) - (p.availableStock || 0)), 0
+          totalRedemptions: promotionsData.reduce((sum: number, p: Promotion) =>
+            sum + ((p.maxRedemptions || 0) - (p.currentRedemptions || 0)), 0
           ),
           monthlyGrowth: {
             users: Math.floor(Math.random() * 10) + 5, // Mock growth percentages
@@ -229,7 +223,6 @@ export default function AdminDashboard() {
               title={kpi.title}
               value={kpi.value}
               delta={kpi.delta}
-              prefix={kpi.prefix}
               icon={kpi.icon}
             />
           ))}
