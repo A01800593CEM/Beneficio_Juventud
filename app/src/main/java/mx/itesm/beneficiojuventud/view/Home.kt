@@ -328,10 +328,22 @@ fun Home(
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Home      -> nav.navigate(Screens.Home.route)
-                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
-                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
-                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
+                        BJTab.Home      -> nav.navigate(Screens.Home.route) {
+                            popUpTo(Screens.Home.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
                     }
                 }
             )
