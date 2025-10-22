@@ -81,7 +81,10 @@ fun Login(
 
                     Log.d("Login", "✅ CurrentUserId antes de navegar: ${authViewModel.currentUserId.value}")
 
-                    authViewModel.clearState()
+                    // ⭐️ IMPORTANTE: Solo limpiar error, NO clearState()
+                    // clearState() borra currentUserId que se necesita en PostLoginPermissions
+                    authViewModel.clearError()
+
                     nav.navigate(Screens.PostLoginPermissions.route) {
                         popUpTo(Screens.LoginRegister.route) { inclusive = true }
                         launchSingleTop = true
@@ -315,9 +318,9 @@ fun Login(
                 // Botón de Google Sign-In
                 item {
                     AltLoginButton(
-                        text = if (authState.isLoading || isCheckingGoogleUser) "Verificando..." else "Continuar con Google",
+                        text = if (authState.isLoading || isCheckingGoogleUser) "Verificando..." else "Inicia Sesión con Google",
                         icon = painterResource(id = R.drawable.logo_google),
-                        contentDescription = "Continuar con Google",
+                        contentDescription = "Inicia Sesión con Google",
                         onClick = {
                             val activity = context as? Activity
                             if (activity != null) {

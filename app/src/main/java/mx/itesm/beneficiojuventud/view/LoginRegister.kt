@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.delay
 import mx.itesm.beneficiojuventud.model.TestRemote
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
@@ -75,7 +76,10 @@ fun LoginRegister(
 
                     Log.d("LoginRegister", "✅ CurrentUserId antes de navegar: ${authViewModel.currentUserId.value}")
 
-                    authViewModel.clearState()
+                    // ⭐️ IMPORTANTE: Solo limpiar error, NO clearState()
+                    // clearState() borra currentUserId que se necesita en PostLoginPermissions → Startup
+                    authViewModel.clearError()
+
                     nav.navigate(Screens.PostLoginPermissions.route) {
                         popUpTo(Screens.LoginRegister.route) { inclusive = true }
                         launchSingleTop = true
@@ -204,9 +208,9 @@ fun LoginRegister(
                 GradientDivider_OR(modifier = Modifier.padding(vertical = 32.dp))
 
                 AltLoginButton(
-                    text = if (authState.isLoading || isCheckingGoogleUser) "Verificando..." else "Continuar con Google",
+                    text = if (authState.isLoading || isCheckingGoogleUser) "Verificando..." else "Regístrate con Google",
                     icon = painterResource(id = R.drawable.logo_google),
-                    contentDescription = "Continuar con Google",
+                    contentDescription = "Regístrate con Google",
                     onClick = {
                         val activity = context as? Activity
                         if (activity != null) {

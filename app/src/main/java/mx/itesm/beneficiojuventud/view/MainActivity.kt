@@ -340,7 +340,8 @@ private fun AppNav(
             OnboardingCategories(
                 nav,
                 categoryViewModel = categoryViewModel,
-                userViewModel = userViewModel
+                userViewModel = userViewModel,
+                authViewModel = authViewModel
             )
         }
 
@@ -605,7 +606,7 @@ private fun PostLoginPermissionsWithDestination(
 
     // Log cada vez que se recompone
     android.util.Log.d("MainActivity", "🔄 PostLoginPermissionsWithDestination recompose")
-    android.util.Log.d("MainActivity", "  → currentUserId: $currentUserId")
+    android.util.Log.d("MainActivity", "  → currentUserId: $currentUserId ${if (currentUserId.isNullOrBlank()) "❌ NULL" else "✅"}")
     android.util.Log.d("MainActivity", "  → userState.cognitoId: ${userState.cognitoId}")
     android.util.Log.d("MainActivity", "  → hasLoadedProfiles: $hasLoadedProfiles")
     android.util.Log.d("MainActivity", "  → isLoadingUser: $isLoadingUser")
@@ -628,6 +629,7 @@ private fun PostLoginPermissionsWithDestination(
                 var attempts = 0
                 var loaded = false
                 while (attempts < 3 && !loaded) {
+                    Log.d("MainActivity", "📥 Intento ${attempts + 1}/3 de cargar usuario")
                     userViewModel.getUserById(id)
 
                     // Esperar hasta 5 segundos por respuesta
@@ -637,8 +639,15 @@ private fun PostLoginPermissionsWithDestination(
                         waitTime += 100
                     }
 
+                    // Log del timeout si aplica
+                    if (waitTime >= 5000) {
+                        Log.w("MainActivity", "⚠️ Timeout esperando getUserById (${waitTime}ms)")
+                    }
+
                     val error = userViewModel.error.value
                     val user = userViewModel.userState.value
+
+                    Log.d("MainActivity", "📋 Resultado: error=$error, userCognitoId=${user.cognitoId}")
 
                     if (error != null && error.contains("404")) {
                         attempts++
@@ -648,7 +657,11 @@ private fun PostLoginPermissionsWithDestination(
                         loaded = true
                         Log.d("MainActivity", "✅ Usuario cargado exitosamente")
                     } else {
-                        break
+                        Log.d("MainActivity", "⚠️ Usuario sin cognitoId, reintentando...")
+                        attempts++
+                        if (attempts < 3) {
+                            kotlinx.coroutines.delay(2000)
+                        }
                     }
                 }
             } else {
