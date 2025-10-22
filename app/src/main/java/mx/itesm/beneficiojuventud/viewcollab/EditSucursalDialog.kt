@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import mx.itesm.beneficiojuventud.components.AddressAutocompleteTextField
 import mx.itesm.beneficiojuventud.model.Branch
 import mx.itesm.beneficiojuventud.model.BranchState
 
@@ -81,10 +82,15 @@ fun EditSucursalDialog(
                         label = "Nombre de la sucursal"
                     )
 
-                    StyledOutlinedTextField(
+                    AddressAutocompleteTextField(
                         value = address,
                         onValueChange = { address = it },
-                        label = "Dirección"
+                        onAddressSelected = { selectedAddress ->
+                            address = selectedAddress
+                        },
+                        label = "Dirección",
+                        placeholder = "Busca la dirección...",
+                        country = "MX"
                     )
 
                     PhoneMxField(
