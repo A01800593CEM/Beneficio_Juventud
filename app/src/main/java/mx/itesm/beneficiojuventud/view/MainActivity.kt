@@ -448,9 +448,11 @@ private fun AppNav(
             arguments = Screens.QrScanner.arguments
         ) { backStackEntry ->
             val branchId = backStackEntry.arguments?.getInt("branchId") ?: 1
+            val collabId by authViewModel.currentUserId.collectAsState()
             QRScannerScreen(
                 nav = nav,
-                branchId = branchId
+                branchId = branchId,
+                collaboratorId = collabId
             )
         }
         composable(Screens.StatsScreen.route) {

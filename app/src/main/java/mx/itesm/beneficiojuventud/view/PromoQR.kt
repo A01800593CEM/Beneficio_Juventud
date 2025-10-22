@@ -212,17 +212,19 @@ private fun toUi(p: Promotions): PromoDetailUi {
 private fun buildQrPayload(
     promotionId: Int,
     userId: String,
-    limitPerUser: Int?
+    limitPerUser: Int?,
+    collaboratorId: String
 ): String {
     val version = 1
     val ts = System.currentTimeMillis()
     val nonce = UUID.randomUUID().toString().substring(0, 8)
     val lpu = limitPerUser ?: -1
-    val payload = "bj|v=$version|pid=$promotionId|uid=$userId|lpu=$lpu|ts=$ts|n=$nonce"
+    val payload = "bj|v=$version|pid=$promotionId|uid=$userId|cid=$collaboratorId|lpu=$lpu|ts=$ts|n=$nonce"
 
     Log.d(TAG, "========== QR GENERATION DEBUG ==========")
     Log.d(TAG, "promotionId: $promotionId")
     Log.d(TAG, "userId: $userId")
+    Log.d(TAG, "collaboratorId: $collaboratorId")
     Log.d(TAG, "limitPerUser: $limitPerUser")
     Log.d(TAG, "version: $version")
     Log.d(TAG, "timestamp: $ts")
@@ -378,10 +380,10 @@ fun PromoQR(
     }
 
     // QR
-    val qrPayload = remember(promotionId, cognitoId, promo.limitPerUser) {
-        buildQrPayload(promotionId, cognitoId, promo.limitPerUser)
+    val qrPayload = remember(promotionId, cognitoId, promo.limitPerUser, promo.collaboratorId) {
+        buildQrPayload(promotionId, cognitoId, promo.limitPerUser, promo.collaboratorId ?: "")
     }
-    var qrImage by remember(promotionId, cognitoId, promo.limitPerUser) { mutableStateOf<ImageBitmap?>(null) }
+    var qrImage by remember(promotionId, cognitoId, promo.limitPerUser, promo.collaboratorId) { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(qrPayload) { qrImage = generateQrImageBitmap(qrPayload, sizePx = 900) }
 
     // Favoritos (optimista)
