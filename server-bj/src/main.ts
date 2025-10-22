@@ -10,8 +10,14 @@ import { seedDatabase } from './seedServer'
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter()
+    new FastifyAdapter({
+      bodyLimit: 5242880, // 5MB
+    })
   );
+
+  // Registrar plugin de multipart para Fastify
+  await app.register(require('@fastify/multipart'));
+
   await app.listen(process.env.PORT ?? 3000, "127.0.0.1");
 }
 bootstrap();
