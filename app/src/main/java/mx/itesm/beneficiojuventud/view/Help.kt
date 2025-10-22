@@ -103,7 +103,7 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
             ) {
                 // Contactar soporte
                 item {
-                    val email = "soporte@beneficio.com"
+                    val email = "soporte@atizapan.gob.mx"
                     HelpActionItem(
                         icon = Icons.Outlined.Email,
                         title = "Contactar Soporte",
@@ -122,11 +122,11 @@ fun Help(nav: NavHostController, modifier: Modifier = Modifier) {
 
                 // Línea de ayuda
                 item {
-                    val phoneNumber = "+525509876543"
+                    val phoneNumber = "+525536222800"
                     HelpActionItem(
                         icon = Icons.Outlined.PhoneInTalk,
                         title = "Línea de Ayuda",
-                        subtitle = "+52 55 0987 6543",
+                        subtitle = "+52 55 3622 2800",
                         onClick = {
                             val intent = Intent(Intent.ACTION_DIAL).apply {
                                 data = Uri.parse("tel:$phoneNumber")
