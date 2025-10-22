@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.viewcollab
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -131,8 +132,20 @@ fun PromotionsScreenCollab(
                                         .fillMaxWidth()
                                         .height(150.dp),
                                     onClick = {
-                                        selectedPromoForEdit = promotion
-                                        showEditSheet = true
+                                        // Cargar la promoción completa (con relaciones) antes de abrir el editor
+                                        scope.launch {
+                                            runCatching {
+                                                promotion.promotionId?.let { promoId ->
+                                                    promoViewModel.getPromotionById(promoId)
+                                                    selectedPromoForEdit = promoViewModel.promoState.value
+                                                }
+                                            }.onFailure { e ->
+                                                android.util.Log.e("PromotionsScreenCollab", "Error loading promotion details", e)
+                                                // Fallback: usar la promoción de la lista si falla
+                                                selectedPromoForEdit = promotion
+                                            }
+                                            showEditSheet = true
+                                        }
                                     },
                                     showStateTag = true  // Mostrar tag de estado para colaboradores
                                 )
