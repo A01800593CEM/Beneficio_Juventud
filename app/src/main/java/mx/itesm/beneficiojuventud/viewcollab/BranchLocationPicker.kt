@@ -160,6 +160,15 @@ private fun BranchLocationPickerContent(
             onAddressSelected = { selectedAddress ->
                 searchAddress = selectedAddress
             },
+            onCoordinatesSelected = { latitude, longitude ->
+                // Actualizar la ubicación seleccionada en el mapa con las coordenadas del geocoding
+                selectedPosition = LatLng(latitude, longitude)
+                // Centrar el mapa en la nueva ubicación
+                cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                    LatLng(latitude, longitude),
+                    15f
+                )
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),

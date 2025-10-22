@@ -4,7 +4,6 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.libraries.places.api.model.AutocompleteSessionToken
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,11 +22,12 @@ data class AddressAutocompleteState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val selectedAddress: PlacesDetails? = null,
-    val sessionToken: AutocompleteSessionToken? = null
+    val sessionToken: String? = null,
+    val selectedPlaceDetails: PlacesDetails? = null
 )
 
 /**
- * ViewModel para gestionar el autocompletado de direcciones usando Google Places API
+ * ViewModel para gestionar el autocompletado de direcciones usando Mapbox Geocoding API
  *
  * Responsabilidades:
  * - Manejar búsquedas de predicciones con debounce
@@ -127,14 +127,14 @@ class PlacesAutocompleteViewModel(application: Application) : AndroidViewModel(a
 
                 _state.value = _state.value.copy(
                     selectedAddress = details,
+                    selectedPlaceDetails = details,
                     predictions = emptyList(),
                     isLoading = false
                 )
 
                 Log.d(tag, "Dirección seleccionada: ${details.address}")
 
-                // IMPORTANTE: Generar nuevo token después de selección
-                // Esto finaliza la sesión y genera crédito de sesión en Google
+                // Generar nuevo token después de selección (Mapbox no requiere esto, pero lo mantenemos)
                 _state.value = _state.value.copy(
                     sessionToken = placesService.generateSessionToken()
                 )

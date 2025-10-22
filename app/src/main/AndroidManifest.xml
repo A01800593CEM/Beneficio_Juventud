@@ -37,6 +37,12 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyCOe4P-4mbkN1eO0vjbV0BAV2Pe03gczXU" />
 
+        <!-- Mapbox Access Token for Geocoding API (replaces Google Places) -->
+        <!-- Get your token at: https://account.mapbox.com/access-tokens/ -->
+        <meta-data
+            android:name="MAPBOX_ACCESS_TOKEN"
+            android:value="pk.eyJ1IjoiZWRlbGVvbjExIiwiYSI6ImNtaDFuZmVzdjB1d2FqMHExamJ5ZHc1YmgifQ.-K9QS-CqYNrYeoyN9-aGcg" />
+
         <activity
             android:name=".view.MainActivity"
             android:exported="true"

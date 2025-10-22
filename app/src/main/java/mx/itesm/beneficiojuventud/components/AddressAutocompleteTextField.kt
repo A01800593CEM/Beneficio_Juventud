@@ -37,6 +37,7 @@ import mx.itesm.beneficiojuventud.utils.PlacesPrediction
  * @param value Valor actual del campo
  * @param onValueChange Callback cuando cambia el valor
  * @param onAddressSelected Callback cuando se selecciona una dirección (devuelve dirección formateada)
+ * @param onCoordinatesSelected Callback opcional cuando se selecciona una dirección con coordenadas (latitude, longitude)
  * @param modifier Modificador de Compose
  * @param label Etiqueta del campo
  * @param placeholder Texto placeholder
@@ -48,6 +49,7 @@ fun AddressAutocompleteTextField(
     value: String,
     onValueChange: (String) -> Unit,
     onAddressSelected: (address: String) -> Unit = {},
+    onCoordinatesSelected: (latitude: Double, longitude: Double) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     label: String = "Dirección",
     placeholder: String = "Escribe tu dirección...",
@@ -58,6 +60,13 @@ fun AddressAutocompleteTextField(
     val state by viewModel.state.collectAsState()
     var showSuggestions by rememberSaveable { mutableStateOf(false) }
     var previousQuery by rememberSaveable { mutableStateOf("") }
+
+    // Observar cambios en selectedPlaceDetails y llamar al callback de coordenadas
+    LaunchedEffect(state.selectedPlaceDetails) {
+        state.selectedPlaceDetails?.let { details ->
+            onCoordinatesSelected(details.latitude, details.longitude)
+        }
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
         // TextField con autocompletado
