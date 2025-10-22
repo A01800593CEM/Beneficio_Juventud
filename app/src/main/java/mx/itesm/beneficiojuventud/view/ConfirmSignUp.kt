@@ -114,6 +114,12 @@ fun ConfirmSignUp(
 
             didCreate = true
 
+            // Sign in the user first with stored credentials
+            val (savedEmail, savedPassword) = authViewModel.getPendingCredentials()
+            if (savedEmail != null && savedPassword != null) {
+                authViewModel.signIn(savedEmail, savedPassword)
+            }
+
             scope.launch {
                 try {
                     // Crear usuario o colaborador según lo que esté pendiente
@@ -142,7 +148,7 @@ fun ConfirmSignUp(
                         val collabToCreate = pendingCollab.copy(
                             cognitoId = sub,
                             email = email.trim(),
-                            state = CollaboratorsState.activo,
+                            state = CollaboratorsState.inactivo,
                             registrationDate = Instant.now().toString()
                             // categoryIds se puede agregar después mediante actualización
                         )
@@ -153,8 +159,8 @@ fun ConfirmSignUp(
                         authViewModel.consumePendingCollabProfile()
                         authViewModel.clearPendingCredentials()
 
-                        // Navega a HomeScreenCollab para colaboradores
-                        nav.navigate(Screens.HomeScreenCollab.route) {
+                        // Navega a EditProfileCollab para que completen su perfil
+                        nav.navigate(Screens.EditProfileCollab.route) {
                             popUpTo(Screens.LoginRegister.route) { inclusive = true }
                             launchSingleTop = true
                         }

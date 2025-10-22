@@ -7,7 +7,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Business
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Numbers
@@ -48,6 +50,7 @@ import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.components.PasswordTextField
+import mx.itesm.beneficiojuventud.model.categories.Category
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.collaborators.CollaboratorsState
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
@@ -55,7 +58,10 @@ import mx.itesm.beneficiojuventud.view.Screens
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 import java.time.Instant
+import android.util.Log
+import androidx.compose.foundation.clickable
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterCollab(
     nav: NavHostController,
@@ -74,6 +80,15 @@ fun RegisterCollab(
     var description by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var acceptTerms by rememberSaveable { mutableStateOf(false) }
+
+    // Categorías
+    var allCategories by remember { mutableStateOf<List<Category>>(emptyList()) }
+    var selectedCategoryIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var categoryDisplay by rememberSaveable { mutableStateOf("") }
+
+    // Sheet de Categorías
+    var showCategoriesSheet by remember { mutableStateOf(false) }
+    val catSheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var showError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
@@ -95,8 +110,33 @@ fun RegisterCollab(
     var isCheckingEmail by rememberSaveable { mutableStateOf(false) }
 
     // Parche: al volver del ConfirmSignUp, aseguramos que no quede en "Registrando."
+    // y cargar catálogo de categorías
     LaunchedEffect(Unit) {
         authViewModel.markIdle()
+
+        // Cargar categorías
+        runCatching {
+            Log.d("RegisterCollab", "Fetching categories...")
+            val categories = collabViewModel.getCategories()
+            Log.d("RegisterCollab", "Categories fetched: ${categories.size} items")
+            categories.forEach { cat ->
+                Log.d("RegisterCollab", "Category: id=${cat.id}, name=${cat.name}")
+            }
+            allCategories = categories
+        }.onFailure {
+            Log.e("RegisterCollab", "Error loading categories: ${it.message}", it)
+            it.printStackTrace()
+        }
+    }
+
+    // Recalcular display de categorías si cambian ids o catálogo
+    LaunchedEffect(selectedCategoryIds, allCategories) {
+        if (selectedCategoryIds.isEmpty()) {
+            categoryDisplay = ""
+        } else {
+            val names = allCategories.filter { it.id in selectedCategoryIds }.mapNotNull { it.name }
+            categoryDisplay = names.joinToString(" · ")
+        }
     }
 
     // Navegación a Confirm (idempotente por intento)
@@ -131,13 +171,13 @@ fun RegisterCollab(
                         pending.copy(
                             cognitoId = sub,
                             email = email.trim(),
-                            state = CollaboratorsState.activo,
-                            registrationDate = Instant.now().toString()
-                            // categoryIds se puede agregar después mediante actualización
+                            state = CollaboratorsState.inactivo,
+                            registrationDate = Instant.now().toString(),
+                            categoryIds = if (selectedCategoryIds.isEmpty()) null else selectedCategoryIds.toList()
                         )
                     )
                     authViewModel.clearPendingCredentials()
-                    nav.navigate(Screens.HomeScreenCollab.route) {
+                    nav.navigate(Screens.EditProfileCollab.route) {
                         popUpTo(Screens.LoginRegister.route) { inclusive = true }
                         launchSingleTop = true
                     }
@@ -212,6 +252,7 @@ fun RegisterCollab(
                         address = address.trim(),
                         postalCode = postalCode.trim(),
                         description = description.trim(),
+                        categoryIds = if (selectedCategoryIds.isEmpty()) null else selectedCategoryIds.toList()
                     )
                     authViewModel.savePendingCollabProfile(collabProfile)
                     authViewModel.setPendingCredentials(email.trim(), password)
@@ -427,6 +468,20 @@ fun RegisterCollab(
                 }
             }
 
+            // Categorías
+            item { Label("Categorías") }
+            item {
+                ProfileDropdownField(
+                    value = if (categoryDisplay.isBlank()) "Selecciona categorías" else categoryDisplay,
+                    label = "Categorías del Negocio",
+                    leadingIcon = Icons.Outlined.Category,
+                    onClick = {
+                        Log.d("RegisterCollab", "Categories field clicked, opening sheet")
+                        showCategoriesSheet = true
+                    }
+                )
+            }
+
             // Descripción
             item { Label("Descripción del Negocio") }
             item {
@@ -529,6 +584,46 @@ fun RegisterCollab(
 
             item { Spacer(Modifier.height(8.dp)) }
         }
+
+        // Sheet: Categorías
+        if (showCategoriesSheet) {
+            LaunchedEffect(allCategories) {
+                Log.d("RegisterCollab", "Sheet opened with ${allCategories.size} categories")
+            }
+
+            ModalBottomSheet(
+                onDismissRequest = { showCategoriesSheet = false },
+                sheetState = catSheet
+            ) {
+                Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                    Text("Selecciona categorías", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Spacer(Modifier.height(8.dp))
+                    if (allCategories.isEmpty()) {
+                        Text("No hay categorías disponibles", color = Color(0xFF616161))
+                    } else {
+                        allCategories.forEach { cat ->
+                            val id = cat.id ?: return@forEach
+                            val checked = id in selectedCategoryIds
+                            CategoryCheckboxItem(
+                                name = cat.name ?: "Sin nombre",
+                                checked = checked
+                            ) { isChecked ->
+                                selectedCategoryIds =
+                                    if (isChecked) selectedCategoryIds + id
+                                    else selectedCategoryIds - id
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Button(
+                        onClick = { showCategoriesSheet = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) { Text("Listo") }
+                    Spacer(Modifier.height(16.dp))
+                }
+            }
+        }
     }
 }
 
@@ -621,5 +716,25 @@ private fun mapAuthErrorToFriendly(raw: String): String {
         "invalidpassword" in lower || ("password" in lower && ("invalid" in lower || "weak" in lower)) ->
             "La contraseña no cumple los requisitos. Prueba con una más fuerte."
         else -> raw
+    }
+}
+
+@Composable
+private fun CategoryCheckboxItem(
+    name: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+        Spacer(Modifier.width(12.dp))
+        Text(text = name, fontSize = 16.sp, color = Color(0xFF616161), fontWeight = FontWeight.Medium)
     }
 }

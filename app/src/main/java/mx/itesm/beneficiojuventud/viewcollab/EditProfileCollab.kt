@@ -154,6 +154,20 @@ fun EditProfileCollab(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    var hasShownInactiveMessage by rememberSaveable { mutableStateOf(false) }
+
+    // Show toast when collaborator is inactive and has no categories (newly registered)
+    LaunchedEffect(collab.state, collab.categories, collab.categoryIds) {
+        if (!hasShownInactiveMessage &&
+            collab.state == CollaboratorsState.inactivo &&
+            (collab.categories.isNullOrEmpty() || collab.categoryIds.isNullOrEmpty())) {
+            snackbarHostState.showSnackbar(
+                message = "Tu cuenta está inactiva hasta que completes tu perfil y agregues categorías.",
+                duration = SnackbarDuration.Long
+            )
+            hasShownInactiveMessage = true
+        }
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -275,6 +289,10 @@ fun EditProfileCollab(
                                 return@SaveChangesButton
                             }
 
+                            // Auto-activate account if it's inactive and categories are being added
+                            val shouldActivate = collab.state == CollaboratorsState.inactivo &&
+                                    selectedCategoryIds.isNotEmpty()
+
                             val update = Collaborator(
                                 cognitoId = id,
                                 businessName = businessName.ifBlank { null },
@@ -287,8 +305,8 @@ fun EditProfileCollab(
                                 description = description.ifBlank { null },
                                 // Envía solo IDs (tu backend los usa para actualizar)
                                 categoryIds = if (selectedCategoryIds.isEmpty()) null else selectedCategoryIds.toList(),
-                                // Estado
-                                state = selectedState
+                                // Estado: activate if adding categories to inactive account
+                                state = if (shouldActivate) CollaboratorsState.activo else selectedState
                             )
 
                             justSaved = true
