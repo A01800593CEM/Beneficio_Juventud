@@ -75,7 +75,7 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
     private var _pendingPlainPassword: String? = null
 
     fun setPendingCredentials(email: String, password: String) {
-        _pendingEmail = email
+        _pendingEmail = email.lowercase().trim()
         _pendingPlainPassword = password
     }
     fun getPendingCredentials(): Pair<String?, String?> {
@@ -178,8 +178,11 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
         viewModelScope.launch {
             _authState.update { it.copy(isLoading = true, error = null) }
             try {
+                // Normalizar email a minúsculas
+                val normalizedEmail = email.lowercase().trim()
+
                 // El repo devuelve Result<AuthSignUpResult>
-                val result = authRepository.signUp(email, password)
+                val result = authRepository.signUp(normalizedEmail, password)
                     .getOrThrow() // 👈 desempaquetar
 
                 // Amplify.Auth.signUp() -> AuthSignUpResult
@@ -225,10 +228,12 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
 
     fun confirmSignUp(email: String, code: String) {
         viewModelScope.launch {
+            // Normalizar email a minúsculas
+            val normalizedEmail = email.lowercase().trim()
             val priorSub = _authState.value.cognitoSub
             _authState.value = _authState.value.copy(isLoading = true, error = null)
 
-            val result = authRepository.confirmSignUp(email, code)
+            val result = authRepository.confirmSignUp(normalizedEmail, code)
             result.fold(
                 onSuccess = { isComplete ->
                     _authState.value = _authState.value.copy(
@@ -312,17 +317,19 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
     fun signIn(email: String, password: String, rememberMe: Boolean = false) {
         viewModelScope.launch {
             try {
-                Log.d("AuthViewModel", "Iniciando signIn para: $email")
+                // Normalizar email a minúsculas
+                val normalizedEmail = email.lowercase().trim()
+                Log.d("AuthViewModel", "Iniciando signIn para: $normalizedEmail")
                 _authState.value = AuthState(isLoading = true)
 
-                val result = authRepository.signIn(email, password)
+                val result = authRepository.signIn(normalizedEmail, password)
                 result.fold(
                     onSuccess = { r ->
                         Log.d("AuthViewModel", "SignIn exitoso: isSignedIn=${r.isSignedIn}")
                         if (r.isSignedIn) {
                             // Guardar credenciales si el usuario marcó "Recuérdame"
                             if (rememberMe) {
-                                preferencesManager?.saveCredentials(email, password)
+                                preferencesManager?.saveCredentials(normalizedEmail, password)
                                 Log.d("AuthViewModel", "Credenciales guardadas para 'Recuérdame'")
                             } else {
                                 // Limpiar credenciales si no marcó "Recuérdame"
@@ -519,8 +526,10 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
 
     fun resetPassword(email: String) {
         viewModelScope.launch {
+            // Normalizar email a minúsculas
+            val normalizedEmail = email.lowercase().trim()
             _authState.value = AuthState(isLoading = true)
-            val result = authRepository.resetPassword(email)
+            val result = authRepository.resetPassword(normalizedEmail)
             result.fold(
                 onSuccess = {
                     _authState.value = AuthState(isSuccess = true, needsConfirmation = true)

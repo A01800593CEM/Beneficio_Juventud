@@ -118,7 +118,7 @@ fun GoogleRegister(
 
             // Autocompletar email
             if (email.isBlank() && googleData.email.isNotBlank()) {
-                email = googleData.email
+                email = googleData.email.lowercase().trim()
                 Log.d("GoogleRegister", "✅ Email autocompletado: $email")
             }
 

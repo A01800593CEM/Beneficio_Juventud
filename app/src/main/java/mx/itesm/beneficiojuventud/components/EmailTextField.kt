@@ -33,7 +33,7 @@ fun EmailTextField(
 
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { onValueChange(it.lowercase().trim()) },
         singleLine = true,
         // ⬇️ Quita height(48.dp) y usa altura mínima segura
         modifier = modifier
