@@ -7,6 +7,7 @@ import { Repository, In } from 'typeorm';
 import { Category } from 'src/categories/entities/category.entity';
 import { CollaboratorState } from './enums/collaborator-state.enum';
 import { Branch } from 'src/branch/entities/branch.entity';
+import { BranchState } from 'src/branch/enums/branch-state.enum';
 import { BranchService } from 'src/branch/branch.service';
 import { GeocodingService } from 'src/common/geocoding.service';
 import {
@@ -109,7 +110,7 @@ export class CollaboratorsService {
       address: savedCollaborator.address,
       zipCode: savedCollaborator.postalCode,
       location, // Contiene las coordenadas geocodificadas o null
-      state: 'ACTIVE',
+      state: BranchState.ACTIVE,
     });
 
     return savedCollaborator;
