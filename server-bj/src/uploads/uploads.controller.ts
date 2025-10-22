@@ -7,7 +7,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FastifyFileInterceptor } from '@nestjs/platform-fastify';
 import { UploadsService } from './uploads.service';
 
 @Controller('upload')
@@ -16,8 +16,8 @@ export class UploadsController {
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadImage(@UploadedFile() file: Express.Multer.File) {
+  @UseInterceptors(FastifyFileInterceptor('file'))
+  async uploadImage(@UploadedFile() file: any) {
     if (!file) {
       throw new BadRequestException('No file provided');
     }
@@ -39,7 +39,7 @@ export class UploadsController {
     }
 
     try {
-      const imageUrl = await this.uploadsService.uploadToS3(file);
+      const imageUrl = await this.uploadsService.uploadViaWebhook(file);
       return {
         success: true,
         imageUrl,
@@ -50,7 +50,7 @@ export class UploadsController {
       };
     } catch (error) {
       throw new BadRequestException(
-        error.message || 'Error uploading file to S3',
+        error.message || 'Error uploading file via webhook',
       );
     }
   }

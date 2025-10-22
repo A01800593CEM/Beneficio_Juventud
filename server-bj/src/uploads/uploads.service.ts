@@ -1,53 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { v4 as uuidv4 } from 'uuid';
+import FormData from 'form-data';
 
 @Injectable()
 export class UploadsService {
-  private s3Client: S3Client;
-  private bucketName: string;
-  private bucketRegion: string;
+  private webhookUrl = 'https://primary-production-0858b.up.railway.app/webhook/d4e2e473-8dcf-4cca-aea2-ba25ff544450';
 
-  constructor(private configService: ConfigService) {
-    this.bucketName = this.configService.get<string>('AWS_S3_BUCKET_NAME');
-    this.bucketRegion = this.configService.get<string>('AWS_S3_REGION', 'us-east-1');
-
-    this.s3Client = new S3Client({
-      region: this.bucketRegion,
-      credentials: {
-        accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID'),
-        secretAccessKey: this.configService.get<string>('AWS_SECRET_ACCESS_KEY'),
-      },
-    });
-  }
-
-  async uploadToS3(file: Express.Multer.File): Promise<string> {
-    if (!this.bucketName) {
-      throw new Error('AWS S3 bucket name is not configured');
-    }
-
-    // Generar nombre único para el archivo
-    const fileExtension = file.originalname.split('.').pop();
-    const fileName = `promotions/${uuidv4()}.${fileExtension}`;
-
+  async uploadViaWebhook(file: {
+    buffer: Buffer;
+    originalname: string;
+    mimetype: string;
+    size: number;
+  }): Promise<string> {
     try {
-      const command = new PutObjectCommand({
-        Bucket: this.bucketName,
-        Key: fileName,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-        ACL: 'public-read', // Permitir lectura pública
+      // Crear FormData para enviar el archivo al webhook
+      const formData = new FormData();
+      formData.append('file', file.buffer, {
+        filename: file.originalname,
+        contentType: file.mimetype,
       });
 
-      await this.s3Client.send(command);
+      const response = await fetch(this.webhookUrl, {
+        method: 'POST',
+        body: formData as any,
+        headers: formData.getHeaders(),
+      });
 
-      // Construir URL de la imagen
-      const imageUrl = `https://${this.bucketName}.s3.${this.bucketRegion}.amazonaws.com/${fileName}`;
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Webhook error: ${response.status} - ${errorData}`);
+      }
+
+      const result = await response.json();
+
+      // Extraer URL de la respuesta (puede venir como imageUrl, url, uri, etc.)
+      const imageUrl = result.imageUrl || result.url || result.uri;
+
+      if (!imageUrl) {
+        throw new Error('Webhook did not return a valid image URL');
+      }
+
       return imageUrl;
     } catch (error) {
-      console.error('S3 upload error:', error);
-      throw new Error(`Failed to upload file to S3: ${error.message}`);
+      console.error('Webhook upload error:', error);
+      throw new Error(`Failed to upload file via webhook: ${error.message}`);
     }
   }
 }
