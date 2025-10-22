@@ -1,9 +1,11 @@
 package mx.itesm.beneficiojuventud.view
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.room.Room
+import com.amplifyframework.core.Amplify
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.Firebase
 import com.google.firebase.messaging.FirebaseMessaging
@@ -51,6 +54,9 @@ import mx.itesm.beneficiojuventud.viewcollab.PromotionsScreenCollab
 import mx.itesm.beneficiojuventud.viewmodel.StatsViewModel
 
 class MainActivity : ComponentActivity() {
+    private val TAG = "MainActivity"
+    private var hasProcessedOAuthIntent = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val db = LocalDatabase.getDatabase(this)
@@ -65,6 +71,77 @@ class MainActivity : ComponentActivity() {
                     promotionDao = promotionDao,
                     categoryDao = categoryDao
                 )
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        Log.d(TAG, "🔵 onNewIntent llamado")
+        // CRÍTICO: Actualizar el intent de la activity
+        setIntent(intent)
+
+        // Resetear el flag cuando llega un nuevo intent
+        hasProcessedOAuthIntent = false
+        handleOAuthRedirect(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d(TAG, "🔵 onResume llamado")
+
+        // Solo procesar si no se ha procesado ya
+        if (!hasProcessedOAuthIntent) {
+            handleOAuthRedirect(intent)
+        }
+    }
+
+    private fun handleOAuthRedirect(intent: Intent?) {
+        if (intent?.data != null && intent.data?.scheme == "beneficiojoven") {
+            // Evitar procesar el mismo intent múltiples veces
+            if (hasProcessedOAuthIntent) {
+                Log.d(TAG, "⚠️ Intent OAuth ya procesado, saltando...")
+                return
+            }
+
+            Log.d(TAG, "🔵 Intent de OAuth detectado: ${intent.data}")
+            Log.d(TAG, "Scheme: ${intent.data?.scheme}")
+            Log.d(TAG, "Host: ${intent.data?.host}")
+            Log.d(TAG, "Full URI: ${intent.data}")
+
+            // Extraer parámetros para logging
+            val code = intent.data?.getQueryParameter("code")
+            val state = intent.data?.getQueryParameter("state")
+            val error = intent.data?.getQueryParameter("error")
+
+            if (error != null) {
+                Log.e(TAG, "❌ OAuth error recibido: $error")
+                Log.e(TAG, "Error description: ${intent.data?.getQueryParameter("error_description")}")
+            } else {
+                Log.d(TAG, "Code presente: ${!code.isNullOrBlank()}")
+                Log.d(TAG, "State presente: ${!state.isNullOrBlank()}")
+            }
+
+            // Marcar como procesado ANTES de llamar a Amplify
+            hasProcessedOAuthIntent = true
+
+            // Pasar el intent a Amplify para que complete el flujo OAuth
+            try {
+                Log.d(TAG, "⏳ Procesando OAuth con Amplify...")
+                Amplify.Auth.handleWebUISignInResponse(intent)
+                Log.d(TAG, "✅ Intent pasado a Amplify.Auth.handleWebUISignInResponse")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error al pasar intent a Amplify: ${e.message}", e)
+                Log.e(TAG, "Exception class: ${e.javaClass.simpleName}")
+                Log.e(TAG, "Stack trace:", e)
+                // Resetear el flag en caso de error para permitir retry
+                hasProcessedOAuthIntent = false
+            }
+        } else {
+            if (intent?.data != null) {
+                Log.d(TAG, "Intent con data pero scheme diferente: ${intent.data?.scheme}")
+            } else {
+                Log.d(TAG, "Intent sin data (normal app launch)")
             }
         }
     }
