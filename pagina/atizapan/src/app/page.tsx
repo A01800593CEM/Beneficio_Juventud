@@ -115,7 +115,7 @@ export default function HomePage() {
 
       <main>
         {/* HERO ================================================================== */}
-        <section className="relative overflow-hidden">
+        <section className="relative overflow-hidden pt-24">
           {/* Fondos animados */}
           <motion.div
             aria-hidden
@@ -131,17 +131,18 @@ export default function HomePage() {
           />
 
           <div className="absolute inset-0 -z-10 bg-gradient-to-br from-[#4B4C7E] via-[#4B4C7E] to-[#008D96]" />
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14 md:py-20 grid md:grid-cols-2 gap-12 items-center">
+          <div className="mx-auto grid pl-56 md:grid-cols-2 gap-12 items-center">
             <motion.div
+
               variants={fadeUp}
               initial="hidden"
               animate="visible"
-              className="text-white"
+              className="text-[#008D96]"
             >
               <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.05]">
                 Ahorra en grande. <br /> Descubre local.
               </h1>
-              <p className="mt-6 text-white/90 text-lg">
+              <p className="mt-6 text-red/90 text-lg">
                 Beneficio Joven es tu app de cupones para encontrar descuentos increíbles en comida,
                 moda, entretenimiento y mucho más. ¡Todo cerca de ti!
               </p>
@@ -165,16 +166,17 @@ export default function HomePage() {
             </motion.div>
 
             {/* Solo la imagen, sin marco/bordes/sombras */}
-            <div className="relative mx-auto w-full max-w-sm md:max-w-md">
-              <Image
-                src="/phone-home.svg"
-                alt="Vista previa de la app"
-                width={420}
-                height={840}
-                className="w-full h-auto select-none pointer-events-none"
-                priority
-              />
-            </div>
+            <div className="relative ml-auto w-full max-w-lg md:max-w-xl">
+  <Image
+    src="/phone-home.svg"
+    alt="Vista previa de la app"
+    width={500}
+    height={1000}
+    className="w-full h-auto select-none pointer-events-none"
+    priority
+  />
+</div>
+
           </div>
         </section>
 
