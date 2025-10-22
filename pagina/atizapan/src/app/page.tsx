@@ -154,7 +154,7 @@ export default function HomePage() {
               >
                 <a href="#" className="inline-flex" aria-label="Disponible en Google Play" title="Disponible en Google Play">
                   <Image
-                    src="/google-play-badge.png"
+                    src="/google-play-badge.svg"
                     alt="Disponible en Google Play"
                     width={180}
                     height={54}
@@ -260,7 +260,7 @@ export default function HomePage() {
               {/* Solo espacio con la imagen, sin marco */}
               <div className="relative mx-auto w-full max-w-sm">
                 <Image
-                  src="/phone-map.png"
+                  src="/phone-map.svg"
                   alt="Mapa con ofertas cercanas"
                   width={640}
                   height={1300}
@@ -296,7 +296,7 @@ export default function HomePage() {
               {/* Sin marcos/bordes/sombras */}
               <motion.div variants={fadeUp} className="relative">
                 <Image
-                  src="/phone-profile.png"
+                  src="/phone-profile.svg"
                   alt="Perfil de usuario en la app"
                   width={640}
                   height={1300}
@@ -305,7 +305,7 @@ export default function HomePage() {
               </motion.div>
               <motion.div variants={fadeUp} className="relative">
                 <Image
-                  src="/phone-preferences.png"
+                  src="/phone-preferences.svg"
                   alt="Preferencias e intereses"
                   width={640}
                   height={1300}
@@ -327,7 +327,7 @@ export default function HomePage() {
             <motion.div variants={fadeRight} className="relative mx-auto w-full max-w-sm">
               {/* Solo imagen */}
               <Image
-                src="/phone-promo.png"
+                src="/phone-promo.svg"
                 alt="Detalle de promoción y canje con QR"
                 width={640}
                 height={1300}
@@ -373,7 +373,7 @@ export default function HomePage() {
             <motion.div variants={fadeLeft} className="relative">
               {/* Espacio con la imagen, sin marco */}
               <Image
-                src="/laptop-dashboard.png"
+                src="/laptop-dashboard.svg"
                 alt="Panel para negocios"
                 width={900}
                 height={560}
