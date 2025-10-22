@@ -72,5 +72,6 @@ sealed class Screens(val route: String) {
 
     data object EditProfileCollab : Screens("edit_profile_collab")
     data object BranchManagement : Screens("branch_management")
+    data object StatusCollabSignup : Screens("status_collab_signup")
 
 }

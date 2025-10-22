@@ -137,6 +137,9 @@ dependencies {
     implementation("com.google.maps.android:maps-ktx:5.1.1")
     implementation("com.google.maps.android:maps-utils-ktx:5.1.1")
 
+    // 🔹 Mapbox Geocoding API is accessed via OkHttp (no SDK dependency needed)
+    // OkHttp is already included in Retrofit dependencies
+
     // 🔹 Seguridad (EncryptedSharedPreferences)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 

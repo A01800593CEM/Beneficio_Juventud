@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
 import { UpdateCollaboratorDto } from './dto/update-collaborator.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -7,6 +7,9 @@ import { Repository, In } from 'typeorm';
 import { Category } from 'src/categories/entities/category.entity';
 import { CollaboratorState } from './enums/collaborator-state.enum';
 import { Branch } from 'src/branch/entities/branch.entity';
+import { BranchState } from 'src/branch/enums/branch-state.enum';
+import { BranchService } from 'src/branch/branch.service';
+import { GeocodingService } from 'src/common/geocoding.service';
 import {
   calculateDistance,
   parseLocationString,
@@ -16,13 +19,19 @@ import {
 /**
  * Service responsible for managing collaborator operations.
  * Handles business logic for collaborator creation, retrieval, updates, and management.
+ * Automatically geocodes addresses when creating collaborators.
  */
 @Injectable()
 export class CollaboratorsService {
+  private readonly logger = new Logger(CollaboratorsService.name);
+
   /**
    * Creates an instance of CollaboratorsService.
    * @param collaboratorsRepository - The TypeORM repository for Collaborator entities
    * @param categoriesRepository - The TypeORM repository for Category entities
+   * @param branchRepository - The TypeORM repository for Branch entities
+   * @param branchService - The service for managing branches
+   * @param geocodingService - The service for geocoding addresses to coordinates
    */
   constructor(
     @InjectRepository(Collaborator)
@@ -33,13 +42,18 @@ export class CollaboratorsService {
 
     @InjectRepository(Branch)
     private branchRepository: Repository<Branch>,
+
+    private branchService: BranchService,
+    private geocodingService: GeocodingService,
   ) {}
   
   /**
    * Creates a new collaborator with associated categories.
+   * Automatically creates a first branch with the collaborator's initial information.
+   * Automatically geocodes the address and sets the location on the map.
    * Categories are optional during registration and can be updated later.
    * @param createCollaboratorDto - The DTO containing collaborator information
-   * @returns Promise<Collaborator> The newly created collaborator
+   * @returns Promise<Collaborator> The newly created collaborator with branch containing geocoded location
    */
   async create(createCollaboratorDto: CreateCollaboratorDto): Promise<Collaborator> {
     const { categoryIds, ...data } = createCollaboratorDto;
@@ -57,7 +71,49 @@ export class CollaboratorsService {
       categories,
     });
 
-    return this.collaboratorsRepository.save(collaborator);
+    const savedCollaborator = await this.collaboratorsRepository.save(collaborator);
+
+    // Crear automáticamente la primera sucursal con los datos del colaborador
+    let location: string | null = null;
+
+    // Intentar geocodificar la dirección automáticamente
+    try {
+      this.logger.debug(`Geocoding address for new collaborator: "${savedCollaborator.address}"`);
+
+      // Geocodificar usando la dirección completa
+      const geocodingResult = await this.geocodingService.geocodeAddress(
+        savedCollaborator.address,
+        'country:MX', // Por defecto asumir México, se puede hacer más flexible después
+      );
+
+      // Formatear coordenadas como "(longitude,latitude)" para PostgreSQL Point type
+      location = this.geocodingService.formatCoordinatesForDatabase(
+        geocodingResult.coordinates,
+      );
+
+      this.logger.debug(
+        `Successfully geocoded address for collaborator. Location: ${location}`,
+      );
+    } catch (error) {
+      // Si falla la geocodificación, continuar sin ubicación (el usuario puede actualizar después)
+      this.logger.warn(
+        `Failed to geocode address for new collaborator: ${error.message}. Branch will be created without location.`,
+      );
+      location = null;
+    }
+
+    // Crear la sucursal con la ubicación geocodificada (o null si falló)
+    await this.branchService.create({
+      collaboratorId: savedCollaborator.cognitoId,
+      name: savedCollaborator.businessName,
+      phone: savedCollaborator.phone,
+      address: savedCollaborator.address,
+      zipCode: savedCollaborator.postalCode,
+      location, // Contiene las coordenadas geocodificadas o null
+      state: BranchState.ACTIVE,
+    });
+
+    return savedCollaborator;
   }
 
   /**

@@ -34,6 +34,12 @@ import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import mx.itesm.beneficiojuventud.utils.PermissionManager
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 
 /**
  * Pantalla de Configuración con preferencias de notificaciones, correo, ubicación y accesos a acciones de cuenta.
@@ -51,11 +57,16 @@ fun Settings(
 ) {
     var selectedTab by remember { mutableStateOf(BJTab.Profile) }
     val appVersion = "1.0.01"
+    val context = LocalContext.current
+    val permissionManager = remember { PermissionManager(context) }
 
-    // Estados de switches (idealmente elevados a ViewModel si se persisten)
-    var pushEnabled by remember { mutableStateOf(false) }
-    var emailEnabled by remember { mutableStateOf(true) }
-    var locationEnabled by remember { mutableStateOf(true) }
+    // Estados que reflejan permisos reales del sistema
+    var notificationPermissionGranted by remember {
+        mutableStateOf(permissionManager.hasNotificationPermission())
+    }
+    var locationPermissionGranted by remember {
+        mutableStateOf(permissionManager.hasLocationPermission())
+    }
 
     // Estado para el diálogo de confirmación de eliminación
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -64,6 +75,25 @@ fun Settings(
     // Obtener el userId actual
     val currentUserId by authViewModel.currentUserId.collectAsState()
     val scope = rememberCoroutineScope()
+
+    // Launchers para solicitar permisos
+    val notificationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        notificationPermissionGranted = granted
+    }
+
+    val locationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        locationPermissionGranted = permissions.values.any { it }
+    }
+
+    // Verificar permisos al entrar a la pantalla
+    LaunchedEffect(Unit) {
+        notificationPermissionGranted = permissionManager.hasNotificationPermission()
+        locationPermissionGranted = permissionManager.hasLocationPermission()
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -105,27 +135,52 @@ fun Settings(
                     SettingItemSwitch(
                         icon = Icons.Outlined.NotificationsActive,
                         title = "Notificaciones Push",
-                        subtitle = "Recibe alertas de nuevos cupones",
-                        checked = pushEnabled,
-                        onCheckedChange = { pushEnabled = it }
-                    )
-                }
-                item {
-                    SettingItemSwitch(
-                        icon = Icons.Outlined.Email,
-                        title = "Ofertas por Email",
-                        subtitle = "Promociones exclusivas en tu correo",
-                        checked = emailEnabled,
-                        onCheckedChange = { emailEnabled = it }
+                        subtitle = if (notificationPermissionGranted)
+                            "Recibe alertas de nuevos cupones"
+                        else
+                            "Permiso no concedido - Toca para habilitar",
+                        checked = notificationPermissionGranted,
+                        onCheckedChange = { shouldEnable ->
+                            if (shouldEnable && !notificationPermissionGranted) {
+                                // Solicitar permiso
+                                permissionManager.getNotificationPermission()?.let {
+                                    notificationLauncher.launch(it)
+                                }
+                            } else if (!shouldEnable && notificationPermissionGranted) {
+                                // Abrir Configuración para desactivar permiso
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                }
+                                context.startActivity(intent)
+                            }
+                        },
+                        isPermissionSwitch = true
                     )
                 }
                 item {
                     SettingItemSwitch(
                         icon = Icons.Outlined.LocationOn,
                         title = "Ubicación",
-                        subtitle = "Ofertas cerca de ti",
-                        checked = locationEnabled,
-                        onCheckedChange = { locationEnabled = it }
+                        subtitle = if (locationPermissionGranted)
+                            "Ofertas cerca de ti"
+                        else
+                            "Permiso no concedido - Toca para habilitar",
+                        checked = locationPermissionGranted,
+                        onCheckedChange = { shouldEnable ->
+                            if (shouldEnable && !locationPermissionGranted) {
+                                // Solicitar permisos
+                                locationLauncher.launch(
+                                    permissionManager.getLocationPermissions()
+                                )
+                            } else if (!shouldEnable && locationPermissionGranted) {
+                                // Abrir Configuración para desactivar permiso
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                }
+                                context.startActivity(intent)
+                            }
+                        },
+                        isPermissionSwitch = true
                     )
                 }
                 item {
@@ -134,14 +189,6 @@ fun Settings(
                         title = "Cambiar Contraseña",
                         subtitle = "Actualizar credenciales de acceso",
                         onClick = { /* nav.navigate(Screens.ChangePassword.route) */ }
-                    )
-                }
-                item {
-                    SettingItemNavigable(
-                        icon = Icons.Outlined.AllInclusive,
-                        title = "Prueba de IA (esto se moverá)",
-                        subtitle = "Test",
-                        onClick = { nav.navigate(Screens.GenerarPromocion.route)}
                     )
                 }
                 item {
@@ -290,6 +337,7 @@ private fun SettingSurface(content: @Composable RowScope.() -> Unit) {
  * @param subtitle Descripción corta de la preferencia.
  * @param checked Estado actual del switch.
  * @param onCheckedChange Callback con el nuevo estado.
+ * @param isPermissionSwitch Indica si es un switch de permisos (para colorear subtítulo en rojo si está deshabilitado).
  */
 @Composable
 private fun SettingItemSwitch(
@@ -297,7 +345,8 @@ private fun SettingItemSwitch(
     title: String,
     subtitle: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    isPermissionSwitch: Boolean = false
 ) {
     SettingSurface {
         Icon(
@@ -320,7 +369,10 @@ private fun SettingItemSwitch(
                 text = subtitle,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 12.sp,
-                color = Color(0xFFAEAEAE)
+                color = if (isPermissionSwitch && !checked)
+                    Color(0xFFD32F2F)
+                else
+                    Color(0xFFAEAEAE)
             )
         }
         Switch(

@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import mx.itesm.beneficiojuventud.components.AddressAutocompleteTextField
 import mx.itesm.beneficiojuventud.model.Branch
 import mx.itesm.beneficiojuventud.model.BranchState
 
@@ -81,10 +82,19 @@ fun EditSucursalDialog(
                         label = "Nombre de la sucursal"
                     )
 
-                    StyledOutlinedTextField(
+                    AddressAutocompleteTextField(
                         value = address,
                         onValueChange = { address = it },
-                        label = "Dirección"
+                        onAddressSelected = { selectedAddress ->
+                            address = selectedAddress
+                        },
+                        onCoordinatesSelected = { latitude, longitude ->
+                            // Guardar la ubicación en formato PostgreSQL Point (longitude,latitude)
+                            location = "($longitude,$latitude)"
+                        },
+                        label = "Dirección",
+                        placeholder = "Busca la dirección...",
+                        country = "MX"
                     )
 
                     PhoneMxField(
@@ -328,9 +338,9 @@ private fun PhoneMxField(
     label: String = "Teléfono",
     isError: Boolean = false
 ) {
-    val formatted = remember(valueRaw) {
-        val digits = valueRaw.filter { it.isDigit() }.take(10)
-        buildString {
+    // Función para formatear 10 dígitos a formato: XX XXXX XXXX
+    fun formatPhoneNumber(digits: String): String {
+        return buildString {
             for (i in digits.indices) {
                 append(digits[i])
                 if (i == 1 && digits.length > 2) append(' ')
@@ -339,12 +349,27 @@ private fun PhoneMxField(
         }
     }
 
+    // Usar un estado local para el texto formateado para evitar conflictos
+    var displayValue by remember { mutableStateOf(formatPhoneNumber(valueRaw)) }
+
+    // Sincronizar cuando cambia el valor externo
+    LaunchedEffect(valueRaw) {
+        displayValue = formatPhoneNumber(valueRaw)
+    }
+
     OutlinedTextField(
-        value = formatted,
-        onValueChange = { typed ->
-            // Extrae dígitos del texto tipeado y limita a 10
-            val onlyDigits = typed.filter { it.isDigit() }.take(10)
-            onValueRawChange(onlyDigits)
+        value = displayValue,
+        onValueChange = { newDisplay ->
+            // Actualizar el display inmediatamente para mejor UX
+            displayValue = newDisplay
+
+            // Extraer solo dígitos
+            val onlyDigits = newDisplay.filter { it.isDigit() }.take(10)
+
+            // Llamar callback solo si cambiaron los dígitos reales
+            if (onlyDigits != valueRaw) {
+                onValueRawChange(onlyDigits)
+            }
         },
         label = { Text(label, color = LabelColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
         modifier = modifier.fillMaxWidth(),

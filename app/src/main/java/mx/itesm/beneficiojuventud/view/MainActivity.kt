@@ -40,6 +40,7 @@ import mx.itesm.beneficiojuventud.viewcollab.QRScannerScreen
 import mx.itesm.beneficiojuventud.viewcollab.EditProfileCollab
 import mx.itesm.beneficiojuventud.viewcollab.GeneratePromotionScreen
 import mx.itesm.beneficiojuventud.viewcollab.BranchManagementScreen
+import mx.itesm.beneficiojuventud.viewcollab.StatusCollabSignup
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
@@ -474,6 +475,9 @@ private fun AppNav(
         composable(Screens.EditProfileCollab.route) { EditProfileCollab(nav) }
         composable(Screens.BranchManagement.route) {
             BranchManagementScreen(nav = nav)
+        }
+        composable(Screens.StatusCollabSignup.route) {
+            StatusCollabSignup(nav = nav)
         }
 
         // Status Screen

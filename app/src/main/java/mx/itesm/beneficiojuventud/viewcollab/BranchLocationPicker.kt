@@ -26,6 +26,7 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import kotlinx.coroutines.tasks.await
+import mx.itesm.beneficiojuventud.components.AddressAutocompleteTextField
 
 private val DarkBlue = Color(0xFF4B4C7E)
 private val Teal = Color(0xFF008D96)
@@ -118,6 +119,7 @@ private fun BranchLocationPickerContent(
 
     var selectedPosition by remember { mutableStateOf(initialLatLng) }
     var currentUserLocation by remember { mutableStateOf<LatLng?>(null) }
+    var searchAddress by remember { mutableStateOf("") }
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(initialLatLng, 15f)
@@ -151,18 +153,42 @@ private fun BranchLocationPickerContent(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // Search address with autocomplete
+        AddressAutocompleteTextField(
+            value = searchAddress,
+            onValueChange = { searchAddress = it },
+            onAddressSelected = { selectedAddress ->
+                searchAddress = selectedAddress
+            },
+            onCoordinatesSelected = { latitude, longitude ->
+                // Actualizar la ubicación seleccionada en el mapa con las coordenadas del geocoding
+                selectedPosition = LatLng(latitude, longitude)
+                // Centrar el mapa en la nueva ubicación
+                cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                    LatLng(latitude, longitude),
+                    15f
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            label = "Búsqueda de dirección",
+            placeholder = "Busca una dirección...",
+            country = "MX"
+        )
+
         // Instructions
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color(0xFFE3F2FD)
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
             Text(
-                text = "Toca el mapa para seleccionar la ubicación de la sucursal",
+                text = "Toca el mapa para seleccionar la ubicación, o busca por dirección arriba",
                 modifier = Modifier.padding(12.dp),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,

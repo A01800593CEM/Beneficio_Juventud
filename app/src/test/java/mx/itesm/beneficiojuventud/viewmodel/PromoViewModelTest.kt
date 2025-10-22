@@ -1,5 +1,6 @@
 package mx.itesm.beneficiojuventud.viewmodel
 
+import android.app.Application
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -14,6 +15,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.Assert.*
+import io.mockk.mockk
 
 /**
  * Pruebas unitarias para PromoViewModel
@@ -36,7 +38,8 @@ class PromoViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        viewModel = PromoViewModel()
+        val mockApplication: Application = mockk()
+        viewModel = PromoViewModel(mockApplication)
     }
 
     @After
