@@ -195,7 +195,7 @@ export function CategoryBreakdownChart({ data, title }: CategoryBreakdownChartPr
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={data}
+              data={data as any[]}
               cx="50%"
               cy="50%"
               innerRadius={60}

@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: "/Users/santiserrano/Documents/GitHub/Beneficio_Juventud/pagina/atizapan",
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
   images: {
     remotePatterns: [
       {
