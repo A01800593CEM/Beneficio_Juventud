@@ -38,7 +38,10 @@ data class S3UploadResponse(
 object S3ImageUploadService {
 
     // URL del endpoint para subir imágenes al S3
-    private const val S3_UPLOAD_URL = "https://beneficiojoven.lat/api/upload"
+    // Usa la constante BASE_URL que se configura en tiempo de compilación
+    private fun getUploadUrl(): String {
+        return "${mx.itesm.beneficiojuventud.utils.Constants.BASE_URL}upload"
+    }
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS)
@@ -117,7 +120,7 @@ object S3ImageUploadService {
                 .build()
 
             val request = Request.Builder()
-                .url(S3_UPLOAD_URL)
+                .url(getUploadUrl())
                 .post(requestBody)
                 .build()
 
