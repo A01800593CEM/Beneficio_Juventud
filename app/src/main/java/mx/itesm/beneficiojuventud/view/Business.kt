@@ -1,6 +1,7 @@
 package mx.itesm.beneficiojuventud.view
 
 import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,6 +27,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import coil.request.ImageRequest
 import mx.itesm.beneficiojuventud.components.BJBottomBar
 import mx.itesm.beneficiojuventud.components.BJTab
@@ -34,6 +37,7 @@ import mx.itesm.beneficiojuventud.components.PromoImageBanner
 import mx.itesm.beneficiojuventud.components.SectionTitle
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.Promotions
+import mx.itesm.beneficiojuventud.model.promos.PromotionState
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
@@ -126,9 +130,11 @@ fun Business(
         runCatching { userViewModel.refreshFavorites(userCognitoId) }
     }
 
-    // Promos del colaborador actual
+    // Promos del colaborador actual - SOLO PROMOCIONES ACTIVAS
     val coupons: List<Promotions> = remember(promos, collabId) {
-        promos.filter { it.collaboratorId == collabId }
+        promos.filter { promo ->
+            promo.collaboratorId == collabId && promo.promotionState == PromotionState.activa
+        }
     }
 
     Scaffold(
@@ -249,16 +255,46 @@ private fun BusinessHeroHeader(
             .fillMaxWidth()
             .clip(shape)
     ) {
-        AsyncImage(
+        SubcomposeAsyncImage(
             model = ImageRequest.Builder(ctx)
                 .data(logoUrl.ifBlank { null })
-                .crossfade(true)
+                .crossfade(durationMillis = 300)
+                .size(coil.size.Size.ORIGINAL)  // Cargar en tamaño original para mejor calidad
                 .build(),
             contentDescription = name,
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp)
+                .height(180.dp),
+            loading = {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFFE8E8E8)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(40.dp),
+                        strokeWidth = 2.dp,
+                        color = Color(0xFF008D96)
+                    )
+                }
+            },
+            success = { SubcomposeAsyncImageContent() },
+            error = {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFFF0F0F0)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "No se pudo cargar la imagen",
+                        color = Color(0xFF999999),
+                        fontSize = 12.sp
+                    )
+                }
+            }
         )
 
         // Degradado overlay

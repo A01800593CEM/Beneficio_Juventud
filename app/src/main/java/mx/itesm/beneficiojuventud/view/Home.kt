@@ -48,6 +48,7 @@ import mx.itesm.beneficiojuventud.utils.UserLocation
 import mx.itesm.beneficiojuventud.viewmodel.PromoViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
+import mx.itesm.beneficiojuventud.model.collaborators.CollaboratorsState
 import androidx.compose.ui.platform.LocalContext
 
 // Insets
@@ -121,14 +122,15 @@ fun Home(
     var search by rememberSaveable { mutableStateOf("") }
     var selectedCategoryName by rememberSaveable { mutableStateOf<String?>(null) }
 
-    // Filtrado de colaboradores por búsqueda
+    // Filtrado de colaboradores por búsqueda y SOLO mostrar colaboradores ACTIVOS
     val collaborators = remember(collaboratorsRaw, search) {
         if (search.isBlank()) {
-            collaboratorsRaw
+            collaboratorsRaw.filter { it.state == CollaboratorsState.activo }
         } else {
             collaboratorsRaw.filter { collab ->
-                collab.businessName?.contains(search, ignoreCase = true) == true ||
-                collab.description?.contains(search, ignoreCase = true) == true
+                collab.state == CollaboratorsState.activo &&
+                (collab.businessName?.contains(search, ignoreCase = true) == true ||
+                collab.description?.contains(search, ignoreCase = true) == true)
             }
         }
     }

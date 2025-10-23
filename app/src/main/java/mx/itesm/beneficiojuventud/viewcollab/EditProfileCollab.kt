@@ -73,6 +73,7 @@ fun EditProfileCollab(
     var isLoadingImage by remember { mutableStateOf(false) }
     var isUploading by remember { mutableStateOf(false) }
     var avatarUri by remember { mutableStateOf<Uri?>(null) }
+    var s3ImageUrl by remember { mutableStateOf<String?>(null) }  // URL de S3 para enviar al servidor
 
     // Campos de formulario
     var contactName by rememberSaveable { mutableStateOf("") }
@@ -140,6 +141,7 @@ fun EditProfileCollab(
                     userId = s3Id,
                     onSuccess = { url ->
                         profileImageUrl = url
+                        s3ImageUrl = url  // Guardar URL de S3 para enviar al servidor
                         scope.launch { snackbarHostState.showSnackbar("Foto de perfil actualizada correctamente") }
                     },
                     onError = { error ->
@@ -350,12 +352,15 @@ fun EditProfileCollab(
                                 // Envía solo IDs (tu backend los usa para actualizar)
                                 categoryIds = if (selectedCategoryIds.isEmpty()) null else selectedCategoryIds.toList(),
                                 // Estado
-                                state = selectedState
+                                state = selectedState,
+                                // URL de imagen de S3 (si se subió una imagen nueva)
+                                logoUrl = s3ImageUrl
                             )
 
                             Log.d("EditProfileCollab", "Guardando cambios...")
                             Log.d("EditProfileCollab", "selectedCategoryIds: $selectedCategoryIds")
                             Log.d("EditProfileCollab", "categoryIds en Collaborator: ${update.categoryIds}")
+                            Log.d("EditProfileCollab", "logoUrl en Collaborator: ${update.logoUrl}")
 
                             justSaved = true
                             scope.launch {

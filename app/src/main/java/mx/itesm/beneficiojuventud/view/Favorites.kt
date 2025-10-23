@@ -49,6 +49,8 @@ import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
 
 // 🚩 IMPORTA la card horizontal (la del screenshot)
 import mx.itesm.beneficiojuventud.components.MerchantCardHorizontalFav
+import mx.itesm.beneficiojuventud.model.promos.PromotionState
+import mx.itesm.beneficiojuventud.model.collaborators.CollaboratorsState
 
 // ------------------------------------------------------------
 // Ahora con cognitoId (String) como ID del colaborador
@@ -109,13 +111,23 @@ fun Favorites(
         }
     }
 
-    // ✅ Mostrar SOLO favoritos (no mezclar con reservados)
+    // ✅ Mostrar SOLO favoritos ACTIVOS (no mezclar con reservados)
     // Los favoritos y las reservas son independientes
     // Pero ordenar: reservados (PENDING) primero, luego favoritos sin reserva
+    // FILTRO: Solo mostrar promociones con estado "activa" (no inactiva ni finalizada)
     val allCoupons = remember(favoritePromos, reservedPromoIds) {
-        val reserved = favoritePromos.filter { it.promotionId?.let { id -> id in reservedPromoIds } ?: false }
-        val notReserved = favoritePromos.filter { it.promotionId?.let { id -> id !in reservedPromoIds } ?: true }
+        // Filtrar solo promociones activas
+        val activePromos = favoritePromos.filter { promo ->
+            promo.promotionState == PromotionState.activa
+        }
+        val reserved = activePromos.filter { it.promotionId?.let { id -> id in reservedPromoIds } ?: false }
+        val notReserved = activePromos.filter { it.promotionId?.let { id -> id !in reservedPromoIds } ?: true }
         reserved + notReserved
+    }
+
+    // FILTRO: Solo mostrar colaboradores activos
+    val activeCollabs = remember(favoriteCollabs) {
+        favoriteCollabs.filter { it.state == CollaboratorsState.activo }
     }
 
     Scaffold(
@@ -201,7 +213,7 @@ fun Favorites(
             // Contenido según modo
             when (mode) {
                 FavoriteMode.Businesses -> {
-                    if (favoriteCollabs.isEmpty()) {
+                    if (activeCollabs.isEmpty()) {
                         item {
                             EmptyState(
                                 title = "Sin negocios favoritos",
@@ -210,7 +222,7 @@ fun Favorites(
                         }
                     } else {
                         items(
-                            items = favoriteCollabs,
+                            items = activeCollabs,
                             key = { it.cognitoId ?: it.businessName ?: it.email ?: it.hashCode().toString() }
                         ) { collab: Collaborator ->
                             val isFav = favoriteCollabIds.contains(collab.cognitoId.orEmpty())

@@ -97,8 +97,9 @@ fun MerchantCardHorizontalFav(
                 SubcomposeAsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl.takeIf { !it.isNullOrBlank() } ?: fallbackRes)
-                        .crossfade(true)
+                        .crossfade(durationMillis = 300)
                         .error(fallbackRes)
+                        .size(coil.size.Size.ORIGINAL)  // Cargar en tamaño original para mejor calidad
                         .build(),
                     contentDescription = name,
                     contentScale = ContentScale.Crop,
@@ -223,8 +224,9 @@ fun MerchantCardPosterFav(
                 SubcomposeAsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl.takeIf { !it.isNullOrBlank() } ?: fallbackRes)
-                        .crossfade(true)
+                        .crossfade(durationMillis = 300)
                         .error(fallbackRes)
+                        .size(coil.size.Size.ORIGINAL)  // Cargar en tamaño original para mejor calidad
                         .build(),
                     contentDescription = name,
                     contentScale = ContentScale.Crop,

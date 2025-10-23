@@ -189,8 +189,9 @@ fun PromoImageBanner(
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(dataToLoad)
-                    .crossfade(true)
+                    .crossfade(durationMillis = 300)
                     .error(R.drawable.no_promo_img)
+                    .size(coil.size.Size.ORIGINAL)  // Cargar en tamaño original para mejor calidad
                     .build(),
                 contentDescription = title,
                 contentScale = ContentScale.Crop,
@@ -332,8 +333,9 @@ fun PromoImageBannerFav(
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(dataToLoad)
-                    .crossfade(true)
+                    .crossfade(durationMillis = 300)
                     .error(R.drawable.no_promo_img)
+                    .size(coil.size.Size.ORIGINAL)  // Cargar en tamaño original para mejor calidad
                     .build(),
                 contentDescription = title,
                 contentScale = ContentScale.Crop,
