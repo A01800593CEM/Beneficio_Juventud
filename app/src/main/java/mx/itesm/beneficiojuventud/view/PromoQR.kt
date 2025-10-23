@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -635,6 +636,36 @@ fun PromoQR(
                         }
                     }
 
+                    item {
+                        // Botón de visitar negocio
+                        promo.collaboratorId?.let { collabId ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFFF0F9FF))
+                                    .clickable { nav.navigate(Screens.Business.createRoute(collabId)) }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Visitar Negocio",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF0284C7)
+                                )
+                                Text(
+                                    text = "→",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0284C7)
+                                )
+                            }
+                        }
+                    }
+
                     item { InfoCardApi(detail, texts) }
 
                     item {
@@ -1091,7 +1122,180 @@ private fun getTimeUntilCooldownEnd(cooldownUntilDate: String?): Pair<Long, Long
 @Composable
 private fun PromoQRPreview() {
     BeneficioJuventudTheme {
-        val nav = rememberNavController()
-        PromoQR(nav = nav, promotionId = 123, cognitoId = "a1fbe500-a091-70e3-5a7b-3b1f4537f10f")
+        val sampleDetail = PromoDetailUi(
+            bannerUrlOrRes = R.drawable.no_promo_img,
+            title = "2x1 en hamburguesas",
+            merchant = "Burger King",
+            discountLabel = "2x1",
+            validUntil = "31/12/2025",
+            description = "Compra una hamburguesa Whopper y llévate otra completamente gratis. Válido de lunes a viernes.",
+            terms = "Tipo: Multicompra • Estado: Activa",
+            stockLabel = "Usos disponibles: 5",
+            theme = PromoTheme.light,
+            accentColor = Color(0xFF008D96),
+            isBookable = false,
+            dailyLimitPerUser = null
+        )
+
+        PromoQRContentPreview(detail = sampleDetail)
+    }
+}
+
+@Composable
+private fun PromoQRContentPreview(detail: PromoDetailUi) {
+    val currentTheme = detail.theme
+    val texts = textColorsFor(currentTheme)
+    val gradientBrush = bannerGradient(currentTheme)
+    var isFavoriteLocal by remember { mutableStateOf(false) }
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            BJTopHeader(
+                title = "Promoción",
+                nav = rememberNavController()
+            )
+        },
+        bottomBar = {
+            BJBottomBar(
+                selected = BJTab.Coupons,
+                onSelect = { }
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            contentPadding = PaddingValues(bottom = 96.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .fillMaxWidth()
+                        .height(210.dp),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Box(Modifier.fillMaxSize()) {
+                        Image(
+                            painter = painterResource(id = detail.bannerUrlOrRes as Int),
+                            contentDescription = detail.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer(alpha = 0.92f)
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .drawWithCache {
+                                    onDrawWithContent {
+                                        drawContent()
+                                        drawRect(brush = gradientBrush)
+                                    }
+                                }
+                        )
+
+                        if (detail.isBookable) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(12.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(0xFFFFF3CD))
+                                    .border(BorderStroke(1.dp, Color(0xFFFFEEA8)), RoundedCornerShape(16.dp))
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "Stock limitado",
+                                    color = Color(0xFF8A6D3B),
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(24.dp),
+                            color = Color.White.copy(alpha = 0.92f),
+                            border = BorderStroke(1.dp, Color(0xFFE5E5E5)),
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(12.dp)
+                        ) {
+                            IconToggleButton(
+                                checked = isFavoriteLocal,
+                                onCheckedChange = { isFavoriteLocal = !isFavoriteLocal }
+                            ) {
+                                Icon(
+                                    imageVector = if (isFavoriteLocal) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                    contentDescription = if (isFavoriteLocal) "Quitar de favoritos" else "Agregar a favoritos",
+                                    tint = if (isFavoriteLocal) Color(0xFFE53935) else Color(0xFF505050),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = detail.merchant,
+                                color = texts.subtitleColor.copy(alpha = 0.95f),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = detail.title,
+                                color = texts.titleColor,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 28.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth(0.70f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            item { InfoCardApi(detail, texts) }
+
+            item {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = detail.stockLabel,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF3C3C3C),
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+
+            item {
+                Spacer(Modifier.height(8.dp))
+                MainButton(
+                    text = "Ver QR",
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    onClick = { }
+                )
+            }
+
+            item {
+                Spacer(Modifier.height(20.dp))
+                Text(
+                    "Versión 1.0.12",
+                    color = Color.Gray,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+        }
     }
 }
