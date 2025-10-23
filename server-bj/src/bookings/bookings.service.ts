@@ -8,10 +8,10 @@ import { BookStatus } from './enums/book-status.enum';
 
 @Injectable()
 export class BookingsService {
-  // Tiempo de expiración automática en segundos (10 segundos para pruebas rápidas)
-  private readonly AUTO_EXPIRE_SECONDS = 10;
-  // Tiempo de cooldown en segundos (10 segundos para pruebas rápidas)
-  private readonly COOLDOWN_SECONDS = 10;
+  // Tiempo de expiración automática en segundos
+  private readonly AUTO_EXPIRE_SECONDS = 20;
+  // Tiempo de cooldown en segundos
+  private readonly COOLDOWN_SECONDS = 15;
 
   constructor(
     @InjectRepository(Booking)
