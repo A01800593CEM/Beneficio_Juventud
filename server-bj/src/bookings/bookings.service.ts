@@ -8,10 +8,10 @@ import { BookStatus } from './enums/book-status.enum';
 
 @Injectable()
 export class BookingsService {
-  // Tiempo de expiración automática en minutos (1 minuto para pruebas)
-  private readonly AUTO_EXPIRE_MINUTES = 1;
-  // Tiempo de cooldown en minutos (1 minuto para pruebas)
-  private readonly COOLDOWN_MINUTES = 1;
+  // Tiempo de expiración automática en segundos (10 segundos para pruebas rápidas)
+  private readonly AUTO_EXPIRE_SECONDS = 10;
+  // Tiempo de cooldown en segundos (10 segundos para pruebas rápidas)
+  private readonly COOLDOWN_SECONDS = 10;
 
   constructor(
     @InjectRepository(Booking)
@@ -47,19 +47,24 @@ export class BookingsService {
 
       // Si el cooldown ya expiró, reutilizar el booking existente (cambiar status a PENDING)
       if (lastBooking.status === BookStatus.CANCELLED) {
+        const now = new Date();
         lastBooking.status = BookStatus.PENDING;
         lastBooking.cooldownUntil = null;
         lastBooking.cancelledDate = null;
-        const now = new Date();
-        const autoExpireDate = new Date(now.getTime() + this.AUTO_EXPIRE_MINUTES * 60 * 1000);
+        lastBooking.bookingDate = now; // Actualizar fecha de reserva al momento actual
+        const autoExpireDate = new Date(now.getTime() + this.AUTO_EXPIRE_SECONDS * 1000);
         lastBooking.autoExpireDate = autoExpireDate;
+        // Actualizar limitUseDate si viene en el DTO
+        if (createBookingDto.limitUseDate) {
+          lastBooking.limitUseDate = createBookingDto.limitUseDate;
+        }
         return this.bookingsRepository.save(lastBooking);
       }
     }
 
     // Crear la reserva con fechas de expiración y sin cooldown inicial
     const now = new Date();
-    const autoExpireDate = new Date(now.getTime() + this.AUTO_EXPIRE_MINUTES * 60 * 1000);
+    const autoExpireDate = new Date(now.getTime() + this.AUTO_EXPIRE_SECONDS * 1000);
 
     const booking = this.bookingsRepository.create({
       ...createBookingDto,
@@ -95,9 +100,9 @@ export class BookingsService {
     // Si se está cancelando la reserva, guardar la fecha de cancelación e iniciar cooldown
     if (updateBookingDto.status === BookStatus.CANCELLED && !booking.cancelledDate) {
       booking.cancelledDate = new Date();
-      // Iniciar cooldown por 1 minuto (para pruebas)
+      // Iniciar cooldown por 10 segundos (para pruebas rápidas)
       const cooldownStart = new Date();
-      booking.cooldownUntil = new Date(cooldownStart.getTime() + this.COOLDOWN_MINUTES * 60 * 1000);
+      booking.cooldownUntil = new Date(cooldownStart.getTime() + this.COOLDOWN_SECONDS * 1000);
     }
 
     return this.bookingsRepository.save(booking);

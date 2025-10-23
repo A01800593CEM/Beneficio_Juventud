@@ -1004,7 +1004,7 @@ private fun RedeemedCardInner() {
 // ---------- Helpers de Expiración y Cooldown ----------
 
 /**
- * Verifica si una reserva ha expirado (1 minuto desde bookingDate para pruebas)
+ * Verifica si una reserva ha expirado (10 segundos desde bookingDate para pruebas rápidas)
  */
 private fun isBookingExpired(bookingDate: String?): Boolean {
     if (bookingDate.isNullOrBlank()) return false
@@ -1012,8 +1012,8 @@ private fun isBookingExpired(bookingDate: String?): Boolean {
         val booking = parseDate(bookingDate) ?: return false
         val now = Date()
         val diffMillis = now.time - booking.time
-        val minute1InMillis = 1L * 60 * 1000  // 1 minuto para pruebas
-        diffMillis >= minute1InMillis
+        val seconds10InMillis = 10L * 1000  // 10 segundos para pruebas rápidas
+        diffMillis >= seconds10InMillis
     } catch (e: Exception) {
         false
     }
@@ -1021,7 +1021,7 @@ private fun isBookingExpired(bookingDate: String?): Boolean {
 
 /**
  * Calcula el tiempo restante hasta la expiración
- * Retorna pair de (minutos, segundos) para pruebas
+ * Retorna pair de (minutos, segundos) para pruebas rápidas
  */
 private fun getTimeUntilExpiration(bookingDate: String?): Pair<Long, Long> {
     if (bookingDate.isNullOrBlank()) return Pair(0L, 0L)
@@ -1029,8 +1029,8 @@ private fun getTimeUntilExpiration(bookingDate: String?): Pair<Long, Long> {
         val booking = parseDate(bookingDate) ?: return Pair(0L, 0L)
         val now = Date()
         val diffMillis = now.time - booking.time
-        val minute1InMillis = 1L * 60 * 1000  // 1 minuto para pruebas
-        val remainingMillis = maxOf(0L, minute1InMillis - diffMillis)
+        val seconds10InMillis = 10L * 1000  // 10 segundos para pruebas rápidas
+        val remainingMillis = maxOf(0L, seconds10InMillis - diffMillis)
 
         val minutes = remainingMillis / (1000 * 60)
         val seconds = (remainingMillis % (1000 * 60)) / 1000
