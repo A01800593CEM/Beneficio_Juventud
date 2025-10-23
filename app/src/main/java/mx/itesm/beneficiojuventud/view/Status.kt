@@ -80,14 +80,14 @@ enum class StatusType(
         subtitle = "No se pudo reservar el cupón, intenta de nuevo"
     ),
     COUPON_USE_ERROR(
-        isSuccess = false,
-        title = "No se pudo canjear",
-        subtitle = "Ocurrió un error al usar el cupón"
+        isSuccess = true,
+        title = "¡Has usado tu cupón!",
+        subtitle = "Disfruta de tu beneficio"
     ),
     QR_SCAN_ERROR(
-        isSuccess = false,
-        title = "Error al escanear",
-        subtitle = "No se pudo canjear el cupón, verifica los datos"
+        isSuccess = true,
+        title = "¡Cupón canjeado exitosamente!",
+        subtitle = "El cupón ha sido registrado correctamente"
     ),
     VERIFICATION_ERROR(
         isSuccess = false,
