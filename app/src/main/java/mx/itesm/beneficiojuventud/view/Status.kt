@@ -103,6 +103,26 @@ enum class StatusType(
         isSuccess = false,
         title = "Error al actualizar",
         subtitle = "No se pudo guardar tu información, intenta de nuevo"
+    ),
+    PROMOTION_CREATION_SUCCESS(
+        isSuccess = true,
+        title = "¡Promoción creada exitosamente!",
+        subtitle = "Tu nueva promoción ya está disponible"
+    ),
+    PROMOTION_UPDATE_SUCCESS(
+        isSuccess = true,
+        title = "¡Promoción actualizada exitosamente!",
+        subtitle = "Los cambios se han guardado correctamente"
+    ),
+    PROMOTION_CREATION_ERROR(
+        isSuccess = false,
+        title = "Error al crear promoción",
+        subtitle = "No se pudo crear la promoción, intenta de nuevo"
+    ),
+    PROMOTION_UPDATE_ERROR(
+        isSuccess = false,
+        title = "Error al actualizar promoción",
+        subtitle = "No se pudo actualizar la promoción, intenta de nuevo"
     )
 }
 

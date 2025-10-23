@@ -181,6 +181,7 @@ fun PromotionsScreenCollab(
             sheetState = sheetState
         ) {
             EditPromotionSheet(
+                nav = nav,
                 promotion = selectedPromoForEdit!!,
                 onClose = {
                     scope.launch {

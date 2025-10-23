@@ -94,6 +94,7 @@ fun GeneratePromotionScreen(nav: NavHostController) {
             sheetState = sheetStateManual
         ) {
             NewPromotionSheet(
+                nav = nav,
                 onClose = {
                     scope.launch { sheetStateManual.hide() }.invokeOnCompletion {
                         if (!sheetStateManual.isVisible) {

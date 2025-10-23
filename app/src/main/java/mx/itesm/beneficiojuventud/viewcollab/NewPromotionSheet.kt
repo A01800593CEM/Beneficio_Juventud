@@ -24,8 +24,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.components.MainButton
+import mx.itesm.beneficiojuventud.view.Screens
+import mx.itesm.beneficiojuventud.view.StatusType
 import mx.itesm.beneficiojuventud.components.ImageUploadSection
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.promos.PromotionType
@@ -52,6 +55,7 @@ private val Purple = Color(0xFF6200EE)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewPromotionSheet(
+    nav: NavHostController,
     onClose: () -> Unit,
     viewModel: PromoViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel(),
@@ -832,12 +836,28 @@ fun NewPromotionSheet(
                         }
                     }.onSuccess {
                             showError = false
+                            // Cerrar el modal primero
                             onClose()
+                            // Navegar a pantalla de éxito
+                            val statusType = if (isEditMode) {
+                                StatusType.PROMOTION_UPDATE_SUCCESS
+                            } else {
+                                StatusType.PROMOTION_CREATION_SUCCESS
+                            }
+                            nav.navigate(
+                                Screens.Status.createRoute(
+                                    statusType,
+                                    Screens.PromotionsScreen.createRoute(collaboratorId)
+                                )
+                            ) {
+                                launchSingleTop = true
+                                restoreState = false
+                            }
                         }
                         .onFailure { error ->
-                            errorMessage = "Error al crear promoción: ${error.message}"
+                            errorMessage = "Error al ${if (isEditMode) "actualizar" else "crear"} promoción: ${error.message}"
                             showError = true
-                            android.util.Log.e("NewPromotionSheet", "Error creating promotion", error)
+                            android.util.Log.e("NewPromotionSheet", "Error ${if (isEditMode) "updating" else "creating"} promotion", error)
                         }
                 }
             }
@@ -1036,12 +1056,14 @@ private fun PromotionStateChip(
  */
 @Composable
 fun EditPromotionSheet(
+    nav: NavHostController,
     promotion: Promotions,
     onClose: () -> Unit,
     viewModel: PromoViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel()
 ) {
     NewPromotionSheet(
+        nav = nav,
         onClose = onClose,
         viewModel = viewModel,
         authViewModel = authViewModel,
