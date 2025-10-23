@@ -111,8 +111,11 @@ fun Favorites(
 
     // ✅ Mostrar SOLO favoritos (no mezclar con reservados)
     // Los favoritos y las reservas son independientes
-    val allCoupons = remember(favoritePromos) {
-        favoritePromos.toList()
+    // Pero ordenar: reservados (PENDING) primero, luego favoritos sin reserva
+    val allCoupons = remember(favoritePromos, reservedPromoIds) {
+        val reserved = favoritePromos.filter { it.promotionId?.let { id -> id in reservedPromoIds } ?: false }
+        val notReserved = favoritePromos.filter { it.promotionId?.let { id -> id !in reservedPromoIds } ?: true }
+        reserved + notReserved
     }
 
     Scaffold(
