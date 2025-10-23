@@ -128,17 +128,10 @@ class SavedCouponRepository(
                 RemoteServiceUser.favoritePromotion(booking.promotionId!!, booking.userId!!)
                 Log.d("CouponRepository", "✅ Auto-favorited promotion ${booking.promotionId}")
 
-                // Also ensure the favorite is saved to local cache by reloading favorites
-                try {
-                    val favPromos = RemoteServiceUser.getFavoritePromotions(booking.userId!!)
-                    promotionDao.deleteAllFavorites()
-                    favPromos.forEach { fav ->
-                        promotionDao.insertPromotions(fav.toEntity(isReserved = false))
-                    }
-                    Log.d("CouponRepository", "✅ Reloaded favorites after auto-favorite")
-                } catch (favCacheError: Exception) {
-                    Log.w("CouponRepository", "⚠️ Failed to reload favorites after auto-favorite", favCacheError)
-                }
+                // Just ensure this specific promotion is saved as a favorite in the local cache
+                // Don't reload all favorites (that would erase manually added/removed favorites)
+                promotionDao.insertPromotions(promo.toEntity(isReserved = false))
+                Log.d("CouponRepository", "✅ Saved auto-favorited promotion to local cache")
             } catch (favError: Exception) {
                 Log.w("CouponRepository", "⚠️ Failed to auto-favorite promotion (may already be favorited)", favError)
                 // Non-critical error, don't throw
