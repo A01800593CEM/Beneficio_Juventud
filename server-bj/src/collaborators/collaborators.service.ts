@@ -133,11 +133,13 @@ export class CollaboratorsService {
    * @throws NotFoundException if collaborator is not found
    */
   async findOne(cognitoId: string): Promise<Collaborator | null> {
-    const collaborator = this.collaboratorsRepository.findOne({ 
+    const collaborator = this.collaboratorsRepository.findOne({
       where: { cognitoId,
                state: CollaboratorState.ACTIVE
-       }});
-        
+       },
+      relations: ['categories']
+    });
+
     if (!collaborator) {
       throw new NotFoundException(`User with id ${cognitoId} not found`);
     }

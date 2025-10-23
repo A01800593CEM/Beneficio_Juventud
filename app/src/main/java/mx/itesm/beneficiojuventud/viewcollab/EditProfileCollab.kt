@@ -40,6 +40,7 @@ import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.model.categories.Category
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
+import mx.itesm.beneficiojuventud.viewcollab.ProfileDropdownField
 import mx.itesm.beneficiojuventud.model.collaborators.CollaboratorsState
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
 import mx.itesm.beneficiojuventud.view.Screens
@@ -111,6 +112,7 @@ fun EditProfileCollab(
         currentUserId?.let { id ->
             // Cargar colaborador
             runCatching { collabViewModel.getCollaboratorById(id) }
+                .onSuccess { Log.d("EditProfileCollab", "Collaborator loaded: categories=${collab.categories?.map { it.id }}") }
                 .onFailure { Log.e("EditProfileCollab", "Error loading collaborator: ${it.message}") }
         }
     }
@@ -168,8 +170,16 @@ fun EditProfileCollab(
             (collab.categoryIds?.toSet()
                 ?: collab.categories?.mapNotNull { it.id }?.toSet()
                 ?: emptySet())
+
+        Log.d("EditProfileCollab", "Setting categories from collab:")
+        Log.d("EditProfileCollab", "  collab.categoryIds: ${collab.categoryIds}")
+        Log.d("EditProfileCollab", "  collab.categories: ${collab.categories?.map { "${it.id}:${it.name}" }}")
+        Log.d("EditProfileCollab", "  selectedCategoryIds: $selectedCategoryIds")
+
         categoryDisplay = collab.categories?.joinToString(" · ") { it.name ?: "" }
             ?: ""
+
+        Log.d("EditProfileCollab", "  categoryDisplay: $categoryDisplay")
 
         val s3Id = collab.cognitoId ?: currentUserId
         when {
@@ -354,9 +364,16 @@ fun EditProfileCollab(
                                         Log.d("EditProfileCollab", "Update successful, reloading collaborator...")
                                         // Reload the collaborator to get updated categories
                                         runCatching { collabViewModel.getCollaboratorById(id) }
-                                            .onFailure { Log.e("EditProfileCollab", "Error reloading: ${it.message}") }
-                                        saveSuccess = true
-                                        saveError = null
+                                            .onSuccess {
+                                                Log.d("EditProfileCollab", "Collaborator reloaded successfully with categories")
+                                                saveSuccess = true
+                                                saveError = null
+                                            }
+                                            .onFailure {
+                                                Log.e("EditProfileCollab", "Error reloading: ${it.message}")
+                                                saveSuccess = false
+                                                saveError = "Error al cargar datos actualizados: ${it.message}"
+                                            }
                                     }
                                     .onFailure {
                                         saveSuccess = false
