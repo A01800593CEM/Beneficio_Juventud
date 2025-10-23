@@ -455,10 +455,10 @@ fun PromoQR(
                 }
             }
 
-            // Verificar cooldown si hay una reserva cancelada
-            val cancelled = cancelledBooking?.cancelledDate
-            inCooldown = isInCooldown(cancelled)
-            cooldownTime = getTimeUntilCooldownEnd(cancelled)
+            // Verificar cooldown usando la fecha del servidor (cooldownUntil)
+            val cooldownUntil = cancelledBooking?.cooldownUntil
+            inCooldown = isInCooldown(cooldownUntil)
+            cooldownTime = getTimeUntilCooldownEnd(cooldownUntil)
 
             kotlinx.coroutines.delay(1000) // Actualizar cada segundo
         }
@@ -1056,30 +1056,27 @@ private fun formatTimeRemaining(minutes: Long, seconds: Long): String {
 /**
  * Verifica si una reserva cancelada está en período de cooldown (1 minuto desde cancelación para pruebas)
  */
-private fun isInCooldown(cancelledDate: String?): Boolean {
-    if (cancelledDate.isNullOrBlank()) return false
+private fun isInCooldown(cooldownUntilDate: String?): Boolean {
+    if (cooldownUntilDate.isNullOrBlank()) return false
     return try {
-        val cancelled = parseDate(cancelledDate) ?: return false
+        val cooldownUntil = parseDate(cooldownUntilDate) ?: return false
         val now = Date()
-        val diffMillis = now.time - cancelled.time
-        val minute1InMillis = 1L * 60 * 1000  // 1 minuto cooldown para pruebas
-        diffMillis < minute1InMillis
+        // Si ahora es antes de la fecha de fin del cooldown, aún estamos en cooldown
+        now < cooldownUntil
     } catch (e: Exception) {
         false
     }
 }
 
 /**
- * Calcula el tiempo restante de cooldown en formato (minutos, segundos) para pruebas
+ * Calcula el tiempo restante de cooldown en formato (minutos, segundos) basado en cooldownUntil del servidor
  */
-private fun getTimeUntilCooldownEnd(cancelledDate: String?): Pair<Long, Long> {
-    if (cancelledDate.isNullOrBlank()) return Pair(0L, 0L)
+private fun getTimeUntilCooldownEnd(cooldownUntilDate: String?): Pair<Long, Long> {
+    if (cooldownUntilDate.isNullOrBlank()) return Pair(0L, 0L)
     return try {
-        val cancelled = parseDate(cancelledDate) ?: return Pair(0L, 0L)
+        val cooldownUntil = parseDate(cooldownUntilDate) ?: return Pair(0L, 0L)
         val now = Date()
-        val diffMillis = now.time - cancelled.time
-        val minute1InMillis = 1L * 60 * 1000  // 1 minuto para pruebas
-        val remainingMillis = maxOf(0L, minute1InMillis - diffMillis)
+        val remainingMillis = maxOf(0L, cooldownUntil.time - now.time)
 
         val minutes = remainingMillis / (1000 * 60)
         val seconds = (remainingMillis % (1000 * 60)) / 1000

@@ -11,7 +11,9 @@ fun BookingEntity.toBooking(): Booking {
         bookingDate = this.bookingDate,
         limitUseDate = this.limitUseDate,
         status = this.status,
-        cancelledDate = this.cancelledDate
+        cancelledDate = this.cancelledDate,
+        autoExpireDate = this.autoExpireDate,
+        cooldownUntil = this.cooldownUntil
     )
 }
 
