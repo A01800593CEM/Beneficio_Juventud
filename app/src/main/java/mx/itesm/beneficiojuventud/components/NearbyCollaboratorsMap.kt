@@ -1,6 +1,8 @@
 package mx.itesm.beneficiojuventud.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -56,16 +58,6 @@ fun NearbyCollaboratorsMap(
                 minZoomPreference = 10f
             )
         ) {
-            // Marcador de ubicación del usuario
-            userLocation?.let {
-                Marker(
-                    state = MarkerState(position = userLatLng),
-                    title = "Tu ubicación",
-                    snippet = "Estás aquí",
-                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
-                )
-            }
-
             // Marcadores de colaboradores cercanos
             nearbyCollaborators.forEach { collaborator ->
                 collaborator.closestBranch?.location?.let { locationStr ->
@@ -82,15 +74,15 @@ fun NearbyCollaboratorsMap(
                                 onCollaboratorMarkerClick(collaborator)
                                 true
                             },
-                            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)
+                            icon = BitmapDescriptorFactory.defaultMarker(230f) // Color 4B4C7E (azul oscuro)
                         )
 
                         // Círculo alrededor del marcador
                         Circle(
                             center = position,
                             radius = 50.0, // 50 metros
-                            fillColor = Color.Red.copy(alpha = 0.1f),
-                            strokeColor = Color.Red,
+                            fillColor = Color(0xFF4B4C7E).copy(alpha = 0.1f),
+                            strokeColor = Color(0xFF4B4C7E),
                             strokeWidth = 2f
                         )
                     }
@@ -200,40 +192,31 @@ fun CombinedNearbyMap(
                 isMyLocationEnabled = userLocation != null
             )
         ) {
-            // Marcador del usuario
-            userLocation?.let {
-                Marker(
-                    state = MarkerState(position = userLatLng),
-                    title = "Tu ubicación",
-                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
-                )
-            }
-
-            // Marcadores de promociones (azul)
+            // Marcadores de promociones (color 008D96 - cyan/teal)
             nearbyPromotions.forEach { promotion ->
                 promotion.closestBranch?.location?.let { locationStr ->
                     parseLocationString(locationStr)?.let { (lat, lon) ->
                         Marker(
                             state = MarkerState(position = LatLng(lat, lon)),
-                            title = "🎟️ ${promotion.title}",
+                            title = promotion.title ?: "Promoción",
                             snippet = promotion.businessName,
                             onClick = { onPromotionMarkerClick(promotion); true },
-                            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)
+                            icon = BitmapDescriptorFactory.defaultMarker(180f) // Color 008D96
                         )
                     }
                 }
             }
 
-            // Marcadores de colaboradores (naranja)
+            // Marcadores de colaboradores (color 4B4C7E - azul oscuro)
             nearbyCollaborators.forEach { collaborator ->
                 collaborator.closestBranch?.location?.let { locationStr ->
                     parseLocationString(locationStr)?.let { (lat, lon) ->
                         Marker(
                             state = MarkerState(position = LatLng(lat, lon)),
-                            title = "🏢 ${collaborator.businessName}",
+                            title = collaborator.businessName ?: "Colaborador",
                             snippet = collaborator.closestBranch?.name,
                             onClick = { onCollaboratorMarkerClick(collaborator); true },
-                            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)
+                            icon = BitmapDescriptorFactory.defaultMarker(230f) // Color 4B4C7E
                         )
                     }
                 }
@@ -269,10 +252,44 @@ fun CombinedNearbyMap(
                         text = "Cerca de ti:",
                         style = MaterialTheme.typography.labelMedium
                     )
-                    Text(
-                        text = "🎟️ ${nearbyPromotions.size} promociones • 🏢 ${nearbyCollaborators.size} negocios",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Indicador de promociones
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(Color(0xFF008D96), CircleShape)
+                            )
+                            Text(
+                                text = "${nearbyPromotions.size} promociones",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+
+                        Text("•", style = MaterialTheme.typography.bodyMedium)
+
+                        // Indicador de negocios
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(Color(0xFF4B4C7E), CircleShape)
+                            )
+                            Text(
+                                text = "${nearbyCollaborators.size} negocios",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
                 }
             }
         }

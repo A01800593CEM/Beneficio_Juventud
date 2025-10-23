@@ -264,7 +264,7 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
                                 onFailure = { e ->
                                     _authState.value = _authState.value.copy(
                                         isSuccess = false,
-                                        error = e.message ?: "No se pudo iniciar sesión automáticamente"
+                                        error = translateAuthError(e.message ?: "No se pudo iniciar sesión automáticamente")
                                     )
                                     clearPendingCredentials()
                                 }
@@ -276,7 +276,7 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
                     _authState.value = _authState.value.copy(
                         isLoading = false,
                         isSuccess = false,
-                        error = e.message ?: "Código de confirmación inválido"
+                        error = translateAuthError(e.message ?: "Código de confirmación inválido")
                     )
                 }
             )
@@ -304,7 +304,7 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
                     _authState.update {
                         it.copy(
                             isLoading = false,
-                            error = e.message ?: "No se pudo reenviar el código",
+                            error = translateAuthError(e.message ?: "No se pudo reenviar el código"),
                             cognitoSub = priorSub // 👈 conservar sub aunque falle
                         )
                     }
@@ -345,7 +345,8 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
                     },
                     onFailure = { e ->
                         Log.e("AuthViewModel", "SignIn falló: ${e.message}", e)
-                        _authState.value = AuthState(error = e.message ?: "Credenciales incorrectas")
+                        val errorMessage = translateAuthError(e.message ?: "")
+                        _authState.value = AuthState(error = errorMessage)
                     }
                 )
             } catch (e: Exception) {
@@ -535,7 +536,7 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
                     _authState.value = AuthState(isSuccess = true, needsConfirmation = true)
                 },
                 onFailure = { e ->
-                    _authState.value = AuthState(error = e.message ?: "Error al resetear contraseña")
+                    _authState.value = AuthState(error = translateAuthError(e.message ?: "Error al resetear contraseña"))
                 }
             )
         }
@@ -548,7 +549,7 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
             result.fold(
                 onSuccess = { _authState.value = AuthState(isSuccess = true) },
                 onFailure = { e ->
-                    _authState.value = AuthState(error = e.message ?: "Error al confirmar nueva contraseña")
+                    _authState.value = AuthState(error = translateAuthError(e.message ?: "Error al confirmar nueva contraseña"))
                 }
             )
         }
@@ -561,7 +562,7 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
             result.fold(
                 onSuccess = { _authState.value = AuthState(isSuccess = true) },
                 onFailure = { e ->
-                    _authState.value = AuthState(error = e.message ?: "Error al actualizar contraseña")
+                    _authState.value = AuthState(error = translateAuthError(e.message ?: "Error al actualizar contraseña"))
                 }
             )
         }
@@ -720,6 +721,67 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * Traduce los mensajes de error de AWS Cognito al español
+     */
+    private fun translateAuthError(errorMessage: String): String {
+        val lowerMessage = errorMessage.lowercase()
+
+        return when {
+            // Credenciales incorrectas
+            "not authorized" in lowerMessage ||
+            "incorrect username or password" in lowerMessage ||
+            "user is not authorized" in lowerMessage ->
+                "Correo o contraseña incorrectos"
+
+            // Usuario no encontrado
+            "user does not exist" in lowerMessage ||
+            "usernotfound" in lowerMessage ->
+                "No existe una cuenta con este correo"
+
+            // Contraseña incorrecta
+            "incorrect password" in lowerMessage ->
+                "Contraseña incorrecta"
+
+            // Usuario no confirmado
+            "user is not confirmed" in lowerMessage ||
+            "usernotconfirmed" in lowerMessage ->
+                "Tu cuenta aún no ha sido confirmada. Revisa tu correo."
+
+            // Límite de intentos excedido
+            "attempt limit exceeded" in lowerMessage ||
+            "limitexceeded" in lowerMessage ->
+                "Demasiados intentos fallidos. Intenta de nuevo más tarde."
+
+            // Código inválido
+            "invalid verification code" in lowerMessage ||
+            "code mismatch" in lowerMessage ->
+                "Código de verificación incorrecto"
+
+            // Código expirado
+            "expired code" in lowerMessage ->
+                "El código de verificación ha expirado"
+
+            // Usuario ya existe
+            "user already exists" in lowerMessage ||
+            "usernameexists" in lowerMessage ->
+                "Ya existe una cuenta con este correo"
+
+            // Error de red
+            "network error" in lowerMessage ||
+            "unable to resolve host" in lowerMessage ->
+                "Error de conexión. Verifica tu internet e intenta de nuevo."
+
+            // Contraseña no cumple requisitos
+            "password does not conform" in lowerMessage ||
+            "invalidpassword" in lowerMessage ->
+                "La contraseña no cumple con los requisitos de seguridad"
+
+            // Error genérico
+            else -> "Error al iniciar sesión. Verifica tus credenciales."
         }
     }
 

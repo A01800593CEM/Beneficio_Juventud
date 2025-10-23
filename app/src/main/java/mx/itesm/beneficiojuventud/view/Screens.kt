@@ -31,6 +31,7 @@ sealed class Screens(val route: String) {
     data object Credits : Screens("credits")
     data object Favorites : Screens("favorites")
     data object Coupons : Screens("coupons")
+    data object FullscreenMap : Screens("fullscreen_map")
     data object Business : Screens("business/{collabId}") {
         fun createRoute(collabId: String) =
             "business/${java.net.URLEncoder.encode(collabId, "UTF-8")}"
