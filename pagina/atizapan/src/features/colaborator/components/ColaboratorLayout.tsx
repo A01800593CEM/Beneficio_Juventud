@@ -1,20 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
+import { cognitoLogout } from "@/shared/lib/cognito";
 import {
   TagIcon,
   ChartBarIcon,
   BuildingStorefrontIcon,
   Bars3Icon,
   XMarkIcon,
-  BellIcon,
-  CogIcon,
-  UserIcon,
-  ChartPieIcon,
-  HomeIcon,
   ArrowLeftEndOnRectangleIcon
 } from "@heroicons/react/24/outline";
 
@@ -39,22 +35,17 @@ export default function ColaboratorLayout({
 }: ColaboratorLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(3);
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
 
-  // Mock: Simular carga de notificaciones no leídas
-  useEffect(() => {
-    // Aquí iría la llamada a la API para obtener notificaciones no leídas
-    const mockFetchUnreadCount = () => {
-      setUnreadNotifications(3);
-    };
-
-    mockFetchUnreadCount();
-  }, []);
-
-  const navigation = [
+  const navigation: Array<{
+    name: string;
+    href: string;
+    icon: typeof TagIcon;
+    current: boolean;
+    badge?: number;
+  }> = [
     {
       name: "Promociones",
       href: "/colaborator",
@@ -76,7 +67,46 @@ export default function ColaboratorLayout({
   ];
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/login' });
+    try {
+      console.log("🔄 Iniciando logout completo...");
+
+      // 1. Logout de Amplify/Cognito primero
+      try {
+        await cognitoLogout();
+        console.log("✅ Logout de Cognito exitoso");
+      } catch (error) {
+        console.warn("⚠️ Error en logout de Cognito (puede ser normal):", error);
+        // No fallar si Cognito ya no tiene sesión
+      }
+
+      // 2. Logout de NextAuth
+      await signOut({
+        callbackUrl: "/login",
+        redirect: true
+      });
+
+      console.log("✅ Logout completo exitoso");
+
+    } catch (error) {
+      console.error("❌ Error durante logout:", error);
+
+      // Fallback: limpiar almacenamiento local y redirigir
+      try {
+        // Limpiar cualquier storage local que pueda estar interfiriendo
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // Forzar logout de NextAuth sin importar errores anteriores
+        await signOut({
+          callbackUrl: "/login",
+          redirect: true
+        });
+      } catch (fallbackError) {
+        console.error("❌ Error en fallback logout:", fallbackError);
+        // Último recurso: redirección manual
+        window.location.href = "/login";
+      }
+    }
   };
 
   const handleNavigation = (href: string) => {

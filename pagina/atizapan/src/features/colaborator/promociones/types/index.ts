@@ -109,15 +109,15 @@ export interface PromotionPageState {
   error: string | null;
   showForm: boolean;
   showAIForm: boolean;
-  editingPromotion: ApiPromotion | any | null;
+  editingPromotion: ApiPromotion | null;
   collaborator: ApiCollaborator | null;
   authLoading: boolean;
 }
 
 // Props para componentes
 export interface PromotionFormModalProps {
-  promotion: ApiPromotion | any | null;
-  onSave: (data: any) => void;
+  promotion: ApiPromotion | null;
+  onSave: (data: Record<string, unknown>) => void;
   onCancel: () => void;
 }
 

@@ -212,37 +212,50 @@ export default function PromocionesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [selectedPromocion, setSelectedPromocion] = useState<Promocion | undefined>();
-  const [error, setError] = useState<string | null>(null);
 
   // Convert API promotion to admin format
-  const convertApiPromotionForAdmin = (apiPromotion: any): Promocion => {
+  const convertApiPromotionForAdmin = (apiPromotion: Record<string, unknown>): Promocion => {
     let discount = 0;
-    if (apiPromotion.promotionString) {
-      const percentMatch = apiPromotion.promotionString.match(/(\d+)%/);
-      const offMatch = apiPromotion.promotionString.match(/(\d+)% OFF/);
+    const promotionString = apiPromotion.promotionString as string | undefined;
+    if (promotionString) {
+      const percentMatch = promotionString.match(/(\d+)%/);
+      const offMatch = promotionString.match(/(\d+)% OFF/);
       if (percentMatch || offMatch) {
         discount = parseInt(percentMatch?.[1] || offMatch?.[1] || '0');
-      } else if (apiPromotion.promotionString.includes('2x1')) {
+      } else if (promotionString.includes('2x1')) {
         discount = 50;
       }
     }
 
+    const promotionId = apiPromotion.promotionId as number | string | undefined;
+    const title = apiPromotion.title as string | undefined;
+    const collaboratorId = apiPromotion.collaboratorId as number | string | undefined;
+    const initialDate = apiPromotion.initialDate as string | undefined;
+    const endDate = apiPromotion.endDate as string | undefined;
+    const promotionState = apiPromotion.promotionState as string | undefined;
+    const totalStock = apiPromotion.totalStock as number | undefined;
+    const availableStock = apiPromotion.availableStock as number | undefined;
+    const categories = apiPromotion.categories as Array<{ name: string }> | undefined;
+    const description = apiPromotion.description as string | undefined;
+    const limitPerUser = apiPromotion.limitPerUser as number | undefined;
+    const dailyLimitPerUser = apiPromotion.dailyLimitPerUser as number | undefined;
+
     return {
-      id: apiPromotion.promotionId?.toString() || '',
-      titulo: apiPromotion.title || '',
-      comercio: `Negocio ${apiPromotion.collaboratorId || 'Local'}`,
+      id: promotionId?.toString() || '',
+      titulo: title || '',
+      comercio: `Negocio ${collaboratorId || 'Local'}`,
       descuento: discount,
       tipoDescuento: 'porcentaje' as const,
-      fechaInicio: apiPromotion.initialDate || '',
-      fechaFin: apiPromotion.endDate || '',
-      estado: apiPromotion.promotionState === 'activa' ? 'activa' as const : 'pausada' as const,
-      cuponesGenerados: apiPromotion.totalStock || 0,
-      cuponesUsados: (apiPromotion.totalStock || 0) - (apiPromotion.availableStock || 0),
-      categoria: apiPromotion.categories?.[0]?.name || 'General',
-      descripcion: apiPromotion.description || '',
-      codigoPromo: apiPromotion.promotionString || '',
-      limiteUsos: apiPromotion.totalStock || 0,
-      condiciones: `Límite por usuario: ${apiPromotion.limitPerUser || 1}. Límite diario: ${apiPromotion.dailyLimitPerUser || 1}`
+      fechaInicio: initialDate || '',
+      fechaFin: endDate || '',
+      estado: promotionState === 'activa' ? 'activa' as const : 'pausada' as const,
+      cuponesGenerados: totalStock || 0,
+      cuponesUsados: (totalStock || 0) - (availableStock || 0),
+      categoria: categories?.[0]?.name || 'General',
+      descripcion: description || '',
+      codigoPromo: promotionString || '',
+      limiteUsos: totalStock || 0,
+      condiciones: `Límite por usuario: ${limitPerUser || 1}. Límite diario: ${dailyLimitPerUser || 1}`
     };
   };
 
@@ -250,19 +263,17 @@ export default function PromocionesPage() {
   const loadPromotions = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
 
       console.log('🔄 Loading promotions for admin...');
       const apiPromotions = await apiService.getPromotions();
       console.log('📦 Raw API promotions for admin:', apiPromotions);
 
-      const convertedPromotions = apiPromotions.map(convertApiPromotionForAdmin);
+      const convertedPromotions = (apiPromotions as unknown as Record<string, unknown>[]).map(convertApiPromotionForAdmin);
       setPromociones(convertedPromotions);
       console.log('✅ Loaded promotions for admin:', convertedPromotions.length);
 
     } catch (error) {
       console.error('❌ Error loading promotions:', error);
-      setError('Error al cargar las promociones. Mostrando datos de ejemplo.');
       // Keep mock data as fallback
       setPromociones(mockPromociones);
     } finally {
@@ -326,23 +337,32 @@ export default function PromocionesPage() {
     }));
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleSavePromocion = (promocionData: any) => {
+  const handleSavePromocion = (promocionData: Partial<Promocion> & { id?: string }) => {
     if (modalMode === 'create') {
       const newPromocion: Promocion = {
-        ...promocionData,
-        id: String(Date.now()), // ID temporal
+        id: String(Date.now()),
+        titulo: promocionData.titulo || '',
+        comercio: promocionData.comercio || '',
+        descuento: promocionData.descuento || 0,
+        tipoDescuento: promocionData.tipoDescuento || 'porcentaje',
+        fechaInicio: promocionData.fechaInicio || '',
+        fechaFin: promocionData.fechaFin || '',
+        estado: promocionData.estado || 'programada',
         cuponesGenerados: promocionData.cuponesGenerados ?? 0,
         cuponesUsados: promocionData.cuponesUsados ?? 0,
-        estado: promocionData.estado ?? 'programada'
+        categoria: promocionData.categoria || '',
+        descripcion: promocionData.descripcion || '',
+        codigoPromo: promocionData.codigoPromo || '',
+        limiteUsos: promocionData.limiteUsos || 0,
+        condiciones: promocionData.condiciones || ''
       };
       setPromociones(prev => [...prev, newPromocion]);
       console.log("Promoción creada:", newPromocion);
     } else if (modalMode === 'edit' && promocionData.id) {
-      setPromociones(prev => prev.map(promocion => 
-        promocion.id === promocionData.id ? { 
-          ...promocion, 
-          ...promocionData, 
+      setPromociones(prev => prev.map(promocion =>
+        promocion.id === promocionData.id ? {
+          ...promocion,
+          ...promocionData,
           id: promocionData.id,
           cuponesGenerados: promocionData.cuponesGenerados ?? promocion.cuponesGenerados,
           cuponesUsados: promocionData.cuponesUsados ?? promocion.cuponesUsados

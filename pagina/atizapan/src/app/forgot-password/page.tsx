@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { forgotPassword } from "../../lib/cognito";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import "../../styles/auth-design-system.css";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -55,9 +56,8 @@ export default function ForgotPassword() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 via-white to-cyan-50">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
+      <div className="auth-container">
+        <div className="auth-card">
             <div className="text-center mb-6">
               <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
                 <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
@@ -85,20 +85,13 @@ export default function ForgotPassword() {
             </div>
           </div>
           
-          <div className="text-center mt-8">
-            <p className="text-sm text-gray-400">
-              2025 Beneficio Joven. Todos los derechos reservados.
-            </p>
-          </div>
         </div>
-      </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 via-white to-cyan-50">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
+    <div className="auth-container">
+      <div className="auth-card">
           {/* Back Button */}
           <button
             onClick={() => router.back()}
@@ -189,12 +182,6 @@ export default function ForgotPassword() {
           </div>
         </div>
 
-        <div className="text-center mt-8">
-          <p className="text-sm text-gray-400">
-            2025 Beneficio Joven. Todos los derechos reservados.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

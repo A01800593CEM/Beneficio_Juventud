@@ -5,7 +5,7 @@ import { User, UserStats, AdminStats, CollaboratorStats } from "@/types/user";
 
 const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? '/api/proxy'  // Usar proxy local en desarrollo
-  : 'https://beneficiojoven.lat';  // Usar API directa en producción
+  : 'https://api.beneficiojoven.lat';  // Usar API directa en producción
 
 export interface UserRegistrationData {
   name: string;
@@ -170,7 +170,7 @@ class ApiService {
     });
   }
 
-  async createPromotionRaw(promotionData: any): Promise<any> {
+  async createPromotionRaw(promotionData: Record<string, unknown>): Promise<Record<string, unknown>> {
     return this.request('/promotions', {
       method: 'POST',
       body: JSON.stringify(promotionData),
@@ -191,7 +191,7 @@ class ApiService {
     });
   }
 
-  async updatePromotionRaw(id: string, promotionData: any): Promise<any> {
+  async updatePromotionRaw(id: string, promotionData: Record<string, unknown>): Promise<Record<string, unknown>> {
     return this.request(`/promotions/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(promotionData),
@@ -227,20 +227,20 @@ class ApiService {
 
     // Since /users/cognito/{id} doesn't exist, get all users and filter
     console.log('🔍 Fetching all users to find by cognitoId...');
-    const allUsers: any[] = await this.request('/users');
+    const allUsers: User[] = await this.request('/users');
     console.log(`🔍 Found ${allUsers.length} total users`);
 
-    const matchingUser = allUsers.find(user => user.cognitoId === cognitoId);
+    const matchingUser = allUsers.find(user => user.sub === cognitoId || (user as unknown as Record<string, unknown>).cognitoId === cognitoId);
 
     if (!matchingUser) {
       console.log('❌ User not found with cognitoId:', cognitoId);
-      console.log('🔍 Available cognitoIds:', allUsers.map(u => u.cognitoId).filter(Boolean));
+      console.log('🔍 Available subs:', allUsers.map(u => u.sub).filter(Boolean));
       throw new Error(`User not found with cognitoId: ${cognitoId}`);
     }
 
     console.log('✅ Found matching user:', {
       id: matchingUser.id,
-      cognitoId: matchingUser.cognitoId,
+      sub: matchingUser.sub,
       name: matchingUser.name,
       email: matchingUser.email
     });

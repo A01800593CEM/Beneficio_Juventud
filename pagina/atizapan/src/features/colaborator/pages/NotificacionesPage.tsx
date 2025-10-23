@@ -7,8 +7,6 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon,
   CheckCircleIcon,
-  XMarkIcon,
-  EllipsisVerticalIcon,
   TrashIcon,
   EyeIcon,
   ClockIcon,
@@ -16,7 +14,7 @@ import {
   FunnelIcon
 } from '@heroicons/react/24/outline';
 import { promotionApiService } from '../promociones/services/api';
-import { ApiCollaborator, ApiPromotion } from '../promociones/types';
+import { ApiCollaborator } from '../promociones/types';
 
 interface Notification {
   id: string;
@@ -120,8 +118,11 @@ export default function NotificacionesPage() {
     setError(null);
 
     try {
-      const sessionData = session as any;
-      const cognitoUsername = sessionData.cognitoUsername || sessionData.sub || sessionData.user?.id || sessionData.user?.sub;
+      const sessionData = session as unknown as Record<string, unknown>;
+      const cognitoUsername = (sessionData.cognitoUsername as string | undefined) ||
+                             (sessionData.sub as string | undefined) ||
+                             ((sessionData.user as Record<string, unknown> | undefined)?.id as string | undefined) ||
+                             ((sessionData.user as Record<string, unknown> | undefined)?.sub as string | undefined);
 
       if (cognitoUsername) {
         console.log('🔄 Loading collaborator notifications...');
@@ -137,7 +138,7 @@ export default function NotificacionesPage() {
         const generatedNotifications: Notification[] = [];
 
         // Notificaciones para promociones activas
-        promotionsData.forEach((promotion, index) => {
+        promotionsData.forEach((promotion) => {
           if (promotion.promotionState === 'activa') {
             generatedNotifications.push({
               id: `promo_${promotion.promotionId}`,

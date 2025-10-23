@@ -169,7 +169,7 @@ export class StatisticsService {
     // KPIs básicos
     const totalPromotions = promotions.length;
     const activePromotions = promotions.filter(p => p.promotionState === 'activa').length;
-    const expiredPromotions = promotions.filter(p => p.promotionState === 'vencida').length;
+    const expiredPromotions = promotions.filter(p => p.promotionState === 'finalizada').length;
 
     // Cálculos de canjes y ingresos
     const totalRedemptions = promotions.reduce((sum, p) =>

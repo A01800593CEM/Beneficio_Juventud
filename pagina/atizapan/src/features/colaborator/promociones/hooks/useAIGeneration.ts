@@ -4,13 +4,12 @@
 
 import { useState } from 'react';
 import { promotionApiService } from '../services/api';
-import { AIPromotionResponse } from '../types';
 
 export const useAIGeneration = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generatePromotion = async (idea: string): Promise<any> => {
+  const generatePromotion = async (idea: string): Promise<Record<string, unknown>> => {
     try {
       setLoading(true);
       setError(null);

@@ -110,8 +110,11 @@ export default function ConfiguracionesPage() {
       }
 
       try {
-        const sessionData = session as any;
-        const cognitoUsername = sessionData.cognitoUsername || sessionData.sub || sessionData.user?.id || sessionData.user?.sub;
+        const sessionData = session as unknown as Record<string, unknown>;
+        const cognitoUsername = (sessionData.cognitoUsername as string | undefined) ||
+                               (sessionData.sub as string | undefined) ||
+                               ((sessionData.user as Record<string, unknown> | undefined)?.id as string | undefined) ||
+                               ((sessionData.user as Record<string, unknown> | undefined)?.sub as string | undefined);
 
         if (cognitoUsername) {
           console.log('🔄 Loading collaborator data...');

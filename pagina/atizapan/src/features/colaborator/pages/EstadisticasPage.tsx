@@ -10,7 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { SimpleBarChart, SimpleDonutChart } from "../components/SimpleChart";
 import { promotionApiService } from '../promociones/services/api';
-import { ApiCollaborator, ApiPromotion } from '../promociones/types';
+import { ApiCollaborator } from '../promociones/types';
 
 // Mock data for statistics
 const mockStats = {
@@ -66,8 +66,11 @@ export default function EstadisticasPage() {
     setError(null);
 
     try {
-      const sessionData = session as any;
-      const cognitoUsername = sessionData.cognitoUsername || sessionData.sub || sessionData.user?.id || sessionData.user?.sub;
+      const sessionData = session as unknown as Record<string, unknown>;
+      const cognitoUsername = (sessionData.cognitoUsername as string | undefined) ||
+                             (sessionData.sub as string | undefined) ||
+                             ((sessionData.user as Record<string, unknown> | undefined)?.id as string | undefined) ||
+                             ((sessionData.user as Record<string, unknown> | undefined)?.sub as string | undefined);
 
       if (cognitoUsername) {
         console.log('🔄 Loading collaborator stats...');

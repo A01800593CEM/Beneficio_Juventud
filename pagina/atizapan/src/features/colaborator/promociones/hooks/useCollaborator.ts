@@ -24,7 +24,7 @@ export const useCollaborator = () => {
       }
 
       // Extraer cognitoUsername de la sesión
-      const sessionData = session as any;
+      const sessionData = session as unknown as Record<string, unknown>;
 
       // Buscar en todas las posibles ubicaciones
       console.log('🔍 DEBUGGING SESSION STRUCTURE:');
@@ -35,12 +35,13 @@ export const useCollaborator = () => {
       console.log('🔍 sessionData.user:', sessionData.user);
       console.log('🔍 sessionData.accessToken:', sessionData.accessToken);
 
-      const cognitoUsername = sessionData.cognitoUsername || sessionData.sub || sessionData.user?.id || sessionData.user?.sub;
+      const userObj = sessionData.user as Record<string, unknown> | undefined;
+      const cognitoUsername = sessionData.cognitoUsername || sessionData.sub || userObj?.id || userObj?.sub;
 
       console.log('🔍 Extracted cognitoUsername:', cognitoUsername);
 
       // Intentar buscar colaborador siempre que tengamos cognitoUsername
-      if (cognitoUsername) {
+      if (cognitoUsername && typeof cognitoUsername === 'string') {
         try {
           console.log('🔄 Authenticating collaborator with cognitoUsername:', cognitoUsername);
           const collaboratorData = await promotionApiService.getCollaboratorByCognitoId(cognitoUsername);

@@ -203,7 +203,7 @@ export default function EstadisticasAvanzadasPage() {
               <div className="border-l-4 border-purple-500 pl-4">
                 <h4 className="font-medium text-gray-900">Crecimiento de Ingresos</h4>
                 <p className="text-sm text-gray-600">
-                  {stats?.growthMetrics.revenueGrowth > 0 ? '+' : ''}{stats?.growthMetrics.revenueGrowth.toFixed(1)}% vs mes anterior
+                  {(stats?.growthMetrics?.revenueGrowth ?? 0) > 0 ? '+' : ''}{(stats?.growthMetrics?.revenueGrowth ?? 0).toFixed(1)}% vs mes anterior
                 </p>
               </div>
             </div>
@@ -222,7 +222,7 @@ export default function EstadisticasAvanzadasPage() {
               </div>
               <h4 className="font-semibold text-gray-900 mb-2">Tendencia de Canjes</h4>
               <p className="text-2xl font-bold text-[#008D96] mb-1">
-                {stats?.growthMetrics.redemptionsGrowth > 0 ? '+' : ''}{stats?.growthMetrics.redemptionsGrowth.toFixed(1)}%
+                {(stats?.growthMetrics?.redemptionsGrowth ?? 0) > 0 ? '+' : ''}{(stats?.growthMetrics?.redemptionsGrowth ?? 0).toFixed(1)}%
               </p>
               <p className="text-sm text-gray-600">vs. mes anterior</p>
             </div>
@@ -234,7 +234,7 @@ export default function EstadisticasAvanzadasPage() {
               </div>
               <h4 className="font-semibold text-gray-900 mb-2">Crecimiento de Ingresos</h4>
               <p className="text-2xl font-bold text-green-600 mb-1">
-                {stats?.growthMetrics.revenueGrowth > 0 ? '+' : ''}{stats?.growthMetrics.revenueGrowth.toFixed(1)}%
+                {(stats?.growthMetrics?.revenueGrowth ?? 0) > 0 ? '+' : ''}{(stats?.growthMetrics?.revenueGrowth ?? 0).toFixed(1)}%
               </p>
               <p className="text-sm text-gray-600">vs. mes anterior</p>
             </div>
@@ -245,7 +245,7 @@ export default function EstadisticasAvanzadasPage() {
                 <UsersIcon className="h-8 w-8 text-blue-600" />
               </div>
               <h4 className="font-semibold text-gray-900 mb-2">Retención de Clientes</h4>
-              <p className="text-2xl font-bold text-blue-600 mb-1">{stats?.growthMetrics.customerRetention.toFixed(0)}%</p>
+              <p className="text-2xl font-bold text-blue-600 mb-1">{(stats?.growthMetrics?.customerRetention ?? 0).toFixed(0)}%</p>
               <p className="text-sm text-gray-600">tasa de retención</p>
             </div>
           </div>
