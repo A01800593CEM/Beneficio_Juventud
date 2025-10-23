@@ -108,21 +108,30 @@ class SavedCouponRepository(
 
     /**
      * Creates a new booking.
-     * Remote-first: Creates on server, then caches promotion and booking locally.
+     * Remote-first: Creates on server, then caches booking locally.
+     * NOTE: Does NOT save promotion to promotionDao - bookings and favorites are independent.
+     * Favorites are managed separately via favoritePromotion()/unfavoritePromotion()
      */
     suspend fun createBooking(booking: Booking) {
         try {
             // Step 1: Create booking on server
             val createdBooking = RemoteServiceBooking.createBooking(booking)
 
-            // Step 2: Fetch promotion details
-            val promo: Promotions = RemoteServicePromos.getPromotionById(booking.promotionId!!)
-
-            // Step 3: Cache promotion as reserved (isReserved = true)
-            promotionDao.insertPromotions(promo.toEntity(isReserved = true))
-
-            // Step 4: Cache booking details
-            bookingDao.insertBooking(createdBooking.toEntity())
+            // Step 2: Sync ALL bookings from server to ensure consistency
+            // This is crucial when the server reuses/reactivates a previously cancelled booking
+            try {
+                val allUserBookings = RemoteServiceBooking.getUserBookings(booking.userId!!)
+                // Clear old bookings and insert fresh ones from server
+                bookingDao.deleteAllByUser(booking.userId!!)
+                allUserBookings.forEach { b ->
+                    bookingDao.insertBooking(b.toEntity())
+                }
+                Log.d("CouponRepository", "✅ Synced ${allUserBookings.size} bookings from server after creation")
+            } catch (syncError: Exception) {
+                Log.w("CouponRepository", "⚠️ Failed to sync bookings after creation", syncError)
+                // Fallback: at least insert the created booking
+                bookingDao.insertBooking(createdBooking.toEntity())
+            }
 
             Log.d("CouponRepository", "✅ Created booking ${createdBooking.bookingId} and cached locally")
         } catch (e: Exception) {
@@ -133,20 +142,20 @@ class SavedCouponRepository(
 
     /**
      * Cancels an existing booking.
-     * Remote-first: Cancels on server, then removes from cache.
+     * Remote-first: Cancels on server, then updates cache.
+     * This will trigger cooldown on the server (10 seconds for testing).
+     * NOTE: Does NOT touch promotionDao - bookings and favorites are independent.
      */
     suspend fun cancelBooking(bookingId: Int, promotionId: Int) {
         try {
-            // Step 1: Cancel on server
-            RemoteServiceBooking.cancelBooking(bookingId)
+            // Step 1: Cancel on server (triggers cooldown automatically)
+            val cancelledBooking = RemoteServiceBooking.cancelBooking(bookingId)
 
-            // Step 2: Remove booking from cache
-            bookingDao.deleteById(bookingId)
+            // Step 2: Update booking in cache (instead of deleting)
+            // This preserves the cooldownUntil information needed for client-side cooldown check
+            bookingDao.updateBooking(cancelledBooking.toEntity())
 
-            // Step 3: Remove associated promotion from reserved list
-            promotionDao.deleteById(promotionId)
-
-            Log.d("CouponRepository", "✅ Cancelled booking $bookingId and removed from cache")
+            Log.d("CouponRepository", "✅ Cancelled booking $bookingId and updated cache. Cooldown initiated on server.")
         } catch (e: Exception) {
             Log.e("CouponRepository", "❌ Failed to cancel booking $bookingId", e)
             throw e

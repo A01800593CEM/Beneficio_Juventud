@@ -216,7 +216,7 @@ fun NewPassword(
                             .fillMaxWidth(0.95f)
                             .align(Alignment.CenterHorizontally)
                     ) {
-                        viewModel.confirmResetPassword(emailArg, pass, codeArg)
+                        viewModel.confirmResetPassword(emailArg, codeArg, pass)
                     }
                 }
             }

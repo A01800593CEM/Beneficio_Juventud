@@ -33,6 +33,8 @@ import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.*
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+import mx.itesm.beneficiojuventud.utils.isValidEmail
+import mx.itesm.beneficiojuventud.utils.getEmailErrorMessage
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
@@ -59,6 +61,7 @@ fun Login(
     var errorMessage by remember { mutableStateOf("") }
     var isCheckingGoogleUser by remember { mutableStateOf(false) }
     var canRetry by remember { mutableStateOf(false) }
+    var emailError by remember { mutableStateOf(false) }
     val authState by authViewModel.authState.collectAsState()
 
     // Función para verificar y navegar según usuario de Google
@@ -254,8 +257,13 @@ fun Login(
                     FocusBringIntoView {
                         EmailTextField(
                             value = email,
-                            onValueChange = { email = it },
-                            modifier = it.fillMaxWidth().padding(horizontal = 6.dp)
+                            onValueChange = {
+                                email = it
+                                emailError = false
+                            },
+                            modifier = it.fillMaxWidth().padding(horizontal = 6.dp),
+                            isError = emailError,
+                            errorMessage = if (emailError) getEmailErrorMessage() else ""
                         )
                     }
                 }
@@ -306,6 +314,14 @@ fun Login(
                             .padding(horizontal = 6.dp, vertical = 12.dp)
                     ) {
                         showError = false
+                        emailError = false
+
+                        // Validar email antes de continuar
+                        if (!isValidEmail(email)) {
+                            emailError = true
+                            return@MainButton
+                        }
+
                         authViewModel.signIn(email, password, rememberMe)
                     }
                 }

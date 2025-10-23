@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -139,10 +140,22 @@ fun Profile(
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Home      -> nav.navigate(Screens.Home.route)
-                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
-                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
-                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
+                        BJTab.Home      -> nav.navigate(Screens.Home.route) {
+                            popUpTo(Screens.Home.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
                     }
                 }
             )
@@ -165,7 +178,7 @@ fun Profile(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Image(
@@ -173,13 +186,6 @@ fun Profile(
                         contentDescription = "Logo Beneficio Joven",
                         modifier = Modifier.size(28.dp)
                     )
-                    IconButton(onClick = { /* nav a notificaciones si aplica */ }) {
-                        Icon(
-                            Icons.Outlined.NotificationsNone,
-                            contentDescription = "Notificaciones",
-                            tint = TextPrimary
-                        )
-                    }
                 }
 
                 Spacer(Modifier.height(10.dp))
@@ -270,6 +276,12 @@ fun Profile(
                     title = "Ayuda y Soporte",
                     subtitle = "Preguntas frecuentes y contacto",
                     onClick = { nav.navigate(Screens.Help.route) }
+                )
+                ProfileItemCard(
+                    icon = Icons.Outlined.Info,
+                    title = "Créditos",
+                    subtitle = "Conoce al equipo de desarrollo",
+                    onClick = { nav.navigate(Screens.Credits.route) }
                 )
                 ProfileItemCard(
                     icon = Icons.AutoMirrored.Outlined.Logout,

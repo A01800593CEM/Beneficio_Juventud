@@ -28,8 +28,10 @@ sealed class Screens(val route: String) {
     data object History : Screens("history")
     data object Settings : Screens("settings")
     data object Help : Screens("help")
+    data object Credits : Screens("credits")
     data object Favorites : Screens("favorites")
     data object Coupons : Screens("coupons")
+    data object FullscreenMap : Screens("fullscreen_map")
     data object Business : Screens("business/{collabId}") {
         fun createRoute(collabId: String) =
             "business/${java.net.URLEncoder.encode(collabId, "UTF-8")}"
@@ -73,5 +75,6 @@ sealed class Screens(val route: String) {
     data object EditProfileCollab : Screens("edit_profile_collab")
     data object BranchManagement : Screens("branch_management")
     data object StatusCollabSignup : Screens("status_collab_signup")
+    data object SettingsCollab : Screens("settings_collab")
 
 }

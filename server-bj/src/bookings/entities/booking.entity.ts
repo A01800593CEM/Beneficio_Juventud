@@ -42,6 +42,12 @@ export class Booking {
   @Column({ name: 'fecha_cancelacion', type: 'timestamp', nullable: true })
   cancelledDate: Date | null;
 
+  @Column({ name: 'fecha_auto_expiracion', type: 'timestamp', nullable: true })
+  autoExpireDate: Date | null;
+
+  @Column({ name: 'cooldown_hasta', type: 'timestamp', nullable: true })
+  cooldownUntil: Date | null;
+
   //Relations
   @ManyToOne(() => User, users => users.bookings)
   @JoinColumn({ name: 'usuario_id',

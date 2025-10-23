@@ -41,6 +41,7 @@ import mx.itesm.beneficiojuventud.viewcollab.EditProfileCollab
 import mx.itesm.beneficiojuventud.viewcollab.GeneratePromotionScreen
 import mx.itesm.beneficiojuventud.viewcollab.BranchManagementScreen
 import mx.itesm.beneficiojuventud.viewcollab.StatusCollabSignup
+import mx.itesm.beneficiojuventud.viewcollab.SettingsCollab
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.BookingViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CategoryViewModel
@@ -371,8 +372,11 @@ private fun AppNav(
         }
         composable(Screens.Settings.route) { Settings(nav) }
         composable(Screens.Help.route) { Help(nav) }
+        composable(Screens.Credits.route) { Credits(nav) }
         composable(Screens.Favorites.route) { Favorites(nav, userViewModel = userViewModel) }
         composable(Screens.Coupons.route) { Coupons(nav) }
+        composable(Screens.Terms.route) { TermsAndConditionsScreen(nav) }
+        composable(Screens.FullscreenMap.route) { FullscreenMap(nav) }
 
         composable(Screens.GenerarPromocion.route) { GenerarPromocion(nav) }
         composable(Screens.GenerarPromocionIA.route) { GenerarPromocionIA(nav) }
@@ -447,9 +451,11 @@ private fun AppNav(
             arguments = Screens.QrScanner.arguments
         ) { backStackEntry ->
             val branchId = backStackEntry.arguments?.getInt("branchId") ?: 1
+            val collabId by authViewModel.currentUserId.collectAsState()
             QRScannerScreen(
                 nav = nav,
-                branchId = branchId
+                branchId = branchId,
+                collaboratorId = collabId
             )
         }
         composable(Screens.StatsScreen.route) {
@@ -479,6 +485,7 @@ private fun AppNav(
         composable(Screens.StatusCollabSignup.route) {
             StatusCollabSignup(nav = nav)
         }
+        composable(Screens.SettingsCollab.route) { SettingsCollab(nav) }
 
         // Status Screen
         composable(
@@ -697,10 +704,28 @@ private fun PostLoginPermissionsWithDestination(
         }
     }
 
+    // LaunchedEffect para navegar a la pantalla apropiada
+    LaunchedEffect(hasLoadedProfiles, destinationRoute) {
+        if (hasLoadedProfiles && !isLoadingUser) {
+            // Para colaboradores, ir directamente a HomeScreenCollab sin pasar por PostLoginPermissions
+            // Para usuarios normales, mostrar PostLoginPermissions para solicitar permisos
+            if (!collabState.cognitoId.isNullOrBlank()) {
+                nav.navigate(Screens.HomeScreenCollab.route) {
+                    popUpTo("post_login_permissions_dest") { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
+
     // Mostrar splash mientras se carga
     if (!hasLoadedProfiles || isLoadingUser) {
         Startup(Modifier.fillMaxSize())
+    } else if (!collabState.cognitoId.isNullOrBlank()) {
+        // Para colaboradores, mostrar splash mientras se navega (el LaunchedEffect anterior hace la navegación)
+        Startup(Modifier.fillMaxSize())
     } else {
+        // Para usuarios normales, mostrar PostLoginPermissions
         PostLoginPermissions(
             nav = nav,
             destinationRoute = destinationRoute

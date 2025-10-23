@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -25,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.delay
+import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 
 /**
@@ -100,6 +103,26 @@ enum class StatusType(
         isSuccess = false,
         title = "Error al actualizar",
         subtitle = "No se pudo guardar tu información, intenta de nuevo"
+    ),
+    PROMOTION_CREATION_SUCCESS(
+        isSuccess = true,
+        title = "¡Promoción creada exitosamente!",
+        subtitle = "Tu nueva promoción ya está disponible"
+    ),
+    PROMOTION_UPDATE_SUCCESS(
+        isSuccess = true,
+        title = "¡Promoción actualizada exitosamente!",
+        subtitle = "Los cambios se han guardado correctamente"
+    ),
+    PROMOTION_CREATION_ERROR(
+        isSuccess = false,
+        title = "Error al crear promoción",
+        subtitle = "No se pudo crear la promoción, intenta de nuevo"
+    ),
+    PROMOTION_UPDATE_ERROR(
+        isSuccess = false,
+        title = "Error al actualizar promoción",
+        subtitle = "No se pudo actualizar la promoción, intenta de nuevo"
     )
 }
 
@@ -127,19 +150,11 @@ fun StatusScreen(
     }
 
     // Efecto que se lanza una sola vez para manejar la redirección automática
-    LaunchedEffect(key1 = Unit) {
-        delay(1000L) // Espera 3 segundos
-        // Primero, elimina el StatusScreen de la pila
-        nav.popBackStack()
-        // Luego navega al destino
-        nav.navigate(destinationRoute) {
-            launchSingleTop = true
-            restoreState = false
-        }
-    }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(50.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -162,8 +177,21 @@ fun StatusScreen(
             text = statusType.subtitle,
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
-            color = Color.Gray
+            color = Color.Gray,
+            modifier = Modifier.padding(vertical = 16.dp)
         )
+        MainButton(
+            text = "Continuar",
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Primero, elimina el StatusScreen de la pila
+            nav.popBackStack()
+            // Luego navega al destino
+            nav.navigate(destinationRoute) {
+                launchSingleTop = true
+                restoreState = false
+            }
+        }
     }
 }
 

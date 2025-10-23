@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.filled.Fullscreen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import androidx.compose.material.icons.outlined.Person
@@ -328,10 +329,22 @@ fun Home(
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Home      -> nav.navigate(Screens.Home.route)
-                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
-                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
-                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
+                        BJTab.Home      -> nav.navigate(Screens.Home.route) {
+                            popUpTo(Screens.Home.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
                     }
                 }
             )
@@ -717,28 +730,51 @@ fun Home(
                             }
                         }
                         else -> {
-                            Card(
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(300.dp)
-                                    .padding(horizontal = 16.dp),
-                                shape = RoundedCornerShape(12.dp)
+                                    .padding(horizontal = 16.dp)
                             ) {
-                                CombinedNearbyMap(
-                                    userLocation = userLocation,
-                                    nearbyPromotions = nearbyPromotions,
-                                    nearbyCollaborators = nearbyCollaborators,
-                                    onPromotionMarkerClick = { promo ->
-                                        promo.promotionId?.let { id ->
-                                            nav.navigate(Screens.PromoQR.createRoute(id))
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(300.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    CombinedNearbyMap(
+                                        userLocation = userLocation,
+                                        nearbyPromotions = nearbyPromotions,
+                                        nearbyCollaborators = nearbyCollaborators,
+                                        onPromotionMarkerClick = { promo ->
+                                            promo.promotionId?.let { id ->
+                                                nav.navigate(Screens.PromoQR.createRoute(id))
+                                            }
+                                        },
+                                        onCollaboratorMarkerClick = { collab ->
+                                            collab.cognitoId?.let { id ->
+                                                nav.navigate(Screens.Business.createRoute(id))
+                                            }
                                         }
-                                    },
-                                    onCollaboratorMarkerClick = { collab ->
-                                        collab.cognitoId?.let { id ->
-                                            nav.navigate(Screens.Business.createRoute(id))
-                                        }
-                                    }
-                                )
+                                    )
+                                }
+
+                                // Botón de pantalla completa en la esquina superior izquierda
+                                FilledIconButton(
+                                    onClick = { nav.navigate(Screens.FullscreenMap.route) },
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(16.dp)
+                                        .size(40.dp),
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Fullscreen,
+                                        contentDescription = "Ver mapa en pantalla completa",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         }
                     }
@@ -999,12 +1035,6 @@ private fun TopBar(
                     )
                 }
             }
-            Icon(
-                imageVector = Icons.Outlined.NotificationsNone,
-                contentDescription = "Notificaciones",
-                tint = Color(0xFF008D96),
-                modifier = Modifier.size(24.dp)
-            )
         }
 
         Spacer(Modifier.height(10.dp))

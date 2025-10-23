@@ -75,7 +75,7 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
     private var _pendingPlainPassword: String? = null
 
     fun setPendingCredentials(email: String, password: String) {
-        _pendingEmail = email
+        _pendingEmail = email.lowercase().trim()
         _pendingPlainPassword = password
     }
     fun getPendingCredentials(): Pair<String?, String?> {
@@ -178,8 +178,11 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
         viewModelScope.launch {
             _authState.update { it.copy(isLoading = true, error = null) }
             try {
+                // Normalizar email a minúsculas
+                val normalizedEmail = email.lowercase().trim()
+
                 // El repo devuelve Result<AuthSignUpResult>
-                val result = authRepository.signUp(email, password)
+                val result = authRepository.signUp(normalizedEmail, password)
                     .getOrThrow() // 👈 desempaquetar
 
                 // Amplify.Auth.signUp() -> AuthSignUpResult
@@ -225,10 +228,12 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
 
     fun confirmSignUp(email: String, code: String) {
         viewModelScope.launch {
+            // Normalizar email a minúsculas
+            val normalizedEmail = email.lowercase().trim()
             val priorSub = _authState.value.cognitoSub
             _authState.value = _authState.value.copy(isLoading = true, error = null)
 
-            val result = authRepository.confirmSignUp(email, code)
+            val result = authRepository.confirmSignUp(normalizedEmail, code)
             result.fold(
                 onSuccess = { isComplete ->
                     _authState.value = _authState.value.copy(
@@ -259,7 +264,7 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
                                 onFailure = { e ->
                                     _authState.value = _authState.value.copy(
                                         isSuccess = false,
-                                        error = e.message ?: "No se pudo iniciar sesión automáticamente"
+                                        error = translateAuthError(e.message ?: "No se pudo iniciar sesión automáticamente")
                                     )
                                     clearPendingCredentials()
                                 }
@@ -271,7 +276,7 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
                     _authState.value = _authState.value.copy(
                         isLoading = false,
                         isSuccess = false,
-                        error = e.message ?: "Código de confirmación inválido"
+                        error = translateAuthError(e.message ?: "Código de confirmación inválido")
                     )
                 }
             )
@@ -299,7 +304,7 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
                     _authState.update {
                         it.copy(
                             isLoading = false,
-                            error = e.message ?: "No se pudo reenviar el código",
+                            error = translateAuthError(e.message ?: "No se pudo reenviar el código"),
                             cognitoSub = priorSub // 👈 conservar sub aunque falle
                         )
                     }
@@ -312,17 +317,19 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
     fun signIn(email: String, password: String, rememberMe: Boolean = false) {
         viewModelScope.launch {
             try {
-                Log.d("AuthViewModel", "Iniciando signIn para: $email")
+                // Normalizar email a minúsculas
+                val normalizedEmail = email.lowercase().trim()
+                Log.d("AuthViewModel", "Iniciando signIn para: $normalizedEmail")
                 _authState.value = AuthState(isLoading = true)
 
-                val result = authRepository.signIn(email, password)
+                val result = authRepository.signIn(normalizedEmail, password)
                 result.fold(
                     onSuccess = { r ->
                         Log.d("AuthViewModel", "SignIn exitoso: isSignedIn=${r.isSignedIn}")
                         if (r.isSignedIn) {
                             // Guardar credenciales si el usuario marcó "Recuérdame"
                             if (rememberMe) {
-                                preferencesManager?.saveCredentials(email, password)
+                                preferencesManager?.saveCredentials(normalizedEmail, password)
                                 Log.d("AuthViewModel", "Credenciales guardadas para 'Recuérdame'")
                             } else {
                                 // Limpiar credenciales si no marcó "Recuérdame"
@@ -338,7 +345,8 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
                     },
                     onFailure = { e ->
                         Log.e("AuthViewModel", "SignIn falló: ${e.message}", e)
-                        _authState.value = AuthState(error = e.message ?: "Credenciales incorrectas")
+                        val errorMessage = translateAuthError(e.message ?: "")
+                        _authState.value = AuthState(error = errorMessage)
                     }
                 )
             } catch (e: Exception) {
@@ -519,27 +527,29 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
 
     fun resetPassword(email: String) {
         viewModelScope.launch {
+            // Normalizar email a minúsculas
+            val normalizedEmail = email.lowercase().trim()
             _authState.value = AuthState(isLoading = true)
-            val result = authRepository.resetPassword(email)
+            val result = authRepository.resetPassword(normalizedEmail)
             result.fold(
                 onSuccess = {
                     _authState.value = AuthState(isSuccess = true, needsConfirmation = true)
                 },
                 onFailure = { e ->
-                    _authState.value = AuthState(error = e.message ?: "Error al resetear contraseña")
+                    _authState.value = AuthState(error = translateAuthError(e.message ?: "Error al resetear contraseña"))
                 }
             )
         }
     }
 
-    fun confirmResetPassword(email: String, newPassword: String, confirmationCode: String) {
+    fun confirmResetPassword(email: String, confirmationCode: String, newPassword: String) {
         viewModelScope.launch {
             _authState.value = AuthState(isLoading = true)
-            val result = authRepository.confirmResetPassword(email, newPassword, confirmationCode)
+            val result = authRepository.confirmResetPassword(email, confirmationCode, newPassword)
             result.fold(
                 onSuccess = { _authState.value = AuthState(isSuccess = true) },
                 onFailure = { e ->
-                    _authState.value = AuthState(error = e.message ?: "Error al confirmar nueva contraseña")
+                    _authState.value = AuthState(error = translateAuthError(e.message ?: "Error al confirmar nueva contraseña"))
                 }
             )
         }
@@ -552,7 +562,7 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
             result.fold(
                 onSuccess = { _authState.value = AuthState(isSuccess = true) },
                 onFailure = { e ->
-                    _authState.value = AuthState(error = e.message ?: "Error al actualizar contraseña")
+                    _authState.value = AuthState(error = translateAuthError(e.message ?: "Error al actualizar contraseña"))
                 }
             )
         }
@@ -711,6 +721,67 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * Traduce los mensajes de error de AWS Cognito al español
+     */
+    private fun translateAuthError(errorMessage: String): String {
+        val lowerMessage = errorMessage.lowercase()
+
+        return when {
+            // Credenciales incorrectas
+            "not authorized" in lowerMessage ||
+            "incorrect username or password" in lowerMessage ||
+            "user is not authorized" in lowerMessage ->
+                "Correo o contraseña incorrectos"
+
+            // Usuario no encontrado
+            "user does not exist" in lowerMessage ||
+            "usernotfound" in lowerMessage ->
+                "No existe una cuenta con este correo"
+
+            // Contraseña incorrecta
+            "incorrect password" in lowerMessage ->
+                "Contraseña incorrecta"
+
+            // Usuario no confirmado
+            "user is not confirmed" in lowerMessage ||
+            "usernotconfirmed" in lowerMessage ->
+                "Tu cuenta aún no ha sido confirmada. Revisa tu correo."
+
+            // Límite de intentos excedido
+            "attempt limit exceeded" in lowerMessage ||
+            "limitexceeded" in lowerMessage ->
+                "Demasiados intentos fallidos. Intenta de nuevo más tarde."
+
+            // Código inválido
+            "invalid verification code" in lowerMessage ||
+            "code mismatch" in lowerMessage ->
+                "Código de verificación incorrecto"
+
+            // Código expirado
+            "expired code" in lowerMessage ->
+                "El código de verificación ha expirado"
+
+            // Usuario ya existe
+            "user already exists" in lowerMessage ||
+            "usernameexists" in lowerMessage ->
+                "Ya existe una cuenta con este correo"
+
+            // Error de red
+            "network error" in lowerMessage ||
+            "unable to resolve host" in lowerMessage ->
+                "Error de conexión. Verifica tu internet e intenta de nuevo."
+
+            // Contraseña no cumple requisitos
+            "password does not conform" in lowerMessage ||
+            "invalidpassword" in lowerMessage ->
+                "La contraseña no cumple con los requisitos de seguridad"
+
+            // Error genérico
+            else -> "Error al iniciar sesión. Verifica tus credenciales."
         }
     }
 

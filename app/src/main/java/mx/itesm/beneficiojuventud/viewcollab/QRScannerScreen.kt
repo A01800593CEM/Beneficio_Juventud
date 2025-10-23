@@ -45,6 +45,7 @@ private const val TAG = "QRScannerScreen"
 fun QRScannerScreen(
     nav: NavHostController,
     branchId: Int,
+    collaboratorId: String? = null,
     viewModel: QRScannerViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -120,8 +121,8 @@ fun QRScannerScreen(
                     modifier = Modifier.fillMaxSize(),
                     onQRCodeScanned = { qrData ->
                         if (!isProcessing) {
-                            Log.d(TAG, "QR Code scanned, processing with branchId: $branchId")
-                            viewModel.processQRCode(qrData, branchId)
+                            Log.d(TAG, "QR Code scanned, processing with branchId: $branchId, collaboratorId: $collaboratorId")
+                            viewModel.processQRCode(qrData, branchId, collaboratorId)
                         }
                     }
                 )

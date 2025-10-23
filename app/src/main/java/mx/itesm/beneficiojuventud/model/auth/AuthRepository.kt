@@ -254,8 +254,8 @@ class AuthRepository {
      */
     suspend fun confirmResetPassword(
         email: String,
-        newPassword: String,
-        confirmationCode: String
+        confirmationCode: String,
+        newPassword: String
     ): Result<Unit> = suspendCancellableCoroutine { continuation ->
 
         Amplify.Auth.confirmResetPassword(

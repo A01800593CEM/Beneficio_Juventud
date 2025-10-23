@@ -9,11 +9,15 @@ data class Booking(
     val bookingDate: String? = null,
     val limitUseDate: String? = null,
     val status: BookingStatus? = null,
-    val cancelledDate: String? = null
+    val cancelledDate: String? = null,
+    val autoExpireDate: String? = null,
+    val cooldownUntil: String? = null
 
 )
 
 data class UpdateBookingRequest(
     val status: BookingStatus? = null,
-    val limitUseDate: String? = null
+    val limitUseDate: String? = null,
+    val autoExpireDate: String? = null,
+    val cooldownUntil: String? = null
 )

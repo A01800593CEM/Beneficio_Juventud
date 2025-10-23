@@ -36,4 +36,15 @@ export class BookingsController {
   getUserBookings(@Param('id') id: string){
     return this.bookingsService.findByUserId(id)
   }
+
+  @Get('cooldown/:userId/:promotionId')
+  async checkCooldown(@Param('userId') userId: string, @Param('promotionId') promotionId: string) {
+    return this.bookingsService.getCooldownInfo(userId, +promotionId);
+  }
+
+  @Get('is-cooldown-active/:userId/:promotionId')
+  async isCooldownActive(@Param('userId') userId: string, @Param('promotionId') promotionId: string) {
+    const isActive = await this.bookingsService.isCooldownActive(userId, +promotionId);
+    return { isActive };
+  }
 }

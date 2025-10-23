@@ -212,17 +212,19 @@ private fun toUi(p: Promotions): PromoDetailUi {
 private fun buildQrPayload(
     promotionId: Int,
     userId: String,
-    limitPerUser: Int?
+    limitPerUser: Int?,
+    collaboratorId: String
 ): String {
     val version = 1
     val ts = System.currentTimeMillis()
     val nonce = UUID.randomUUID().toString().substring(0, 8)
     val lpu = limitPerUser ?: -1
-    val payload = "bj|v=$version|pid=$promotionId|uid=$userId|lpu=$lpu|ts=$ts|n=$nonce"
+    val payload = "bj|v=$version|pid=$promotionId|uid=$userId|cid=$collaboratorId|lpu=$lpu|ts=$ts|n=$nonce"
 
     Log.d(TAG, "========== QR GENERATION DEBUG ==========")
     Log.d(TAG, "promotionId: $promotionId")
     Log.d(TAG, "userId: $userId")
+    Log.d(TAG, "collaboratorId: $collaboratorId")
     Log.d(TAG, "limitPerUser: $limitPerUser")
     Log.d(TAG, "version: $version")
     Log.d(TAG, "timestamp: $ts")
@@ -378,10 +380,10 @@ fun PromoQR(
     }
 
     // QR
-    val qrPayload = remember(promotionId, cognitoId, promo.limitPerUser) {
-        buildQrPayload(promotionId, cognitoId, promo.limitPerUser)
+    val qrPayload = remember(promotionId, cognitoId, promo.limitPerUser, promo.collaboratorId) {
+        buildQrPayload(promotionId, cognitoId, promo.limitPerUser, promo.collaboratorId ?: "")
     }
-    var qrImage by remember(promotionId, cognitoId, promo.limitPerUser) { mutableStateOf<ImageBitmap?>(null) }
+    var qrImage by remember(promotionId, cognitoId, promo.limitPerUser, promo.collaboratorId) { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(qrPayload) { qrImage = generateQrImageBitmap(qrPayload, sizePx = 900) }
 
     // Favoritos (optimista)
@@ -405,23 +407,22 @@ fun PromoQR(
         }
     }
 
-    // Verificar si la promoción está reservada (solo bookings activos)
+    // Verificar si la promoción está reservada (solo bookings PENDING)
     val currentBooking = remember(userBookings, promotionId) {
         val found = userBookings.find {
             it.promotionId == promotionId &&
-            it.status != BookingStatus.CANCELLED
+            it.status == BookingStatus.PENDING
         }
         Log.d(TAG, "Current booking for promotion $promotionId: ${found?.bookingId}")
         found
     }
 
-    // Buscar booking cancelado para verificar cooldown
+    // Buscar booking cancelado más reciente para verificar cooldown
     val cancelledBooking = remember(userBookings, promotionId) {
-        val found = userBookings.find {
-            it.promotionId == promotionId &&
-            it.status == BookingStatus.CANCELLED
-        }
-        Log.d(TAG, "Cancelled booking for promotion $promotionId: ${found?.bookingId}, cancelledDate: ${found?.cancelledDate}")
+        val found = userBookings
+            .filter { it.promotionId == promotionId && it.status == BookingStatus.CANCELLED }
+            .maxByOrNull { it.bookingId ?: 0 } // Obtener el más reciente (ID más alto)
+        Log.d(TAG, "Cancelled booking for promotion $promotionId: ${found?.bookingId}, cancelledDate: ${found?.cancelledDate}, cooldownUntil: ${found?.cooldownUntil}")
         found
     }
 
@@ -453,10 +454,10 @@ fun PromoQR(
                 }
             }
 
-            // Verificar cooldown si hay una reserva cancelada
-            val cancelled = cancelledBooking?.cancelledDate
-            inCooldown = isInCooldown(cancelled)
-            cooldownTime = getTimeUntilCooldownEnd(cancelled)
+            // Verificar cooldown usando la fecha del servidor (cooldownUntil)
+            val cooldownUntil = cancelledBooking?.cooldownUntil
+            inCooldown = isInCooldown(cooldownUntil)
+            cooldownTime = getTimeUntilCooldownEnd(cooldownUntil)
 
             kotlinx.coroutines.delay(1000) // Actualizar cada segundo
         }
@@ -679,7 +680,7 @@ fun PromoQR(
                                         bookingLoading && isReserved -> "Cancelando..."
                                         inCooldown -> {
                                             val (m, s) = cooldownTime
-                                            "Cooldown (${formatTimeRemaining(m, s)})"
+                                            "Vuelve a Reservar en: ${formatTimeRemaining(m, s)}"
                                         }
                                         bookingExpired -> "Reserva Expirada"
                                         isReserved -> {
@@ -1002,7 +1003,7 @@ private fun RedeemedCardInner() {
 // ---------- Helpers de Expiración y Cooldown ----------
 
 /**
- * Verifica si una reserva ha expirado (1 minuto desde bookingDate para pruebas)
+ * Verifica si una reserva ha expirado (10 segundos desde bookingDate para pruebas rápidas)
  */
 private fun isBookingExpired(bookingDate: String?): Boolean {
     if (bookingDate.isNullOrBlank()) return false
@@ -1010,8 +1011,8 @@ private fun isBookingExpired(bookingDate: String?): Boolean {
         val booking = parseDate(bookingDate) ?: return false
         val now = Date()
         val diffMillis = now.time - booking.time
-        val minute1InMillis = 1L * 60 * 1000  // 1 minuto para pruebas
-        diffMillis >= minute1InMillis
+        val seconds20InMillis = 20L * 1000  // 20 segundos para expiración automática
+        diffMillis >= seconds20InMillis
     } catch (e: Exception) {
         false
     }
@@ -1019,7 +1020,7 @@ private fun isBookingExpired(bookingDate: String?): Boolean {
 
 /**
  * Calcula el tiempo restante hasta la expiración
- * Retorna pair de (minutos, segundos) para pruebas
+ * Retorna pair de (minutos, segundos)
  */
 private fun getTimeUntilExpiration(bookingDate: String?): Pair<Long, Long> {
     if (bookingDate.isNullOrBlank()) return Pair(0L, 0L)
@@ -1027,8 +1028,8 @@ private fun getTimeUntilExpiration(bookingDate: String?): Pair<Long, Long> {
         val booking = parseDate(bookingDate) ?: return Pair(0L, 0L)
         val now = Date()
         val diffMillis = now.time - booking.time
-        val minute1InMillis = 1L * 60 * 1000  // 1 minuto para pruebas
-        val remainingMillis = maxOf(0L, minute1InMillis - diffMillis)
+        val seconds20InMillis = 20L * 1000  // 20 segundos para expiración automática
+        val remainingMillis = maxOf(0L, seconds20InMillis - diffMillis)
 
         val minutes = remainingMillis / (1000 * 60)
         val seconds = (remainingMillis % (1000 * 60)) / 1000
@@ -1054,30 +1055,27 @@ private fun formatTimeRemaining(minutes: Long, seconds: Long): String {
 /**
  * Verifica si una reserva cancelada está en período de cooldown (1 minuto desde cancelación para pruebas)
  */
-private fun isInCooldown(cancelledDate: String?): Boolean {
-    if (cancelledDate.isNullOrBlank()) return false
+private fun isInCooldown(cooldownUntilDate: String?): Boolean {
+    if (cooldownUntilDate.isNullOrBlank()) return false
     return try {
-        val cancelled = parseDate(cancelledDate) ?: return false
+        val cooldownUntil = parseDate(cooldownUntilDate) ?: return false
         val now = Date()
-        val diffMillis = now.time - cancelled.time
-        val minute1InMillis = 1L * 60 * 1000  // 1 minuto cooldown para pruebas
-        diffMillis < minute1InMillis
+        // Si ahora es antes de la fecha de fin del cooldown, aún estamos en cooldown
+        now < cooldownUntil
     } catch (e: Exception) {
         false
     }
 }
 
 /**
- * Calcula el tiempo restante de cooldown en formato (minutos, segundos) para pruebas
+ * Calcula el tiempo restante de cooldown en formato (minutos, segundos) basado en cooldownUntil del servidor
  */
-private fun getTimeUntilCooldownEnd(cancelledDate: String?): Pair<Long, Long> {
-    if (cancelledDate.isNullOrBlank()) return Pair(0L, 0L)
+private fun getTimeUntilCooldownEnd(cooldownUntilDate: String?): Pair<Long, Long> {
+    if (cooldownUntilDate.isNullOrBlank()) return Pair(0L, 0L)
     return try {
-        val cancelled = parseDate(cancelledDate) ?: return Pair(0L, 0L)
+        val cooldownUntil = parseDate(cooldownUntilDate) ?: return Pair(0L, 0L)
         val now = Date()
-        val diffMillis = now.time - cancelled.time
-        val minute1InMillis = 1L * 60 * 1000  // 1 minuto para pruebas
-        val remainingMillis = maxOf(0L, minute1InMillis - diffMillis)
+        val remainingMillis = maxOf(0L, cooldownUntil.time - now.time)
 
         val minutes = remainingMillis / (1000 * 60)
         val seconds = (remainingMillis % (1000 * 60)) / 1000

@@ -40,6 +40,7 @@ import mx.itesm.beneficiojuventud.components.BJTab
 import mx.itesm.beneficiojuventud.components.BJTopHeader
 import mx.itesm.beneficiojuventud.components.PromoImageBannerFav
 import mx.itesm.beneficiojuventud.components.SectionTitle
+import mx.itesm.beneficiojuventud.model.bookings.BookingStatus
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.PromoTheme
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
@@ -86,9 +87,12 @@ fun Favorites(
         favoriteCollabs.mapNotNull { it.cognitoId?.takeIf(String::isNotBlank) }.toSet()
     }
 
-    // Set de IDs de promociones reservadas para lookup rápido
+    // Set de IDs de promociones reservadas (SOLO PENDING) para lookup rápido
     val reservedPromoIds: Set<Int> = remember(userBookings) {
-        userBookings.mapNotNull { it.promotionId }.toSet()
+        userBookings
+            .filter { it.status == BookingStatus.PENDING }
+            .mapNotNull { it.promotionId }
+            .toSet()
     }
 
     // Set de IDs de promociones favoritas para lookup rápido
@@ -105,15 +109,13 @@ fun Favorites(
         }
     }
 
-    // ✅ MOVER ESTE CÁLCULO FUERA DEL BLOQUE DE LazyColumn
-    val allCoupons = remember(reservedPromos, favoritePromos, reservedPromoIds) {
-        // Primero los reservados
-        val reserved = reservedPromos.toList()
-        // Luego los favoritos que NO están reservados
-        val favoritesOnly = favoritePromos.filter { promo ->
-            promo.promotionId?.let { it !in reservedPromoIds } ?: true
-        }
-        reserved + favoritesOnly
+    // ✅ Mostrar SOLO favoritos (no mezclar con reservados)
+    // Los favoritos y las reservas son independientes
+    // Pero ordenar: reservados (PENDING) primero, luego favoritos sin reserva
+    val allCoupons = remember(favoritePromos, reservedPromoIds) {
+        val reserved = favoritePromos.filter { it.promotionId?.let { id -> id in reservedPromoIds } ?: false }
+        val notReserved = favoritePromos.filter { it.promotionId?.let { id -> id !in reservedPromoIds } ?: true }
+        reserved + notReserved
     }
 
     Scaffold(
@@ -131,10 +133,22 @@ fun Favorites(
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Home      -> nav.navigate(Screens.Home.route)
-                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
-                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
-                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
+                        BJTab.Home      -> nav.navigate(Screens.Home.route) {
+                            popUpTo(Screens.Home.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
                     }
                 }
             )
@@ -242,7 +256,8 @@ fun Favorites(
                             }
                         ) { index, promo ->
                             val isReserved = promo.promotionId?.let { it in reservedPromoIds } ?: false
-                            val isFavorite = promo.promotionId?.let { it in favoritePromoIds } ?: false
+                            // Todos los cupones aquí son favoritos por definición
+                            val isFavorite = true
 
                             PromoImageBannerFav(
                                 promo = promo,

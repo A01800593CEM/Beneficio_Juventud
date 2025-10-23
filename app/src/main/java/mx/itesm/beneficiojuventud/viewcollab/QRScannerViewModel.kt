@@ -14,12 +14,13 @@ private const val TAG = "QRScannerViewModel"
 
 /**
  * Data class representing parsed QR code data
- * Expected format: "bj|v=1|pid=123|uid=abc123|lpu=2|ts=1234567890|n=abc12345"
+ * Expected format: "bj|v=1|pid=123|uid=abc123|cid=collab123|lpu=2|ts=1234567890|n=abc12345"
  */
 data class QRData(
     val version: Int,
     val promotionId: Int,
     val userId: String,
+    val collaboratorId: String,
     val limitPerUser: Int,
     val timestamp: Long,
     val nonce: String
@@ -41,20 +42,27 @@ class QRScannerViewModel : ViewModel() {
      * Process scanned QR code data
      * @param qrData The QR code string to process
      * @param branchId The branch ID where the QR is being scanned (from logged-in collaborator)
+     * @param scanningCollaboratorId The collaborator ID who is scanning (from logged-in collaborator)
      */
-    fun processQRCode(qrData: String, branchId: Int) {
+    fun processQRCode(qrData: String, branchId: Int, scanningCollaboratorId: String?) {
         viewModelScope.launch {
             try {
                 _isProcessing.value = true
                 _error.value = null
 
-                Log.d(TAG, "Processing QR Code: $qrData at branchId: $branchId")
+                Log.d(TAG, "Processing QR Code: $qrData at branchId: $branchId by collaborator: $scanningCollaboratorId")
 
                 // Parse QR code
                 val parsedData = parseQRCode(qrData)
 
                 // Validate QR code
                 validateQRCode(parsedData)
+
+                // Validate collaborator match
+                if (scanningCollaboratorId != null && parsedData.collaboratorId != scanningCollaboratorId) {
+                    Log.e(TAG, "Collaborator mismatch! QR collaboratorId: ${parsedData.collaboratorId}, Scanner collaboratorId: $scanningCollaboratorId")
+                    throw QRValidationException("Este cupón solo puede ser canjeado en el negocio correspondiente.")
+                }
 
                 // Create redeemed coupon with all QR data
                 val redeemedCoupon = RedeemedCoupon(
@@ -136,6 +144,9 @@ class QRScannerViewModel : ViewModel() {
             val userId = data["uid"]
                 ?: throw QRValidationException("Código QR inválido: ID de usuario faltante")
 
+            val collaboratorId = data["cid"]
+                ?: throw QRValidationException("Código QR inválido: ID de colaborador faltante")
+
             val limitPerUser = data["lpu"]?.toIntOrNull()
                 ?: throw QRValidationException("Código QR inválido: límite por usuario faltante")
 
@@ -149,6 +160,7 @@ class QRScannerViewModel : ViewModel() {
                 version = version,
                 promotionId = promotionId,
                 userId = userId,
+                collaboratorId = collaboratorId,
                 limitPerUser = limitPerUser,
                 timestamp = timestamp,
                 nonce = nonce
@@ -158,6 +170,7 @@ class QRScannerViewModel : ViewModel() {
             Log.d(TAG, "  version: $version")
             Log.d(TAG, "  promotionId: $promotionId")
             Log.d(TAG, "  userId: $userId")
+            Log.d(TAG, "  collaboratorId: $collaboratorId")
             Log.d(TAG, "  limitPerUser: $limitPerUser")
             Log.d(TAG, "  timestamp: $timestamp")
             Log.d(TAG, "  nonce: $nonce")

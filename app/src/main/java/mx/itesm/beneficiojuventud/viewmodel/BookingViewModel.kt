@@ -15,10 +15,13 @@ import mx.itesm.beneficiojuventud.model.SavedCouponRepository
 import mx.itesm.beneficiojuventud.model.bookings.Booking
 import mx.itesm.beneficiojuventud.model.bookings.BookingStatus
 import mx.itesm.beneficiojuventud.model.bookings.RemoteServiceBooking
+import mx.itesm.beneficiojuventud.model.bookings.CooldownInfo
 import mx.itesm.beneficiojuventud.model.promos.Promotions
 import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
+import mx.itesm.beneficiojuventud.model.history.HistoryService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import android.util.Log
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -60,6 +63,10 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
         )
     }
 
+    private val historyService: HistoryService by lazy {
+        HistoryService(historyDao = database.historyDao())
+    }
+
     // State Flows
     private val _bookings = MutableStateFlow<List<Booking>>(emptyList())
     val bookings: StateFlow<List<Booking>> = _bookings.asStateFlow()
@@ -78,6 +85,16 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
 
     private val _bookingSuccess = MutableStateFlow(false)
     val bookingSuccess: StateFlow<Boolean> = _bookingSuccess.asStateFlow()
+
+    // Cooldown y timer
+    private val _cooldownInfo = MutableStateFlow<CooldownInfo?>(null)
+    val cooldownInfo: StateFlow<CooldownInfo?> = _cooldownInfo.asStateFlow()
+
+    private val _remainingTime = MutableStateFlow(0) // en segundos
+    val remainingTime: StateFlow<Int> = _remainingTime.asStateFlow()
+
+    private val _isAutoExpired = MutableStateFlow(false) // para notificar auto-expiración
+    val isAutoExpired: StateFlow<Boolean> = _isAutoExpired.asStateFlow()
 
     // Eventos de historial para bookings
     // replay = 50 para que History pueda recibir eventos pasados al abrirse
@@ -109,6 +126,19 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
                 _message.value = "¡Cupón reservado exitosamente!"
                 _bookingSuccess.value = true
 
+                // Auto-agregar a favoritos al reservar (una sola vez)
+                // Pero no lo hacemos si ya estaba en favoritos previamente
+                try {
+                    Log.d("BookingViewModel", "Auto-agregando promoción ${promotion.promotionId} a favoritos después de reservar")
+                    withContext(Dispatchers.IO) {
+                        repository.favoritePromotion(promotion.promotionId!!, userId)
+                    }
+                    Log.d("BookingViewModel", "Promoción ${promotion.promotionId} agregada a favoritos exitosamente")
+                } catch (favError: Exception) {
+                    // No es crítico si falla el auto-favoriting, solo logear
+                    Log.w("BookingViewModel", "⚠️ Error al auto-agregar a favoritos: ${favError.message}")
+                }
+
                 // Emitir evento de historial
                 val event = BookingEvent.Reserved(
                     title = promotion.title ?: "Cupón",
@@ -118,6 +148,17 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
                 Log.d("BookingViewModel", "Emitiendo evento Reserved: title=${event.title}, business=${event.businessName}")
                 _bookingEvents.emit(event)
                 Log.d("BookingViewModel", "Evento Reserved emitido exitosamente")
+
+                // Guardar en historial persistente
+                historyService.addHistoryEvent(
+                    userId = userId,
+                    type = "CUPON_RESERVADO",
+                    title = promotion.title ?: "Cupón",
+                    subtitle = promotion.businessName ?: "Negocio",
+                    iso = event.timestampIso,
+                    promotionId = promotion.promotionId,
+                    branchId = null
+                )
 
             } catch (e: Exception) {
                 _error.value = "Error al reservar: ${e.message}"
@@ -203,6 +244,17 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
                 Log.d("BookingViewModel", "Emitiendo evento Cancelled: title=${event.title}, business=${event.businessName}")
                 _bookingEvents.emit(event)
                 Log.d("BookingViewModel", "Evento Cancelled emitido exitosamente")
+
+                // Guardar en historial persistente
+                historyService.addHistoryEvent(
+                    userId = booking.userId ?: "",
+                    type = "RESERVA_CANCELADA",
+                    title = promotion?.title ?: "Cupón",
+                    subtitle = promotion?.businessName ?: "Negocio",
+                    iso = event.timestampIso,
+                    promotionId = promotion?.promotionId,
+                    branchId = null
+                )
 
                 // Recargar bookings después de cancelar
                 booking.userId?.let { userId ->
@@ -293,5 +345,79 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
         sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
         return sdf.format(calendar.time)
+    }
+
+    /**
+     * Obtiene información del cooldown para una promoción
+     */
+    fun getCooldownInfo(userId: String, promotionId: Int) {
+        viewModelScope.launch {
+            try {
+                val info = withContext(Dispatchers.IO) {
+                    RemoteServiceBooking.getCooldownInfo(userId, promotionId)
+                }
+                _cooldownInfo.value = info
+
+                // Si hay cooldown activo, inicia un timer
+                if (info != null && info.isActive) {
+                    startCooldownTimer(info.remainingSeconds)
+                }
+            } catch (e: Exception) {
+                Log.e("BookingViewModel", "Error al obtener cooldown info: ${e.message}")
+                _cooldownInfo.value = null
+            }
+        }
+    }
+
+    /**
+     * Timer para mostrar el tiempo de cooldown restante
+     */
+    private fun startCooldownTimer(initialSeconds: Int) {
+        viewModelScope.launch {
+            var remaining = initialSeconds
+            while (remaining > 0) {
+                _remainingTime.value = remaining
+                delay(1000) // Esperar 1 segundo
+                remaining--
+            }
+            _remainingTime.value = 0
+            _cooldownInfo.value = null // Limpiar cuando termine
+        }
+    }
+
+    /**
+     * Timer para mostrar el tiempo de expiración automática de una reserva
+     */
+    fun startExpirationTimer(autoExpireDate: String) {
+        viewModelScope.launch {
+            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+            sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+
+            try {
+                val expireTime = sdf.parse(autoExpireDate)?.time ?: return@launch
+
+                while (true) {
+                    val now = System.currentTimeMillis()
+                    val remaining = (expireTime - now) / 1000
+
+                    if (remaining <= 0) {
+                        _isAutoExpired.value = true
+                        break
+                    }
+
+                    _remainingTime.value = remaining.toInt()
+                    delay(1000) // Actualizar cada segundo
+                }
+            } catch (e: Exception) {
+                Log.e("BookingViewModel", "Error en timer de expiración: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Resetea el flag de auto-expiración
+     */
+    fun resetAutoExpired() {
+        _isAutoExpired.value = false
     }
 }

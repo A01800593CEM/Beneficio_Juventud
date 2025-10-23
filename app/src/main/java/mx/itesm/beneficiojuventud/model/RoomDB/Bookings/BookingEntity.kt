@@ -12,5 +12,7 @@ data class BookingEntity(
     val bookingDate: String?,
     val limitUseDate: String?,
     val status: BookingStatus?,
-    val cancelledDate: String? = null
+    val cancelledDate: String? = null,
+    val autoExpireDate: String? = null,
+    val cooldownUntil: String? = null
 )

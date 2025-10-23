@@ -19,6 +19,10 @@ import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import android.util.Log
+import com.amplifyframework.core.Amplify
+import com.amplifyframework.storage.StoragePath
+import java.io.File
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -138,7 +142,23 @@ fun HomeScreenCollab(
 
 @Composable
 private fun HeaderSectionCollab(collaborator: Collaborator?) {
-    val fallbackRes = R.drawable.logo_beneficio_joven
+    val fallbackRes = R.drawable.no_vendor_img
+    val context = LocalContext.current
+    var profileImageUrl by remember { mutableStateOf<String?>(null) }
+
+    // Try to download the real image from S3
+    LaunchedEffect(collaborator?.cognitoId) {
+        collaborator?.cognitoId?.let { userId ->
+            runCatching {
+                downloadCollaboratorImageForDisplay(
+                    context = context,
+                    userId = userId,
+                    onSuccess = { imagePath -> profileImageUrl = imagePath },
+                    onError = { /* Use fallback */ }
+                )
+            }
+        }
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -146,8 +166,8 @@ private fun HeaderSectionCollab(collaborator: Collaborator?) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             SubcomposeAsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(collaborator?.logoUrl?.takeIf { it.isNotBlank() } ?: fallbackRes)
+                model = ImageRequest.Builder(context)
+                    .data(profileImageUrl ?: collaborator?.logoUrl?.takeIf { it.isNotBlank() } ?: fallbackRes)
                     .crossfade(true)
                     .error(fallbackRes)
                     .build(),
@@ -279,6 +299,38 @@ private fun InfoCardCollab(icon: ImageVector, title: String, description: String
                 fontWeight = FontWeight.Bold
             )
         }
+    }
+}
+
+/* ========== Image Download Helper ========== */
+
+fun downloadCollaboratorImageForDisplay(
+    context: android.content.Context,
+    userId: String,
+    onSuccess: (String) -> Unit,
+    onError: (String) -> Unit
+) {
+    try {
+        Log.d("HomeScreenCollab", "Starting download for collaborator: $userId")
+
+        val storagePath = StoragePath.fromString("public/profile-images/$userId.jpg")
+        val localFile = File(context.cacheDir, "home_profile_$userId.jpg")
+
+        Amplify.Storage.downloadFile(
+            storagePath,
+            localFile,
+            { result ->
+                Log.d("HomeScreenCollab", "Download completed: ${result.file.path}")
+                onSuccess(localFile.absolutePath)
+            },
+            { error ->
+                Log.e("HomeScreenCollab", "Download failed", error)
+                onError(error.message ?: "Error desconocido")
+            }
+        )
+    } catch (e: Exception) {
+        Log.e("HomeScreenCollab", "Exception during download", e)
+        onError(e.message ?: "Error desconocido")
     }
 }
 

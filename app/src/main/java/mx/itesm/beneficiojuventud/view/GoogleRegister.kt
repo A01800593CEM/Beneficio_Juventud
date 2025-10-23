@@ -49,6 +49,8 @@ import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.model.users.UserProfile
 import mx.itesm.beneficiojuventud.model.users.AccountState
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+import mx.itesm.beneficiojuventud.utils.isValidEmail
+import mx.itesm.beneficiojuventud.utils.getEmailErrorMessage
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModel
 import mx.itesm.beneficiojuventud.viewmodel.UserViewModelFactory
@@ -118,7 +120,7 @@ fun GoogleRegister(
 
             // Autocompletar email
             if (email.isBlank() && googleData.email.isNotBlank()) {
-                email = googleData.email
+                email = googleData.email.lowercase().trim()
                 Log.d("GoogleRegister", "✅ Email autocompletado: $email")
             }
 
@@ -152,6 +154,7 @@ fun GoogleRegister(
     var acceptTerms by rememberSaveable { mutableStateOf(false) }
     var showError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    var emailError by remember { mutableStateOf(false) }
 
     val authState by authViewModel.authState.collectAsState()
 
@@ -204,6 +207,12 @@ fun GoogleRegister(
                     enabled = !isCreatingUser && isFormValid && cognitoSub != null,
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    // Validar email antes de continuar
+                    if (!isValidEmail(email)) {
+                        emailError = true
+                        return@MainButton
+                    }
+
                     if (!isAgeValid) {
                         showError = true
                         errorMessage = birthDateErrorMessage ?: "Para registrarte debes tener entre 12 y 29 años."
@@ -518,8 +527,13 @@ fun GoogleRegister(
                 FocusBringIntoView {
                     EmailTextField(
                         value = email,
-                        onValueChange = { email = it },
-                        modifier = it.fillMaxWidth()
+                        onValueChange = {
+                            email = it
+                            emailError = false
+                        },
+                        modifier = it.fillMaxWidth(),
+                        isError = emailError,
+                        errorMessage = if (emailError) getEmailErrorMessage() else ""
                     )
                 }
             }
@@ -546,7 +560,13 @@ fun GoogleRegister(
                             append("términos y condiciones")
                             pop()
                         },
-                        style = TextStyle(fontSize = 14.sp, color = Color(0xFF7D7A7A))
+                        style = TextStyle(fontSize = 14.sp, color = Color(0xFF7D7A7A)),
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            nav.navigate(Screens.Terms.route)
+                        }
                     )
                 }
             }

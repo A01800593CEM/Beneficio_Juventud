@@ -1,6 +1,7 @@
 package mx.itesm.beneficiojuventud.view
 
 import android.util.Log
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -240,11 +242,11 @@ private fun BusinessHeroHeader(
 ) {
     val shape = RoundedCornerShape(16.dp)
     val ctx = LocalContext.current
+    var isDescriptionExpanded by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(180.dp)
             .clip(shape)
     ) {
         AsyncImage(
@@ -254,7 +256,9 @@ private fun BusinessHeroHeader(
                 .build(),
             contentDescription = name,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.matchParentSize()
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
         )
 
         // Degradado overlay
@@ -301,32 +305,55 @@ private fun BusinessHeroHeader(
             }
         }
 
-        // Textos
+        // Contenido: título, descripción y dirección
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(16.dp)
+                .fillMaxWidth(0.85f)
         ) {
+            // Título
             Text(
                 text = name,
                 color = Color.White,
                 fontWeight = FontWeight.Black,
                 fontSize = 22.sp,
                 lineHeight = 24.sp,
-                modifier = Modifier.fillMaxWidth(0.7f),
                 maxLines = 2
             )
+
+            // Descripción
             if (description.isNotBlank()) {
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(6.dp))
                 Text(
                     text = description,
                     color = Color(0xFFD3D3D3),
                     fontWeight = FontWeight.Medium,
                     fontSize = 12.sp,
-                    maxLines = 2
+                    lineHeight = 16.sp,
+                    maxLines = if (isDescriptionExpanded) Int.MAX_VALUE else 3,
+                    overflow = TextOverflow.Ellipsis
                 )
+
+                // Botón "ver más" / "ver menos" en línea separada
+                if (description.length > 100) {
+                    Text(
+                        text = if (isDescriptionExpanded) "ver menos" else "ver más",
+                        color = Color(0xFF008D96),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .padding(top = 2.dp)
+                            .clickable {
+                                isDescriptionExpanded = !isDescriptionExpanded
+                            }
+                    )
+                }
             }
+
+            // Dirección
             if (address.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
                 Text(
                     text = address,
                     color = Color(0xFFC3C3C3),

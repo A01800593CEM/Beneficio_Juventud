@@ -84,7 +84,11 @@ interface ApiCollaborator {
 
 // API Service
 class SimpleApiService {
-  private baseUrl = process.env.NODE_ENV === 'development' ? '/api/proxy' : 'https://api.beneficiojoven.lat';
+  // En el navegador (cliente), siempre usar /api/proxy para evitar CORS
+  // El proxy redirige a https://api.beneficiojoven.lat en el servidor
+  private baseUrl = typeof window === 'undefined'
+    ? 'https://api.beneficiojoven.lat'  // SSR: usar API directa
+    : '/api/proxy';  // Cliente: usar proxy local
   private aiWebhookUrl = 'https://primary-production-0858b.up.railway.app/webhook/bdd4b48a-4f48-430f-a443-a14a19009340';
 
   private async request(endpoint: string, options: RequestInit = {}) {

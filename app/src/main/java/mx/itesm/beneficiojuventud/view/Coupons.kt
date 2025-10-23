@@ -72,7 +72,7 @@ fun Coupons(
         try {
             promoVm.getActivePromotions()
         } catch (e: Exception) {
-            promosError = e.message ?: "Error loading promotions"
+            promosError = e.message ?: "Error cargando promociones"
         } finally {
             loadingPromos = false
         }
@@ -90,7 +90,7 @@ fun Coupons(
                 promoVm.getActivePromotionsByCategory(selectedCategoryId.toString())
             }
         } catch (e: Exception) {
-            promosError = e.message ?: "Error filtering promotions"
+            promosError = e.message ?: "Error filtrando promociones"
         } finally {
             loadingPromos = false
         }
@@ -112,10 +112,22 @@ fun Coupons(
                 onSelect = { tab ->
                     selectedTab = tab
                     when (tab) {
-                        BJTab.Home      -> nav.navigate(Screens.Home.route)
-                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route)
-                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route)
-                        BJTab.Profile   -> nav.navigate(Screens.Profile.route)
+                        BJTab.Home      -> nav.navigate(Screens.Home.route) {
+                            popUpTo(Screens.Home.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                        BJTab.Coupons   -> nav.navigate(Screens.Coupons.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        BJTab.Favorites -> nav.navigate(Screens.Favorites.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        BJTab.Profile   -> nav.navigate(Screens.Profile.route) {
+                            popUpTo(Screens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
                     }
                 }
             )
@@ -260,7 +272,7 @@ fun Coupons(
                                             promoVm.getPromotionByCategory(selectedCategoryId.toString())
                                         }
                                     } catch (e: Exception) {
-                                        promosError = e.message ?: "Error"
+                                        promosError = e.message ?: "Error desconocido"
                                     } finally {
                                         loadingPromos = false
                                     }

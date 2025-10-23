@@ -41,15 +41,18 @@ enum class CollabTab(val label: String, val icon: ImageVector, val rootRoute: St
 }
 
 /** Navegación entre tabs que:
- * - Hace pop hasta el startDestination del grafo
+ * - Hace pop hasta HomeScreenCollab (el inicio del panel colaborador)
  * - Evita duplicados (singleTop)
- * - Restaura estado de cada tab
+ * - NO restaura estado para evitar acumulación de navegaciones
  */
 private fun NavHostController.navigateToTabRoot(route: String) {
     navigate(route) {
-        popUpTo(graph.findStartDestination().id) { saveState = true }
+        popUpTo(Screens.HomeScreenCollab.route) {
+            inclusive = (route == Screens.HomeScreenCollab.route)
+            saveState = false
+        }
         launchSingleTop = true
-        restoreState = true
+        restoreState = false
     }
 }
 

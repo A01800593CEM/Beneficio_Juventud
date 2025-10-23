@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Store
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -153,7 +154,7 @@ fun ProfileCollab(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Image(
@@ -161,9 +162,6 @@ fun ProfileCollab(
                         contentDescription = "Logo",
                         modifier = Modifier.size(28.dp)
                     )
-                    IconButton(onClick = { /* Notifs */ }) {
-                        Icon(Icons.Outlined.NotificationsNone, contentDescription = "Notificaciones", tint = TextPrimary)
-                    }
                 }
 
                 Spacer(Modifier.height(10.dp))
@@ -205,11 +203,14 @@ fun ProfileCollab(
                 ProfileItemCard(Icons.Outlined.Store, "Gestionar Sucursales", "Ver y editar tus sucursales") {
                     nav.navigate(Screens.BranchManagement.route)
                 }
-                ProfileItemCard(Icons.Outlined.Settings, "Configuración", "Preferencias y notificaciones") {
-                    nav.navigate(Screens.Settings.route)
+                ProfileItemCard(Icons.Outlined.Settings, "Configuración", "Preferencias de ubicación") {
+                    nav.navigate(Screens.SettingsCollab.route)
                 }
                 ProfileItemCard(Icons.AutoMirrored.Outlined.HelpOutline, "Ayuda y Soporte", "Preguntas frecuentes") {
                     nav.navigate(Screens.Help.route)
+                }
+                ProfileItemCard(Icons.Outlined.Info, "Créditos", "Conoce al equipo de desarrollo") {
+                    nav.navigate(Screens.Credits.route)
                 }
                 ProfileItemCard(Icons.AutoMirrored.Outlined.Logout, "Cerrar Sesión", "Hasta la próxima :)", isLogout = true) {
                     signOutRequested = true

@@ -41,6 +41,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.util.Log
+import androidx.compose.ui.graphics.RectangleShape
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -267,7 +268,7 @@ private fun CategoryItem(
                 Box(
                     modifier = Modifier
                         .size(26.dp)
-                        .border(2.dp, gradient, CircleShape),
+                        .border(2.dp, gradient, RectangleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -280,7 +281,7 @@ private fun CategoryItem(
                 Box(
                     modifier = Modifier
                         .size(26.dp)
-                        .border(2.dp, Color(0xFFCBCBCB), CircleShape)
+                        .border(2.dp, Color(0xFFCBCBCB), RectangleShape)
                 )
             }
 
