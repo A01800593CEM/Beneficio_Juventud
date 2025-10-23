@@ -417,13 +417,12 @@ fun PromoQR(
         found
     }
 
-    // Buscar booking cancelado para verificar cooldown
+    // Buscar booking cancelado más reciente para verificar cooldown
     val cancelledBooking = remember(userBookings, promotionId) {
-        val found = userBookings.find {
-            it.promotionId == promotionId &&
-            it.status == BookingStatus.CANCELLED
-        }
-        Log.d(TAG, "Cancelled booking for promotion $promotionId: ${found?.bookingId}, cancelledDate: ${found?.cancelledDate}")
+        val found = userBookings
+            .filter { it.promotionId == promotionId && it.status == BookingStatus.CANCELLED }
+            .maxByOrNull { it.bookingId ?: 0 } // Obtener el más reciente (ID más alto)
+        Log.d(TAG, "Cancelled booking for promotion $promotionId: ${found?.bookingId}, cancelledDate: ${found?.cancelledDate}, cooldownUntil: ${found?.cooldownUntil}")
         found
     }
 
