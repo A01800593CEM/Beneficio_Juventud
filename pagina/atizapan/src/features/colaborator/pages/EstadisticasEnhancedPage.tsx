@@ -6,7 +6,6 @@ import KPICard from '@/features/admin/components/KPICard';
 import {
   ChartBarIcon,
   ArrowTrendingUpIcon,
-  CurrencyDollarIcon,
   TicketIcon,
   StarIcon,
   EyeIcon
@@ -86,10 +85,10 @@ export default function EstadisticasEnhancedPage() {
       icon: <ArrowTrendingUpIcon className="h-4 w-4" />
     },
     {
-      title: "Ingresos Mensuales",
-      value: `$${stats.monthlyRevenue.toLocaleString()}`,
-      delta: stats.growthMetrics.revenueGrowth,
-      icon: <CurrencyDollarIcon className="h-4 w-4" />
+      title: "Total de Vistas",
+      value: stats.totalViews.toLocaleString(),
+      delta: stats.growthMetrics.viewsGrowth,
+      icon: <EyeIcon className="h-4 w-4" />
     },
     {
       title: "Tasa de Conversión",
@@ -104,10 +103,10 @@ export default function EstadisticasEnhancedPage() {
       icon: <StarIcon className="h-4 w-4" />
     },
     {
-      title: "Total de Vistas",
-      value: stats.totalViews.toLocaleString(),
-      delta: stats.growthMetrics.viewsGrowth,
-      icon: <EyeIcon className="h-4 w-4" />
+      title: "Favoritos",
+      value: stats.totalFavorites?.toLocaleString() || '0',
+      delta: stats.growthMetrics.favoritesGrowth,
+      icon: <StarIcon className="h-4 w-4" />
     }
   ] : [];
 
@@ -171,7 +170,7 @@ export default function EstadisticasEnhancedPage() {
               />
               <RevenueGrowthChart
                 data={stats.monthlyData}
-                title="Crecimiento de Ingresos"
+                title="Crecimiento de Visualizaciones"
               />
             </>
           )}
@@ -214,15 +213,15 @@ export default function EstadisticasEnhancedPage() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Valor Promedio de Orden</span>
+                  <span className="text-sm font-medium text-gray-700">Engagement Promedio</span>
                   <span className="text-lg font-bold text-green-600">
-                    ${stats.growthMetrics.averageOrderValue.toFixed(0)}
+                    {stats.growthMetrics.averageEngagement.toFixed(1)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Valor de Vida del Cliente</span>
+                  <span className="text-sm font-medium text-gray-700">Crecimiento de Favoritos</span>
                   <span className="text-lg font-bold text-blue-600">
-                    ${stats.growthMetrics.customerLifetimeValue.toFixed(0)}
+                    +{stats.growthMetrics.favoritesGrowth.toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -255,7 +254,7 @@ export default function EstadisticasEnhancedPage() {
                     Tasa de Canje
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ingresos Est.
+                    Visualizaciones
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Días Activa
@@ -288,7 +287,7 @@ export default function EstadisticasEnhancedPage() {
                       {promo.redemptionRate.toFixed(1)}%
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      ${promo.revenue.toLocaleString()}
+                      {promo.views.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
                       {promo.daysActive}

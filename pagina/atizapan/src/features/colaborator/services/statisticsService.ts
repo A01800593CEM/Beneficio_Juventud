@@ -11,17 +11,16 @@ export interface CollaboratorStatistics {
   expiredPromotions: number;
   totalRedemptions: number;
   monthlyRedemptions: number;
-  totalRevenue: number;
-  monthlyRevenue: number;
   averageRating: number;
   totalViews: number;
+  totalFavorites: number;
   conversionRate: number;
 
   // Insights
   topPromotion: {
     title: string;
     redemptions: number;
-    revenue: number;
+    views: number;
   };
   peakHours: string[];
   topCategories: string[];
@@ -45,7 +44,6 @@ export interface MonthlyData {
   year: number;
   promotions: number;
   redemptions: number;
-  revenue: number;
   views: number;
   conversionRate: number;
 }
@@ -55,7 +53,7 @@ export interface WeeklyData {
   weekNumber: number;
   promotions: number;
   redemptions: number;
-  revenue: number;
+  views: number;
   startDate: string;
   endDate: string;
 }
@@ -65,7 +63,6 @@ export interface DailyData {
   day: string;
   promotions: number;
   redemptions: number;
-  revenue: number;
   views: number;
 }
 
@@ -76,7 +73,6 @@ export interface PromotionPerformance {
   totalStock: number;
   redemptions: number;
   redemptionRate: number;
-  revenue: number;
   views: number;
   conversionRate: number;
   status: string;
@@ -88,19 +84,17 @@ export interface CategoryBreakdown {
   category: string;
   promotions: number;
   redemptions: number;
-  revenue: number;
   percentage: number;
 }
 
 export interface GrowthMetrics {
   promotionsGrowth: number; // % vs mes anterior
   redemptionsGrowth: number;
-  revenueGrowth: number;
   viewsGrowth: number;
   conversionRateGrowth: number;
   customerRetention: number;
-  averageOrderValue: number;
-  customerLifetimeValue: number;
+  averageEngagement: number;
+  favoritesGrowth: number;
 }
 
 export class StatisticsService {
@@ -109,7 +103,6 @@ export class StatisticsService {
   private baseUrl = typeof window === 'undefined'
     ? 'https://api.beneficiojoven.lat'  // SSR: usar API directa
     : '/api/proxy';  // Cliente: usar proxy local
-  private AVERAGE_PROMOTION_PRICE = 85; // Precio promedio estimado por promoción
   private VIEWS_MULTIPLIER = 12; // Multiplicador para estimar vistas basado en canjes
 
   private async request(endpoint: string, options: RequestInit = {}) {
@@ -182,8 +175,6 @@ export class StatisticsService {
 
     // Estimación de datos mensuales (30% del total para el mes actual)
     const monthlyRedemptions = Math.floor(totalRedemptions * 0.3);
-    const totalRevenue = totalRedemptions * this.AVERAGE_PROMOTION_PRICE;
-    const monthlyRevenue = monthlyRedemptions * this.AVERAGE_PROMOTION_PRICE;
 
     // Cálculos de rendimiento
     const totalStock = promotions.reduce((sum, p) => sum + (p.totalStock || 0), 0);
@@ -200,19 +191,19 @@ export class StatisticsService {
     const topPromotionRedemptions = (topPromotion.totalStock || 0) - (topPromotion.availableStock || 0);
 
     // Datos mensuales simulados realistas
-    const monthlyData = this.generateMonthlyData(totalRedemptions, totalRevenue, totalPromotions);
+    const monthlyData = this.generateMonthlyData(totalRedemptions, totalViews, totalPromotions);
 
     // Datos semanales
-    const weeklyData = this.generateWeeklyData(monthlyRedemptions, monthlyRevenue);
+    const weeklyData = this.generateWeeklyData(monthlyRedemptions, totalViews);
 
     // Datos diarios
-    const dailyData = this.generateDailyData(monthlyRedemptions, monthlyRevenue);
+    const dailyData = this.generateDailyData(monthlyRedemptions, totalViews);
 
     // Performance de promociones
     const promotionPerformance = this.calculatePromotionPerformance(promotions);
 
     // Breakdown por categorías
-    const categoryBreakdown = this.calculateCategoryBreakdown(collaborator, promotions, totalRedemptions, totalRevenue);
+    const categoryBreakdown = this.calculateCategoryBreakdown(collaborator, promotions, totalRedemptions);
 
     // Métricas de crecimiento
     const growthMetrics = this.calculateGrowthMetrics(monthlyData);
@@ -224,17 +215,16 @@ export class StatisticsService {
       expiredPromotions,
       totalRedemptions,
       monthlyRedemptions,
-      totalRevenue,
-      monthlyRevenue,
       averageRating: 4.6 + (Math.random() * 0.6), // Simulado entre 4.6-5.2
       totalViews,
+      totalFavorites: Math.round(totalRedemptions * 0.4), // Estimado: 40% de canjes generan favoritos
       conversionRate: Math.round(conversionRate * 100) / 100,
 
       // Insights
       topPromotion: {
         title: topPromotion.title,
         redemptions: topPromotionRedemptions,
-        revenue: topPromotionRedemptions * this.AVERAGE_PROMOTION_PRICE
+        views: topPromotionRedemptions * this.VIEWS_MULTIPLIER
       },
       peakHours: ["12:00-14:00", "19:00-21:00", "20:00-22:00"],
       topCategories: collaborator.categories?.map(c => c.name) || ["COMIDA"],
@@ -251,7 +241,7 @@ export class StatisticsService {
     };
   }
 
-  private generateMonthlyData(totalRedemptions: number, totalRevenue: number, totalPromotions: number): MonthlyData[] {
+  private generateMonthlyData(totalRedemptions: number, totalViews: number, totalPromotions: number): MonthlyData[] {
     const months = [
       "Ene", "Feb", "Mar", "Abr", "May", "Jun",
       "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
@@ -276,8 +266,7 @@ export class StatisticsService {
         year: 2024,
         promotions: Math.round(totalPromotions * (multiplier * 0.15)),
         redemptions: Math.round(totalRedemptions * multiplier * 0.16),
-        revenue: Math.round(totalRevenue * multiplier * 0.16),
-        views: Math.round(totalRedemptions * multiplier * 0.16 * this.VIEWS_MULTIPLIER),
+        views: Math.round(totalViews * multiplier * 0.16),
         conversionRate: 8.5 + (Math.random() * 4.5) // Entre 8.5% y 13%
       });
     }
@@ -285,7 +274,7 @@ export class StatisticsService {
     return data;
   }
 
-  private generateWeeklyData(monthlyRedemptions: number, monthlyRevenue: number): WeeklyData[] {
+  private generateWeeklyData(monthlyRedemptions: number, totalViews: number): WeeklyData[] {
     const weeks = ["Sem 1", "Sem 2", "Sem 3", "Sem 4"];
     const data: WeeklyData[] = [];
 
@@ -296,7 +285,7 @@ export class StatisticsService {
         weekNumber: i + 1,
         promotions: Math.round(2 + (Math.random() * 3)),
         redemptions: Math.round(monthlyRedemptions * multiplier),
-        revenue: Math.round(monthlyRevenue * multiplier),
+        views: Math.round(totalViews * multiplier * 0.25),
         startDate: `2024-10-${1 + (i * 7)}`,
         endDate: `2024-10-${7 + (i * 7)}`
       });
@@ -305,7 +294,7 @@ export class StatisticsService {
     return data;
   }
 
-  private generateDailyData(monthlyRedemptions: number, monthlyRevenue: number): DailyData[] {
+  private generateDailyData(monthlyRedemptions: number, totalViews: number): DailyData[] {
     const days = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
     const data: DailyData[] = [];
 
@@ -319,8 +308,7 @@ export class StatisticsService {
         day: days[i],
         promotions: Math.round(Math.random() * 2),
         redemptions: Math.round(monthlyRedemptions * baseMultiplier),
-        revenue: Math.round(monthlyRevenue * baseMultiplier),
-        views: Math.round(monthlyRedemptions * baseMultiplier * this.VIEWS_MULTIPLIER)
+        views: Math.round(totalViews * baseMultiplier * 0.14)
       });
     }
 
@@ -331,7 +319,6 @@ export class StatisticsService {
     return promotions.map(promo => {
       const redemptions = (promo.totalStock || 0) - (promo.availableStock || 0);
       const redemptionRate = promo.totalStock ? (redemptions / promo.totalStock) * 100 : 0;
-      const revenue = redemptions * this.AVERAGE_PROMOTION_PRICE;
       const views = redemptions * this.VIEWS_MULTIPLIER;
       const conversionRate = views > 0 ? (redemptions / views) * 100 : 0;
 
@@ -347,7 +334,6 @@ export class StatisticsService {
         totalStock: promo.totalStock || 0,
         redemptions,
         redemptionRate: Math.round(redemptionRate * 100) / 100,
-        revenue,
         views,
         conversionRate: Math.round(conversionRate * 100) / 100,
         status: promo.promotionState,
@@ -357,7 +343,7 @@ export class StatisticsService {
     });
   }
 
-  private calculateCategoryBreakdown(collaborator: ApiCollaborator, promotions: ApiPromotion[], totalRedemptions: number, totalRevenue: number): CategoryBreakdown[] {
+  private calculateCategoryBreakdown(collaborator: ApiCollaborator, promotions: ApiPromotion[], totalRedemptions: number): CategoryBreakdown[] {
     const categories = collaborator.categories || [{ name: "GENERAL" }];
 
     return categories.map((category, index) => {
@@ -369,7 +355,6 @@ export class StatisticsService {
         category: category.name,
         promotions: Math.round(promotions.length * (percentage / 100)),
         redemptions: Math.round(totalRedemptions * (percentage / 100)),
-        revenue: Math.round(totalRevenue * (percentage / 100)),
         percentage: Math.round(percentage * 100) / 100
       };
     });
@@ -380,12 +365,11 @@ export class StatisticsService {
       return {
         promotionsGrowth: 0,
         redemptionsGrowth: 0,
-        revenueGrowth: 0,
         viewsGrowth: 0,
         conversionRateGrowth: 0,
         customerRetention: 75,
-        averageOrderValue: this.AVERAGE_PROMOTION_PRICE,
-        customerLifetimeValue: this.AVERAGE_PROMOTION_PRICE * 4.2
+        averageEngagement: 3.5,
+        favoritesGrowth: 8.2
       };
     }
 
@@ -399,12 +383,11 @@ export class StatisticsService {
     return {
       promotionsGrowth: Math.round(calculateGrowth(current.promotions, previous.promotions) * 100) / 100,
       redemptionsGrowth: Math.round(calculateGrowth(current.redemptions, previous.redemptions) * 100) / 100,
-      revenueGrowth: Math.round(calculateGrowth(current.revenue, previous.revenue) * 100) / 100,
       viewsGrowth: Math.round(calculateGrowth(current.views, previous.views) * 100) / 100,
       conversionRateGrowth: Math.round(calculateGrowth(current.conversionRate, previous.conversionRate) * 100) / 100,
       customerRetention: 72 + (Math.random() * 16), // 72-88%
-      averageOrderValue: this.AVERAGE_PROMOTION_PRICE + (Math.random() * 20) - 10,
-      customerLifetimeValue: this.AVERAGE_PROMOTION_PRICE * (3.8 + (Math.random() * 1.2))
+      averageEngagement: 3.2 + (Math.random() * 1.6), // 3.2-4.8 interacciones promedio
+      favoritesGrowth: 5 + (Math.random() * 15) // 5-20% crecimiento en favoritos
     };
   }
 }

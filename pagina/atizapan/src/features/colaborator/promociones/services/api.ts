@@ -129,6 +129,15 @@ export class PromotionApiService {
     return collaborator;
   }
 
+  // PATCH /collaborators/:id - Actualizar Colaborador
+  async updateCollaborator(id: number, data: Partial<ApiCollaborator>): Promise<ApiCollaborator> {
+    console.log('📝 Updating collaborator:', { id, data });
+    return this.request(`/collaborators/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
   // ============================================================================
   // IA WEBHOOK
   // ============================================================================

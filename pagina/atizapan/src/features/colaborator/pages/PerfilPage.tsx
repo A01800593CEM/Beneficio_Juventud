@@ -46,11 +46,13 @@ const mockBusiness: BusinessProfile = {
 export default function PerfilPage() {
   const { data: session } = useSession();
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
-  const [_collaborator, setCollaborator] = useState<ApiCollaborator | null>(null);
+  const [collaborator, setCollaborator] = useState<ApiCollaborator | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<BusinessProfile | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Cargar datos del colaborador
   useEffect(() => {
@@ -127,18 +129,93 @@ export default function PerfilPage() {
   const handleEdit = () => {
     setIsEditing(true);
     setEditData(business ? { ...business } : null);
+    setError(null);
+    setSaveSuccess(false);
   };
 
-  const handleSave = () => {
-    setBusiness(editData);
-    setIsEditing(false);
-    console.log("Business profile updated:", editData);
-    // TODO: Save to backend
+  const handleSave = async () => {
+    if (!editData || !collaborator) {
+      console.error('❌ No data to save or collaborator not found');
+      return;
+    }
+
+    // Validación básica
+    if (!editData.name.trim()) {
+      setError('El nombre del negocio es requerido');
+      return;
+    }
+
+    if (!editData.owner.trim()) {
+      setError('El nombre del representante es requerido');
+      return;
+    }
+
+    if (!editData.email.trim()) {
+      setError('El email es requerido');
+      return;
+    }
+
+    if (!editData.phone.trim()) {
+      setError('El teléfono es requerido');
+      return;
+    }
+
+    // Validación de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editData.email)) {
+      setError('Por favor ingresa un email válido');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setSaveSuccess(false);
+
+    try {
+      console.log('💾 Saving profile changes...');
+
+      // Mapear datos del perfil de negocio al formato del colaborador
+      const updateData: Partial<ApiCollaborator> = {
+        businessName: editData.name,
+        representativeName: editData.owner,
+        email: editData.email,
+        phone: editData.phone,
+        address: editData.address,
+        description: editData.description,
+        logoUrl: editData.logo || undefined,
+      };
+
+      console.log('📝 Update data:', updateData);
+
+      // Llamar al API para actualizar
+      const updatedCollaborator = await promotionApiService.updateCollaborator(collaborator.id, updateData);
+
+      console.log('✅ Profile updated successfully:', updatedCollaborator);
+
+      // Actualizar estado local
+      setCollaborator(updatedCollaborator);
+      setBusiness(editData);
+      setIsEditing(false);
+      setSaveSuccess(true);
+
+      // Ocultar mensaje de éxito después de 3 segundos
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3000);
+
+    } catch (err) {
+      console.error('❌ Error saving profile:', err);
+      setError('Error al guardar los cambios del perfil');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setEditData(business ? { ...business } : null);
     setIsEditing(false);
+    setError(null);
+    setSaveSuccess(false);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -179,15 +256,24 @@ export default function PerfilPage() {
     <div className="flex space-x-3">
       <button
         onClick={handleCancel}
-        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+        disabled={saving}
+        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Cancelar
       </button>
       <button
         onClick={handleSave}
-        className="px-4 py-2 bg-[#008D96] text-white rounded-lg hover:bg-[#007580] transition-colors"
+        disabled={saving}
+        className="inline-flex items-center px-4 py-2 bg-[#008D96] text-white rounded-lg hover:bg-[#007580] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Guardar Cambios
+        {saving ? (
+          <>
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            Guardando...
+          </>
+        ) : (
+          'Guardar Cambios'
+        )}
       </button>
     </div>
   ) : (
@@ -239,15 +325,23 @@ export default function PerfilPage() {
           </p>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            {error}
-          </div>
-        )}
-
         {actions}
       </div>
+
+      {/* Success Message */}
+      {saveSuccess && (
+        <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+          ✅ Perfil actualizado exitosamente
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
         {/* Header Card */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6">
