@@ -5,7 +5,7 @@
 import { ApiPromotion, CreatePromotionData, AIPromotionResponse, ApiCollaborator } from '../types';
 
 export class PromotionApiService {
-  private baseUrl = process.env.NODE_ENV === 'development' ? '/api/proxy' : 'https://api.beneficiojoven.lat';
+  private baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || (typeof window === 'undefined' ? 'https://api.beneficiojoven.lat' : '/api/proxy');
   private aiWebhookUrl = 'https://primary-production-0858b.up.railway.app/webhook/bdd4b48a-4f48-430f-a443-a14a19009340';
 
   private async request(endpoint: string, options: RequestInit = {}) {

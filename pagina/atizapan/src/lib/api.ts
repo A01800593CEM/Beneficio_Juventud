@@ -3,9 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { Promotion, PromotionCreateData, PromotionAIRequest, Business, Category } from "@/types/promotion";
 import { User, UserStats, AdminStats, CollaboratorStats } from "@/types/user";
 
-const API_BASE_URL = process.env.NODE_ENV === 'development'
-  ? '/api/proxy'  // Usar proxy local en desarrollo
-  : 'https://api.beneficiojoven.lat';  // Usar API directa en producción
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || (typeof window === 'undefined' ? 'https://api.beneficiojoven.lat' : '/api/proxy');  // Usar proxy local en desarrollo, API directa en producción
 
 export interface UserRegistrationData {
   name: string;

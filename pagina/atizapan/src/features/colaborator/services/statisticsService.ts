@@ -104,7 +104,7 @@ export interface GrowthMetrics {
 }
 
 export class StatisticsService {
-  private baseUrl = process.env.NODE_ENV === 'development' ? '/api/proxy' : 'https://api.beneficiojoven.lat';
+  private baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || (typeof window === 'undefined' ? 'https://api.beneficiojoven.lat' : '/api/proxy');
   private AVERAGE_PROMOTION_PRICE = 85; // Precio promedio estimado por promoción
   private VIEWS_MULTIPLIER = 12; // Multiplicador para estimar vistas basado en canjes
 
