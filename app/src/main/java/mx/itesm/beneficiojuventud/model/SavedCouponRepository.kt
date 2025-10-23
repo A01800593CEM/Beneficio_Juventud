@@ -122,22 +122,7 @@ class SavedCouponRepository(
             // Step 3: Cache promotion as reserved (isReserved = true)
             promotionDao.insertPromotions(promo.toEntity(isReserved = true))
 
-            // Step 4: Automatically add to favorites (if not already favorited)
-            // This ensures the coupon appears in the favorites list with "Reservado" badge
-            try {
-                RemoteServiceUser.favoritePromotion(booking.promotionId!!, booking.userId!!)
-                Log.d("CouponRepository", "✅ Auto-favorited promotion ${booking.promotionId}")
-
-                // Just ensure this specific promotion is saved as a favorite in the local cache
-                // Don't reload all favorites (that would erase manually added/removed favorites)
-                promotionDao.insertPromotions(promo.toEntity(isReserved = false))
-                Log.d("CouponRepository", "✅ Saved auto-favorited promotion to local cache")
-            } catch (favError: Exception) {
-                Log.w("CouponRepository", "⚠️ Failed to auto-favorite promotion (may already be favorited)", favError)
-                // Non-critical error, don't throw
-            }
-
-            // Step 5: Sync ALL bookings from server to ensure consistency
+            // Step 4: Sync ALL bookings from server to ensure consistency
             // This is crucial when the server reuses/reactivates a previously cancelled booking
             try {
                 val allUserBookings = RemoteServiceBooking.getUserBookings(booking.userId!!)

@@ -126,6 +126,15 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
                 _message.value = "¡Cupón reservado exitosamente!"
                 _bookingSuccess.value = true
 
+                // Asegurar que la promoción se agregue a favoritos (auto-favorite)
+                try {
+                    repository.favoritePromotion(promotion.promotionId!!, userId)
+                    Log.d("BookingViewModel", "✅ Auto-favorited promotion ${promotion.promotionId}")
+                } catch (favError: Exception) {
+                    Log.w("BookingViewModel", "⚠️ Failed to auto-favorite: ${favError.message}")
+                    // Non-critical, don't throw
+                }
+
                 // Emitir evento de historial
                 val event = BookingEvent.Reserved(
                     title = promotion.title ?: "Cupón",
