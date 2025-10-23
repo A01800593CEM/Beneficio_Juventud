@@ -134,45 +134,123 @@ fun Credits(
                 },
                 onEmailClick = {
                     val intent = Intent(Intent.ACTION_SENDTO).apply {
-                        data = Uri.parse("alantomasrv@gmail.com")
+                        data = Uri.parse("mailto:alantomasrv@gmail.com")
                     }
-                    context.startActivity(intent)
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // No hay aplicación de correo instalada
+                    }
                 }
             )
 
             Spacer(Modifier.height(12.dp))
 
             DeveloperCard(
-                name = "Nombre del Desarrollador 2",
-                linkedInUrl = "https://www.linkedin.com/in/usuario2",
-                email = "developer2@example.com",
+                name = "Emilio De León Vives",
+                linkedInUrl = "https://www.linkedin.com/in/edeleonv",
+                email = "e.deleonv@outlook.com",
                 onLinkedInClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.linkedin.com/in/usuario2"))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.linkedin.com/in/edeleonv"))
                     context.startActivity(intent)
                 },
                 onEmailClick = {
                     val intent = Intent(Intent.ACTION_SENDTO).apply {
-                        data = Uri.parse("mailto:developer2@example.com")
+                        data = Uri.parse("mailto:e.deleonv@outlook.com")
                     }
-                    context.startActivity(intent)
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // No hay aplicación de correo instalada
+                    }
                 }
             )
 
             Spacer(Modifier.height(12.dp))
 
             DeveloperCard(
-                name = "Nombre del Desarrollador 3",
-                linkedInUrl = "https://www.linkedin.com/in/usuario3",
-                email = "developer3@example.com",
+                name = "Diego Carreón Aguirre",
+                linkedInUrl = "https://www.linkedin.com/in/dcarreonag",
+                email = "carreon21diego@gmail.com",
                 onLinkedInClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.linkedin.com/in/usuario3"))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.linkedin.com/in/dcarreonag"))
                     context.startActivity(intent)
                 },
                 onEmailClick = {
                     val intent = Intent(Intent.ACTION_SENDTO).apply {
-                        data = Uri.parse("mailto:developer3@example.com")
+                        data = Uri.parse("mailto:carreon21diego@gmail.com")
                     }
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // No hay aplicación de correo instalada
+                    }
+                }
+            )
+
+            Spacer(Modifier.height(32.dp))
+
+            DeveloperCard(
+                name = "Iván Carrillo Zardaín",
+                linkedInUrl = "http://www.linkedin.com/in/ivancz",
+                email = "ivancz.com@gmail.com",
+                onLinkedInClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("http://www.linkedin.com/in/ivancz"))
                     context.startActivity(intent)
+                },
+                onEmailClick = {
+                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                        data = Uri.parse("mailto:ivancz.com@gmail.com")
+                    }
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // No hay aplicación de correo instalada
+                    }
+                }
+            )
+
+            Spacer(Modifier.height(32.dp))
+
+            DeveloperCard(
+                name = "Santiago Serrano",
+                linkedInUrl = "https://www.linkedin.com/in/sserranom/",
+                email = "ssmm.serrrano@gmail.com",
+                onLinkedInClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.linkedin.com/in/sserranom/"))
+                    context.startActivity(intent)
+                },
+                onEmailClick = {
+                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                        data = Uri.parse("mailto:ssmm.serrrano@gmail.com")
+                    }
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // No hay aplicación de correo instalada
+                    }
+                }
+            )
+
+            Spacer(Modifier.height(32.dp))
+
+            DeveloperCard(
+                name = "Erik Owen Castro Flores",
+                linkedInUrl = "http://www.linkedin.com/in/ivancz",
+                email = "ivancz.com@gmail.com",
+                onLinkedInClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("http://www.linkedin.com/in/ivancz"))
+                    context.startActivity(intent)
+                },
+                onEmailClick = {
+                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                        data = Uri.parse("mailto:ivancz.com@gmail.com")
+                    }
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // No hay aplicación de correo instalada
+                    }
                 }
             )
 
