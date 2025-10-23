@@ -11,7 +11,7 @@ interface ExtendedSession extends Session {
 export async function fetchFromApi(path: string) {
   const session = await getServerSession(authOptions);
   const token = (session as ExtendedSession)?.accessToken;
-  const base = 'https://beneficiojoven.lat';
+  const base = 'https://api.beneficiojoven.lat';
   const res = await fetch(`${base}${path}`, {
     headers: {
       Authorization: token ? `Bearer ${token}` : "",
