@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
+import { cognitoLogout } from "@/shared/lib/cognito";
 import {
   TagIcon,
   ChartBarIcon,
@@ -66,7 +67,46 @@ export default function ColaboratorLayout({
   ];
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/login' });
+    try {
+      console.log("🔄 Iniciando logout completo...");
+
+      // 1. Logout de Amplify/Cognito primero
+      try {
+        await cognitoLogout();
+        console.log("✅ Logout de Cognito exitoso");
+      } catch (error) {
+        console.warn("⚠️ Error en logout de Cognito (puede ser normal):", error);
+        // No fallar si Cognito ya no tiene sesión
+      }
+
+      // 2. Logout de NextAuth
+      await signOut({
+        callbackUrl: "/login",
+        redirect: true
+      });
+
+      console.log("✅ Logout completo exitoso");
+
+    } catch (error) {
+      console.error("❌ Error durante logout:", error);
+
+      // Fallback: limpiar almacenamiento local y redirigir
+      try {
+        // Limpiar cualquier storage local que pueda estar interfiriendo
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // Forzar logout de NextAuth sin importar errores anteriores
+        await signOut({
+          callbackUrl: "/login",
+          redirect: true
+        });
+      } catch (fallbackError) {
+        console.error("❌ Error en fallback logout:", fallbackError);
+        // Último recurso: redirección manual
+        window.location.href = "/login";
+      }
+    }
   };
 
   const handleNavigation = (href: string) => {

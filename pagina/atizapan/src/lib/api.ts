@@ -5,7 +5,7 @@ import { User, UserStats, AdminStats, CollaboratorStats } from "@/types/user";
 
 const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? '/api/proxy'  // Usar proxy local en desarrollo
-  : 'https://beneficiojoven.lat';  // Usar API directa en producción
+  : 'https://api.beneficiojoven.lat';  // Usar API directa en producción
 
 export interface UserRegistrationData {
   name: string;

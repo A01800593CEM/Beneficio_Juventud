@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cognitoSignUp, SignUpData } from '@/lib/cognito';
 import { EyeIcon, EyeSlashIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
+import "../../styles/auth-design-system.css";
 
 interface ExtendedFormData extends SignUpData {
   apellidoPaterno: string;
@@ -290,9 +291,8 @@ export default function Register() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 via-white to-cyan-50">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
+      <div className="auth-container">
+        <div className="auth-card">
             <div className="text-center mb-6">
               <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
                 <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
@@ -325,503 +325,449 @@ export default function Register() {
             </div>
           </div>
           
-          <div className="text-center mt-8">
-            <p className="text-sm text-gray-400">
+          <div className="auth-footer">
+            <p className="auth-footer-text">
               2025 Beneficio Joven. Todos los derechos reservados.
             </p>
           </div>
         </div>
-      </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 via-white to-cyan-50">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
+    <div className="auth-container">
+      <div className="auth-card-wide">
           {/* Back Button */}
           <button
             onClick={() => router.back()}
-            className="flex items-center text-gray-500 hover:text-gray-700 mb-6 transition-colors"
+            className="auth-back-button "
           >
-            <ArrowLeftIcon className="h-5 w-5 mr-2" />
+            <ArrowLeftIcon className="w-5 h-5" />
             Regresar
           </button>
 
+          {/* Logo */}
+          <div className="auth-logo">
+            <img src="/logo_beneficio_joven.png" alt="" />
+          </div>
+
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-extrabold bg-gradient-to-r from-[#4B4C7E] to-[#008D96] bg-clip-text text-transparent mb-2">
+            <h1 className="auth-title">
               Crear Cuenta
             </h1>
-            <p className="text-gray-600 text-sm">
+            <p className="auth-subtitle">
               Regístrate para acceder a todos los beneficios
             </p>
           </div>
 
           {/* User Type Selection */}
-          <div className="mb-6">
-            <div className="flex bg-gray-100 rounded-xl p-1">
-              <button
-                type="button"
-                onClick={() => setUserType('user')}
-                className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
-                  userType === 'user'
-                    ? 'bg-white text-[#008D96] shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                Usuario
-              </button>
-              <button
-                type="button"
-                onClick={() => setUserType('collaborator')}
-                className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
-                  userType === 'collaborator'
-                    ? 'bg-white text-[#008D96] shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                Colaborador
-              </button>
-            </div>
+          <div className="user-type-selector">
+            <button
+              type="button"
+              onClick={() => setUserType('user')}
+              className={`user-type-option ${userType === 'user' ? 'active' : ''}`}
+            >
+              Usuario
+            </button>
+            <button
+              type="button"
+              onClick={() => setUserType('collaborator')}
+              className={`user-type-option ${userType === 'collaborator' ? 'active' : ''}`}
+            >
+              Colaborador
+            </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit}>
             {/* Error Message */}
             {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-                <p className="text-red-600 text-sm text-center">{error}</p>
+              <div className="auth-error">
+                <p className="auth-error-text">{error}</p>
               </div>
             )}
 
             {/* User Form Fields */}
             {userType === 'user' && (
-              <>
-                {/* Name Field */}
-                <div className="space-y-2">
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-500">
-                    Nombre
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
+              <div className="auth-form-grid">
+                {/* Columna Izquierda */}
+                <div className="auth-form-column">
+                    {/* Name Field */}
+                    <div className="auth-field">
+                      <label htmlFor="name" className="auth-field-label">Nombre</label>
+                      <div className="auth-field-container">
+                        <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <input
+                          id="name"
+                          name="name"
+                          type="text"
+                          required
+                          value={formData.name}
+                          onChange={handleInputChange}
+                          className="auth-input"
+                          placeholder="Tu nombre"
+                          disabled={loading}
+                        />
+                      </div>
                     </div>
-                    <input
-                      id="name"
-                      name="name"
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      placeholder="Tu nombre"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
 
-                {/* Apellido Paterno Field */}
-                <div className="space-y-2">
-                  <label htmlFor="apellidoPaterno" className="block text-sm font-medium text-gray-500">
-                    Apellido Paterno
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
+                    {/* Apellido Paterno Field */}
+                    <div className="auth-field">
+                      <label htmlFor="apellidoPaterno" className="auth-field-label">Apellido Paterno</label>
+                      <div className="auth-field-container">
+                        <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <input
+                          id="apellidoPaterno"
+                          name="apellidoPaterno"
+                          type="text"
+                          required
+                          value={formData.apellidoPaterno}
+                          onChange={handleInputChange}
+                          className="auth-input"
+                          placeholder="Tu apellido paterno"
+                          disabled={loading}
+                        />
+                      </div>
                     </div>
-                    <input
-                      id="apellidoPaterno"
-                      name="apellidoPaterno"
-                      type="text"
-                      required
-                      value={formData.apellidoPaterno}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      placeholder="Tu apellido paterno"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-                {/* Apellido Materno Field */}
-                <div className="space-y-2">
-                  <label htmlFor="apellidoMaterno" className="block text-sm font-medium text-gray-500">
-                    Apellido Materno
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
+                    {/* Teléfono Field */}
+                    <div className="auth-field">
+                      <label htmlFor="telefono" className="auth-field-label">Teléfono</label>
+                      <div className="auth-field-container">
+                        <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        <input
+                          id="telefono"
+                          name="telefono"
+                          type="tel"
+                          required
+                          value={formData.telefono}
+                          onChange={handleInputChange}
+                          className="auth-input"
+                          placeholder="Tu número de teléfono"
+                          disabled={loading}
+                        />
+                      </div>
                     </div>
-                    <input
-                      id="apellidoMaterno"
-                      name="apellidoMaterno"
-                      type="text"
-                      required
-                      value={formData.apellidoMaterno}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      placeholder="Tu apellido materno"
-                      disabled={loading}
-                    />
                   </div>
-                </div>
 
-                {/* Fecha de Nacimiento Field */}
-                <div className="space-y-2">
-                  <label htmlFor="fechaNacimiento" className="block text-sm font-medium text-gray-500">
-                    Fecha de Nacimiento
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
+                  {/* Columna Derecha */}
+                  <div className="auth-form-column">
+                    {/* Apellido Materno Field */}
+                    <div className="auth-field">
+                      <label htmlFor="apellidoMaterno" className="auth-field-label">Apellido Materno</label>
+                      <div className="auth-field-container">
+                        <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <input
+                          id="apellidoMaterno"
+                          name="apellidoMaterno"
+                          type="text"
+                          required
+                          value={formData.apellidoMaterno}
+                          onChange={handleInputChange}
+                          className="auth-input"
+                          placeholder="Tu apellido materno"
+                          disabled={loading}
+                        />
+                      </div>
                     </div>
-                    <input
-                      id="fechaNacimiento"
-                      name="fechaNacimiento"
-                      type="date"
-                      required
-                      value={formData.fechaNacimiento}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
 
-                {/* Teléfono Field */}
-                <div className="space-y-2">
-                  <label htmlFor="telefono" className="block text-sm font-medium text-gray-500">
-                    Número de Teléfono
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
+                    {/* Fecha de Nacimiento Field */}
+                    <div className="auth-field">
+                      <label htmlFor="fechaNacimiento" className="auth-field-label">Fecha de Nacimiento</label>
+                      <div className="auth-field-container">
+                        <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <input
+                          id="fechaNacimiento"
+                          name="fechaNacimiento"
+                          type="date"
+                          required
+                          value={formData.fechaNacimiento}
+                          onChange={handleInputChange}
+                          className="auth-input"
+                          disabled={loading}
+                        />
+                      </div>
                     </div>
-                    <input
-                      id="telefono"
-                      name="telefono"
-                      type="tel"
-                      required
-                      value={formData.telefono}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      placeholder="Tu número de teléfono"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
 
-                {/* Email Field */}
-                <div className="space-y-2">
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-500">
-                    Correo Electrónico
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  </div>
+
+                  {/* Email y Password span ambas columnas */}
+                  <div className="auth-field auth-field-full">
+                    <label htmlFor="email" className="auth-field-label">Correo Electrónico</label>
+                    <div className="auth-field-container">
+                      <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                       </svg>
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        required
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="auth-input"
+                        placeholder="tu@email.com"
+                        disabled={loading}
+                      />
                     </div>
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      placeholder="tu@email.com"
-                      disabled={loading}
-                    />
                   </div>
-                </div>
 
-                {/* Password Field */}
-                <div className="space-y-2">
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-500">
-                    Contraseña
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="auth-field auth-field-full">
+                    <label htmlFor="password" className="auth-field-label">Contraseña</label>
+                    <div className="auth-field-container">
+                      <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                       </svg>
-                    </div>
-                    <input
-                      id="password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-12 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      placeholder="••••••••••••"
-                      disabled={loading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-4 flex items-center"
-                    >
-                      {showPassword ? (
-                        <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                      ) : (
-                        <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Password Strength Indicator */}
-                  {formData.password && (
-                    <div className="mt-3">
-                      <div className="flex items-center space-x-1 mb-2">
-                        {[...Array(5)].map((_, i) => (
-                          <div
-                            key={i}
-                            className={`h-1 flex-1 rounded-full ${
-                              i < passwordStrength.score
-                                ? passwordStrength.score <= 2
-                                  ? "bg-red-500"
-                                  : passwordStrength.score <= 3
-                                  ? "bg-yellow-500"
-                                  : "bg-green-500"
-                                : "bg-gray-200"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <div className="text-xs">
-                        <span className={`font-medium ${
-                          passwordStrength.score <= 2
-                            ? "text-red-600"
-                            : passwordStrength.score <= 3
-                            ? "text-yellow-600"
-                            : "text-green-600"
-                        }`}>
-                          {passwordStrength.score <= 2
-                            ? "Débil"
-                            : passwordStrength.score <= 3
-                            ? "Media"
-                            : "Fuerte"}
-                        </span>
-                        {passwordStrength.feedback.length > 0 && (
-                          <span className="text-gray-500 ml-2">
-                            Falta: {passwordStrength.feedback.join(", ")}
-                          </span>
+                      <input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className="auth-input auth-input-with-action"
+                        placeholder="••••••••••••"
+                        disabled={loading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="auth-field-action"
+                      >
+                        {showPassword ? (
+                          <EyeSlashIcon className="w-5 h-5" />
+                        ) : (
+                          <EyeIcon className="w-5 h-5" />
                         )}
-                      </div>
+                      </button>
                     </div>
-                  )}
 
-                  <p className="text-xs text-gray-500">
-                    Mínimo 8 caracteres con mayúsculas, minúsculas y números
-                  </p>
-                </div>
-              </>
+                    {/* Password Strength Indicator */}
+                    {formData.password && (
+                      <div className="password-strength">
+                        <div className="password-strength-bars">
+                          {[...Array(5)].map((_, i) => (
+                            <div
+                              key={i}
+                              className={`password-strength-bar ${
+                                i < passwordStrength.score
+                                  ? passwordStrength.score <= 2
+                                    ? "weak"
+                                    : passwordStrength.score <= 3
+                                    ? "medium"
+                                    : "strong"
+                                  : ""
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <div className="password-strength-text">
+                          <span className={`font-medium ${
+                            passwordStrength.score <= 2
+                              ? "text-red-600"
+                              : passwordStrength.score <= 3
+                              ? "text-yellow-600"
+                              : "text-green-600"
+                          }`}>
+                            {passwordStrength.score <= 2
+                              ? "Débil"
+                              : passwordStrength.score <= 3
+                              ? "Media"
+                              : "Fuerte"}
+                          </span>
+                          {passwordStrength.feedback.length > 0 && (
+                            <span className="text-gray-500">
+                              Falta: {passwordStrength.feedback.join(", ")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-xs text-gray-500 mt-2">
+                      Mínimo 8 caracteres con mayúsculas, minúsculas y números
+                    </p>
+                  </div>
+              </div>
             )}
 
             {/* Collaborator Form Fields */}
             {userType === 'collaborator' && (
-              <>
-                {/* Business Name Field */}
-                <div className="space-y-2">
-                  <label htmlFor="businessName" className="block text-sm font-medium text-gray-500">
-                    Nombre del Negocio
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="auth-form-grid">
+                {/* Columna Izquierda */}
+                <div className="auth-form-column">
+                  {/* Business Name Field */}
+                  <div className="auth-field">
+                    <label htmlFor="businessName" className="auth-field-label">Nombre del Negocio</label>
+                    <div className="auth-field-container">
+                      <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                       </svg>
+                      <input
+                        id="businessName"
+                        name="businessName"
+                        type="text"
+                        required
+                        value={collaboratorData.businessName}
+                        onChange={handleInputChange}
+                        className="auth-input"
+                        placeholder="Nombre de tu negocio"
+                        disabled={loading}
+                      />
                     </div>
-                    <input
-                      id="businessName"
-                      name="businessName"
-                      type="text"
-                      required
-                      value={collaboratorData.businessName}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      placeholder="Nombre de tu negocio"
-                      disabled={loading}
-                    />
                   </div>
-                </div>
 
-                {/* RFC Field */}
-                <div className="space-y-2">
-                  <label htmlFor="rfc" className="block text-sm font-medium text-gray-500">
-                    RFC
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {/* RFC Field */}
+                  <div className="auth-field">
+                    <label htmlFor="rfc" className="auth-field-label">RFC</label>
+                    <div className="auth-field-container">
+                      <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
+                      <input
+                        id="rfc"
+                        name="rfc"
+                        type="text"
+                        required
+                        value={collaboratorData.rfc}
+                        onChange={handleInputChange}
+                        className="auth-input"
+                        placeholder="RFC de tu negocio"
+                        disabled={loading}
+                      />
                     </div>
-                    <input
-                      id="rfc"
-                      name="rfc"
-                      type="text"
-                      required
-                      value={collaboratorData.rfc}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      placeholder="RFC de tu negocio"
-                      disabled={loading}
-                    />
                   </div>
-                </div>
 
-                {/* Representative Name Field */}
-                <div className="space-y-2">
-                  <label htmlFor="representativeName" className="block text-sm font-medium text-gray-500">
-                    Nombre del Representante
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {/* Representative Name Field */}
+                  <div className="auth-field">
+                    <label htmlFor="representativeName" className="auth-field-label">Nombre del Representante</label>
+                    <div className="auth-field-container">
+                      <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
+                      <input
+                        id="representativeName"
+                        name="representativeName"
+                        type="text"
+                        required
+                        value={collaboratorData.representativeName}
+                        onChange={handleInputChange}
+                        className="auth-input"
+                        placeholder="Tu nombre completo"
+                        disabled={loading}
+                      />
                     </div>
-                    <input
-                      id="representativeName"
-                      name="representativeName"
-                      type="text"
-                      required
-                      value={collaboratorData.representativeName}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      placeholder="Tu nombre completo"
-                      disabled={loading}
-                    />
                   </div>
-                </div>
 
-                {/* Phone Field */}
-                <div className="space-y-2">
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-500">
-                    Teléfono
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {/* Phone Field */}
+                  <div className="auth-field">
+                    <label htmlFor="phone" className="auth-field-label">Teléfono</label>
+                    <div className="auth-field-container">
+                      <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
+                      <input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        required
+                        value={collaboratorData.phone}
+                        onChange={handleInputChange}
+                        className="auth-input"
+                        placeholder="10 dígitos"
+                        disabled={loading}
+                      />
                     </div>
-                    <input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      required
-                      value={collaboratorData.phone}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      placeholder="10 dígitos"
-                      disabled={loading}
-                    />
+                    {collaboratorData.phone && !validatePhone(collaboratorData.phone) && (
+                      <p className="text-xs text-red-500 mt-1">El teléfono debe tener exactamente 10 dígitos</p>
+                    )}
                   </div>
-                  {collaboratorData.phone && !validatePhone(collaboratorData.phone) && (
-                    <p className="text-xs text-red-500">El teléfono debe tener exactamente 10 dígitos</p>
-                  )}
                 </div>
 
-                {/* Email Field */}
-                <div className="space-y-2">
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-500">
-                    Correo Electrónico
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {/* Columna Derecha */}
+                <div className="auth-form-column">
+
+                  {/* Email Field */}
+                  <div className="auth-field">
+                    <label htmlFor="email" className="auth-field-label">Correo Electrónico</label>
+                    <div className="auth-field-container">
+                      <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                       </svg>
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        required
+                        value={collaboratorData.email}
+                        onChange={handleInputChange}
+                        className="auth-input"
+                        placeholder="correo@negocio.com"
+                        disabled={loading}
+                      />
                     </div>
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required
-                      value={collaboratorData.email}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      placeholder="correo@negocio.com"
-                      disabled={loading}
-                    />
                   </div>
-                </div>
 
-                {/* Address Field */}
-                <div className="space-y-2">
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-500">
-                    Dirección
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {/* Address Field */}
+                  <div className="auth-field">
+                    <label htmlFor="address" className="auth-field-label">Dirección</label>
+                    <div className="auth-field-container">
+                      <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
+                      <input
+                        id="address"
+                        name="address"
+                        type="text"
+                        required
+                        value={collaboratorData.address}
+                        onChange={handleInputChange}
+                        className="auth-input"
+                        placeholder="Dirección completa del negocio"
+                        disabled={loading}
+                      />
                     </div>
-                    <input
-                      id="address"
-                      name="address"
-                      type="text"
-                      required
-                      value={collaboratorData.address}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      placeholder="Dirección completa del negocio"
-                      disabled={loading}
-                    />
                   </div>
-                </div>
 
-                {/* Postal Code Field */}
-                <div className="space-y-2">
-                  <label htmlFor="postalCode" className="block text-sm font-medium text-gray-500">
-                    Código Postal
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {/* Postal Code Field */}
+                  <div className="auth-field">
+                    <label htmlFor="postalCode" className="auth-field-label">Código Postal</label>
+                    <div className="auth-field-container">
+                      <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
+                      <input
+                        id="postalCode"
+                        name="postalCode"
+                        type="text"
+                        required
+                        value={collaboratorData.postalCode}
+                        onChange={handleInputChange}
+                        className="auth-input"
+                        placeholder="12345"
+                        disabled={loading}
+                      />
                     </div>
-                    <input
-                      id="postalCode"
-                      name="postalCode"
-                      type="text"
-                      required
-                      value={collaboratorData.postalCode}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
-                      placeholder="12345"
-                      disabled={loading}
-                    />
                   </div>
                 </div>
 
-                {/* Description Field */}
-                <div className="space-y-2">
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-500">
-                    Descripción del Negocio
-                  </label>
-                  <div className="relative">
-                    <div className="absolute top-3 left-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                      </svg>
-                    </div>
+                {/* Campos que abarcan toda la fila */}
+                <div className="auth-field auth-field-full">
+                  <label htmlFor="description" className="auth-field-label">Descripción del Negocio</label>
+                  <div className="auth-field-container">
+                    <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                    </svg>
                     <textarea
                       id="description"
                       name="description"
@@ -829,24 +775,21 @@ export default function Register() {
                       required
                       value={collaboratorData.description}
                       onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white resize-none"
+                      className="auth-input resize-none"
+                      style={{ paddingLeft: '2rem', minHeight: '4rem' }}
                       placeholder="Describe tu negocio y los servicios que ofreces..."
                       disabled={loading}
                     />
                   </div>
                 </div>
 
-                {/* Password Field */}
-                <div className="space-y-2">
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-500">
-                    Contraseña
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </div>
+
+                <div className="auth-field auth-field-full">
+                  <label htmlFor="password" className="auth-field-label">Contraseña</label>
+                  <div className="auth-field-container">
+                    <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
                     <input
                       id="password"
                       name="password"
@@ -854,43 +797,43 @@ export default function Register() {
                       required
                       value={collaboratorData.password}
                       onChange={handleInputChange}
-                      className="w-full pl-12 pr-12 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
+                      className="auth-input auth-input-with-action"
                       placeholder="••••••••••••"
                       disabled={loading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                      className="auth-field-action"
                     >
                       {showPassword ? (
-                        <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                        <EyeSlashIcon className="w-5 h-5" />
                       ) : (
-                        <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                        <EyeIcon className="w-5 h-5" />
                       )}
                     </button>
                   </div>
 
                   {/* Password Strength Indicator */}
                   {collaboratorData.password && (
-                    <div className="mt-3">
-                      <div className="flex items-center space-x-1 mb-2">
+                    <div className="password-strength">
+                      <div className="password-strength-bars">
                         {[...Array(5)].map((_, i) => (
                           <div
                             key={i}
-                            className={`h-1 flex-1 rounded-full ${
+                            className={`password-strength-bar ${
                               i < getPasswordStrength(collaboratorData.password).score
                                 ? getPasswordStrength(collaboratorData.password).score <= 2
-                                  ? "bg-red-500"
+                                  ? "weak"
                                   : getPasswordStrength(collaboratorData.password).score <= 3
-                                  ? "bg-yellow-500"
-                                  : "bg-green-500"
-                                : "bg-gray-200"
+                                  ? "medium"
+                                  : "strong"
+                                : ""
                             }`}
                           />
                         ))}
                       </div>
-                      <div className="text-xs">
+                      <div className="password-strength-text">
                         <span className={`font-medium ${
                           getPasswordStrength(collaboratorData.password).score <= 2
                             ? "text-red-600"
@@ -905,7 +848,7 @@ export default function Register() {
                             : "Fuerte"}
                         </span>
                         {getPasswordStrength(collaboratorData.password).feedback.length > 0 && (
-                          <span className="text-gray-500 ml-2">
+                          <span className="text-gray-500">
                             Falta: {getPasswordStrength(collaboratorData.password).feedback.join(", ")}
                           </span>
                         )}
@@ -913,34 +856,32 @@ export default function Register() {
                     </div>
                   )}
 
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 mt-2">
                     Mínimo 8 caracteres con mayúsculas, minúsculas y números
                   </p>
                 </div>
 
-                {/* Accept Terms Checkbox */}
-                <div className="flex items-center space-x-3">
+                <div className="auth-checkbox auth-field-full">
                   <input
                     id="acceptTerms"
                     name="acceptTerms"
                     type="checkbox"
                     checked={collaboratorData.acceptTerms}
                     onChange={handleInputChange}
-                    className="h-4 w-4 text-[#008D96] focus:ring-[#008D96] border-gray-300 rounded"
                     disabled={loading}
                   />
-                  <label htmlFor="acceptTerms" className="text-sm text-gray-600">
+                  <label htmlFor="acceptTerms" className="auth-checkbox-label">
                     Acepto los{" "}
-                    <a href="#" className="text-[#008D96] hover:text-[#00494E] font-medium">
+                    <a href="#" className="auth-link">
                       términos y condiciones
                     </a>{" "}
                     y la{" "}
-                    <a href="#" className="text-[#008D96] hover:text-[#00494E] font-medium">
+                    <a href="#" className="auth-link">
                       política de privacidad
                     </a>
                   </label>
                 </div>
-              </>
+              </div>
             )}
 
             {/* Submit Button */}
@@ -1005,12 +946,6 @@ export default function Register() {
           </div>
         </div>
 
-        <div className="text-center mt-8">
-          <p className="text-sm text-gray-400">
-            2025 Beneficio Joven. Todos los derechos reservados.
-          </p>
-        </div>
       </div>
-    </div>
   );
 }

@@ -11,6 +11,7 @@ import {
 import { signIn, useSession } from "next-auth/react";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { getProfileBasedRedirect } from "../../lib/profile-redirect";
+import "../../styles/auth-design-system.css";
 
 export default function CustomLogin() {
   const [credentials, setCredentials] = useState<LoginCredentials>({
@@ -134,36 +135,43 @@ export default function CustomLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 via-white to-cyan-50">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
+    <div className="auth-container">
+      <div className="auth-card">
+          {/* Logo */}
+          <div className="auth-logo">
+            <div className="w-12 h-12 bg-gradient-to-r from-[#4B4C7E] to-[#008D96] rounded-xl flex items-center justify-center">
+              <span className="text-white font-black text-xl">BJ</span>
+            </div>
+          </div>
+
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-black bg-gradient-to-r from-[#4B4C7E] to-[#008D96] bg-clip-text text-transparent">
+            <h1 className="auth-title">
               {needsNewPassword ? "Nueva Contraseña Requerida" : "Inicia Sesión"}
             </h1>
+            <p className="auth-subtitle">
+              {needsNewPassword ? "Crea una nueva contraseña segura" : "Accede a tu cuenta de Beneficio Joven"}
+            </p>
           </div>
 
           {!needsNewPassword ? (
             <form onSubmit={handleSubmitLogin} className="space-y-6">
               {/* Error Message */}
               {error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-                  <p className="text-red-600 text-sm text-center">{error}</p>
+                <div className="auth-error">
+                  <p className="auth-error-text">{error}</p>
                 </div>
               )}
 
               {/* Email Field */}
-              <div className="space-y-2">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-500">
+              <div className="auth-field">
+                <label htmlFor="email" className="auth-field-label">
                   Correo Electrónico
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                    </svg>
-                  </div>
+                <div className="auth-field-container">
+                  <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                  </svg>
                   <input
                     id="email"
                     name="email"
@@ -171,7 +179,7 @@ export default function CustomLogin() {
                     required
                     value={credentials.email}
                     onChange={handleInputChange}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
+                    className="auth-input"
                     placeholder="tu@email.com"
                     disabled={loading}
                   />
@@ -179,16 +187,14 @@ export default function CustomLogin() {
               </div>
 
               {/* Password Field */}
-              <div className="space-y-2">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-500">
+              <div className="auth-field">
+                <label htmlFor="password" className="auth-field-label">
                   Contraseña
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                  </div>
+                <div className="auth-field-container">
+                  <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
                   <input
                     id="password"
                     name="password"
@@ -196,39 +202,38 @@ export default function CustomLogin() {
                     required
                     value={credentials.password}
                     onChange={handleInputChange}
-                    className="w-full pl-12 pr-12 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
+                    className="auth-input auth-input-with-action"
                     placeholder="••••••••••••"
                     disabled={loading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                    className="auth-field-action"
                   >
                     {showPassword ? (
-                      <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <EyeSlashIcon className="w-5 h-5" />
                     ) : (
-                      <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <EyeIcon className="w-5 h-5" />
                     )}
                   </button>
                 </div>
               </div>
 
               {/* Remember Me & Forgot Password */}
-              <div className="flex items-center justify-between">
-                <label className="flex items-center">
+              <div className="flex items-center justify-between mb-6">
+                <label className="auth-checkbox">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 text-gray-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
-                  <span className="ml-2 text-sm text-gray-500">Recuérdame</span>
+                  <span className="auth-checkbox-label">Recuérdame</span>
                 </label>
                 <button
                   type="button"
                   onClick={() => router.push('/forgot-password')}
-                  className="text-sm text-gray-600 hover:text-gray-500 font-medium"
+                  className="auth-link text-sm"
                 >
                   ¿Olvidaste tu contraseña?
                 </button>
@@ -238,45 +243,37 @@ export default function CustomLogin() {
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full py-3 px-4 rounded-xl font-medium text-white transition-all duration-200 ${
-                  loading 
-                    ? "bg-gray-400 cursor-not-allowed" 
-                    : "bg-gradient-to-r from-[#4B4C7E] to-[#008D96] hover:scale-98 active:scale-95 shadow-lg hover:shadow-xl"
-                }`}
+                className="auth-button-primary"
               >
                 {loading ? (
-                  <div className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <div className="auth-loading">
+                    <svg className="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     Iniciando sesión...
                   </div>
                 ) : (
-                  <div className="text-lg font-semibold">
-                  Inicia Sesión
-                  </div>
+                  "Inicia Sesión"
                 )}
               </button>
             </form>
           ) : (
             <form onSubmit={handleSubmitNewPassword} className="space-y-6">
               {error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-                  <p className="text-red-600 text-sm text-center">{error}</p>
+                <div className="auth-error">
+                  <p className="auth-error-text">{error}</p>
                 </div>
               )}
               
-              <div className="space-y-2">
-                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-500">
+              <div className="auth-field">
+                <label htmlFor="newPassword" className="auth-field-label">
                   Nueva Contraseña
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                  </div>
+                <div className="auth-field-container">
+                  <svg className="auth-field-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
                   <input
                     id="newPassword"
                     name="newPassword"
@@ -284,23 +281,23 @@ export default function CustomLogin() {
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full pl-12 pr-12 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
+                    className="auth-input auth-input-with-action"
                     placeholder="Nueva contraseña"
                     disabled={loading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                    className="auth-field-action"
                   >
                     {showNewPassword ? (
-                      <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <EyeSlashIcon className="w-5 h-5" />
                     ) : (
-                      <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <EyeIcon className="w-5 h-5" />
                     )}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 mt-2">
                   Mínimo 8 caracteres con mayúsculas, minúsculas y números
                 </p>
               </div>
@@ -308,13 +305,19 @@ export default function CustomLogin() {
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full py-3 px-4 rounded-xl font-medium text-white transition-all duration-200 ${
-                  loading 
-                    ? "bg-gray-400 cursor-not-allowed" 
-                    : "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 active:scale-95 shadow-lg hover:shadow-xl"
-                }`}
+                className="auth-button-primary"
               >
-                {loading ? "Guardando..." : "Guardar y Continuar"}
+                {loading ? (
+                  <div className="auth-loading">
+                    <svg className="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Guardando...
+                  </div>
+                ) : (
+                  "Guardar y Continuar"
+                )}
               </button>
             </form>
           )}
@@ -322,29 +325,13 @@ export default function CustomLogin() {
           {/* Alternative Login Options */}
           {!needsNewPassword && (
             <div className="mt-8 space-y-4">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-gray-500">O</span>
-                </div>
-              </div>
 
-              <button
-                onClick={() => signIn("cognito")}
-                disabled={loading}
-                className="w-full py-3 px-4 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 font-medium"
-              >
-                Usar Hosted UI de AWS
-              </button>
-              
               <div className="text-center">
                 <p className="text-sm text-gray-500">
                   ¿No tienes cuenta?{" "}
                   <button
                     onClick={() => router.push("/register")}
-                    className="text-[#008D96] hover:text-[#00494E] font-medium"
+                    className="auth-link"
                   >
                     Regístrate aquí
                   </button>
@@ -354,13 +341,6 @@ export default function CustomLogin() {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="text-center mt-8">
-          <p className="text-sm text-gray-400">
-            2025 Beneficio Joven. Todos los derechos reservados.
-          </p>
-        </div>
       </div>
-    </div>
   );
 }
