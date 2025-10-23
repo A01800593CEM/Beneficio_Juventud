@@ -73,27 +73,39 @@ fun ProfileCollab(
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var isLoadingImage by remember { mutableStateOf(false) }
 
-    // Cargar colaborador por ID actual
+    // Cargar colaborador por ID actual - Se ejecuta siempre que se navega a esta pantalla
     LaunchedEffect(currentUserId) {
         currentUserId?.let { id ->
+            Log.d("ProfileCollab", "Loading collaborator on screen visibility: $id")
             runCatching { collabViewModel.getCollaboratorById(id) }
+                .onSuccess { Log.d("ProfileCollab", "Collaborator loaded successfully") }
                 .onFailure { Log.e("ProfileCollab", "Error loading collaborator: ${it.message}") }
         }
     }
 
-    // Cargar logo/avatar
+    // Cargar logo/avatar - Se reactualiza cuando logoUrl o cognitoId cambian
     LaunchedEffect(collabId, collab.logoUrl) {
+        Log.d("ProfileCollab", "Avatar LaunchedEffect triggered. logoUrl=${collab.logoUrl}, collabId=$collabId")
         profileImageUrl = null
         when {
-            !collab.logoUrl.isNullOrBlank() -> profileImageUrl = collab.logoUrl
-            !collabId.isNullOrBlank() -> runCatching {
-                downloadProfileImageForDisplay(
-                    context = context,
-                    userId = collabId,
-                    onSuccess = { localPath -> profileImageUrl = localPath },
-                    onError = { /* ignore */ },
-                    onLoading = { loading -> isLoadingImage = loading }
-                )
+            !collab.logoUrl.isNullOrBlank() -> {
+                Log.d("ProfileCollab", "Using logoUrl from BD: ${collab.logoUrl}")
+                profileImageUrl = collab.logoUrl
+            }
+            !collabId.isNullOrBlank() -> {
+                Log.d("ProfileCollab", "Downloading profile image for: $collabId")
+                runCatching {
+                    downloadProfileImageForDisplay(
+                        context = context,
+                        userId = collabId,
+                        onSuccess = { localPath ->
+                            Log.d("ProfileCollab", "Image downloaded: $localPath")
+                            profileImageUrl = localPath
+                        },
+                        onError = { Log.e("ProfileCollab", "Download error: $it") },
+                        onLoading = { loading -> isLoadingImage = loading }
+                    )
+                }
             }
         }
     }

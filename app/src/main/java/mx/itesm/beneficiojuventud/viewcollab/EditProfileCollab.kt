@@ -353,8 +353,8 @@ fun EditProfileCollab(
                                 categoryIds = if (selectedCategoryIds.isEmpty()) null else selectedCategoryIds.toList(),
                                 // Estado
                                 state = selectedState,
-                                // URL de imagen de S3 (si se subió una imagen nueva)
-                                logoUrl = s3ImageUrl
+                                // URL de imagen de S3 (SOLO si logoUrl es null - primera vez)
+                                logoUrl = if (collab.logoUrl.isNullOrBlank()) s3ImageUrl else null
                             )
 
                             Log.d("EditProfileCollab", "Guardando cambios...")
@@ -366,8 +366,10 @@ fun EditProfileCollab(
                             scope.launch {
                                 runCatching { collabViewModel.updateCollaborator(id, update) }
                                     .onSuccess {
-                                        Log.d("EditProfileCollab", "Update successful, reloading collaborator...")
-                                        // Reload the collaborator to get updated categories
+                                        Log.d("EditProfileCollab", "Update successful, waiting and reloading collaborator...")
+                                        // Esperar un poco para asegurar que el backend procesó el cambio
+                                        kotlinx.coroutines.delay(500)
+                                        // Reload the collaborator to get updated categories and image
                                         runCatching { collabViewModel.getCollaboratorById(id) }
                                             .onSuccess {
                                                 Log.d("EditProfileCollab", "Collaborator reloaded successfully with categories")
@@ -399,12 +401,33 @@ fun EditProfileCollab(
 
                     if (saveSuccess) {
                         // Éxito: navegar a StatusScreen que muestra éxito y luego va a ProfileCollab
-                        nav.navigate(
-                            Screens.Status.createRoute(
-                                StatusType.USER_INFO_UPDATED,
-                                Screens.ProfileCollab.route
-                            )
-                        )
+                        // Antes de navegar, refrescar el colaborador para asegurar que ProfileCollab tenga data actualizada
+                        currentUserId?.let { id ->
+                            Log.d("EditProfileCollab", "Refrescando colaborador antes de navegar a Status")
+                            runCatching { collabViewModel.getCollaboratorById(id) }
+                                .onSuccess {
+                                    Log.d("EditProfileCollab", "Colaborador refrescado, navegando a Status")
+                                    // Esperar un poco más para asegurar que el estado se actualizó
+                                    scope.launch {
+                                        kotlinx.coroutines.delay(200)
+                                        nav.navigate(
+                                            Screens.Status.createRoute(
+                                                StatusType.USER_INFO_UPDATED,
+                                                Screens.ProfileCollab.route
+                                            )
+                                        )
+                                    }
+                                }
+                                .onFailure {
+                                    Log.e("EditProfileCollab", "Error refrescando: ${it.message}")
+                                    nav.navigate(
+                                        Screens.Status.createRoute(
+                                            StatusType.USER_INFO_UPDATED,
+                                            Screens.ProfileCollab.route
+                                        )
+                                    )
+                                }
+                        }
                     } else {
                         // Error: navegar a StatusScreen que muestra error y luego vuelve a EditProfileCollab
                         nav.navigate(
@@ -752,17 +775,27 @@ private fun getProfileImageUrl(
     onSuccess: (String) -> Unit,
     onError: (String) -> Unit
 ) {
-    Amplify.Storage.getUrl(
-        storagePath,
-        { result ->
-            Log.d("CollabProfileDownload", "Got URL: ${result.url}")
-            onSuccess(result.url.toString())
-        },
-        { error ->
-            Log.e("CollabProfileDownload", "Failed to get URL", error)
-            onError(error.message ?: "Error obteniendo URL")
-        }
-    )
+    try {
+        // Construir URL estable sin parámetros temporales
+        // La ruta en S3 es: public/profile-images/{userId}.jpg
+        // URL pública: https://[bucket-name].s3.[region].amazonaws.com/public/profile-images/{userId}.jpg
+        val bucketName = "beneficiojuventud-profile-images"
+        val region = "us-east-2"
+        val stablePath = "public/profile-images" // Ruta sin el userId, se agregará después
+
+        // Extraer el userId del storagePath
+        val fullPath = storagePath.toString()
+        Log.d("CollabProfileDownload", "Storage path string: $fullPath")
+
+        // La URL estable es:
+        val stableUrl = "https://$bucketName.s3.$region.amazonaws.com/$fullPath"
+        Log.d("CollabProfileDownload", "Constructed stable URL: $stableUrl")
+
+        onSuccess(stableUrl)
+    } catch (e: Exception) {
+        Log.e("CollabProfileDownload", "Failed to construct URL", e)
+        onError(e.message ?: "Error construyendo URL")
+    }
 }
 
 fun downloadProfileImageForDisplayCollab(
