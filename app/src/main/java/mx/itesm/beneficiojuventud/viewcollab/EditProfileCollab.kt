@@ -106,16 +106,22 @@ fun EditProfileCollab(
     // Snackbar State - Debe declararse aquí antes de ser usado
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Cargar colaborador
+    // Cargar colaborador y categorías
     LaunchedEffect(currentUserId) {
         currentUserId?.let { id ->
+            // Cargar colaborador
             runCatching { collabViewModel.getCollaboratorById(id) }
                 .onFailure { Log.e("EditProfileCollab", "Error loading collaborator: ${it.message}") }
         }
-        // Cargar catálogo de categorías
-        runCatching { collabViewModel.getCategories() }
-            .onSuccess { allCategories = it }
-            .onFailure { Log.e("EditProfileCollab", "Error loading categories: ${it.message}") }
+    }
+
+    // Cargar catálogo de categorías en un scope separado
+    LaunchedEffect(Unit) {
+        scope.launch {
+            runCatching {
+                allCategories = collabViewModel.getCategories()
+            }.onFailure { Log.e("EditProfileCollab", "Error loading categories: ${it.message}") }
+        }
     }
 
     // Image picker launcher
@@ -127,9 +133,9 @@ fun EditProfileCollab(
             val s3Id = collab.cognitoId ?: currentUserId
             if (!s3Id.isNullOrBlank()) {
                 uploadProfileImage(
-                    context,
-                    uri,
-                    s3Id,
+                    context = context,
+                    imageUri = uri,
+                    userId = s3Id,
                     onSuccess = { url ->
                         profileImageUrl = url
                         scope.launch { snackbarHostState.showSnackbar("Foto de perfil actualizada correctamente") }
@@ -337,10 +343,18 @@ fun EditProfileCollab(
                                 state = selectedState
                             )
 
+                            Log.d("EditProfileCollab", "Guardando cambios...")
+                            Log.d("EditProfileCollab", "selectedCategoryIds: $selectedCategoryIds")
+                            Log.d("EditProfileCollab", "categoryIds en Collaborator: ${update.categoryIds}")
+
                             justSaved = true
                             scope.launch {
                                 runCatching { collabViewModel.updateCollaborator(id, update) }
                                     .onSuccess {
+                                        Log.d("EditProfileCollab", "Update successful, reloading collaborator...")
+                                        // Reload the collaborator to get updated categories
+                                        runCatching { collabViewModel.getCollaboratorById(id) }
+                                            .onFailure { Log.e("EditProfileCollab", "Error reloading: ${it.message}") }
                                         saveSuccess = true
                                         saveError = null
                                     }
@@ -695,7 +709,7 @@ fun uploadProfileImage(
                 Log.d("CollabProfileUpload", "Upload completed: ${result.path}")
                 onLoading(false)
                 tempFile.delete()
-                getProfileImageUrlForCollab(storagePath, onSuccess, onError)
+                getProfileImageUrl(storagePath, onSuccess, onError)
             },
             { error ->
                 Log.e("CollabProfileUpload", "Upload failed", error)
@@ -711,7 +725,7 @@ fun uploadProfileImage(
     }
 }
 
-private fun getProfileImageUrlForCollab(
+private fun getProfileImageUrl(
     storagePath: StoragePath,
     onSuccess: (String) -> Unit,
     onError: (String) -> Unit
@@ -738,22 +752,28 @@ fun downloadProfileImageForDisplayCollab(
 ) {
     try {
         onLoading(true)
+        Log.d("CollabProfileDownload", "Starting download for collaborator: $userId")
+
         val storagePath = StoragePath.fromString("public/profile-images/$userId.jpg")
-        val localFile = File(context.cacheDir, "displayed_profile_$userId.jpg")
+        Log.d("CollabProfileDownload", "Storage path: public/profile-images/$userId.jpg")
+        val localFile = File(context.cacheDir, "downloaded_profile_$userId.jpg")
 
         Amplify.Storage.downloadFile(
             storagePath,
             localFile,
-            {
+            { result ->
+                Log.d("CollabProfileDownload", "Download completed: ${result.file.path}")
                 onLoading(false)
                 onSuccess(localFile.absolutePath)
             },
-            {
+            { error ->
+                Log.e("CollabProfileDownload", "Download failed", error)
                 onLoading(false)
-                onError(it.message ?: "Error desconocido")
+                onError(error.message ?: "Error desconocido")
             }
         )
     } catch (e: Exception) {
+        Log.e("CollabProfileDownload", "Exception during download", e)
         onLoading(false)
         onError(e.message ?: "Error desconocido")
     }

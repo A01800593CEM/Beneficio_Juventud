@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -375,14 +374,6 @@ private fun StatsScreenHeader(nav: NavHostController) {
                 fontSize = 20.sp,
                 color = TextGrey
             )
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = { /* TODO: Settings */ }) {
-                Icon(
-                    imageVector = Icons.Outlined.Settings,
-                    contentDescription = "Ajustes",
-                    tint = TextGrey
-                )
-            }
         }
         Spacer(Modifier.height(16.dp))
         GradientDivider(modifier = Modifier.fillMaxWidth(), thickness = 1.dp)

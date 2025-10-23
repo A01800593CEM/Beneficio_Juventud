@@ -31,4 +31,19 @@ interface BookingApiService {
     @GET("users/bookings/reserved/{userId}")
     suspend fun getReservedPromotions(@Path("userId") userId: String): Response<List<Promotions>>
 
+    @GET("users/bookings/cooldown/{userId}/{promotionId}")
+    suspend fun getCooldownInfo(@Path("userId") userId: String, @Path("promotionId") promotionId: Int): Response<CooldownInfo>
+
+    @GET("users/bookings/is-cooldown-active/{userId}/{promotionId}")
+    suspend fun isCooldownActive(@Path("userId") userId: String, @Path("promotionId") promotionId: Int): Response<CooldownStatus>
+
 }
+
+data class CooldownInfo(
+    val isActive: Boolean = false,
+    val remainingSeconds: Int = 0
+)
+
+data class CooldownStatus(
+    val isActive: Boolean = false
+)

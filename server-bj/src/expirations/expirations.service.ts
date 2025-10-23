@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, Between } from 'typeorm';
+import { Repository, LessThanOrEqual, Between, And } from 'typeorm';
 
 import { Promotion } from '../promotions/entities/promotion.entity';
 import { Booking } from '../bookings/entities/booking.entity';
@@ -10,6 +10,7 @@ import { Notification } from '../notifications/entities/notification.entity';
 import { NotificationType } from '../notifications/enums/notification-type.enums';
 import { NotificationStatus } from '../notifications/enums/notification-status.enum';
 import { RecipientType } from '../notifications/enums/recipient-type.enums';
+import { PromotionState } from '../promotions/enums/promotion-state.enums';
 
 import { NotificationsService } from '../notifications/notifications.service';
 import { BookStatus } from '../bookings/enums/book-status.enum';
@@ -28,8 +29,8 @@ export class ExpirationsService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  // En producción puedes dejarlo cada hora. Para pruebas podrías cambiarlo a EVERY_MINUTE.
-  @Cron(CronExpression.EVERY_HOUR)
+  // En producción: CronExpression.EVERY_HOUR. Para pruebas: CronExpression.EVERY_MINUTE
+  @Cron(CronExpression.EVERY_MINUTE)
   async checkExpirations() {
     return this._check({ collectResults: false });
   }
@@ -53,6 +54,25 @@ export class ExpirationsService {
     this.logger.log(
       `🔎 Revisando expiraciones entre ${now.toISOString()} y ${in24h.toISOString()}`,
     );
+
+    // =========================================================
+    // 0) Auto-marcar como FINALIZADA las promociones cuya fecha de fin ya pasó
+    // =========================================================
+    const expiredPromos = await this.promoRepo.find({
+      where: {
+        endDate: LessThanOrEqual(now),
+        promotionState: PromotionState.ACTIVE,
+      },
+    });
+
+    if (expiredPromos.length > 0) {
+      this.logger.log(`⏰ Marcando ${expiredPromos.length} promociones como FINALIZADA (endDate <= now)`);
+      for (const promo of expiredPromos) {
+        promo.promotionState = PromotionState.FINISHED;
+        await this.promoRepo.save(promo);
+        this.logger.log(`✅ Promoción ${promo.promotionId} ("${promo.title}") marcada como FINALIZADA`);
+      }
+    }
 
     // =========================================================
     // 1) Promociones que vencen <= 24h
@@ -123,21 +143,25 @@ export class ExpirationsService {
     }
 
     // =========================================================
-    // 2) Auto-cancelar bookings ya expirados (limitUseDate < now)
+    // 2) Auto-cancelar bookings ya expirados (autoExpireDate < now)
+    //    e iniciar cooldown automático
     // =========================================================
     const expiredBookings = await this.bookingRepo.find({
       where: {
         status: BookStatus.PENDING,
-        limitUseDate: LessThanOrEqual(now),
+        autoExpireDate: LessThanOrEqual(now),
       },
     });
 
     if (expiredBookings.length > 0) {
       this.logger.log(`🔴 Auto-cancelando ${expiredBookings.length} reservas expiradas`);
+      const cooldownUntil = new Date(now.getTime() + 1 * 60 * 1000); // 1 minuto de cooldown
       for (const booking of expiredBookings) {
         booking.status = BookStatus.CANCELLED;
         booking.cancelledDate = now;
+        booking.cooldownUntil = cooldownUntil; // Iniciar cooldown automático
         await this.bookingRepo.save(booking);
+        this.logger.log(`✅ Reserva ${booking.bookingId} auto-cancelada con cooldown hasta ${cooldownUntil.toISOString()}`);
       }
     }
 

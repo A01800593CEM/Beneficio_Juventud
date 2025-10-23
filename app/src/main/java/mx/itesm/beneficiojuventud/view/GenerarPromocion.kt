@@ -75,12 +75,6 @@ fun GenerarPromocion(
                             color = Color(0xFF616161)
                         )
                     }
-                    Icon(
-                        imageVector = Icons.Outlined.NotificationsNone,
-                        contentDescription = "Notificaciones",
-                        tint = Color(0xFF008D96),
-                        modifier = Modifier.size(26.dp)
-                    )
                 }
 
                 GradientDivider(

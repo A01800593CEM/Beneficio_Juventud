@@ -181,12 +181,24 @@ export class CollaboratorsService {
 
     Object.assign(collaborator, updateData);
 
-    if (categoryIds && categoryIds.length > 0) {
-      const categories = await this.categoriesRepository.findBy({ id: In(categoryIds) });
-      collaborator.categories = categories;
+    // Handle category updates
+    if (categoryIds !== undefined) {
+      if (categoryIds && categoryIds.length > 0) {
+        const categories = await this.categoriesRepository.findBy({ id: In(categoryIds) });
+        collaborator.categories = categories;
+      } else {
+        // Clear categories if empty array is provided
+        collaborator.categories = [];
+      }
     }
 
-    return this.collaboratorsRepository.save(collaborator);
+    await this.collaboratorsRepository.save(collaborator);
+
+    // Reload the collaborator with updated relations
+    return this.collaboratorsRepository.findOne({
+      where: { cognitoId },
+      relations: ['categories'],
+    });
   }
 
   /**

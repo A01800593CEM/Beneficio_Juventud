@@ -109,6 +109,7 @@ class SavedCouponRepository(
     /**
      * Creates a new booking.
      * Remote-first: Creates on server, then caches promotion and booking locally.
+     * Automatically adds the promotion to favorites.
      */
     suspend fun createBooking(booking: Booking) {
         try {
@@ -124,6 +125,16 @@ class SavedCouponRepository(
             // Step 4: Cache booking details
             bookingDao.insertBooking(createdBooking.toEntity())
 
+            // Step 5: Automatically add to favorites (if not already favorited)
+            // This ensures the coupon appears in the favorites list with "Reservado" badge
+            try {
+                RemoteServiceUser.favoritePromotion(booking.promotionId!!, booking.userId!!)
+                Log.d("CouponRepository", "✅ Auto-favorited promotion ${booking.promotionId}")
+            } catch (favError: Exception) {
+                Log.w("CouponRepository", "⚠️ Failed to auto-favorite promotion (may already be favorited)", favError)
+                // Non-critical error, don't throw
+            }
+
             Log.d("CouponRepository", "✅ Created booking ${createdBooking.bookingId} and cached locally")
         } catch (e: Exception) {
             Log.e("CouponRepository", "❌ Failed to create booking", e)
@@ -134,19 +145,20 @@ class SavedCouponRepository(
     /**
      * Cancels an existing booking.
      * Remote-first: Cancels on server, then removes from cache.
+     * This will trigger cooldown on the server (1 minute for testing).
      */
     suspend fun cancelBooking(bookingId: Int, promotionId: Int) {
         try {
-            // Step 1: Cancel on server
+            // Step 1: Cancel on server (triggers cooldown automatically)
             RemoteServiceBooking.cancelBooking(bookingId)
 
             // Step 2: Remove booking from cache
             bookingDao.deleteById(bookingId)
 
-            // Step 3: Remove associated promotion from reserved list
+            // Step 3: Remove associated promotion from reserved list (it was reserved, now it's not)
             promotionDao.deleteById(promotionId)
 
-            Log.d("CouponRepository", "✅ Cancelled booking $bookingId and removed from cache")
+            Log.d("CouponRepository", "✅ Cancelled booking $bookingId and removed from cache. Cooldown initiated on server.")
         } catch (e: Exception) {
             Log.e("CouponRepository", "❌ Failed to cancel booking $bookingId", e)
             throw e

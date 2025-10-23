@@ -177,7 +177,7 @@ fun Profile(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Image(
@@ -185,13 +185,6 @@ fun Profile(
                         contentDescription = "Logo Beneficio Joven",
                         modifier = Modifier.size(28.dp)
                     )
-                    IconButton(onClick = { /* nav a notificaciones si aplica */ }) {
-                        Icon(
-                            Icons.Outlined.NotificationsNone,
-                            contentDescription = "Notificaciones",
-                            tint = TextPrimary
-                        )
-                    }
                 }
 
                 Spacer(Modifier.height(10.dp))

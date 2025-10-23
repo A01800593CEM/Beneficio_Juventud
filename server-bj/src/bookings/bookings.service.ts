@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Booking } from './entities/booking.entity';
@@ -8,13 +8,45 @@ import { BookStatus } from './enums/book-status.enum';
 
 @Injectable()
 export class BookingsService {
+  // Tiempo de expiración automática en minutos (1 minuto para pruebas)
+  private readonly AUTO_EXPIRE_MINUTES = 1;
+  // Tiempo de cooldown en minutos (1 minuto para pruebas)
+  private readonly COOLDOWN_MINUTES = 1;
+
   constructor(
     @InjectRepository(Booking)
     private bookingsRepository: Repository<Booking>,
   ) {}
 
   async create(createBookingDto: CreateBookingDto): Promise<Booking> {
-    const booking = this.bookingsRepository.create(createBookingDto);
+    const { promotionId, userId } = createBookingDto;
+
+    // Verificar si hay un cooldown activo para este usuario y promoción
+    const existingBooking = await this.bookingsRepository.findOne({
+      where: { promotionId, user: { cognitoId: userId } },
+      relations: ['user'],
+      order: { bookingDate: 'DESC' },
+    });
+
+    if (existingBooking && existingBooking.cooldownUntil) {
+      const now = new Date();
+      if (now < existingBooking.cooldownUntil) {
+        throw new BadRequestException(
+          `Cooldown activo. Intente nuevamente en ${Math.ceil((existingBooking.cooldownUntil.getTime() - now.getTime()) / 1000)} segundos`,
+        );
+      }
+    }
+
+    // Crear la reserva con fechas de expiración y sin cooldown inicial
+    const now = new Date();
+    const autoExpireDate = new Date(now.getTime() + this.AUTO_EXPIRE_MINUTES * 60 * 1000);
+
+    const booking = this.bookingsRepository.create({
+      ...createBookingDto,
+      autoExpireDate,
+      cooldownUntil: null, // Sin cooldown al reservar
+    });
+
     return this.bookingsRepository.save(booking);
   }
 
@@ -39,9 +71,12 @@ export class BookingsService {
       throw new NotFoundException(`Booking with id ${id} not found`);
     }
 
-    // Si se está cancelando la reserva, guardar la fecha de cancelación
+    // Si se está cancelando la reserva, guardar la fecha de cancelación e iniciar cooldown
     if (updateBookingDto.bookStatus === BookStatus.CANCELLED && !booking.cancelledDate) {
       booking.cancelledDate = new Date();
+      // Iniciar cooldown por 1 minuto (para pruebas)
+      const cooldownStart = new Date();
+      booking.cooldownUntil = new Date(cooldownStart.getTime() + this.COOLDOWN_MINUTES * 60 * 1000);
     }
 
     return this.bookingsRepository.save(booking);
@@ -57,5 +92,39 @@ export class BookingsService {
       where: { user: { cognitoId: userId } },
       relations: ['user', 'promotion'],
     });
+  }
+
+  // Verificar si hay cooldown activo para un usuario y promoción
+  async isCooldownActive(userId: string, promotionId: number): Promise<boolean> {
+    const booking = await this.bookingsRepository.findOne({
+      where: { promotionId, user: { cognitoId: userId } },
+      relations: ['user'],
+      order: { bookingDate: 'DESC' },
+    });
+
+    if (!booking || !booking.cooldownUntil) {
+      return false;
+    }
+
+    return new Date() < booking.cooldownUntil;
+  }
+
+  // Obtener información de cooldown restante
+  async getCooldownInfo(userId: string, promotionId: number): Promise<{ isActive: boolean; remainingSeconds: number } | null> {
+    const booking = await this.bookingsRepository.findOne({
+      where: { promotionId, user: { cognitoId: userId } },
+      relations: ['user'],
+      order: { bookingDate: 'DESC' },
+    });
+
+    if (!booking || !booking.cooldownUntil) {
+      return null;
+    }
+
+    const now = new Date();
+    const isActive = now < booking.cooldownUntil;
+    const remainingSeconds = isActive ? Math.ceil((booking.cooldownUntil.getTime() - now.getTime()) / 1000) : 0;
+
+    return { isActive, remainingSeconds };
   }
 }

@@ -1,4 +1,4 @@
-import { IsDate, IsEnum, IsInt} from 'class-validator';
+import { IsDate, IsEnum, IsInt, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { BookStatus } from '../enums/book-status.enum';
 
@@ -14,11 +14,21 @@ export class CreateBookingDto {
   userId: string;
 
   @IsDate() @Type(() => Date)
+  @IsOptional()
   limitUseDate?: Date;
 
   @IsEnum(BookStatus)
   bookStatus: BookStatus;
 
   @IsInt()
+  @IsOptional()
   bookedPromotion?: number;
+
+  @IsDate() @Type(() => Date)
+  @IsOptional()
+  autoExpireDate?: Date;
+
+  @IsDate() @Type(() => Date)
+  @IsOptional()
+  cooldownUntil?: Date;
 }

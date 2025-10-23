@@ -54,7 +54,32 @@ object RemoteServiceCollab {
         )
     }
     suspend fun updateCollaborator(id: String, update: Collaborator): Collaborator {
+        Log.d("RemoteServiceCollab", "Actualizando colaborador: $id")
+        Log.d("RemoteServiceCollab", "  businessName: ${update.businessName}")
+        Log.d("RemoteServiceCollab", "  representativeName: ${update.representativeName}")
+        Log.d("RemoteServiceCollab", "  email: ${update.email}")
+        Log.d("RemoteServiceCollab", "  phone: ${update.phone}")
+        Log.d("RemoteServiceCollab", "  rfc: ${update.rfc}")
+        Log.d("RemoteServiceCollab", "  address: ${update.address}")
+        Log.d("RemoteServiceCollab", "  postalCode: ${update.postalCode}")
+        Log.d("RemoteServiceCollab", "  description: ${update.description}")
+        Log.d("RemoteServiceCollab", "  state: ${update.state}")
+        Log.d("RemoteServiceCollab", "  categoryIds: ${update.categoryIds}")
+        Log.d("RemoteServiceCollab", "  logoUrl: ${update.logoUrl}")
+
         val response = collabApiService.updateCollaborator(id, update)
+
+        Log.d("RemoteServiceCollab", "Respuesta HTTP: ${response.code()}")
+
+        if (!response.isSuccessful) {
+            val errorBody = response.errorBody()?.string()
+            Log.e("RemoteServiceCollab", "Error body: $errorBody")
+            throw Exception(
+                "Error HTTP ${response.code()}: ${response.message()}. " +
+                "Detalles: ${errorBody ?: "sin detalles"}"
+            )
+        }
+
         return response.body() ?: throw Exception("No se pudo actualizar el colaborador")
     }
     suspend fun deleteCollaborator(id: String) {

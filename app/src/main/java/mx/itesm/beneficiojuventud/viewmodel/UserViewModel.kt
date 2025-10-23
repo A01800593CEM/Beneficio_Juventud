@@ -223,15 +223,19 @@ class UserViewModel(
                 )
 
                 // Guardar en historial persistente
-                historyService?.addHistoryEvent(
-                    userId = cognitoId,
-                    type = "FAVORITO_AGREGADO",
-                    title = title,
-                    subtitle = business ?: "Negocio",
-                    iso = timestampIso,
-                    promotionId = promotionId,
-                    branchId = null
-                )
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        historyService?.addHistoryEvent(
+                            userId = cognitoId,
+                            type = "FAVORITO_AGREGADO",
+                            title = title,
+                            subtitle = business ?: "Negocio",
+                            iso = timestampIso,
+                            promotionId = promotionId,
+                            branchId = null
+                        )
+                    }
+                }
 
                 // Opcional: mantener también la lista de colaboradores favoritos al día
                 runCatching {
@@ -274,15 +278,19 @@ class UserViewModel(
                 )
 
                 // Guardar en historial persistente
-                historyService?.addHistoryEvent(
-                    userId = cognitoId,
-                    type = "FAVORITO_QUITADO",
-                    title = titleBefore,
-                    subtitle = businessBefore ?: "Negocio",
-                    iso = timestampIso,
-                    promotionId = promotionId,
-                    branchId = null
-                )
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        historyService?.addHistoryEvent(
+                            userId = cognitoId,
+                            type = "FAVORITO_QUITADO",
+                            title = titleBefore,
+                            subtitle = businessBefore ?: "Negocio",
+                            iso = timestampIso,
+                            promotionId = promotionId,
+                            branchId = null
+                        )
+                    }
+                }
 
                 // Opcional: mantener también la lista de colaboradores favoritos al día
                 runCatching {

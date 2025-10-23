@@ -1011,12 +1011,6 @@ private fun TopBar(
                     )
                 }
             }
-            Icon(
-                imageVector = Icons.Outlined.NotificationsNone,
-                contentDescription = "Notificaciones",
-                tint = Color(0xFF008D96),
-                modifier = Modifier.size(24.dp)
-            )
         }
 
         Spacer(Modifier.height(10.dp))

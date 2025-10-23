@@ -76,4 +76,20 @@ object RemoteServiceBooking {
     suspend fun cancelBooking(bookingId: Int): Booking {
         return updateBooking(bookingId, BookingStatus.CANCELLED)
     }
+
+    suspend fun getCooldownInfo(userId: String, promotionId: Int): CooldownInfo? {
+        val response = bookingApiService.getCooldownInfo(userId, promotionId)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        return response.body()
+    }
+
+    suspend fun isCooldownActive(userId: String, promotionId: Int): Boolean {
+        val response = bookingApiService.isCooldownActive(userId, promotionId)
+        if (!response.isSuccessful) {
+            throw Exception("Error ${response.code()}: ${response.errorBody()?.string().orEmpty()}")
+        }
+        return response.body()?.isActive ?: false
+    }
 }
