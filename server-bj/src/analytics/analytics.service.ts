@@ -10,20 +10,20 @@ import { User } from '../users/entities/user.entity';
 import { PromotionState } from 'src/promotions/enums/promotion-state.enums';
 
 export interface VicoChartEntry {
-  x: number;
-  y: number;
+  x: string;  // ISO date string (YYYY-MM-DD)
+  y: number;  // Must be a valid number, never null/undefined
 }
 
 export interface VicoBarChartEntry {
-  label: string;
-  value: number;
+  label: string;  // Must not be null
+  value: number;  // Must be a valid number, never null/undefined
   promotionId?: number;
 }
 
 export interface VicoMultiSeriesEntry {
-  seriesId: string;
-  seriesLabel: string;
-  entries: VicoChartEntry[];
+  seriesId: string;  // Must not be null
+  seriesLabel: string;  // Must not be null
+  entries: VicoChartEntry[];  // Must be an array, can be empty but not null
 }
 
 // Admin Dashboard Interfaces (Optimized for Recharts)
@@ -98,12 +98,12 @@ export class AnalyticsService {
       topRedeemedCoupons,
       redemptionTrendsByPromotion,
     ] = await Promise.all([
-      this.getCollaboratorRedemptionTrends(collaboratorId, dateRange),
-      this.getCollaboratorBookingTrends(collaboratorId, dateRange),
+      this.getCollaboratorRedemptionTrends(collaboratorId, dateRange, timeRange),
+      this.getCollaboratorBookingTrends(collaboratorId, dateRange, timeRange),
       this.getCollaboratorPromotionStats(collaboratorId),
       this.getCollaboratorStatistics(collaboratorId, dateRange),
       this.getTopRedeemedCoupons(collaboratorId, dateRange),
-      this.getRedemptionTrendsByPromotion(collaboratorId, dateRange),
+      this.getRedemptionTrendsByPromotion(collaboratorId, dateRange, timeRange),
     ]);
 
     return {
@@ -128,15 +128,16 @@ export class AnalyticsService {
           totalStats.redeemedCoupons,
         ),
       },
+      promotionStats: promotionStats, // Move to top level for Android app
       charts: {
         // Redemption trends - Vico Line Chart
-        // Format: Array of {x: dayIndex, y: count}
+        // Format: Array of {x: date (YYYY-MM-DD), y: count}
         redemptionTrends: {
           type: 'line',
           title: 'Daily Redemptions',
           description: 'Coupons redeemed per day',
           entries: redemptionTrends,
-          xAxisLabel: 'Days',
+          xAxisLabel: 'Date',
           yAxisLabel: 'Redemptions',
           minY: 0,
           maxY: Math.max(...redemptionTrends.map((e) => e.y), 1),
@@ -147,12 +148,12 @@ export class AnalyticsService {
           title: 'Daily Bookings',
           description: 'Coupons booked/reserved per day',
           entries: bookingTrends,
-          xAxisLabel: 'Days',
+          xAxisLabel: 'Date',
           yAxisLabel: 'Bookings',
           minY: 0,
           maxY: Math.max(...bookingTrends.map((e) => e.y), 1),
         },
-        // Promotion statistics summary
+        // Promotion statistics summary (kept for backward compatibility)
         promotionStats: {
           type: 'summary',
           title: 'Active Promotions',
@@ -174,7 +175,7 @@ export class AnalyticsService {
           title: 'Redemptions Over Time by Coupon',
           description: 'Track redemption trends for top 5 coupons',
           series: redemptionTrendsByPromotion,
-          xAxisLabel: 'Days',
+          xAxisLabel: 'Date',
           yAxisLabel: 'Redemptions',
         },
       },
@@ -315,22 +316,30 @@ export class AnalyticsService {
 
   /**
    * Convert database trend data to Vico chart entries (x,y format)
+   * x values are date strings in ISO format (YYYY-MM-DD)
+   * Ensures all values are non-null and properly formatted
    */
   private convertToVicoEntries(
     trendData: any[],
     days: Date[],
   ): VicoChartEntry[] {
-    const dataMap = new Map(
-      trendData.map((item) => [
-        new Date(item.date).toISOString().split('T')[0],
-        parseInt(item.count),
-      ]),
+    const dataMap = new Map<string, number>(
+      trendData.map((item) => {
+        const dateStr = new Date(item.date).toISOString().split('T')[0];
+        const count = parseInt(item.count, 10);
+        // Ensure count is a valid number, default to 0 if NaN
+        return [dateStr, isNaN(count) ? 0 : count];
+      }),
     );
 
-    return days.map((day, index) => ({
-      x: index,
-      y: dataMap.get(day.toISOString().split('T')[0]) || 0,
-    }));
+    return days.map((day): VicoChartEntry => {
+      const dateStr = day.toISOString().split('T')[0];
+      const value = dataMap.get(dateStr);
+      return {
+        x: dateStr,
+        y: typeof value === 'number' && !isNaN(value) ? value : 0,
+      };
+    });
   }
 
   /**
@@ -339,26 +348,59 @@ export class AnalyticsService {
   private async getCollaboratorRedemptionTrends(
     collaboratorId: string,
     dateRange: any,
+    timeRange: string = 'month',
   ): Promise<VicoChartEntry[]> {
-    const days = this.getDaysBetween(dateRange.startDate, dateRange.endDate);
+    // For year view, aggregate by month; otherwise by day
+    const isYearView = timeRange.toLowerCase() === 'year';
 
-    const redemptions = await this.redeemedcouponRepository
-      .createQueryBuilder('redeem')
-      .leftJoinAndSelect('redeem.promotion', 'promo')
-      .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
-      .andWhere('redeem.usedDate >= :startDate', {
-        startDate: dateRange.startDate,
-      })
-      .andWhere('redeem.usedDate <= :endDate', {
-        endDate: dateRange.endDate,
-      })
-      .select('DATE(redeem.usedDate)', 'date')
-      .addSelect('COUNT(redeem.usedId)', 'count')
-      .groupBy('DATE(redeem.usedDate)')
-      .orderBy('date', 'ASC')
-      .getRawMany();
+    if (isYearView) {
+      // Aggregate by month for year view
+      const redemptions = await this.redeemedcouponRepository
+        .createQueryBuilder('redeem')
+        .leftJoinAndSelect('redeem.promotion', 'promo')
+        .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
+        .andWhere('redeem.usedDate >= :startDate', {
+          startDate: dateRange.startDate,
+        })
+        .andWhere('redeem.usedDate <= :endDate', {
+          endDate: dateRange.endDate,
+        })
+        .select("DATE(DATE_TRUNC('month', redeem.usedDate))", 'date')
+        .addSelect('COUNT(redeem.usedId)', 'count')
+        .groupBy("DATE_TRUNC('month', redeem.usedDate)")
+        .orderBy('date', 'ASC')
+        .getRawMany();
 
-    return this.convertToVicoEntries(redemptions, days);
+      // Generate all months in the year
+      const months: Date[] = [];
+      for (let i = 0; i < 12; i++) {
+        const monthDate = new Date(dateRange.startDate.getFullYear(), i, 1);
+        months.push(monthDate);
+      }
+
+      return this.convertToVicoEntries(redemptions, months);
+    } else {
+      // Aggregate by day for week/month views
+      const days = this.getDaysBetween(dateRange.startDate, dateRange.endDate);
+
+      const redemptions = await this.redeemedcouponRepository
+        .createQueryBuilder('redeem')
+        .leftJoinAndSelect('redeem.promotion', 'promo')
+        .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
+        .andWhere('redeem.usedDate >= :startDate', {
+          startDate: dateRange.startDate,
+        })
+        .andWhere('redeem.usedDate <= :endDate', {
+          endDate: dateRange.endDate,
+        })
+        .select('DATE(redeem.usedDate)', 'date')
+        .addSelect('COUNT(redeem.usedId)', 'count')
+        .groupBy('DATE(redeem.usedDate)')
+        .orderBy('date', 'ASC')
+        .getRawMany();
+
+      return this.convertToVicoEntries(redemptions, days);
+    }
   }
 
   /**
@@ -367,48 +409,88 @@ export class AnalyticsService {
   private async getCollaboratorBookingTrends(
     collaboratorId: string,
     dateRange: any,
+    timeRange: string = 'month',
   ): Promise<VicoChartEntry[]> {
-    const days = this.getDaysBetween(dateRange.startDate, dateRange.endDate);
+    // For year view, aggregate by month; otherwise by day
+    const isYearView = timeRange.toLowerCase() === 'year';
 
-    const bookings = await this.bookingsRepository
-      .createQueryBuilder('booking')
-      .leftJoinAndSelect('booking.promotion', 'promo')
-      .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
-      .andWhere('booking.bookingDate >= :startDate', {
-        startDate: dateRange.startDate,
-      })
-      .andWhere('booking.bookingDate <= :endDate', {
-        endDate: dateRange.endDate,
-      })
-      .select('DATE(booking.bookingDate)', 'date')
-      .addSelect('COUNT(booking.bookingId)', 'count')
-      .groupBy('DATE(booking.bookingDate)')
-      .orderBy('date', 'ASC')
-      .getRawMany();
+    if (isYearView) {
+      // Aggregate by month for year view
+      const bookings = await this.bookingsRepository
+        .createQueryBuilder('booking')
+        .leftJoinAndSelect('booking.promotion', 'promo')
+        .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
+        .andWhere('booking.bookingDate >= :startDate', {
+          startDate: dateRange.startDate,
+        })
+        .andWhere('booking.bookingDate <= :endDate', {
+          endDate: dateRange.endDate,
+        })
+        .select("DATE(DATE_TRUNC('month', booking.bookingDate))", 'date')
+        .addSelect('COUNT(booking.bookingId)', 'count')
+        .groupBy("DATE_TRUNC('month', booking.bookingDate)")
+        .orderBy('date', 'ASC')
+        .getRawMany();
 
-    return this.convertToVicoEntries(bookings, days);
+      // Generate all months in the year
+      const months: Date[] = [];
+      for (let i = 0; i < 12; i++) {
+        const monthDate = new Date(dateRange.startDate.getFullYear(), i, 1);
+        months.push(monthDate);
+      }
+
+      return this.convertToVicoEntries(bookings, months);
+    } else {
+      // Aggregate by day for week/month views
+      const days = this.getDaysBetween(dateRange.startDate, dateRange.endDate);
+
+      const bookings = await this.bookingsRepository
+        .createQueryBuilder('booking')
+        .leftJoinAndSelect('booking.promotion', 'promo')
+        .where('promo.collaboratorId = :collaboratorId', { collaboratorId })
+        .andWhere('booking.bookingDate >= :startDate', {
+          startDate: dateRange.startDate,
+        })
+        .andWhere('booking.bookingDate <= :endDate', {
+          endDate: dateRange.endDate,
+        })
+        .select('DATE(booking.bookingDate)', 'date')
+        .addSelect('COUNT(booking.bookingId)', 'count')
+        .groupBy('DATE(booking.bookingDate)')
+        .orderBy('date', 'ASC')
+        .getRawMany();
+
+      return this.convertToVicoEntries(bookings, days);
+    }
   }
 
   /**
    * Get summary statistics for promotions
+   * Ensures all values are non-null and properly formatted
    */
   private async getCollaboratorPromotionStats(collaboratorId: string) {
     const promotions = await this.promotionsRepository.find({
       where: { collaboratorId },
     });
 
-    return promotions.map((p) => ({
-      promotionId: p.promotionId,
-      title: p.title,
-      type: p.promotionType,
-      status: p.promotionState,
-      stockRemaining: p.availableStock,
-      totalStock: p.totalStock,
-      stockUtilization: (
-        ((p.totalStock - p.availableStock) / p.totalStock) *
-        100
-      ).toFixed(2),
-    }));
+    return promotions
+      .filter((p) => p.promotionId && p.title)  // Filter out invalid promotions
+      .map((p) => {
+        const totalStock = p.totalStock || 0;
+        const availableStock = p.availableStock || 0;
+        const usedStock = totalStock - availableStock;
+        const utilization = totalStock > 0 ? (usedStock / totalStock) * 100 : 0;
+
+        return {
+          promotionId: p.promotionId,
+          title: p.title || 'Sin título',
+          type: p.promotionType || 'desconocido',
+          status: p.promotionState || 'inactiva',
+          stockRemaining: availableStock,
+          totalStock: totalStock,
+          stockUtilization: utilization.toFixed(2),
+        };
+      });
   }
 
   /**
@@ -473,6 +555,7 @@ export class AnalyticsService {
   /**
    * Get top 5 most redeemed coupons for a collaborator.
    * Returns data optimized for Vico bar chart.
+   * Ensures all values are non-null and properly formatted.
    */
   private async getTopRedeemedCoupons(
     collaboratorId: string,
@@ -497,22 +580,38 @@ export class AnalyticsService {
       .limit(5)
       .getRawMany();
 
-    return topCoupons.map((coupon) => ({
-      label: coupon.title,
-      value: parseInt(coupon.redemptionCount),
-      promotionId: coupon.promotionId,
-    }));
+    return topCoupons
+      .filter((coupon) => coupon.title && coupon.redemptionCount)  // Filter out null/undefined titles
+      .map((coupon): VicoBarChartEntry => {
+        const count = parseInt(coupon.redemptionCount, 10);
+        return {
+          label: coupon.title || 'Sin título',
+          value: isNaN(count) ? 0 : count,
+          promotionId: coupon.promotionId || undefined,
+        };
+      });
   }
 
   /**
    * Get redemption trends over time for top 5 promotions.
    * Returns multi-series data optimized for Vico multi-line chart.
+   * Ensures all values are non-null and properly formatted.
    */
   private async getRedemptionTrendsByPromotion(
     collaboratorId: string,
     dateRange: any,
+    timeRange: string = 'month',
   ): Promise<VicoMultiSeriesEntry[]> {
-    const days = this.getDaysBetween(dateRange.startDate, dateRange.endDate);
+    const isYearView = timeRange.toLowerCase() === 'year';
+    const timePeriods = isYearView
+      ? (() => {
+          const months: Date[] = [];
+          for (let i = 0; i < 12; i++) {
+            months.push(new Date(dateRange.startDate.getFullYear(), i, 1));
+          }
+          return months;
+        })()
+      : this.getDaysBetween(dateRange.startDate, dateRange.endDate);
 
     // First, get top 5 promotions by redemption count
     const topPromotions = await this.redeemedcouponRepository
@@ -534,30 +633,58 @@ export class AnalyticsService {
       .limit(5)
       .getRawMany();
 
-    // For each top promotion, get daily redemption trends
-    const seriesPromises = topPromotions.map(async (promo) => {
-      const dailyRedemptions = await this.redeemedcouponRepository
-        .createQueryBuilder('redeem')
-        .where('redeem.promotionId = :promotionId', {
-          promotionId: promo.promotionId,
-        })
-        .andWhere('redeem.usedDate >= :startDate', {
-          startDate: dateRange.startDate,
-        })
-        .andWhere('redeem.usedDate <= :endDate', {
-          endDate: dateRange.endDate,
-        })
-        .select('DATE(redeem.usedDate)', 'date')
-        .addSelect('COUNT(redeem.usedId)', 'count')
-        .groupBy('DATE(redeem.usedDate)')
-        .orderBy('date', 'ASC')
-        .getRawMany();
+    // Filter out promotions with null/undefined titles or IDs
+    const validPromotions = topPromotions.filter(
+      (promo) => promo.promotionId && promo.title,
+    );
 
-      const entries = this.convertToVicoEntries(dailyRedemptions, days);
+    // For each top promotion, get redemption trends (daily or monthly based on timeRange)
+    const seriesPromises = validPromotions.map(async (promo): Promise<VicoMultiSeriesEntry> => {
+      let redemptionData;
+
+      if (isYearView) {
+        // Aggregate by month for year view
+        redemptionData = await this.redeemedcouponRepository
+          .createQueryBuilder('redeem')
+          .where('redeem.promotionId = :promotionId', {
+            promotionId: promo.promotionId,
+          })
+          .andWhere('redeem.usedDate >= :startDate', {
+            startDate: dateRange.startDate,
+          })
+          .andWhere('redeem.usedDate <= :endDate', {
+            endDate: dateRange.endDate,
+          })
+          .select("DATE(DATE_TRUNC('month', redeem.usedDate))", 'date')
+          .addSelect('COUNT(redeem.usedId)', 'count')
+          .groupBy("DATE_TRUNC('month', redeem.usedDate)")
+          .orderBy('date', 'ASC')
+          .getRawMany();
+      } else {
+        // Aggregate by day for week/month views
+        redemptionData = await this.redeemedcouponRepository
+          .createQueryBuilder('redeem')
+          .where('redeem.promotionId = :promotionId', {
+            promotionId: promo.promotionId,
+          })
+          .andWhere('redeem.usedDate >= :startDate', {
+            startDate: dateRange.startDate,
+          })
+          .andWhere('redeem.usedDate <= :endDate', {
+            endDate: dateRange.endDate,
+          })
+          .select('DATE(redeem.usedDate)', 'date')
+          .addSelect('COUNT(redeem.usedId)', 'count')
+          .groupBy('DATE(redeem.usedDate)')
+          .orderBy('date', 'ASC')
+          .getRawMany();
+      }
+
+      const entries = this.convertToVicoEntries(redemptionData, timePeriods);
 
       return {
         seriesId: `promo_${promo.promotionId}`,
-        seriesLabel: promo.title,
+        seriesLabel: promo.title || 'Sin título',
         entries,
       };
     });

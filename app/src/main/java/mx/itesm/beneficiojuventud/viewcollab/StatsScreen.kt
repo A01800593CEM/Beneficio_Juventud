@@ -126,8 +126,12 @@ fun StatsScreenContent(
                     totalFavorites = 42,
                     conversionRate = "61.38%"
                 ),
-                redemptionEntries = listOf(5, 12, 8, 15, 10, 18, 20, 16, 14, 22, 19, 25),
-                bookingEntries = listOf(8, 14, 11, 17, 13, 20, 23, 19, 16, 24, 21, 28),
+                redemptionEntries = listOf(5, 12, 8, 15, 10, 18, 20, 16, 14, 22, 19, 25).mapIndexed { index, value ->
+                    mx.itesm.beneficiojuventud.model.analytics.ChartEntry(index, value, "${index+1}/1")
+                },
+                bookingEntries = listOf(8, 14, 11, 17, 13, 20, 23, 19, 16, 24, 21, 28).mapIndexed { index, value ->
+                    mx.itesm.beneficiojuventud.model.analytics.ChartEntry(index, value, "${index+1}/1")
+                },
                 promotionStats = listOf(
                     PromotionStatItem(1, "20% Descuento", "descuento", "activa", 50, 100, "50.00"),
                     PromotionStatItem(2, "2x1 Bebidas", "multicompra", "activa", 20, 100, "80.00")
@@ -296,11 +300,6 @@ fun StatsScreenContent(
                         StatsSummaryCard(summary = summary)
                         Spacer(Modifier.height(16.dp))
 
-                        // Promotions Stats
-                        if (uiState.promotionStats.isNotEmpty()) {
-                            PromotionStatsCard(promotions = uiState.promotionStats)
-                            Spacer(Modifier.height(16.dp))
-                        }
                     }
 
                     // Redemption Trends Chart
@@ -342,6 +341,11 @@ fun StatsScreenContent(
                     } else {
                         // Fallback to demo data when no real data
                         MultiSeriesLineChartCard(chartData = fallbackUiState.redemptionTrendsByPromotion)
+                        Spacer(Modifier.height(16.dp))
+                    }
+                    // Promotions Stats
+                    if (uiState.promotionStats.isNotEmpty()) {
+                        PromotionStatsCard(promotions = uiState.promotionStats)
                         Spacer(Modifier.height(16.dp))
                     }
                 }
@@ -434,7 +438,7 @@ private fun TimeRangeSelector(
 private fun StatsChartCard(
     title: String,
     description: String,
-    chartEntries: List<Int>
+    chartEntries: List<mx.itesm.beneficiojuventud.model.analytics.ChartEntry>
 ) {
     // Early return if no data
     if (chartEntries.isEmpty()) {
@@ -468,22 +472,26 @@ private fun StatsChartCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Convert chart entries to YCharts format
-            val pointsData = chartEntries.mapIndexed { index, value ->
-                Point(index.toFloat(), value.toFloat())
+            val pointsData = chartEntries.map { entry ->
+                Point(entry.x.toFloat(), entry.y.toFloat())
             }
 
             // Ensure we have at least 1 step for xAxis
             val xSteps = maxOf(chartEntries.size - 1, 1)
 
+            // Create label map from entries
+            val labelMap = chartEntries.associate { it.x to (it.xLabel ?: it.x.toString()) }
+
             val xAxisData = AxisData.Builder()
                 .axisStepSize(40.dp)
                 .steps(xSteps)
-                .bottomPadding(8.dp)
+                .bottomPadding(12.dp)
                 .axisOffset(16.dp)
-                .labelData { index -> index.toString() }
+                .labelData { index -> labelMap[index] ?: index.toString() }
+                .axisLabelAngle(45f) // Rotate labels 45 degrees counterclockwise
                 .build()
 
-            val maxValue = chartEntries.maxOrNull() ?: 1
+            val maxValue = chartEntries.maxOfOrNull { it.y } ?: 1
             val yAxisData = AxisData.Builder()
                 .steps(5)
                 .labelAndAxisLinePadding(20.dp)
@@ -817,7 +825,7 @@ private fun TopRedeemedCouponsChart(
             val xAxisData = AxisData.Builder()
                 .axisStepSize(40.dp)
                 .steps(paddedData.size - 1)
-                .bottomPadding(8.dp)
+                .bottomPadding(12.dp)
                 .axisOffset(16.dp)
                 .labelData { index ->
                     // Skip the ghost bar at position 0 (which is at x=-1)
@@ -995,11 +1003,12 @@ private fun MultiSeriesLineChartCard(
                 val xAxisData = AxisData.Builder()
                     .axisStepSize(40.dp)
                     .steps(maxX)
-                    .bottomPadding(8.dp)
+                    .bottomPadding(12.dp)
                     .startPadding(20.dp)  // Add padding at the start
                     .endPadding(20.dp)    // Add padding at the end
                     .axisOffset(16.dp)
                     .labelData { index -> xLabels[index] ?: index.toString() }
+                    .axisLabelAngle(45f) // Rotate labels 45 degrees counterclockwise
                     .build()
 
                 val yAxisData = AxisData.Builder()
@@ -1081,8 +1090,12 @@ private fun StatsScreenPreview() {
             totalFavorites = 42,
             conversionRate = "61.38%"
         ),
-        redemptionEntries = listOf(5, 12, 8, 15, 10, 18, 20, 16, 14, 22, 19, 25),
-        bookingEntries = listOf(8, 14, 11, 17, 13, 20, 23, 19, 16, 24, 21, 28),
+        redemptionEntries = listOf(5, 12, 8, 15, 10, 18, 20, 16, 14, 22, 19, 25).mapIndexed { index, value ->
+            mx.itesm.beneficiojuventud.model.analytics.ChartEntry(index, value, "${index+1}/1")
+        },
+        bookingEntries = listOf(8, 14, 11, 17, 13, 20, 23, 19, 16, 24, 21, 28).mapIndexed { index, value ->
+            mx.itesm.beneficiojuventud.model.analytics.ChartEntry(index, value, "${index+1}/1")
+        },
         promotionStats = listOf(
             PromotionStatItem(1, "20% Descuento", "descuento", "activa", 50, 100, "50.00"),
             PromotionStatItem(2, "2x1 Bebidas", "multicompra", "activa", 20, 100, "80.00")

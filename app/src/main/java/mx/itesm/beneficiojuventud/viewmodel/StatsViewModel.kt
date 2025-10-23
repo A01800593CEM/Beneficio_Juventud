@@ -15,6 +15,11 @@ import mx.itesm.beneficiojuventud.model.analytics.BarChartData
 import mx.itesm.beneficiojuventud.model.analytics.BarChartEntry
 import mx.itesm.beneficiojuventud.model.analytics.MultiSeriesLineChartData
 import mx.itesm.beneficiojuventud.model.analytics.RemoteServiceAnalytics
+import mx.itesm.beneficiojuventud.model.analytics.BackendAnalyticsChart
+import mx.itesm.beneficiojuventud.model.analytics.BackendMultiSeriesLineChartData
+import mx.itesm.beneficiojuventud.model.analytics.ChartEntry
+import mx.itesm.beneficiojuventud.model.analytics.SeriesData
+import mx.itesm.beneficiojuventud.model.analytics.formatDateLabel
 import mx.itesm.beneficiojuventud.viewcollab.AnalyticsSummary
 import mx.itesm.beneficiojuventud.viewcollab.PromotionStatItem
 
@@ -25,8 +30,8 @@ data class StatsUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val summary: AnalyticsSummary? = null,
-    val redemptionEntries: List<Int> = emptyList(),
-    val bookingEntries: List<Int> = emptyList(),
+    val redemptionEntries: List<ChartEntry> = emptyList(),
+    val bookingEntries: List<ChartEntry> = emptyList(),
     val promotionStats: List<PromotionStatItem> = emptyList(),
     val topRedeemedCoupons: List<BarChartEntry> = emptyList(),
     val redemptionTrendsByPromotion: MultiSeriesLineChartData? = null,
@@ -64,49 +69,142 @@ class StatsViewModel : ViewModel() {
                     remoteService.getCollaboratorDashboard(collaboratorId, timeRange)
                 }
 
+                android.util.Log.d("StatsViewModel", "Dashboard received successfully for timeRange: $timeRange")
+                android.util.Log.d("StatsViewModel", "Charts keys: ${dashboard.charts.keys}")
+
                 // Parse the charts from dashboard
                 val gson = Gson()
 
                 // Parse redemption entries (daily redemptions line chart)
                 val redemptionEntries = try {
+                    android.util.Log.d("StatsViewModel", "Parsing redemptionTrends...")
                     val chartData = dashboard.charts["redemptionTrends"]
-                    val json = gson.toJson(chartData)
-                    val analyticsChart = gson.fromJson(json, mx.itesm.beneficiojuventud.model.analytics.AnalyticsChart::class.java)
-                    analyticsChart.entries.map { it.y }
+                    if (chartData == null) {
+                        android.util.Log.w("StatsViewModel", "redemptionTrends chart data is null")
+                        emptyList()
+                    } else {
+                        val json = gson.toJson(chartData)
+                        android.util.Log.d("StatsViewModel", "redemptionTrends JSON: $json")
+                        val backendChart = gson.fromJson(json, BackendAnalyticsChart::class.java)
+                        android.util.Log.d("StatsViewModel", "Parsed redemptionTrends, entries count: ${backendChart.entries?.size}")
+
+                        // Convert backend entries (with date strings) to indexed entries with labels
+                        backendChart.entries?.mapIndexed { index, entry ->
+                            android.util.Log.d("StatsViewModel", "Processing redemption entry $index: x=${entry.x}, y=${entry.y}")
+                            val label = formatDateLabel(entry.x, timeRange)
+                            android.util.Log.d("StatsViewModel", "Formatted label: $label")
+                            ChartEntry(
+                                x = index,
+                                y = entry.y,
+                                xLabel = label
+                            )
+                        } ?: emptyList()
+                    }
                 } catch (e: Exception) {
-                    // Return a list with at least one point to avoid crash
-                    listOf(0)
+                    android.util.Log.e("StatsViewModel", "Error parsing redemption entries: ${e.message}", e)
+                    e.printStackTrace()
+                    emptyList()
                 }
 
                 // Parse booking entries (daily bookings line chart)
                 val bookingEntries = try {
+                    android.util.Log.d("StatsViewModel", "Parsing bookingTrends...")
                     val chartData = dashboard.charts["bookingTrends"]
-                    val json = gson.toJson(chartData)
-                    val analyticsChart = gson.fromJson(json, mx.itesm.beneficiojuventud.model.analytics.AnalyticsChart::class.java)
-                    analyticsChart.entries.map { it.y }
+                    if (chartData == null) {
+                        android.util.Log.w("StatsViewModel", "bookingTrends chart data is null")
+                        emptyList()
+                    } else {
+                        val json = gson.toJson(chartData)
+                        android.util.Log.d("StatsViewModel", "bookingTrends JSON: $json")
+                        val backendChart = gson.fromJson(json, BackendAnalyticsChart::class.java)
+                        android.util.Log.d("StatsViewModel", "Parsed bookingTrends, entries count: ${backendChart.entries?.size}")
+
+                        // Convert backend entries (with date strings) to indexed entries with labels
+                        backendChart.entries?.mapIndexed { index, entry ->
+                            android.util.Log.d("StatsViewModel", "Processing booking entry $index: x=${entry.x}, y=${entry.y}")
+                            val label = formatDateLabel(entry.x, timeRange)
+                            android.util.Log.d("StatsViewModel", "Formatted label: $label")
+                            ChartEntry(
+                                x = index,
+                                y = entry.y,
+                                xLabel = label
+                            )
+                        } ?: emptyList()
+                    }
                 } catch (e: Exception) {
-                    // Return a list with at least one point to avoid crash
-                    listOf(0)
+                    android.util.Log.e("StatsViewModel", "Error parsing booking entries: ${e.message}", e)
+                    e.printStackTrace()
+                    emptyList()
                 }
 
                 // Parse bar chart data for top redeemed coupons
                 val topRedeemedCoupons = try {
                     val chartData = dashboard.charts["topRedeemedCoupons"]
-                    val json = gson.toJson(chartData)
-                    val barChartData = gson.fromJson(json, BarChartData::class.java)
-                    barChartData.entries
+                    if (chartData == null) {
+                        emptyList()
+                    } else {
+                        val json = gson.toJson(chartData)
+                        val barChartData = gson.fromJson(json, BarChartData::class.java)
+                        barChartData.entries ?: emptyList()
+                    }
                 } catch (e: Exception) {
+                    android.util.Log.e("StatsViewModel", "Error parsing top redeemed coupons: ${e.message}", e)
                     emptyList()
                 }
 
                 // Parse multi-series line chart data
                 val redemptionTrendsByPromotion = try {
+                    android.util.Log.d("StatsViewModel", "Parsing redemptionTrendsByPromotion...")
                     val chartData = dashboard.charts["redemptionTrendsByPromotion"]
-                    val json = gson.toJson(chartData)
-                    gson.fromJson(json, MultiSeriesLineChartData::class.java)
+                    if (chartData == null) {
+                        android.util.Log.w("StatsViewModel", "redemptionTrendsByPromotion chart data is null")
+                        null
+                    } else {
+                        val json = gson.toJson(chartData)
+                        android.util.Log.d("StatsViewModel", "redemptionTrendsByPromotion JSON: ${json.take(500)}")
+                        val backendMultiSeries = gson.fromJson(json, BackendMultiSeriesLineChartData::class.java)
+                        android.util.Log.d("StatsViewModel", "Parsed multiSeries, series count: ${backendMultiSeries.series?.size}")
+
+                        // Convert to app model with indexed x values
+                        if (backendMultiSeries.series != null) {
+                            MultiSeriesLineChartData(
+                                type = backendMultiSeries.type ?: "multiline",
+                                title = backendMultiSeries.title ?: "",
+                                description = backendMultiSeries.description ?: "",
+                                series = backendMultiSeries.series.mapNotNull { backendSeries ->
+                                    android.util.Log.d("StatsViewModel", "Processing series: ${backendSeries.seriesLabel}, entries: ${backendSeries.entries?.size}")
+                                    if (backendSeries.seriesId != null && backendSeries.seriesLabel != null && backendSeries.entries != null) {
+                                        SeriesData(
+                                            seriesId = backendSeries.seriesId,
+                                            seriesLabel = backendSeries.seriesLabel,
+                                            entries = backendSeries.entries.mapIndexed { index, entry ->
+                                                android.util.Log.d("StatsViewModel", "Series ${backendSeries.seriesLabel} entry $index: x=${entry.x}, y=${entry.y}")
+                                                val label = formatDateLabel(entry.x, timeRange)
+                                                android.util.Log.d("StatsViewModel", "Formatted label: $label")
+                                                ChartEntry(
+                                                    x = index,
+                                                    y = entry.y,
+                                                    xLabel = label
+                                                )
+                                            }
+                                        )
+                                    } else {
+                                        android.util.Log.w("StatsViewModel", "Skipping series with null fields")
+                                        null
+                                    }
+                                },
+                                xAxisLabel = backendMultiSeries.xAxisLabel ?: "Date",
+                                yAxisLabel = backendMultiSeries.yAxisLabel ?: "Count"
+                            )
+                        } else null
+                    }
                 } catch (e: Exception) {
+                    android.util.Log.e("StatsViewModel", "Error parsing multi-series chart: ${e.message}", e)
+                    e.printStackTrace()
                     null
                 }
+
+                android.util.Log.d("StatsViewModel", "Successfully parsed all charts, updating UI state")
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -119,7 +217,7 @@ class StatsViewModel : ViewModel() {
                         totalFavorites = dashboard.summary.totalFavorites,
                         conversionRate = dashboard.summary.conversionRate
                     ),
-                    promotionStats = dashboard.promotionStats.map { promo ->
+                    promotionStats = dashboard.promotionStats?.map { promo ->
                         PromotionStatItem(
                             promotionId = promo.promotionId,
                             title = promo.title,
@@ -129,13 +227,16 @@ class StatsViewModel : ViewModel() {
                             totalStock = promo.totalStock,
                             stockUtilization = promo.stockUtilization
                         )
-                    },
+                    } ?: emptyList(),
                     redemptionEntries = redemptionEntries,
                     bookingEntries = bookingEntries,
                     topRedeemedCoupons = topRedeemedCoupons,
                     redemptionTrendsByPromotion = redemptionTrendsByPromotion
                 )
             } catch (e: Exception) {
+                android.util.Log.e("StatsViewModel", "Exception in loadAnalytics", e)
+                e.printStackTrace()
+
                 val errorMessage = when {
                     e is java.net.UnknownHostException || e.message?.contains("Unable to resolve host") == true ->
                         "Sin conexión a internet. Por favor verifica tu conexión."
@@ -143,8 +244,10 @@ class StatsViewModel : ViewModel() {
                         "Tiempo de espera agotado. Por favor intenta de nuevo."
                     e is java.net.ConnectException || e.message?.contains("Failed to connect") == true ->
                         "No se pudo conectar al servidor. Verifica tu conexión a internet."
-                    else -> e.message ?: "Error desconocido al cargar estadísticas"
+                    else -> "Error: ${e.message ?: e.javaClass.simpleName}"
                 }
+
+                android.util.Log.e("StatsViewModel", "Error message shown to user: $errorMessage")
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -179,41 +282,95 @@ class StatsViewModel : ViewModel() {
                 // Parse redemption entries (daily redemptions line chart)
                 val redemptionEntries = try {
                     val chartData = dashboard.charts["redemptionTrends"]
-                    val json = gson.toJson(chartData)
-                    val analyticsChart = gson.fromJson(json, mx.itesm.beneficiojuventud.model.analytics.AnalyticsChart::class.java)
-                    analyticsChart.entries.map { it.y }
+                    if (chartData == null) {
+                        emptyList()
+                    } else {
+                        val json = gson.toJson(chartData)
+                        val backendChart = gson.fromJson(json, BackendAnalyticsChart::class.java)
+                        backendChart.entries?.mapIndexed { index, entry ->
+                            ChartEntry(
+                                x = index,
+                                y = entry.y,
+                                xLabel = formatDateLabel(entry.x, _uiState.value.selectedTimeRange)
+                            )
+                        } ?: emptyList()
+                    }
                 } catch (e: Exception) {
-                    // Return a list with at least one point to avoid crash
-                    listOf(0)
+                    android.util.Log.e("StatsViewModel", "Error refreshing redemption entries: ${e.message}", e)
+                    emptyList()
                 }
 
                 // Parse booking entries (daily bookings line chart)
                 val bookingEntries = try {
                     val chartData = dashboard.charts["bookingTrends"]
-                    val json = gson.toJson(chartData)
-                    val analyticsChart = gson.fromJson(json, mx.itesm.beneficiojuventud.model.analytics.AnalyticsChart::class.java)
-                    analyticsChart.entries.map { it.y }
+                    if (chartData == null) {
+                        emptyList()
+                    } else {
+                        val json = gson.toJson(chartData)
+                        val backendChart = gson.fromJson(json, BackendAnalyticsChart::class.java)
+                        backendChart.entries?.mapIndexed { index, entry ->
+                            ChartEntry(
+                                x = index,
+                                y = entry.y,
+                                xLabel = formatDateLabel(entry.x, _uiState.value.selectedTimeRange)
+                            )
+                        } ?: emptyList()
+                    }
                 } catch (e: Exception) {
-                    // Return a list with at least one point to avoid crash
-                    listOf(0)
+                    android.util.Log.e("StatsViewModel", "Error refreshing booking entries: ${e.message}", e)
+                    emptyList()
                 }
 
                 // Parse bar chart data for top redeemed coupons
                 val topRedeemedCoupons = try {
                     val chartData = dashboard.charts["topRedeemedCoupons"]
-                    val json = gson.toJson(chartData)
-                    val barChartData = gson.fromJson(json, BarChartData::class.java)
-                    barChartData.entries
+                    if (chartData == null) {
+                        emptyList()
+                    } else {
+                        val json = gson.toJson(chartData)
+                        val barChartData = gson.fromJson(json, BarChartData::class.java)
+                        barChartData.entries ?: emptyList()
+                    }
                 } catch (e: Exception) {
+                    android.util.Log.e("StatsViewModel", "Error refreshing top redeemed coupons: ${e.message}", e)
                     emptyList()
                 }
 
                 // Parse multi-series line chart data
                 val redemptionTrendsByPromotion = try {
                     val chartData = dashboard.charts["redemptionTrendsByPromotion"]
-                    val json = gson.toJson(chartData)
-                    gson.fromJson(json, MultiSeriesLineChartData::class.java)
+                    if (chartData == null) {
+                        null
+                    } else {
+                        val json = gson.toJson(chartData)
+                        val backendMultiSeries = gson.fromJson(json, BackendMultiSeriesLineChartData::class.java)
+                        if (backendMultiSeries.series != null) {
+                            MultiSeriesLineChartData(
+                                type = backendMultiSeries.type ?: "multiline",
+                                title = backendMultiSeries.title ?: "",
+                                description = backendMultiSeries.description ?: "",
+                                series = backendMultiSeries.series.mapNotNull { backendSeries ->
+                                    if (backendSeries.seriesId != null && backendSeries.seriesLabel != null && backendSeries.entries != null) {
+                                        SeriesData(
+                                            seriesId = backendSeries.seriesId,
+                                            seriesLabel = backendSeries.seriesLabel,
+                                            entries = backendSeries.entries.mapIndexed { index, entry ->
+                                                ChartEntry(
+                                                    x = index,
+                                                    y = entry.y,
+                                                    xLabel = formatDateLabel(entry.x, _uiState.value.selectedTimeRange)
+                                                )
+                                            }
+                                        )
+                                    } else null
+                                },
+                                xAxisLabel = backendMultiSeries.xAxisLabel ?: "Date",
+                                yAxisLabel = backendMultiSeries.yAxisLabel ?: "Count"
+                            )
+                        } else null
+                    }
                 } catch (e: Exception) {
+                    android.util.Log.e("StatsViewModel", "Error refreshing multi-series chart: ${e.message}", e)
                     null
                 }
 
@@ -228,7 +385,7 @@ class StatsViewModel : ViewModel() {
                         totalFavorites = dashboard.summary.totalFavorites,
                         conversionRate = dashboard.summary.conversionRate
                     ),
-                    promotionStats = dashboard.promotionStats.map { promo ->
+                    promotionStats = dashboard.promotionStats?.map { promo ->
                         PromotionStatItem(
                             promotionId = promo.promotionId,
                             title = promo.title,
@@ -238,7 +395,7 @@ class StatsViewModel : ViewModel() {
                             totalStock = promo.totalStock,
                             stockUtilization = promo.stockUtilization
                         )
-                    },
+                    } ?: emptyList(),
                     redemptionEntries = redemptionEntries,
                     bookingEntries = bookingEntries,
                     topRedeemedCoupons = topRedeemedCoupons,
