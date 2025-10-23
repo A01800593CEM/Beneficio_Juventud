@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mx.itesm.beneficiojuventud.model.bookings.Booking
+import mx.itesm.beneficiojuventud.model.bookings.BookingStatus
 import mx.itesm.beneficiojuventud.model.bookings.RemoteServiceBooking
 import mx.itesm.beneficiojuventud.model.SavedCouponRepository
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
@@ -343,15 +344,17 @@ class UserViewModel(
         }
     }
 
-    /** Carga los detalles completos de las promociones reservadas */
+    /** Carga los detalles completos de las promociones reservadas (solo PENDING, no CANCELLED) */
     private suspend fun loadReservedPromotionsDetails(bookings: List<Booking>) {
-        val promos = bookings.mapNotNull { booking ->
-            booking.promotionId?.let { promotionId ->
-                runCatching {
-                    withContext(Dispatchers.IO) { RemoteServicePromos.getPromotionById(promotionId) }
-                }.getOrNull()
+        val promos = bookings
+            .filter { it.status == BookingStatus.PENDING }
+            .mapNotNull { booking ->
+                booking.promotionId?.let { promotionId ->
+                    runCatching {
+                        withContext(Dispatchers.IO) { RemoteServicePromos.getPromotionById(promotionId) }
+                    }.getOrNull()
+                }
             }
-        }
         _reservedPromotions.value = promos
     }
 

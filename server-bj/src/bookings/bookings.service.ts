@@ -21,6 +21,16 @@ export class BookingsService {
   async create(createBookingDto: CreateBookingDto): Promise<Booking> {
     const { promotionId, userId } = createBookingDto;
 
+    // Verificar si existe un booking PENDING para esta promoción y usuario
+    const existingPendingBooking = await this.bookingsRepository.findOne({
+      where: { promotionId, userId, status: BookStatus.PENDING },
+    });
+
+    // Si ya existe un PENDING, devolverlo sin crear uno nuevo
+    if (existingPendingBooking) {
+      return existingPendingBooking;
+    }
+
     // Verificar si hay un cooldown activo para este usuario y promoción
     const lastBooking = await this.bookingsRepository.findOne({
       where: { promotionId, userId },
@@ -33,6 +43,17 @@ export class BookingsService {
         throw new BadRequestException(
           `Cooldown activo. Intente nuevamente en ${Math.ceil((lastBooking.cooldownUntil.getTime() - now.getTime()) / 1000)} segundos`,
         );
+      }
+
+      // Si el cooldown ya expiró, reutilizar el booking existente (cambiar status a PENDING)
+      if (lastBooking.status === BookStatus.CANCELLED) {
+        lastBooking.status = BookStatus.PENDING;
+        lastBooking.cooldownUntil = null;
+        lastBooking.cancelledDate = null;
+        const now = new Date();
+        const autoExpireDate = new Date(now.getTime() + this.AUTO_EXPIRE_MINUTES * 60 * 1000);
+        lastBooking.autoExpireDate = autoExpireDate;
+        return this.bookingsRepository.save(lastBooking);
       }
     }
 
