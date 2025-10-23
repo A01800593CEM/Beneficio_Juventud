@@ -126,13 +126,17 @@ class BookingViewModel(application: Application) : AndroidViewModel(application)
                 _message.value = "¡Cupón reservado exitosamente!"
                 _bookingSuccess.value = true
 
-                // Asegurar que la promoción se agregue a favoritos (auto-favorite)
+                // Auto-agregar a favoritos al reservar (una sola vez)
+                // Pero no lo hacemos si ya estaba en favoritos previamente
                 try {
-                    repository.favoritePromotion(promotion.promotionId!!, userId)
-                    Log.d("BookingViewModel", "✅ Auto-favorited promotion ${promotion.promotionId}")
+                    Log.d("BookingViewModel", "Auto-agregando promoción ${promotion.promotionId} a favoritos después de reservar")
+                    withContext(Dispatchers.IO) {
+                        repository.favoritePromotion(promotion.promotionId!!, userId)
+                    }
+                    Log.d("BookingViewModel", "Promoción ${promotion.promotionId} agregada a favoritos exitosamente")
                 } catch (favError: Exception) {
-                    Log.w("BookingViewModel", "⚠️ Failed to auto-favorite: ${favError.message}")
-                    // Non-critical, don't throw
+                    // No es crítico si falla el auto-favoriting, solo logear
+                    Log.w("BookingViewModel", "⚠️ Error al auto-agregar a favoritos: ${favError.message}")
                 }
 
                 // Emitir evento de historial
