@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.filled.Fullscreen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import androidx.compose.material.icons.outlined.Person
@@ -717,28 +718,51 @@ fun Home(
                             }
                         }
                         else -> {
-                            Card(
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(300.dp)
-                                    .padding(horizontal = 16.dp),
-                                shape = RoundedCornerShape(12.dp)
+                                    .padding(horizontal = 16.dp)
                             ) {
-                                CombinedNearbyMap(
-                                    userLocation = userLocation,
-                                    nearbyPromotions = nearbyPromotions,
-                                    nearbyCollaborators = nearbyCollaborators,
-                                    onPromotionMarkerClick = { promo ->
-                                        promo.promotionId?.let { id ->
-                                            nav.navigate(Screens.PromoQR.createRoute(id))
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(300.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    CombinedNearbyMap(
+                                        userLocation = userLocation,
+                                        nearbyPromotions = nearbyPromotions,
+                                        nearbyCollaborators = nearbyCollaborators,
+                                        onPromotionMarkerClick = { promo ->
+                                            promo.promotionId?.let { id ->
+                                                nav.navigate(Screens.PromoQR.createRoute(id))
+                                            }
+                                        },
+                                        onCollaboratorMarkerClick = { collab ->
+                                            collab.cognitoId?.let { id ->
+                                                nav.navigate(Screens.Business.createRoute(id))
+                                            }
                                         }
-                                    },
-                                    onCollaboratorMarkerClick = { collab ->
-                                        collab.cognitoId?.let { id ->
-                                            nav.navigate(Screens.Business.createRoute(id))
-                                        }
-                                    }
-                                )
+                                    )
+                                }
+
+                                // Botón de pantalla completa en la esquina superior izquierda
+                                FilledIconButton(
+                                    onClick = { nav.navigate(Screens.FullscreenMap.route) },
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(16.dp)
+                                        .size(40.dp),
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Fullscreen,
+                                        contentDescription = "Ver mapa en pantalla completa",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         }
                     }

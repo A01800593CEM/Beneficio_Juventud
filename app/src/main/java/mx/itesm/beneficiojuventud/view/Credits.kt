@@ -236,15 +236,15 @@ fun Credits(
 
             DeveloperCard(
                 name = "Erik Owen Castro Flores",
-                linkedInUrl = "http://www.linkedin.com/in/ivancz",
-                email = "ivancz.com@gmail.com",
+                linkedInUrl = "https://www.linkedin.com/in/erik-owen-castro-flores-245150390/",
+                email = "eric.castro.data@gmail.com",
                 onLinkedInClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("http://www.linkedin.com/in/ivancz"))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.linkedin.com/in/erik-owen-castro-flores-245150390/"))
                     context.startActivity(intent)
                 },
                 onEmailClick = {
                     val intent = Intent(Intent.ACTION_SENDTO).apply {
-                        data = Uri.parse("mailto:ivancz.com@gmail.com")
+                        data = Uri.parse("mailto:eric.castro.data@gmail.com")
                     }
                     try {
                         context.startActivity(intent)

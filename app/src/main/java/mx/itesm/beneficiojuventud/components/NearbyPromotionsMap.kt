@@ -6,6 +6,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
@@ -54,15 +56,6 @@ fun NearbyPromotionsMap(
                 minZoomPreference = 10f
             )
         ) {
-            // Marcador de ubicación del usuario (opcional, si no se usa isMyLocationEnabled)
-            userLocation?.let {
-                Marker(
-                    state = MarkerState(position = userLatLng),
-                    title = "Tu ubicación",
-                    snippet = "Estás aquí"
-                )
-            }
-
             // Marcadores de promociones cercanas
             nearbyPromotions.forEach { promotion ->
                 promotion.closestBranch?.location?.let { locationStr ->
@@ -78,15 +71,16 @@ fun NearbyPromotionsMap(
                             onClick = {
                                 onPromotionMarkerClick(promotion)
                                 true
-                            }
+                            },
+                            icon = BitmapDescriptorFactory.defaultMarker(180f) // Color 008D96 (cyan/teal)
                         )
 
-                        // Círculo alrededor del marcador (opcional)
+                        // Círculo alrededor del marcador
                         Circle(
                             center = position,
                             radius = 50.0, // 50 metros
-                            fillColor = androidx.compose.ui.graphics.Color.Blue.copy(alpha = 0.1f),
-                            strokeColor = androidx.compose.ui.graphics.Color.Blue,
+                            fillColor = Color(0xFF008D96).copy(alpha = 0.1f),
+                            strokeColor = Color(0xFF008D96),
                             strokeWidth = 2f
                         )
                     }
@@ -168,12 +162,5 @@ fun SimpleLocationMap(
         properties = MapProperties(
             isMyLocationEnabled = userLocation != null
         )
-    ) {
-        userLocation?.let {
-            Marker(
-                state = MarkerState(position = userLatLng),
-                title = "Tu ubicación"
-            )
-        }
-    }
+    )
 }

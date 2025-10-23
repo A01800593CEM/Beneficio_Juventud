@@ -374,6 +374,7 @@ private fun AppNav(
         composable(Screens.Credits.route) { Credits(nav) }
         composable(Screens.Favorites.route) { Favorites(nav, userViewModel = userViewModel) }
         composable(Screens.Coupons.route) { Coupons(nav) }
+        composable(Screens.FullscreenMap.route) { FullscreenMap(nav) }
 
         composable(Screens.GenerarPromocion.route) { GenerarPromocion(nav) }
         composable(Screens.GenerarPromocionIA.route) { GenerarPromocionIA(nav) }
