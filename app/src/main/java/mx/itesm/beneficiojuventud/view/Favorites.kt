@@ -105,15 +105,10 @@ fun Favorites(
         }
     }
 
-    // ✅ MOVER ESTE CÁLCULO FUERA DEL BLOQUE DE LazyColumn
-    val allCoupons = remember(reservedPromos, favoritePromos, reservedPromoIds) {
-        // Primero los reservados
-        val reserved = reservedPromos.toList()
-        // Luego los favoritos que NO están reservados
-        val favoritesOnly = favoritePromos.filter { promo ->
-            promo.promotionId?.let { it !in reservedPromoIds } ?: true
-        }
-        reserved + favoritesOnly
+    // ✅ Mostrar SOLO favoritos (no mezclar con reservados)
+    // Los favoritos y las reservas son independientes
+    val allCoupons = remember(favoritePromos) {
+        favoritePromos.toList()
     }
 
     Scaffold(
@@ -254,7 +249,8 @@ fun Favorites(
                             }
                         ) { index, promo ->
                             val isReserved = promo.promotionId?.let { it in reservedPromoIds } ?: false
-                            val isFavorite = promo.promotionId?.let { it in favoritePromoIds } ?: false
+                            // Todos los cupones aquí son favoritos por definición
+                            val isFavorite = true
 
                             PromoImageBannerFav(
                                 promo = promo,

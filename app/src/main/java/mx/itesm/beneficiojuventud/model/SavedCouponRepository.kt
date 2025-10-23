@@ -108,21 +108,16 @@ class SavedCouponRepository(
 
     /**
      * Creates a new booking.
-     * Remote-first: Creates on server, then caches promotion and booking locally.
-     * Automatically adds the promotion to favorites.
+     * Remote-first: Creates on server, then caches booking locally.
+     * NOTE: Does NOT save promotion to promotionDao - bookings and favorites are independent.
+     * Favorites are managed separately via favoritePromotion()/unfavoritePromotion()
      */
     suspend fun createBooking(booking: Booking) {
         try {
             // Step 1: Create booking on server
             val createdBooking = RemoteServiceBooking.createBooking(booking)
 
-            // Step 2: Fetch promotion details
-            val promo: Promotions = RemoteServicePromos.getPromotionById(booking.promotionId!!)
-
-            // Step 3: Cache promotion as reserved (isReserved = true)
-            promotionDao.insertPromotions(promo.toEntity(isReserved = true))
-
-            // Step 4: Sync ALL bookings from server to ensure consistency
+            // Step 2: Sync ALL bookings from server to ensure consistency
             // This is crucial when the server reuses/reactivates a previously cancelled booking
             try {
                 val allUserBookings = RemoteServiceBooking.getUserBookings(booking.userId!!)
@@ -149,6 +144,7 @@ class SavedCouponRepository(
      * Cancels an existing booking.
      * Remote-first: Cancels on server, then updates cache.
      * This will trigger cooldown on the server (10 seconds for testing).
+     * NOTE: Does NOT touch promotionDao - bookings and favorites are independent.
      */
     suspend fun cancelBooking(bookingId: Int, promotionId: Int) {
         try {
@@ -158,18 +154,6 @@ class SavedCouponRepository(
             // Step 2: Update booking in cache (instead of deleting)
             // This preserves the cooldownUntil information needed for client-side cooldown check
             bookingDao.updateBooking(cancelledBooking.toEntity())
-
-            // Step 3: Update promotion to NOT reserved (but keep in favorites if it was favorited)
-            // Fetch fresh promotion details to ensure we have correct favorite status
-            try {
-                val promo: Promotions = RemoteServicePromos.getPromotionById(promotionId)
-                // Update with isReserved = false (no longer reserved, but might still be favorited)
-                promotionDao.insertPromotions(promo.toEntity(isReserved = false))
-                Log.d("CouponRepository", "✅ Updated promotion $promotionId to non-reserved")
-            } catch (promoError: Exception) {
-                Log.w("CouponRepository", "⚠️ Failed to update promotion after cancellation", promoError)
-                // Non-critical, don't throw
-            }
 
             Log.d("CouponRepository", "✅ Cancelled booking $bookingId and updated cache. Cooldown initiated on server.")
         } catch (e: Exception) {
