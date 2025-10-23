@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -373,7 +374,9 @@ private fun HistoryCard(
             Text(
                 text = entry.date,
                 fontSize = 10.sp,
-                color = Color(0xFFAEAEAE)
+                color = Color(0xFFAEAEAE),
+                textAlign = TextAlign.Center,
+                lineHeight = 12.sp
             )
         }
     }
@@ -383,7 +386,9 @@ private fun formatShort(iso: String?): String {
     if (iso.isNullOrBlank()) return ""
     return try {
         val odt = OffsetDateTime.parse(iso)
-        odt.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))
+        val date = odt.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+        val time = odt.format(DateTimeFormatter.ofPattern("HH:mm"))
+        "$date\n$time"
     } catch (_: DateTimeParseException) {
         iso
     }
