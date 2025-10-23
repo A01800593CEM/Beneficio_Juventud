@@ -104,7 +104,11 @@ export interface GrowthMetrics {
 }
 
 export class StatisticsService {
-  private baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || (typeof window === 'undefined' ? 'https://api.beneficiojoven.lat' : '/api/proxy');
+  // En el navegador (cliente), siempre usar /api/proxy para evitar CORS
+  // El proxy redirige a https://api.beneficiojoven.lat en el servidor
+  private baseUrl = typeof window === 'undefined'
+    ? 'https://api.beneficiojoven.lat'  // SSR: usar API directa
+    : '/api/proxy';  // Cliente: usar proxy local
   private AVERAGE_PROMOTION_PRICE = 85; // Precio promedio estimado por promoción
   private VIEWS_MULTIPLIER = 12; // Multiplicador para estimar vistas basado en canjes
 

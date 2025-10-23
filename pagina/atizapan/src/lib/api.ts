@@ -3,7 +3,11 @@ import { authOptions } from "@/lib/auth";
 import { Promotion, PromotionCreateData, PromotionAIRequest, Business, Category } from "@/types/promotion";
 import { User, UserStats, AdminStats, CollaboratorStats } from "@/types/user";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || (typeof window === 'undefined' ? 'https://api.beneficiojoven.lat' : '/api/proxy');  // Usar proxy local en desarrollo, API directa en producción
+// En el navegador (cliente), siempre usar /api/proxy para evitar CORS
+// El proxy redirige a https://api.beneficiojoven.lat en el servidor
+const API_BASE_URL = typeof window === 'undefined'
+  ? 'https://api.beneficiojoven.lat'  // SSR: usar API directa
+  : '/api/proxy';  // Cliente: usar proxy local
 
 export interface UserRegistrationData {
   name: string;
