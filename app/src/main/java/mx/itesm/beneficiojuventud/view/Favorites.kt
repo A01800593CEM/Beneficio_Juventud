@@ -40,6 +40,7 @@ import mx.itesm.beneficiojuventud.components.BJTab
 import mx.itesm.beneficiojuventud.components.BJTopHeader
 import mx.itesm.beneficiojuventud.components.PromoImageBannerFav
 import mx.itesm.beneficiojuventud.components.SectionTitle
+import mx.itesm.beneficiojuventud.model.bookings.BookingStatus
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.promos.PromoTheme
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
@@ -86,9 +87,12 @@ fun Favorites(
         favoriteCollabs.mapNotNull { it.cognitoId?.takeIf(String::isNotBlank) }.toSet()
     }
 
-    // Set de IDs de promociones reservadas para lookup rápido
+    // Set de IDs de promociones reservadas (SOLO PENDING) para lookup rápido
     val reservedPromoIds: Set<Int> = remember(userBookings) {
-        userBookings.mapNotNull { it.promotionId }.toSet()
+        userBookings
+            .filter { it.status == BookingStatus.PENDING }
+            .mapNotNull { it.promotionId }
+            .toSet()
     }
 
     // Set de IDs de promociones favoritas para lookup rápido

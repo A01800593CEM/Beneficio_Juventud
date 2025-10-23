@@ -407,11 +407,11 @@ fun PromoQR(
         }
     }
 
-    // Verificar si la promoción está reservada (solo bookings activos)
+    // Verificar si la promoción está reservada (solo bookings PENDING)
     val currentBooking = remember(userBookings, promotionId) {
         val found = userBookings.find {
             it.promotionId == promotionId &&
-            it.status != BookingStatus.CANCELLED
+            it.status == BookingStatus.PENDING
         }
         Log.d(TAG, "Current booking for promotion $promotionId: ${found?.bookingId}")
         found
