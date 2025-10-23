@@ -1,0 +1,253 @@
+================================================================================
+                    CREATE DTO FORMATS - BENEFICIO JUVENTUD
+                           Backend Server (NestJS)
+================================================================================
+
+This file documents all CreateDTO formats used in the server-bj backend.
+Each DTO includes field names, types, validations, and whether fields are optional.
+
+================================================================================
+
+
+1. CREATE ADMINISTRATOR DTO
+   File: src/administrators/dto/create-administrator.dto.ts
+================================================================================
+
+{
+  firstName: string                   // @IsString, @IsNotEmpty, @MaxLength(255)
+  lastNameFather: string              // @IsString, @IsNotEmpty, @MaxLength(255)
+  lastNameMother?: string             // @IsString, @IsOptional, @MaxLength(255)
+  email: string                       // @IsEmail, @IsNotEmpty
+  phone?: string                      // @IsPhoneNumber('MX'), @IsOptional
+  role: AdminRole                     // @IsEnum(AdminRole) - enum value
+  status: AdminState                  // @IsEnum(AdminState) - enum value
+  cognitoId: string                   // @IsString, @MaxLength(50), @IsNotEmpty
+}
+
+
+2. CREATE BOOKING DTO
+   File: src/bookings/dto/create-booking.dto.ts
+================================================================================
+
+{
+  promotionId: number                 // @IsInt
+  userId: string                      // @IsInt (Note: type mismatch - declared as string but validated as int)
+  limitUseDate?: Date                 // @IsDate, @Type(() => Date)
+  bookStatus: BookStatus              // @IsEnum(BookStatus) - enum value
+  bookedPromotion?: number            // @IsInt
+}
+
+
+3. CREATE CATEGORY DTO
+   File: src/categories/dto/create-category.dto.ts
+================================================================================
+
+{
+  name: string                        // @IsString, @IsNotEmpty
+}
+
+
+4. CREATE COLLABORATOR DTO
+   File: src/collaborators/dto/create-collaborator.dto.ts
+================================================================================
+
+{
+  businessName: string                // @IsString, @IsNotEmpty, @MaxLength(255)
+  cognitoId: string                   // @IsString, @IsNotEmpty, @MaxLength(50)
+  rfc: string                         // @IsString, @IsNotEmpty, @MaxLength(20)
+  representativeName: string          // @IsString, @IsNotEmpty, @MaxLength(255)
+  phone: string                       // @IsString, @IsNotEmpty, @MaxLength(20)
+  email: string                       // @IsEmail, @IsNotEmpty, @MaxLength(255)
+  address: string                     // @IsString, @IsNotEmpty, @MaxLength(255)
+  postalCode: string                  // @IsString, @IsNotEmpty, @MaxLength(10)
+  categoryIds?: number[]              // @IsOptional, @IsArray, @IsInt({ each: true })
+  logoUrl?: string                    // @IsOptional, @IsString, @MaxLength(255)
+  description?: string                // @IsOptional, @IsString
+  state: CollaboratorState            // @IsEnum(CollaboratorState) - enum value
+}
+
+
+5. CREATE FAVORITE DTO
+   File: src/favorites/dto/create-favorite.dto.ts
+================================================================================
+
+{
+  userId: string                      // @IsString, @IsNotEmpty
+  collaboratorId: string              // @IsString, @IsNotEmpty
+}
+
+
+6. CREATE NOTIFICATION DTO
+   File: src/notifications/dto/create-notification.dto.ts
+================================================================================
+
+{
+  title: string                       // @IsString, @IsNotEmpty
+  message: string                     // @IsString, @IsNotEmpty
+  type: NotificationType              // @IsEnum(NotificationType) - enum value
+  recipientType: RecipientType        // @IsEnum(RecipientType) - enum value
+  recipientId?: number                // @IsOptional, @IsInt
+  status: NotificationStatus          // @IsEnum(NotificationStatus) - enum value
+  segmentCriteria?: Record<string, any> // @IsOptional, @IsObject
+  promotionId?: number                // @IsOptional, @IsInt
+}
+
+
+7. CREATE USER DTO
+   File: src/users/dto/create-user.dto.ts
+================================================================================
+
+Example JSON:
+{
+  "name": "Iván",
+  "lastNamePaternal": "Carrillo",
+  "lastNameMaternal": "López",
+  "birthDate": "2001-08-15T00:00:00.000Z",
+  "phoneNumber": "+52 5512345678",
+  "email": "ivan@example.com",
+  "accountState": "activo",
+  "cognitoId": "abc123xyz",
+  "userPrefCategories": ["deportes", "entretenimiento"],
+  "favoritePromos": [1, 2, 3]
+}
+
+Fields:
+{
+  name: string                        // @IsString, @IsNotEmpty
+  cognitoId: string                   // @IsString, @IsNotEmpty, @MaxLength(50)
+  lastNamePaternal: string            // @IsString, @IsNotEmpty
+  lastNameMaternal: string            // @IsString, @IsNotEmpty
+  birthDate: Date                     // @IsDate, @Type(() => Date)
+  phoneNumber: string                 // @IsPhoneNumber("MX")
+  email: string                       // @IsEmail
+  accountState: UserState             // @IsEnum(UserState) - enum value
+  userPrefCategories: string[]        // @IsArray, @IsString({ each: true })
+  favoritePromos: number[]            // @IsArray, @IsInt({ each: true })
+}
+
+
+8. CREATE ANALYTICS DTO
+   File: src/analytics/dto/create-analytics.dto.ts
+================================================================================
+
+{
+  // Empty DTO - no fields defined
+}
+
+
+9. CREATE BRANCH DTO
+   File: src/branch/dto/create-branch.dto.ts
+================================================================================
+
+{
+  collaboratorId: string              // @IsString, @IsNotEmpty
+  name: string                        // @IsString, @IsNotEmpty
+  phone: string                       // @IsPhoneNumber('MX')
+  address: string                     // @IsString, @IsNotEmpty
+  zipCode: string                     // @IsString, @IsNotEmpty
+  location?: string                   // @IsOptional, @IsString, @Matches(/^\(\s*-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?\s*\)$/)
+                                      // Format: "(lon,lat)" or "(x,y)"
+  jsonSchedule?: Record<string, any>  // @IsOptional, @IsObject
+  state?: BranchState                 // @IsOptional, @IsEnum(BranchState), default: BranchState.ACTIVE
+}
+
+
+10. CREATE PROMOTION DTO
+    File: src/promotions/dto/create-promotion.dto.ts
+================================================================================
+
+{
+  collaboratorId: string              // @IsString (Cognito ID)
+  title: string                       // @IsString
+  description: string                 // @IsString
+  imageUrl?: string                   // @IsOptional, @IsUrl
+  initialDate: Date                   // @IsDate, @Type(() => Date)
+  endDate: Date                       // @IsDate, @Type(() => Date)
+  categoryId?: number                 // @IsOptional, @IsInt
+  promotionType: PromotionType        // @IsEnum(PromotionType) - enum value
+  promotionString?: string            // @IsOptional, @IsString
+  totalStock?: number                 // @IsOptional, @IsInt
+  availableStock?: number             // @IsOptional, @IsInt
+  limitPerUser?: number               // @IsOptional, @IsInt
+  dailyLimitPerUser?: number          // @IsOptional, @IsInt
+  promotionState: PromotionState      // @IsEnum(PromotionState) - enum value
+  categoryIds?: number[]              // @IsOptional, @IsArray, @IsInt({ each: true })
+  branchIds?: number[]                // @IsOptional, @IsArray, @IsInt({ each: true })
+                                      // If undefined/empty, promotion applies to ALL collaborator branches
+  promotionTheme?: PromotionTheme     // @IsEnum(PromotionTheme), @IsOptional (legacy field)
+  theme?: PromotionTheme              // @IsEnum(PromotionTheme), @IsOptional
+  is_bookable: boolean                // @IsBoolean
+}
+
+
+11. CREATE REDEEMED COUPON DTO
+    File: src/redeemedcoupon/dto/create-redeemedcoupon.dto.ts
+================================================================================
+
+Example JSON:
+{
+  "userId": "a1fbe500-a091-70e3-5a7b-3b1f4537f10f",
+  "branchId": 8,
+  "promotionId": 27,
+  "nonce": "abc12345",
+  "qrTimestamp": 1729458361234
+}
+
+Fields:
+{
+  userId: string                      // @IsString
+  branchId: number                    // @IsInt
+  promotionId: number                 // @IsInt
+  nonce?: string                      // @IsOptional, @IsString
+  qrTimestamp?: number                // @IsOptional, @IsNumber
+}
+
+
+================================================================================
+                              ENUM REFERENCES
+================================================================================
+
+AdminRole               - Administrator role types
+AdminState              - Administrator account state
+BookStatus              - Booking status (PENDING, CONFIRMED, etc.)
+CollaboratorState       - Collaborator account state (PENDING, ACTIVE, INACTIVE)
+NotificationType        - Type of notification
+NotificationStatus      - Status of notification
+RecipientType           - Type of notification recipient
+UserState               - User account state (ACTIVE, SUSPENDED, DELETED)
+BranchState             - Branch state (ACTIVE, INACTIVE, etc.)
+PromotionType           - Type of promotion (DISCOUNT, MULTYBUY, FREEBIE, etc.)
+PromotionState          - Promotion state (ACTIVE, INACTIVE, EXPIRED)
+PromotionTheme          - Promotion theme/category
+
+================================================================================
+                           VALIDATION NOTES
+================================================================================
+
+1. Phone Numbers: Use @IsPhoneNumber('MX') for Mexican phone numbers
+2. Dates: Use @Type(() => Date) from class-transformer for proper date parsing
+3. Arrays: Use { each: true } option to validate each array element
+4. MaxLength: Common limits are 50 (IDs), 255 (names/text), 20 (phone/RFC)
+5. Cognito IDs: Always use @MaxLength(50) for cognitoId fields
+6. Optional Fields: Always use @IsOptional decorator for optional fields
+7. Enums: Use @IsEnum() with the corresponding enum type
+8. URLs: Use @IsUrl() for URL validation
+9. Objects: Use Record<string, any> type for dynamic JSON objects
+
+================================================================================
+                           COMMON PATTERNS
+================================================================================
+
+1. All entities with AWS Cognito integration use 'cognitoId' field (string)
+2. Foreign key relationships typically use number type for IDs
+3. State/Status fields are always enums
+4. Array fields for multiple relationships use @IsArray with type validation
+5. Date fields require @Type(() => Date) transformer
+6. Optional fields should have '?' in TypeScript and @IsOptional decorator
+
+================================================================================
+                              END OF DOCUMENT
+================================================================================
+Generated: 2025-10-22
+Project: Beneficio Juventud Backend Server
+Framework: NestJS with class-validator and class-transformer
