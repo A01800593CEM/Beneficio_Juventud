@@ -532,10 +532,10 @@ class AuthViewModel(private val context: Context? = null) : ViewModel() {
         }
     }
 
-    fun confirmResetPassword(email: String, newPassword: String, confirmationCode: String) {
+    fun confirmResetPassword(email: String, confirmationCode: String, newPassword: String) {
         viewModelScope.launch {
             _authState.value = AuthState(isLoading = true)
-            val result = authRepository.confirmResetPassword(email, newPassword, confirmationCode)
+            val result = authRepository.confirmResetPassword(email, confirmationCode, newPassword)
             result.fold(
                 onSuccess = { _authState.value = AuthState(isSuccess = true) },
                 onFailure = { e ->
