@@ -39,6 +39,8 @@ import mx.itesm.beneficiojuventud.components.EmailTextField
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+import mx.itesm.beneficiojuventud.utils.isValidEmail
+import mx.itesm.beneficiojuventud.utils.getEmailErrorMessage
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +55,7 @@ import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 @Composable
 fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier, viewModel: AuthViewModel = viewModel()) {
     var email by remember { mutableStateOf("") }
+    var emailError by remember { mutableStateOf(false) }
     val emailValid = remember(email) {
         Regex("^[A-Za-z0-9][A-Za-z0-9+_.-]*@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\$").matches(email)
     }
@@ -150,9 +153,14 @@ fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier, viewMo
                 // Campo correo (componente propio)
                 EmailTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = {
+                        email = it
+                        emailError = false
+                    },
                     modifier = Modifier
-                        .padding(horizontal = 24.dp)
+                        .padding(horizontal = 24.dp),
+                    isError = emailError,
+                    errorMessage = if (emailError) getEmailErrorMessage() else ""
                 )
 
                 MainButton(
@@ -163,6 +171,12 @@ fun ForgotPassword(nav: NavHostController, modifier: Modifier = Modifier, viewMo
                         .align(Alignment.CenterHorizontally),
                     enabled = emailValid && !authState.isLoading
                 ) {
+                    // Validar email antes de continuar
+                    if (!isValidEmail(email)) {
+                        emailError = true
+                        return@MainButton
+                    }
+
                     viewModel.resetPassword(email)
                 }
             }
