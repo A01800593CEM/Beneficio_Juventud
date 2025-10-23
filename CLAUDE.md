@@ -26,7 +26,7 @@ NestJS application using Fastify adapter with TypeORM for PostgreSQL database ac
 **Database:**
 - PostgreSQL with TypeORM (synchronize: false - migrations should be managed manually)
 - Connection configured via environment variables (DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_NAME)
-- Schema reference available in `bd.sql` (MySQL format, adapted for PostgreSQL in production)
+- Schema reference available in `BD-BJ.sql` (PostgreSQL schema dump)
 
 **HTTPS Configuration:**
 - Runs HTTPS on port 3000 using self-signed certificates in `src/certificates/` (key.pem, cert.pem)
@@ -200,3 +200,19 @@ npm run lint
 - Instrumented tests: Espresso for UI interactions, Navigation Testing for navigation flows
 - Room database testing with in-memory database
 - API mocking with MockWebServer for Retrofit testing
+
+## Additional Documentation
+
+The repository includes specialized development guides in the root directory:
+- `FLUJO_QR_INSTRUCTIONS.md` - QR code redemption implementation details
+- `IMPLEMENTACION_ROOMDB.md` - Room database setup and usage guide
+- `OFFLINE_SUPPORT.md` - Offline functionality and data synchronization
+- `TESTING_README.md` - Comprehensive testing strategies and best practices
+- `GUIA_RAPIDA_MAPAS.md` - Google Maps integration quick start
+- `IMPLEMENTACION_RESERVAR_CUPONES.md` - Booking system implementation
+- `DEBUG_SUCURSALES_CERCANAS.md` - Debugging nearby branches/locations
+- `RECOMENDACIONES_POR_UBICACION.md` - Location-based recommendations
+- `ANALISIS_SUCURSALES.md` - Branch management analysis
+- `EJEMPLO_USO_REPOSITORY.md` - Repository pattern examples
+- `SOLUCION_ERROR_500.md` - Common error solutions
+- `CORRECCIONES_ERRORES.md` - Error fixes and troubleshooting

@@ -372,6 +372,7 @@ private fun AppNav(
         }
         composable(Screens.Settings.route) { Settings(nav) }
         composable(Screens.Help.route) { Help(nav) }
+        composable(Screens.Credits.route) { Credits(nav) }
         composable(Screens.Favorites.route) { Favorites(nav, userViewModel = userViewModel) }
         composable(Screens.Coupons.route) { Coupons(nav) }
         composable(Screens.Terms.route) { TermsAndConditionsScreen(nav) }

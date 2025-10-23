@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -275,6 +276,12 @@ fun Profile(
                     title = "Ayuda y Soporte",
                     subtitle = "Preguntas frecuentes y contacto",
                     onClick = { nav.navigate(Screens.Help.route) }
+                )
+                ProfileItemCard(
+                    icon = Icons.Outlined.Info,
+                    title = "Créditos",
+                    subtitle = "Conoce al equipo de desarrollo",
+                    onClick = { nav.navigate(Screens.Credits.route) }
                 )
                 ProfileItemCard(
                     icon = Icons.AutoMirrored.Outlined.Logout,

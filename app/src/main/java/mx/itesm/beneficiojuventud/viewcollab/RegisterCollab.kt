@@ -53,6 +53,8 @@ import mx.itesm.beneficiojuventud.components.AddressAutocompleteTextField
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.model.collaborators.CollaboratorsState
 import mx.itesm.beneficiojuventud.utils.dismissKeyboardOnTap
+import mx.itesm.beneficiojuventud.utils.isValidEmail
+import mx.itesm.beneficiojuventud.utils.getEmailErrorMessage
 import mx.itesm.beneficiojuventud.view.Screens
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
@@ -79,6 +81,7 @@ fun RegisterCollab(
 
     var showError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    var emailError by remember { mutableStateOf(false) }
 
     // RFC validation regex
     val rfcRegex = Regex("^([A-ZÑ&]{3,4}) ?(?:- ?)?(\\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\\d|3[01])) ?(?:- ?)?([A-Z\\d]{2})([A\\d])$")
@@ -201,6 +204,12 @@ fun RegisterCollab(
                     enabled = !authState.isLoading && !isCheckingEmail && isFormValid,
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    // Validar email antes de continuar
+                    if (!isValidEmail(email)) {
+                        emailError = true
+                        return@MainButton
+                    }
+
                     // Nuevo intento → resetea el latch para permitir re-navegar a Confirm
                     didNavigateToConfirm = false
 
@@ -452,8 +461,13 @@ fun RegisterCollab(
                 FocusBringIntoView {
                     EmailTextField(
                         value = email,
-                        onValueChange = { email = it },
-                        modifier = it.fillMaxWidth()
+                        onValueChange = {
+                            email = it
+                            emailError = false
+                        },
+                        modifier = it.fillMaxWidth(),
+                        isError = emailError,
+                        errorMessage = if (emailError) getEmailErrorMessage() else ""
                     )
                 }
             }

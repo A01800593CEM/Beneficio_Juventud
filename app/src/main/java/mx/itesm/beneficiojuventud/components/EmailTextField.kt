@@ -27,7 +27,9 @@ fun EmailTextField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = "beneficio_user@juventud.com"
+    placeholder: String = "beneficio_user@juventud.com",
+    isError: Boolean = false,
+    errorMessage: String = ""
 ) {
     val shape = RoundedCornerShape(18.dp)
 
@@ -35,6 +37,7 @@ fun EmailTextField(
         value = value,
         onValueChange = { onValueChange(it.lowercase().trim()) },
         singleLine = true,
+        isError = isError,
         // ⬇️ Quita height(48.dp) y usa altura mínima segura
         modifier = modifier
             .fillMaxWidth()
@@ -47,6 +50,9 @@ fun EmailTextField(
                 style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             )
         },
+        supportingText = if (isError && errorMessage.isNotEmpty()) {
+            { Text(text = errorMessage, color = Color(0xFFB00020), fontSize = 12.sp) }
+        } else null,
         // ⬇️ Un pelín más de lineHeight evita cortes en algunas fuentes/escalas
         textStyle = TextStyle(
             fontSize = 14.sp,
@@ -60,8 +66,9 @@ fun EmailTextField(
         colors = TextFieldDefaults.colors(
             focusedContainerColor = Color.White,
             unfocusedContainerColor = Color.White,
-            focusedIndicatorColor = Color(0xFFD3D3D3),
-            unfocusedIndicatorColor = Color(0xFFD3D3D3),
+            focusedIndicatorColor = if (isError) Color(0xFFB00020) else Color(0xFFD3D3D3),
+            unfocusedIndicatorColor = if (isError) Color(0xFFB00020) else Color(0xFFD3D3D3),
+            errorIndicatorColor = Color(0xFFB00020),
             cursorColor = Color(0xFF008D96),
             focusedPlaceholderColor = Color(0xFF7D7A7A),
             unfocusedPlaceholderColor = Color(0xFF7D7A7A),

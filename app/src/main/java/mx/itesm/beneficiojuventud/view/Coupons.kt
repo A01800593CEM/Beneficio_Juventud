@@ -72,7 +72,7 @@ fun Coupons(
         try {
             promoVm.getActivePromotions()
         } catch (e: Exception) {
-            promosError = e.message ?: "Error loading promotions"
+            promosError = e.message ?: "Error cargando promociones"
         } finally {
             loadingPromos = false
         }
@@ -90,7 +90,7 @@ fun Coupons(
                 promoVm.getActivePromotionsByCategory(selectedCategoryId.toString())
             }
         } catch (e: Exception) {
-            promosError = e.message ?: "Error filtering promotions"
+            promosError = e.message ?: "Error filtrando promociones"
         } finally {
             loadingPromos = false
         }
@@ -272,7 +272,7 @@ fun Coupons(
                                             promoVm.getPromotionByCategory(selectedCategoryId.toString())
                                         }
                                     } catch (e: Exception) {
-                                        promosError = e.message ?: "Error"
+                                        promosError = e.message ?: "Error desconocido"
                                     } finally {
                                         loadingPromos = false
                                     }
