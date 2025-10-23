@@ -18,7 +18,8 @@ export class CreateBookingDto {
   limitUseDate?: Date;
 
   @IsEnum(BookStatus)
-  bookStatus: BookStatus;
+  @IsOptional()
+  status?: BookStatus;
 
   @IsInt()
   @IsOptional()

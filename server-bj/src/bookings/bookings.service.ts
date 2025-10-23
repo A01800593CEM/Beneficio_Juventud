@@ -22,17 +22,16 @@ export class BookingsService {
     const { promotionId, userId } = createBookingDto;
 
     // Verificar si hay un cooldown activo para este usuario y promoción
-    const existingBooking = await this.bookingsRepository.findOne({
-      where: { promotionId, user: { cognitoId: userId } },
-      relations: ['user'],
+    const lastBooking = await this.bookingsRepository.findOne({
+      where: { promotionId, userId },
       order: { bookingDate: 'DESC' },
     });
 
-    if (existingBooking && existingBooking.cooldownUntil) {
+    if (lastBooking && lastBooking.cooldownUntil) {
       const now = new Date();
-      if (now < existingBooking.cooldownUntil) {
+      if (now < lastBooking.cooldownUntil) {
         throw new BadRequestException(
-          `Cooldown activo. Intente nuevamente en ${Math.ceil((existingBooking.cooldownUntil.getTime() - now.getTime()) / 1000)} segundos`,
+          `Cooldown activo. Intente nuevamente en ${Math.ceil((lastBooking.cooldownUntil.getTime() - now.getTime()) / 1000)} segundos`,
         );
       }
     }
@@ -45,6 +44,7 @@ export class BookingsService {
       ...createBookingDto,
       autoExpireDate,
       cooldownUntil: null, // Sin cooldown al reservar
+      status: BookStatus.PENDING, // Status por defecto
     });
 
     return this.bookingsRepository.save(booking);
@@ -72,7 +72,7 @@ export class BookingsService {
     }
 
     // Si se está cancelando la reserva, guardar la fecha de cancelación e iniciar cooldown
-    if (updateBookingDto.bookStatus === BookStatus.CANCELLED && !booking.cancelledDate) {
+    if (updateBookingDto.status === BookStatus.CANCELLED && !booking.cancelledDate) {
       booking.cancelledDate = new Date();
       // Iniciar cooldown por 1 minuto (para pruebas)
       const cooldownStart = new Date();

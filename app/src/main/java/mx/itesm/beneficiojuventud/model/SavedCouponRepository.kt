@@ -144,21 +144,22 @@ class SavedCouponRepository(
 
     /**
      * Cancels an existing booking.
-     * Remote-first: Cancels on server, then removes from cache.
+     * Remote-first: Cancels on server, then updates cache.
      * This will trigger cooldown on the server (1 minute for testing).
      */
     suspend fun cancelBooking(bookingId: Int, promotionId: Int) {
         try {
             // Step 1: Cancel on server (triggers cooldown automatically)
-            RemoteServiceBooking.cancelBooking(bookingId)
+            val cancelledBooking = RemoteServiceBooking.cancelBooking(bookingId)
 
-            // Step 2: Remove booking from cache
-            bookingDao.deleteById(bookingId)
+            // Step 2: Update booking in cache (instead of deleting)
+            // This preserves the cooldownUntil information needed for client-side cooldown check
+            bookingDao.updateBooking(cancelledBooking.toEntity())
 
             // Step 3: Remove associated promotion from reserved list (it was reserved, now it's not)
             promotionDao.deleteById(promotionId)
 
-            Log.d("CouponRepository", "✅ Cancelled booking $bookingId and removed from cache. Cooldown initiated on server.")
+            Log.d("CouponRepository", "✅ Cancelled booking $bookingId and updated cache. Cooldown initiated on server.")
         } catch (e: Exception) {
             Log.e("CouponRepository", "❌ Failed to cancel booking $bookingId", e)
             throw e
