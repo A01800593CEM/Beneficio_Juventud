@@ -25,7 +25,7 @@ import mx.itesm.beneficiojuventud.model.RoomDB.SavedPromos.PromotionEntity
         BookingEntity::class,
         HistoryEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
