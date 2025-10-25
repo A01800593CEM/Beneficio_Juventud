@@ -155,9 +155,13 @@ fun Home(
     var promoLoading by remember { mutableStateOf(false) }
     var promoError by remember { mutableStateOf<String?>(null) }
 
-    // Loading/Error locales para colaboradores
+    // Loading/Error locales para colaboradores - "Ofertas Especiales"
     var collabLoading by remember { mutableStateOf(false) }
     var collabError by remember { mutableStateOf<String?>(null) }
+
+    // Loading/Error locales para colaboradores - "Lo Nuevo"
+    var newestLoading by remember { mutableStateOf(false) }
+    var newestError by remember { mutableStateOf<String?>(null) }
 
     // ─────────────────────────────────────────────────────────────────────────────
     // UBICACIÓN Y DATOS CERCANOS
@@ -292,10 +296,11 @@ fun Home(
     // Carga inicial de colaboradores para "Lo Nuevo" (ordenados por fecha más reciente)
     LaunchedEffect(categories) {
         if (categories.isNotEmpty() && selectedCategoryName == null) {
+            newestError = null
+            newestLoading = true
             runCatching { collabViewModel.getAllActiveCollaboratorsByNewest() }
-                .onFailure { e ->
-                    // Silent error para "Lo Nuevo", usa el estado existente
-                }
+                .onFailure { e -> newestError = e.message ?: "Error al cargar comercios nuevos" }
+            newestLoading = false
         }
     }
 
@@ -902,7 +907,7 @@ fun Home(
                     Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 6.dp)
                 )
                 when {
-                    collabLoading -> {
+                    newestLoading -> {
                         Row(
                             Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -915,7 +920,7 @@ fun Home(
                             Text("Cargando comercios…")
                         }
                     }
-                    collabError != null -> {
+                    newestError != null -> {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -923,7 +928,7 @@ fun Home(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                "No se pudieron cargar los comercios: $collabError",
+                                "No se pudieron cargar los comercios: $newestError",
                                 color = Color(0xFF8C8C8C),
                                 fontSize = 13.sp
                             )
