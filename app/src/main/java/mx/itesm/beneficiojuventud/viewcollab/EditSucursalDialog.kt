@@ -9,22 +9,28 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import mx.itesm.beneficiojuventud.components.AddressAutocompleteTextField
 import mx.itesm.beneficiojuventud.model.Branch
 import mx.itesm.beneficiojuventud.model.BranchState
+import mx.itesm.beneficiojuventud.view.MxPhoneVisualTransformation
 
 private val DarkBlue = Color(0xFF4B4C7E)
 private val Teal = Color(0xFF008D96)
@@ -338,58 +344,53 @@ private fun PhoneMxField(
     label: String = "Teléfono",
     isError: Boolean = false
 ) {
-    // Función para formatear 10 dígitos a formato: XX XXXX XXXX
-    fun formatPhoneNumber(digits: String): String {
-        return buildString {
-            for (i in digits.indices) {
-                append(digits[i])
-                if (i == 1 && digits.length > 2) append(' ')
-                if (i == 5 && digits.length > 6) append(' ')
-            }
+    Column(modifier = modifier.fillMaxWidth()) {
+        // Label como en Register.kt
+        Text(
+            label,
+            color = LabelColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        OutlinedTextField(
+            value = valueRaw,
+            onValueChange = { input ->
+                // Acepta solo dígitos y limita a 10 (55 5555 5555)
+                val digits = input.filter { it.isDigit() }.take(10)
+                onValueRawChange(digits)
+            },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = TextFieldDefaults.MinHeight),
+            shape = RoundedCornerShape(18.dp),
+            leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = null) },
+            placeholder = { Text("55 5555 5555", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
+            textStyle = TextStyle(
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                color = Color(0xFF2F2F2F)
+            ),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Next
+            ),
+            colors = textFieldColors(),
+            visualTransformation = MxPhoneVisualTransformation()
+        )
+
+        // Mensaje de error si es necesario
+        if (isError) {
+            Text(
+                "Debe tener 10 dígitos.",
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 4.dp, start = 16.dp)
+            )
         }
     }
-
-    // Usar un estado local para el texto formateado para evitar conflictos
-    var displayValue by remember { mutableStateOf(formatPhoneNumber(valueRaw)) }
-
-    // Sincronizar cuando cambia el valor externo
-    LaunchedEffect(valueRaw) {
-        displayValue = formatPhoneNumber(valueRaw)
-    }
-
-    OutlinedTextField(
-        value = displayValue,
-        onValueChange = { newDisplay ->
-            // Actualizar el display inmediatamente para mejor UX
-            displayValue = newDisplay
-
-            // Extraer solo dígitos
-            val onlyDigits = newDisplay.filter { it.isDigit() }.take(10)
-
-            // Llamar callback solo si cambiaron los dígitos reales
-            if (onlyDigits != valueRaw) {
-                onValueRawChange(onlyDigits)
-            }
-        },
-        label = { Text(label, color = LabelColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
-        modifier = modifier.fillMaxWidth(),
-        isError = isError,
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Number,
-            imeAction = ImeAction.Next
-        ),
-        shape = RoundedCornerShape(12.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Teal,
-            unfocusedBorderColor = Color.LightGray,
-            focusedTextColor = TextColor,
-            unfocusedTextColor = TextColor
-        ),
-        textStyle = TextStyle(color = TextColor, fontSize = 14.sp, fontWeight = FontWeight.Bold),
-        supportingText = {
-            if (isError) Text("Debe tener 10 dígitos.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-        }
-    )
 }
 
 @Composable
@@ -450,3 +451,18 @@ private fun parseLocationStringForDisplay(locationStr: String): Pair<Double, Dou
         null
     }
 }
+
+@Composable
+private fun textFieldColors() = TextFieldDefaults.colors(
+    focusedContainerColor = Color.White,
+    unfocusedContainerColor = Color.White,
+    focusedIndicatorColor = Color(0xFFD3D3D3),
+    unfocusedIndicatorColor = Color(0xFFD3D3D3),
+    cursorColor = Color(0xFF008D96),
+    focusedLeadingIconColor = Color(0xFF7D7A7A),
+    unfocusedLeadingIconColor = Color(0xFF7D7A7A),
+    focusedTrailingIconColor = Color(0xFF7D7A7A),
+    unfocusedTrailingIconColor = Color(0xFF7D7A7A),
+    focusedPlaceholderColor = Color(0xFF7D7A7A),
+    unfocusedPlaceholderColor = Color(0xFF7D7A7A)
+)
