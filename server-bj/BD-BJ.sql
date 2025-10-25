@@ -508,7 +508,9 @@ CREATE TABLE public.reserva (
     fecha_reserva timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     fecha_limite_uso timestamp without time zone,
     estado public.estado_reserva,
-    promocion_reservada integer
+    promocion_reservada integer,
+    fecha_auto_expiracion timestamp without time zone,
+    cooldown_hasta timestamp without time zone
 );
 
 
@@ -597,12 +599,21 @@ CREATE TABLE public.uso_cupon (
     colaborador_id character varying(255),
     sucursal_id integer,
     promocion_id integer,
-    fecha_uso timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    fecha_uso timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    nonce VARCHAR(255),
+    qr_timestamp BIGINT
 );
 
 
 ALTER TABLE public.uso_cupon OWNER TO neondb_owner;
 
+
+--
+-- INDEXES
+--
+
+CREATE INDEX IF NOT EXISTS idx_uso_cupon_nonce ON public.uso_cupon(nonce);
+CREATE INDEX IF NOT EXISTS idx_uso_cupon_promocion_nonce ON public.uso_cupon(promocion_id, nonce);
 --
 -- TOC entry 234 (class 1259 OID 74230)
 -- Name: uso_cupon_uso_id_seq; Type: SEQUENCE; Schema: public; Owner: neondb_owner
@@ -1328,4 +1339,3 @@ REVOKE USAGE ON SCHEMA public FROM PUBLIC;
 --
 -- PostgreSQL database dump complete
 --
-

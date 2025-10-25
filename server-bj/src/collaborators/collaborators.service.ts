@@ -158,48 +158,32 @@ export class CollaboratorsService {
    * @returns Promise<Collaborator[]> Array of active collaborators ordered by latest promotion date descending
    */
   async findAllActiveWithLatestPromotion(): Promise<Collaborator[]> {
-    try {
-      // Get all active collaborators with their categories
-      const collaborators = await this.collaboratorsRepository.find({
-        where: { state: CollaboratorState.ACTIVE },
-        relations: ['categories'],
-      });
+    // Subquery to get the latest promotion date for each collaborator
+    const subquery = this.collaboratorsRepository
+      .createQueryBuilder('subq_collaborator')
+      .select('subq_collaborator.id', 'collaborator_id')
+      .addSelect('MAX(subq_promotion.created_at)', 'latest_promotion_date')
+      .leftJoin('subq_collaborator.promotions', 'subq_promotion')
+      .where('subq_collaborator.state = :state', {
+        state: CollaboratorState.ACTIVE,
+      })
+      .groupBy('subq_collaborator.id');
 
-      // If no collaborators, return empty array
-      if (!collaborators.length) {
-        return [];
-      }
-
-      // Get the latest promotion date for each collaborator using a single query
-      const collaboratorIds = collaborators.map(c => c.cognitoId);
-
-      const promotionDates = await this.collaboratorsRepository.query(`
-        SELECT
-          p.colaborador_id,
-          MAX(p.created_at) as latest_promotion_date
-        FROM promocion p
-        WHERE p.colaborador_id = ANY($1::text[])
-        GROUP BY p.colaborador_id
-      `, [collaboratorIds]);
-
-      // Create a map for quick lookup
-      const promotionDateMap = new Map(
-        promotionDates.map((row: any) => [row.colaborador_id, new Date(row.latest_promotion_date)])
-      );
-
-      // Sort collaborators by their latest promotion created_at date
-      return collaborators.sort((a, b) => {
-        const aLatestDate = promotionDateMap.get(a.cognitoId) ?? new Date(0);
-        const bLatestDate = promotionDateMap.get(b.cognitoId) ?? new Date(0);
-
-        // Sort descending (newest first)
-        return bLatestDate.getTime() - aLatestDate.getTime();
-      });
-    } catch (error) {
-      this.logger.error('Error in findAllActiveWithLatestPromotion:', error);
-      // Fallback: return all active collaborators without sorting by promotion date
-      return this.findAllActive();
-    }
+    return this.collaboratorsRepository
+      .createQueryBuilder('collaborator')
+      .leftJoinAndSelect('collaborator.categories', 'category')
+      .innerJoin(
+        `(${subquery.getQuery()})`,
+        'latest_promo',
+        'latest_promo.collaborator_id = collaborator.id'
+      )
+      .setParameters(subquery.getParameters())
+      .where('collaborator.state = :state', {
+        state: CollaboratorState.ACTIVE,
+      })
+      .orderBy('latest_promo.latest_promotion_date', 'DESC')
+      .addOrderBy('collaborator.id', 'ASC') // Secondary sort for consistency
+      .getMany();
   }
 
   // Only finds the active collaborators
@@ -332,19 +316,17 @@ export class CollaboratorsService {
   }
 
   /**
-   * Finds all ACTIVE collaborators belonging to a specific category.
+   * Finds all collaborators belonging to a specific category.
    * @param categoryName - The name of the category to filter by
-   * @returns Promise<Collaborator[]> Array of active collaborators in the specified category
+   * @returns Promise<Collaborator[]> Array of collaborators in the specified category
    */
   async findByCategory(categoryName: string): Promise<Collaborator[]> {
-    // Get all active collaborators first
-    const allActive = await this.findAllActive();
-
-    // Filter by category on the client side to avoid complex joins
-    return allActive.filter(collab =>
-      collab.categories?.some(cat => cat.name === categoryName)
-    );
-  }
+    return this.collaboratorsRepository
+      .createQueryBuilder('collaborator')
+      .innerJoin('collaborator.categories', 'category')
+      .where('category.name = :categoryName', { categoryName })
+      .getMany();
+}
 
   /**
    * Encuentra colaboradores cercanos a la ubicación del usuario
