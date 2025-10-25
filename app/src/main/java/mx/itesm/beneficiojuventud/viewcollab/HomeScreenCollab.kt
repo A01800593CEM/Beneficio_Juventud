@@ -174,9 +174,8 @@ private fun HeaderSectionCollab(collaborator: Collaborator?) {
                 contentDescription = "Logo Colaborador",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .width(72.dp)
-                    .height(54.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(56.dp)
+                    .clip(CircleShape)
                     .background(Color.LightGray),
                 loading = {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
