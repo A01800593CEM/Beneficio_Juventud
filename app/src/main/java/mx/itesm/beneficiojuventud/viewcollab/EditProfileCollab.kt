@@ -552,8 +552,9 @@ private fun ProfileImageSection(
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
-                .size(100.dp)
-                .clip(CircleShape),
+                .width(90.dp)
+                .height(67.5.dp)
+                .clip(RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
         ) {
             when {
@@ -567,7 +568,7 @@ private fun ProfileImageSection(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .matchParentSize()
-                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(12.dp))
                 )
                 else -> Icon(
                     imageVector = Icons.Default.Business,

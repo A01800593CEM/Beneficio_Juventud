@@ -181,7 +181,10 @@ fun ProfileCollab(
                 Spacer(Modifier.height(10.dp))
 
                 Box(
-                    modifier = Modifier.size(100.dp).clip(CircleShape),
+                    modifier = Modifier
+                        .width(90.dp)
+                        .height(67.5.dp)
+                        .clip(RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     // Mostrar siempre la imagen de fondo (no_vendor_img o imagen real)
@@ -196,13 +199,16 @@ fun ProfileCollab(
                             model = imageToBuild,
                             contentDescription = "Logo del negocio",
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.matchParentSize().clip(CircleShape)
+                            modifier = Modifier.matchParentSize().clip(RoundedCornerShape(12.dp))
                         )
                     } else {
                         Image(
                             painter = painterResource(id = R.drawable.no_vendor_img),
                             contentDescription = "Avatar",
-                            modifier = Modifier.size(100.dp).clip(CircleShape),
+                            modifier = Modifier
+                                .width(90.dp)
+                                .height(67.5.dp)
+                                .clip(RoundedCornerShape(12.dp)),
                             contentScale = ContentScale.Crop
                         )
                     }
