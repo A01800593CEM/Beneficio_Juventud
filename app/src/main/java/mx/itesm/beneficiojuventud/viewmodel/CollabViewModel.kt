@@ -18,12 +18,27 @@ class CollabViewModel : ViewModel() {
     private val _collabListState = MutableStateFlow<List<Collaborator>>(emptyList())
     val collabListState: StateFlow<List<Collaborator>> = _collabListState
 
+    private val _collabListNewestState = MutableStateFlow<List<Collaborator>>(emptyList())
+    val collabListNewestState: StateFlow<List<Collaborator>> = _collabListNewestState
+
     suspend fun getCollaboratorById(id: String) {
         _collabState.value = model.getCollaboratorById(id)
     }
 
     suspend fun getCollaboratorsByCategory(categoryName: String) {
         _collabListState.value = model.getCollaboratorsByCategory(categoryName)
+    }
+
+    suspend fun getAllActiveCollaborators() {
+        _collabListState.value = model.getAllActiveCollaborators()
+    }
+
+    suspend fun getAllActiveCollaboratorsByNewest() {
+        _collabListNewestState.value = model.getAllActiveCollaboratorsByNewest()
+    }
+
+    suspend fun getAllActiveCollaboratorsByLatestPromotion() {
+        _collabListState.value = model.getAllActiveCollaboratorsByLatestPromotion()
     }
 
     suspend fun createCollaborator(collaborator: Collaborator) {

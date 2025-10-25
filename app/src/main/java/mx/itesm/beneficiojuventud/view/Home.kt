@@ -104,8 +104,11 @@ fun Home(
 
     val promoList by promoViewModel.promoListState.collectAsState()
 
-    // lista de colaboradores del backend
+    // lista de colaboradores del backend (para "Ofertas Especiales")
     val collaboratorsRaw by collabViewModel.collabListState.collectAsState()
+
+    // lista de colaboradores ordenados por fecha (para "Lo Nuevo")
+    val collaboratorsNewest by collabViewModel.collabListNewestState.collectAsState()
 
     // ❤️ favoritos de colaboradores (para que funcione el corazón)
     val favoriteCollabs by userViewModel.favoriteCollabs.collectAsState()
@@ -128,6 +131,19 @@ fun Home(
             collaboratorsRaw.filter { it.state == CollaboratorsState.activo }
         } else {
             collaboratorsRaw.filter { collab ->
+                collab.state == CollaboratorsState.activo &&
+                (collab.businessName?.contains(search, ignoreCase = true) == true ||
+                collab.description?.contains(search, ignoreCase = true) == true)
+            }
+        }
+    }
+
+    // Filtrado de colaboradores para "Lo Nuevo" (ya vienen ordenados del backend, pero filtramos búsqueda)
+    val collaboratorsNewestFiltered = remember(collaboratorsNewest, search) {
+        if (search.isBlank()) {
+            collaboratorsNewest.filter { it.state == CollaboratorsState.activo }
+        } else {
+            collaboratorsNewest.filter { collab ->
                 collab.state == CollaboratorsState.activo &&
                 (collab.businessName?.contains(search, ignoreCase = true) == true ||
                 collab.description?.contains(search, ignoreCase = true) == true)
@@ -262,15 +278,24 @@ fun Home(
         promoLoading = false
     }
 
-    // Carga inicial de colaboradores usando 1ra categoría si no hay selección
+    // Carga inicial de colaboradores para "Ofertas Especiales" (ordenados por promoción más reciente)
     LaunchedEffect(categories) {
         if (categories.isNotEmpty() && selectedCategoryName == null) {
-            val firstCat = categories.first().name ?: return@LaunchedEffect
             collabError = null
             collabLoading = true
-            runCatching { collabViewModel.getCollaboratorsByCategory(firstCat) }
+            runCatching { collabViewModel.getAllActiveCollaboratorsByLatestPromotion() }
                 .onFailure { e -> collabError = e.message ?: "Error al cargar colaboradores" }
             collabLoading = false
+        }
+    }
+
+    // Carga inicial de colaboradores para "Lo Nuevo" (ordenados por fecha más reciente)
+    LaunchedEffect(categories) {
+        if (categories.isNotEmpty() && selectedCategoryName == null) {
+            runCatching { collabViewModel.getAllActiveCollaboratorsByNewest() }
+                .onFailure { e ->
+                    // Silent error para "Lo Nuevo", usa el estado existente
+                }
         }
     }
 
@@ -904,7 +929,7 @@ fun Home(
                             )
                         }
                     }
-                    collaborators.isEmpty() -> {
+                    collaboratorsNewestFiltered.isEmpty() -> {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -921,7 +946,7 @@ fun Home(
                     else -> {
                         // 👉 También aquí, el diseño Poster
                         MerchantRowSelectable(
-                            collaborators = collaborators,
+                            collaborators = collaboratorsNewestFiltered,
                             design = MerchantDesign.Poster,
                             isFavorite = { c -> favoriteCollabIds.contains(c.cognitoId.orEmpty()) },
                             onFavoriteClick = { c ->

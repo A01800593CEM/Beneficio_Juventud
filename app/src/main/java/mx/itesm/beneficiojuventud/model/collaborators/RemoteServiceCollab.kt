@@ -22,6 +22,22 @@ object RemoteServiceCollab {
         val response = collabApiService.getCollaboratorsByCategory(categoryName)
         return response.body() ?: throw Exception("No se pudo obtener los colaboradores")
     }
+
+    suspend fun getAllActiveCollaborators(): List<Collaborator> {
+        val response = collabApiService.getAllActiveCollaborators()
+        return response.body() ?: throw Exception("No se pudo obtener los colaboradores")
+    }
+
+    suspend fun getAllActiveCollaboratorsByNewest(): List<Collaborator> {
+        val response = collabApiService.getAllActiveCollaboratorsByNewest()
+        return response.body() ?: throw Exception("No se pudo obtener los colaboradores")
+    }
+
+    suspend fun getAllActiveCollaboratorsByLatestPromotion(): List<Collaborator> {
+        val response = collabApiService.getAllActiveCollaboratorsByLatestPromotion()
+        return response.body() ?: throw Exception("No se pudo obtener los colaboradores")
+    }
+
     suspend fun createCollaborator(collaborator: Collaborator): Collaborator {
         Log.d("RemoteServiceCollab", "Creando colaborador:")
         Log.d("RemoteServiceCollab", "  cognitoId: ${collaborator.cognitoId}")
