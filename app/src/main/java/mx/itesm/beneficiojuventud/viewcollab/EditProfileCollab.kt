@@ -726,7 +726,7 @@ private fun ProfileScreenHeader(nav: NavHostController) {
                 Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Regresar", tint = TextGrey)
             }
             Spacer(Modifier.width(16.dp))
-            Text(text = "Editar Perfil (Colaborador)", fontWeight = FontWeight.Black, fontSize = 20.sp, color = TextGrey)
+            Text(text = "Editar Perfil", fontWeight = FontWeight.Black, fontSize = 20.sp, color = TextGrey)
             Spacer(Modifier.weight(1f))
             IconButton(onClick = { /* ajustes */ }) {
                 Icon(imageVector = Icons.Outlined.Settings, contentDescription = "Ajustes", tint = TextGrey)

@@ -99,8 +99,12 @@ fun StatusCollabSignup(
             text = "Continuar",
             modifier = Modifier.fillMaxWidth()
         ) {
+            // Primero, elimina el StatusCollabSignup de la pila
+            nav.popBackStack()
+            // Luego navega al destino
             nav.navigate(Screens.EditProfileCollab.route) {
                 launchSingleTop = true
+                restoreState = false
             }
         }
     }
