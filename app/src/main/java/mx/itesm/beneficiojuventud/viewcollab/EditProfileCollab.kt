@@ -37,6 +37,7 @@ import coil.compose.AsyncImage
 import com.amplifyframework.storage.StoragePath
 import com.amplifyframework.core.Amplify
 import kotlinx.coroutines.launch
+import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.model.categories.Category
 import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
@@ -140,8 +141,8 @@ fun EditProfileCollab(
                     imageUri = uri,
                     userId = s3Id,
                     onSuccess = { url ->
-                        profileImageUrl = url
-                        s3ImageUrl = url  // Guardar URL de S3 para enviar al servidor
+                        profileImageUrl = url  // Muestra inmediatamente la URL de S3
+                        s3ImageUrl = url      // Guarda para enviar al servidor
                         scope.launch { snackbarHostState.showSnackbar("Foto de perfil actualizada correctamente") }
                     },
                     onError = { error ->
@@ -153,7 +154,17 @@ fun EditProfileCollab(
         }
     }
 
-    // Poblar campos e imagen al llegar collab
+    // Cargar datos del colaborador
+    LaunchedEffect(currentUserId) {
+        currentUserId?.let { id ->
+            Log.d("EditProfileCollab", "Loading collaborator on edit: $id")
+            runCatching { collabViewModel.getCollaboratorById(id) }
+                .onSuccess { Log.d("EditProfileCollab", "Collaborator loaded successfully") }
+                .onFailure { Log.e("EditProfileCollab", "Error loading collaborator: ${it.message}") }
+        }
+    }
+
+    // Poblar campos cuando llega collab
     LaunchedEffect(collab) {
         contactName = collab.representativeName.orEmpty()
         businessName = collab.businessName.orEmpty()
@@ -182,18 +193,22 @@ fun EditProfileCollab(
             ?: ""
 
         Log.d("EditProfileCollab", "  categoryDisplay: $categoryDisplay")
+    }
 
-        val s3Id = collab.cognitoId ?: currentUserId
-        when {
-            !collab.logoUrl.isNullOrBlank() -> profileImageUrl = collab.logoUrl
-            !s3Id.isNullOrBlank() -> runCatching {
-                downloadProfileImageForDisplayCollab(
-                    context = context,
-                    userId = s3Id,
-                    onSuccess = { localPath -> profileImageUrl = localPath },
-                    onError = { /* ignore */ },
-                    onLoading = { loading -> isLoadingImage = loading }
-                )
+    // Descargar imagen existente al entrar (igual a EditProfile.kt)
+    LaunchedEffect(currentUserId) {
+        currentUserId?.let { id ->
+            if (id.isNotBlank()) {
+                Log.d("EditProfileCollab", "Downloading existing image for: $id")
+                runCatching {
+                    downloadProfileImageForDisplayCollab(
+                        context = context,
+                        userId = id,
+                        onSuccess = { localPath -> profileImageUrl = localPath },
+                        onError = { Log.d("EditProfileCollab", "Storage not configured yet: $it") },
+                        onLoading = { loading -> isLoadingImage = loading }
+                    )
+                }
             }
         }
     }
@@ -353,14 +368,18 @@ fun EditProfileCollab(
                                 categoryIds = if (selectedCategoryIds.isEmpty()) null else selectedCategoryIds.toList(),
                                 // Estado
                                 state = selectedState,
-                                // URL de imagen de S3 (SOLO si logoUrl es null - primera vez)
-                                logoUrl = if (collab.logoUrl.isNullOrBlank()) s3ImageUrl else null
+                                // URL de imagen: SOLO si es la primera vez (logoUrl actual es null)
+                                // Si ya existe logoUrl, NO enviar nada (el link de imagen no cambia)
+                                logoUrl = if (collab.logoUrl.isNullOrBlank() && !s3ImageUrl.isNullOrBlank()) s3ImageUrl else null
                             )
 
                             Log.d("EditProfileCollab", "Guardando cambios...")
+                            Log.d("EditProfileCollab", "s3ImageUrl: $s3ImageUrl")
+                            Log.d("EditProfileCollab", "s3ImageUrl.isNullOrBlank(): ${s3ImageUrl.isNullOrBlank()}")
                             Log.d("EditProfileCollab", "selectedCategoryIds: $selectedCategoryIds")
                             Log.d("EditProfileCollab", "categoryIds en Collaborator: ${update.categoryIds}")
                             Log.d("EditProfileCollab", "logoUrl en Collaborator: ${update.logoUrl}")
+                            Log.d("EditProfileCollab", "Update object: $update")
 
                             justSaved = true
                             scope.launch {
@@ -534,17 +553,15 @@ private fun ProfileImageSection(
         Box(
             modifier = Modifier
                 .size(100.dp)
-                .clip(CircleShape)
-                .background(Brush.horizontalGradient(listOf(DarkBlue, Teal))),
+                .clip(CircleShape),
             contentAlignment = Alignment.Center
         ) {
             when {
-                isLoading -> CircularProgressIndicator(
+                isUploading || isLoading -> CircularProgressIndicator(
                     modifier = Modifier.size(40.dp),
-                    color = Color.White,
-                    strokeWidth = 3.dp
+                    color = Color(0xFF008D96)
                 )
-                !imageUrl.isNullOrBlank() -> AsyncImage(
+                imageUrl != null -> AsyncImage(
                     model = imageUrl,
                     contentDescription = "Logo del negocio",
                     contentScale = ContentScale.Crop,
@@ -555,7 +572,7 @@ private fun ProfileImageSection(
                 else -> Icon(
                     imageVector = Icons.Default.Business,
                     contentDescription = "Logo del negocio",
-                    tint = Color.White,
+                    tint = Color(0xFF008D96),
                     modifier = Modifier.size(60.dp)
                 )
             }
@@ -563,7 +580,7 @@ private fun ProfileImageSection(
         Spacer(Modifier.height(8.dp))
         Text(
             text = "Cambiar Foto",
-            color = Teal,
+            color = Color(0xFF008D96),
             fontWeight = FontWeight.Bold,
             modifier = Modifier.clickable(enabled = !isUploading) { onChangePhoto() }
         )
@@ -754,7 +771,7 @@ fun uploadProfileImage(
                 Log.d("CollabProfileUpload", "Upload completed: ${result.path}")
                 onLoading(false)
                 tempFile.delete()
-                getProfileImageUrl(storagePath, onSuccess, onError)
+                getProfileImageUrl(userId, onSuccess, onError)
             },
             { error ->
                 Log.e("CollabProfileUpload", "Upload failed", error)
@@ -771,26 +788,20 @@ fun uploadProfileImage(
 }
 
 private fun getProfileImageUrl(
-    storagePath: StoragePath,
+    userId: String,
     onSuccess: (String) -> Unit,
     onError: (String) -> Unit
 ) {
     try {
-        // Construir URL estable sin parámetros temporales
-        // La ruta en S3 es: public/profile-images/{userId}.jpg
-        // URL pública: https://[bucket-name].s3.[region].amazonaws.com/public/profile-images/{userId}.jpg
+        // Construir URL base sin parámetros firmados (para guardar en BD)
+        // El backend y ProfileCollab construirán la URL firmada cuando sea necesario
         val bucketName = "beneficiojuventud-profile-images"
         val region = "us-east-2"
-        val stablePath = "public/profile-images" // Ruta sin el userId, se agregará después
 
-        // Extraer el userId del storagePath
-        val fullPath = storagePath.toString()
-        Log.d("CollabProfileDownload", "Storage path string: $fullPath")
+        // URL base sin parámetros (válida para almacenar en BD)
+        val stableUrl = "https://$bucketName.s3.$region.amazonaws.com/public/profile-images/$userId.jpg"
 
-        // La URL estable es:
-        val stableUrl = "https://$bucketName.s3.$region.amazonaws.com/$fullPath"
-        Log.d("CollabProfileDownload", "Constructed stable URL: $stableUrl")
-
+        Log.d("CollabProfileDownload", "Got stable URL: $stableUrl")
         onSuccess(stableUrl)
     } catch (e: Exception) {
         Log.e("CollabProfileDownload", "Failed to construct URL", e)
@@ -811,7 +822,7 @@ fun downloadProfileImageForDisplayCollab(
 
         val storagePath = StoragePath.fromString("public/profile-images/$userId.jpg")
         Log.d("CollabProfileDownload", "Storage path: public/profile-images/$userId.jpg")
-        val localFile = File(context.cacheDir, "downloaded_profile_$userId.jpg")
+        val localFile = File(context.cacheDir, "displayed_profile_$userId.jpg")
 
         Amplify.Storage.downloadFile(
             storagePath,

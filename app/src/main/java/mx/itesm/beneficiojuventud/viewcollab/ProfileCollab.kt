@@ -73,31 +73,37 @@ fun ProfileCollab(
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var isLoadingImage by remember { mutableStateOf(false) }
 
-    // Cargar colaborador por ID actual - Se ejecuta siempre que se navega a esta pantalla
-    LaunchedEffect(currentUserId) {
+    val authState by authViewModel.authState.collectAsState()
+    var signOutRequested by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    // Forzar refresh cada vez que esta pantalla entra a composición
+    LaunchedEffect(Unit) {
+        Log.d("ProfileCollab", "Screen composition created - force refreshing collaborator")
         currentUserId?.let { id ->
-            Log.d("ProfileCollab", "Loading collaborator on screen visibility: $id")
             runCatching { collabViewModel.getCollaboratorById(id) }
-                .onSuccess { Log.d("ProfileCollab", "Collaborator loaded successfully") }
-                .onFailure { Log.e("ProfileCollab", "Error loading collaborator: ${it.message}") }
+                .onSuccess { Log.d("ProfileCollab", "Refresh successful") }
+                .onFailure { Log.e("ProfileCollab", "Refresh error: ${it.message}") }
         }
     }
 
-    // Cargar logo/avatar - Se reactualiza cuando logoUrl o cognitoId cambian
-    LaunchedEffect(collabId, collab.logoUrl) {
-        Log.d("ProfileCollab", "Avatar LaunchedEffect triggered. logoUrl=${collab.logoUrl}, collabId=$collabId")
-        profileImageUrl = null
+    // Cargar logo/avatar - Se reactualiza cuando cambia el colaborador o su logoUrl
+    LaunchedEffect(currentUserId, collab.cognitoId, collab.logoUrl) {
+        Log.d("ProfileCollab", "Avatar LaunchedEffect triggered. logoUrl=${collab.logoUrl}, cognitoId=${collab.cognitoId}")
+
         when {
             !collab.logoUrl.isNullOrBlank() -> {
+                // Si hay logoUrl en BD, usarlo directamente
                 Log.d("ProfileCollab", "Using logoUrl from BD: ${collab.logoUrl}")
                 profileImageUrl = collab.logoUrl
             }
-            !collabId.isNullOrBlank() -> {
-                Log.d("ProfileCollab", "Downloading profile image for: $collabId")
+            !collab.cognitoId.isNullOrBlank() -> {
+                // Si no hay logoUrl pero hay cognitoId, descargar imagen
+                Log.d("ProfileCollab", "Downloading profile image for: ${collab.cognitoId}")
                 runCatching {
                     downloadProfileImageForDisplay(
                         context = context,
-                        userId = collabId,
+                        userId = collab.cognitoId!!,
                         onSuccess = { localPath ->
                             Log.d("ProfileCollab", "Image downloaded: $localPath")
                             profileImageUrl = localPath
@@ -109,10 +115,6 @@ fun ProfileCollab(
             }
         }
     }
-
-    val authState by authViewModel.authState.collectAsState()
-    var signOutRequested by remember { mutableStateOf(false) }
-    var errorMsg by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(authState.isLoading, authState.error, signOutRequested) {
         if (signOutRequested && !authState.isLoading) {
@@ -182,18 +184,34 @@ fun ProfileCollab(
                     modifier = Modifier.size(100.dp).clip(CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    when {
-                        isLoadingImage -> CircularProgressIndicator(color = Color(0xFF008D96))
-                        profileImageUrl != null -> AsyncImage(
-                            model = profileImageUrl,
+                    // Mostrar siempre la imagen de fondo (no_vendor_img o imagen real)
+                    if (profileImageUrl != null) {
+                        // Agregar cache buster con timestamp para forzar recarga de imagen
+                        val imageToBuild = if (profileImageUrl!!.contains("?")) {
+                            "$profileImageUrl&t=${System.currentTimeMillis()}"
+                        } else {
+                            "$profileImageUrl?t=${System.currentTimeMillis()}"
+                        }
+                        AsyncImage(
+                            model = imageToBuild,
                             contentDescription = "Logo del negocio",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.matchParentSize().clip(CircleShape)
                         )
-                        else -> Image(
-                            painter = painterResource(id = R.drawable.user_icon),
+                    } else {
+                        Image(
+                            painter = painterResource(id = R.drawable.no_vendor_img),
                             contentDescription = "Avatar",
-                            modifier = Modifier.size(90.dp)
+                            modifier = Modifier.size(100.dp).clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+
+                    // Mostrar spinner mientras carga (encima de la imagen)
+                    if (isLoadingImage) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(40.dp),
+                            color = Color(0xFF008D96)
                         )
                     }
                 }
