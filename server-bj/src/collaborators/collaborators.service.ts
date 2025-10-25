@@ -121,10 +121,58 @@ export class CollaboratorsService {
    * @returns Promise<Collaborator[]> Array of all collaborators
    */
   async findAll(): Promise<Collaborator[]> {
-    return this.collaboratorsRepository.find({ 
+    return this.collaboratorsRepository.find({
       relations: ['categories'] });
   }
- 
+
+  /**
+   * Retrieves all ACTIVE collaborators with their associated categories.
+   * Used for the initial Home screen load to display all available businesses.
+   * No specific order (for "Ofertas Especiales" section).
+   * @returns Promise<Collaborator[]> Array of active collaborators only
+   */
+  async findAllActive(): Promise<Collaborator[]> {
+    return this.collaboratorsRepository.find({
+      where: { state: CollaboratorState.ACTIVE },
+      relations: ['categories'],
+    });
+  }
+
+  /**
+   * Retrieves all ACTIVE collaborators ordered by registration date (newest first).
+   * Used for the "Lo Nuevo" section on the Home screen.
+   * @returns Promise<Collaborator[]> Array of active collaborators ordered by registration date descending
+   */
+  async findAllActiveByNewest(): Promise<Collaborator[]> {
+    return this.collaboratorsRepository.find({
+      where: { state: CollaboratorState.ACTIVE },
+      relations: ['categories'],
+      order: { registrationDate: 'DESC' },
+    });
+  }
+
+  /**
+   * Retrieves all ACTIVE collaborators ordered by their latest promotion creation date (newest first).
+   * Used for the "Ofertas Especiales" section on the Home screen.
+   * Collaborators with no promotions appear at the end.
+   * @returns Promise<Collaborator[]> Array of active collaborators ordered by latest promotion date descending
+   */
+  async findAllActiveWithLatestPromotion(): Promise<Collaborator[]> {
+    return this.collaboratorsRepository
+      .createQueryBuilder('collaborator')
+      .leftJoinAndSelect('collaborator.categories', 'category')
+      .leftJoin('collaborator.promotions', 'promotion')
+      .where('collaborator.state = :state', {
+        state: CollaboratorState.ACTIVE,
+      })
+      .groupBy('collaborator.id')
+      .addGroupBy('category.id')
+      .orderBy('MAX(promotion.created_at)', 'DESC')
+      .addOrderBy('collaborator.id', 'ASC') // Secondary sort for consistency
+      .distinct(true)
+      .getMany();
+  }
+
   // Only finds the active collaborators
   /**
    * Finds an active collaborator by ID.

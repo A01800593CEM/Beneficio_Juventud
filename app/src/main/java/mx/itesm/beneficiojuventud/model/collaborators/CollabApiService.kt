@@ -17,6 +17,15 @@ interface CollabApiService {
     @GET("collaborators/category/{categoryName}")
     suspend fun getCollaboratorsByCategory(@Path("categoryName") categoryName: String): Response<List<Collaborator>>
 
+    @GET("collaborators/active/all")
+    suspend fun getAllActiveCollaborators(): Response<List<Collaborator>>
+
+    @GET("collaborators/active/newest")
+    suspend fun getAllActiveCollaboratorsByNewest(): Response<List<Collaborator>>
+
+    @GET("collaborators/active/by-latest-promotion")
+    suspend fun getAllActiveCollaboratorsByLatestPromotion(): Response<List<Collaborator>>
+
     @POST("collaborators")
     suspend fun createCollaborator(@Body collaborator: Collaborator): Response<Collaborator>
 

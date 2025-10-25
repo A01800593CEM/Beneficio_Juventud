@@ -20,6 +20,21 @@ export class CollaboratorsController {
     return this.collaboratorsService.findAll();
   }
 
+  @Get('active/all')
+  findAllActive() {
+    return this.collaboratorsService.findAllActive();
+  }
+
+  @Get('active/newest')
+  findAllActiveByNewest() {
+    return this.collaboratorsService.findAllActiveByNewest();
+  }
+
+  @Get('active/by-latest-promotion')
+  findAllActiveWithLatestPromotion() {
+    return this.collaboratorsService.findAllActiveWithLatestPromotion();
+  }
+
   @Get('nearby/search')
   async findNearbyCollaborators(
     @Query('latitude') latitude: string,
