@@ -158,18 +158,31 @@ export class CollaboratorsService {
    * @returns Promise<Collaborator[]> Array of active collaborators ordered by latest promotion date descending
    */
   async findAllActiveWithLatestPromotion(): Promise<Collaborator[]> {
+    // Subquery to get the latest promotion date for each collaborator
+    const subquery = this.collaboratorsRepository
+      .createQueryBuilder('subq_collaborator')
+      .select('subq_collaborator.id', 'collaborator_id')
+      .addSelect('MAX(subq_promotion.created_at)', 'latest_promotion_date')
+      .leftJoin('subq_collaborator.promotions', 'subq_promotion')
+      .where('subq_collaborator.state = :state', {
+        state: CollaboratorState.ACTIVE,
+      })
+      .groupBy('subq_collaborator.id');
+
     return this.collaboratorsRepository
       .createQueryBuilder('collaborator')
       .leftJoinAndSelect('collaborator.categories', 'category')
-      .leftJoin('collaborator.promotions', 'promotion')
+      .innerJoin(
+        `(${subquery.getQuery()})`,
+        'latest_promo',
+        'latest_promo.collaborator_id = collaborator.id'
+      )
+      .setParameters(subquery.getParameters())
       .where('collaborator.state = :state', {
         state: CollaboratorState.ACTIVE,
       })
-      .groupBy('collaborator.id')
-      .addGroupBy('category.id')
-      .orderBy('MAX(promotion.created_at)', 'DESC')
+      .orderBy('latest_promo.latest_promotion_date', 'DESC')
       .addOrderBy('collaborator.id', 'ASC') // Secondary sort for consistency
-      .distinct(true)
       .getMany();
   }
 
