@@ -5,6 +5,7 @@ import { Redeemedcoupon } from './entities/redeemedcoupon.entity';
 import { CreateRedeemedcouponDto } from './dto/create-redeemedcoupon.dto';
 import { UpdateRedeemedcouponDto } from './dto/update-redeemedcoupon.dto';
 import { Promotion } from 'src/promotions/entities/promotion.entity';
+import { PromotionState } from 'src/promotions/enums/promotion-state.enums';
 
 /**
  * Service responsible for managing redeemed coupons in the system.
@@ -59,7 +60,7 @@ export class RedeemedcouponService {
     }
 
     // 2. Verificar que la promoción está activa
-    if (promotion.promotionState !== 'activa') {
+    if (promotion.promotionState !== PromotionState.ACTIVE) {
       throw new BadRequestException(`La promoción no está activa. Estado actual: ${promotion.promotionState}`);
     }
 

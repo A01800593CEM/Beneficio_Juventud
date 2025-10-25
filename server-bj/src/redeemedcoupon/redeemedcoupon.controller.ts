@@ -43,8 +43,13 @@ export class RedeemedcouponController {
    * ```
    */
   @Post()
-  create(@Body() createRedeemedcouponDto: CreateRedeemedcouponDto) {
-    return this.redeemedcouponService.create(createRedeemedcouponDto);
+  async create(@Body() createRedeemedcouponDto: CreateRedeemedcouponDto) {
+    try {
+      return await this.redeemedcouponService.create(createRedeemedcouponDto);
+    } catch (error) {
+      console.error('Error creating redeemed coupon:', error);
+      throw error;
+    }
   }
 
   /**

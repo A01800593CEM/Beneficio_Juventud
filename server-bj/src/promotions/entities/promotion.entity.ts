@@ -91,7 +91,7 @@ export class Promotion {
   })
   theme: PromotionTheme;
 
-  @Column({ name: 'es_reservable' })
+  @Column({ name: 'es_reservable', nullable: true })
   is_bookable: boolean;
 
   // Relations
