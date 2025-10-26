@@ -40,7 +40,7 @@ import mx.itesm.beneficiojuventud.viewcollab.QRScannerScreen
 import mx.itesm.beneficiojuventud.viewcollab.QRScannerViewModel
 import mx.itesm.beneficiojuventud.viewcollab.QRConfirmationScreen
 import mx.itesm.beneficiojuventud.viewcollab.QRConfirmationData
-import mx.itesm.beneficiojuventud.viewcollab.QRConfirmationViewModel
+import mx.itesm.beneficiojuventud.viewmodel.QRConfirmationViewModel
 import mx.itesm.beneficiojuventud.viewcollab.EditProfileCollab
 import mx.itesm.beneficiojuventud.viewcollab.GeneratePromotionScreen
 import mx.itesm.beneficiojuventud.viewcollab.BranchManagementScreen

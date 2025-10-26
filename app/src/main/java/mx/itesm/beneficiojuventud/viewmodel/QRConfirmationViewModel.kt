@@ -1,4 +1,4 @@
-package mx.itesm.beneficiojuventud.viewcollab
+package mx.itesm.beneficiojuventud.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.model.redeemedcoupon.RedeemedCoupon
 import mx.itesm.beneficiojuventud.model.redeemedcoupon.RemoteServiceRedeemedCoupon
+import mx.itesm.beneficiojuventud.viewcollab.QRConfirmationData
 
 private const val TAG = "QRConfirmationViewModel"
 

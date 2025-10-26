@@ -1,7 +1,9 @@
 package mx.itesm.beneficiojuventud.viewcollab
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,16 +12,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -30,11 +38,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import mx.itesm.beneficiojuventud.components.BJTopHeader
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.view.Screens
 import mx.itesm.beneficiojuventud.view.StatusType
 import mx.itesm.beneficiojuventud.viewcollab.QRScannerViewModel
+import mx.itesm.beneficiojuventud.viewmodel.QRConfirmationViewModel
 
 /**
  * Data class para pasar información a la pantalla de confirmación de QR
@@ -106,119 +116,162 @@ fun QRConfirmationScreen(
         onCancel()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // Ícono informativo
-        Icon(
-            imageVector = Icons.Default.Info,
-            contentDescription = "Confirmación",
-            tint = Color(0xFF1976D2),
-            modifier = Modifier.size(100.dp)
-        )
-
-        Spacer(Modifier.height(24.dp))
-
-        // Título
-        Text(
-            text = "Confirmar cupón",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            color = Color(0xFF616161)
-        )
-
-        Spacer(Modifier.height(32.dp))
-
-        // Información del cupón
+    Scaffold(
+        topBar = {
+            BJTopHeader(title = "Confirmar cupón", nav = nav)
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.Start
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Nombre del Usuario
-            Text(
-                text = "Usuario",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Gray
+            // Espaciador superior
+            Spacer(Modifier.height(32.dp))
+
+            // Ícono de confirmación
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = "Confirmar",
+                tint = Color(0xFF4CAF50),
+                modifier = Modifier.size(100.dp)
             )
+
+            Spacer(Modifier.height(24.dp))
+
+            // Título
             Text(
-                text = qrConfirmationData.userName,
-                style = MaterialTheme.typography.bodyLarge,
+                text = "Verifica los datos",
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF616161),
-                modifier = Modifier.padding(bottom = 16.dp)
+                textAlign = TextAlign.Center
             )
 
-            // Título de la Promoción
+            Spacer(Modifier.height(8.dp))
+
             Text(
-                text = "Promoción",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Gray
-            )
-            Text(
-                text = qrConfirmationData.promotionTitle,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF616161),
-                modifier = Modifier.padding(bottom = 16.dp)
+                text = "Por favor confirma la información del cupón",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFFAEAEAE),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp)
             )
 
-            // Nombre del Colaborador
-            Text(
-                text = "Colaborador",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Gray
-            )
-            Text(
-                text = qrConfirmationData.collaboratorName,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF757575)
-            )
-        }
+            Spacer(Modifier.height(32.dp))
 
-        Spacer(Modifier.height(48.dp))
+            // Tarjeta con información del cupón
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White)
+                    .shadow(2.dp, RoundedCornerShape(12.dp))
+                    .padding(20.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    // Sección: Usuario
+                    InfoRow(
+                        label = "Usuario",
+                        value = qrConfirmationData.userName
+                    )
 
-        // Botones de acción
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Botón Cancelar (Rojo)
-            MainButton(
-                text = "Cancelar",
-                onClick = onCancel,
-                modifier = Modifier.weight(1f),
-                backgroundGradient = Brush.linearGradient(
-                    listOf(Color(0xFFD32F2F), Color(0xFFB71C1C))
+                    // Divisor
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(Color(0xFFEEEEEE))
+                    )
+
+                    // Sección: Promoción
+                    InfoRow(
+                        label = "Promoción",
+                        value = qrConfirmationData.promotionTitle,
+                        isHighlight = true
+                    )
+
+                    // Divisor
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(Color(0xFFEEEEEE))
+                    )
+
+                    // Sección: Colaborador
+                    InfoRow(
+                        label = "Colaborador",
+                        value = qrConfirmationData.collaboratorName,
+                        isSmall = true
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(48.dp))
+
+            // Botones de acción
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Botón Continuar (Principal)
+                MainButton(
+                    text = "Confirmar y registrar",
+                    onClick = onConfirm,
+                    modifier = Modifier.fillMaxWidth()
                 )
-            )
 
-            // Botón Continuar (Verde por defecto)
-            MainButton(
-                text = "Continuar",
-                onClick = onConfirm,
-                modifier = Modifier.weight(1f)
-            )
+                // Botón Cancelar (Secundario - Simple)
+                MainButton(
+                    text = "Cancelar",
+                    onClick = onCancel,
+                    modifier = Modifier.fillMaxWidth(),
+                    backgroundGradient = Brush.linearGradient(
+                        listOf(Color(0xFFE0E0E0), Color(0xFFBDBDBD))
+                    )
+                )
+            }
+
+            Spacer(Modifier.height(32.dp))
         }
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
+/**
+ * Composable auxiliar para mostrar información estructurada
+ */
 @Composable
-private fun QRConfirmationScreenPreview() {
-    BeneficioJuventudTheme {
-        // Preview no funciona sin un ViewModel real
-        // Esta es solo una referencia visual de cómo se vería la pantalla
+private fun InfoRow(
+    label: String,
+    value: String,
+    isHighlight: Boolean = false,
+    isSmall: Boolean = false
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = label,
+            style = if (isSmall) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFFAEAEAE)
+        )
+        Text(
+            text = value,
+            style = if (isSmall) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyLarge,
+            fontWeight = if (isHighlight) FontWeight.Bold else FontWeight.Medium,
+            color = if (isHighlight) Color(0xFF4CAF50) else Color(0xFF616161)
+        )
     }
 }
