@@ -57,6 +57,7 @@ fun QRScannerScreen(
     val isProcessing by viewModel.isProcessing.collectAsState()
     val scanResult by viewModel.scanResult.collectAsState()
     val error by viewModel.error.collectAsState()
+    val confirmationData by viewModel.confirmationData.collectAsState()
 
     // Request camera permission
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -69,10 +70,30 @@ fun QRScannerScreen(
         permissionLauncher.launch(Manifest.permission.CAMERA)
     }
 
+    // Handle confirmation data - Navigate to QR Confirmation screen
+    LaunchedEffect(confirmationData) {
+        confirmationData?.let { data ->
+            Log.d(TAG, "QR parsed successfully, navigating to Confirmation screen")
+            nav.navigate(
+                Screens.QRConfirmation.createRoute(
+                    userName = data.userName,
+                    promotionTitle = data.promotionTitle,
+                    collaboratorName = data.collaboratorName,
+                    promotionId = data.promotionId,
+                    userId = data.userId,
+                    branchId = data.branchId,
+                    nonce = data.nonce,
+                    qrTimestamp = data.qrTimestamp
+                )
+            )
+            viewModel.clearConfirmationData()
+        }
+    }
+
     // Handle scan result - Navigate to Status screen
     LaunchedEffect(scanResult) {
         scanResult?.let {
-            Log.d(TAG, "Scan successful, navigating to Status screen")
+            Log.d(TAG, "Coupon redeemed successfully, navigating to Status screen")
             viewModel.clearResult()
             nav.navigate(
                 Screens.Status.createRoute(
@@ -122,7 +143,12 @@ fun QRScannerScreen(
                     onQRCodeScanned = { qrData ->
                         if (!isProcessing) {
                             Log.d(TAG, "QR Code scanned, processing with branchId: $branchId, collaboratorId: $collaboratorId")
-                            viewModel.processQRCode(qrData, branchId, collaboratorId)
+                            viewModel.processQRCode(
+                                qrData = qrData,
+                                branchId = branchId,
+                                scanningCollaboratorId = collaboratorId,
+                                userName = ""
+                            )
                         }
                     }
                 )

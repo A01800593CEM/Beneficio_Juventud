@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.model.redeemedcoupon.RedeemedCoupon
 import mx.itesm.beneficiojuventud.model.redeemedcoupon.RemoteServiceRedeemedCoupon
+import mx.itesm.beneficiojuventud.model.promos.RemoteServicePromos
 
 private const val TAG = "QRScannerViewModel"
 
@@ -38,13 +39,24 @@ class QRScannerViewModel : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    // Datos para la pantalla de confirmación
+    private val _confirmationData = MutableStateFlow<QRConfirmationData?>(null)
+    val confirmationData: StateFlow<QRConfirmationData?> = _confirmationData.asStateFlow()
+
     /**
-     * Process scanned QR code data
+     * Process scanned QR code data and prepare confirmation screen data
+     * Obtiene información de la promoción desde la API
      * @param qrData The QR code string to process
      * @param branchId The branch ID where the QR is being scanned (from logged-in collaborator)
      * @param scanningCollaboratorId The collaborator ID who is scanning (from logged-in collaborator)
+     * @param userName The name of the user (from QR data or API)
      */
-    fun processQRCode(qrData: String, branchId: Int, scanningCollaboratorId: String?) {
+    fun processQRCode(
+        qrData: String,
+        branchId: Int,
+        scanningCollaboratorId: String?,
+        userName: String = ""
+    ) {
         viewModelScope.launch {
             try {
                 _isProcessing.value = true
@@ -64,22 +76,73 @@ class QRScannerViewModel : ViewModel() {
                     throw QRValidationException("Este cupón solo puede ser canjeado en el negocio correspondiente.")
                 }
 
-                // Create redeemed coupon with all QR data
-                val redeemedCoupon = RedeemedCoupon(
-                    userId = parsedData.userId,
+                Log.d(TAG, "QR Code validated successfully")
+
+                // Obtener detalles de la promoción desde la API
+                Log.d(TAG, "Fetching promotion details for promotionId: ${parsedData.promotionId}")
+                val promotion = try {
+                    RemoteServicePromos.getPromotionById(parsedData.promotionId)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to fetch promotion details: ${e.message}")
+                    null
+                }
+
+                // Usar datos de la promoción o valores por defecto
+                val promotionTitle = promotion?.title ?: "Promoción"
+                val collaboratorName = promotion?.businessName ?: "Colaborador"
+
+                Log.d(TAG, "Fetched promotion data - Title: $promotionTitle, Collaborator: $collaboratorName")
+
+                // Crear datos de confirmación para la pantalla
+                val confirmData = QRConfirmationData(
+                    userName = userName,
+                    promotionTitle = promotionTitle,
+                    collaboratorName = collaboratorName,
                     promotionId = parsedData.promotionId,
+                    userId = parsedData.userId,
                     branchId = branchId,
                     nonce = parsedData.nonce,
                     qrTimestamp = parsedData.timestamp
                 )
 
-                Log.d(TAG, "========== REDEEMING COUPON ==========")
-                Log.d(TAG, "RedeemedCoupon object:")
-                Log.d(TAG, "  userId: ${redeemedCoupon.userId}")
-                Log.d(TAG, "  promotionId: ${redeemedCoupon.promotionId}")
-                Log.d(TAG, "  branchId: ${redeemedCoupon.branchId}")
-                Log.d(TAG, "  nonce: ${redeemedCoupon.nonce}")
-                Log.d(TAG, "  qrTimestamp: ${redeemedCoupon.qrTimestamp}")
+                _confirmationData.value = confirmData
+                Log.d(TAG, "Confirmation data prepared: $confirmData")
+
+            } catch (e: QRValidationException) {
+                Log.e(TAG, "QR validation failed", e)
+                _error.value = e.message
+            } catch (e: Exception) {
+                Log.e(TAG, "Error processing QR code", e)
+                _error.value = "Error al procesar el código QR. Verifique e intente nuevamente."
+            } finally {
+                _isProcessing.value = false
+            }
+        }
+    }
+
+    /**
+     * Confirmar la redención del cupón (llamado desde QRConfirmationScreen)
+     */
+    fun confirmRedeemedCoupon(confirmationData: QRConfirmationData) {
+        viewModelScope.launch {
+            try {
+                _isProcessing.value = true
+
+                Log.d(TAG, "========== CONFIRMING COUPON REDEMPTION ==========")
+                Log.d(TAG, "Confirmation data:")
+                Log.d(TAG, "  userId: ${confirmationData.userId}")
+                Log.d(TAG, "  promotionId: ${confirmationData.promotionId}")
+                Log.d(TAG, "  branchId: ${confirmationData.branchId}")
+
+                // Create redeemed coupon with all QR data
+                val redeemedCoupon = RedeemedCoupon(
+                    userId = confirmationData.userId,
+                    promotionId = confirmationData.promotionId,
+                    branchId = confirmationData.branchId,
+                    nonce = confirmationData.nonce,
+                    qrTimestamp = confirmationData.qrTimestamp
+                )
+
                 Log.d(TAG, "Calling API endpoint: POST /redeemedcoupon")
 
                 // Call API to redeem coupon
@@ -88,7 +151,7 @@ class QRScannerViewModel : ViewModel() {
                 Log.d(TAG, "API Response:")
                 Log.d(TAG, "  usedId: ${result?.usedId}")
                 Log.d(TAG, "  Result: $result")
-                Log.d(TAG, "=======================================")
+                Log.d(TAG, "==================================================")
 
                 if (result != null) {
                     _scanResult.value = result
@@ -97,12 +160,9 @@ class QRScannerViewModel : ViewModel() {
                     _error.value = "Error al canjear el cupón. Intente nuevamente."
                 }
 
-            } catch (e: QRValidationException) {
-                Log.e(TAG, "QR validation failed", e)
-                _error.value = e.message
             } catch (e: Exception) {
-                Log.e(TAG, "Error processing QR code", e)
-                _error.value = "Error al procesar el código QR. Verifique e intente nuevamente."
+                Log.e(TAG, "Error confirming coupon redemption", e)
+                _error.value = "Error al confirmar la redención. Intente nuevamente."
             } finally {
                 _isProcessing.value = false
             }
@@ -224,6 +284,23 @@ class QRScannerViewModel : ViewModel() {
      */
     fun clearError() {
         _error.value = null
+    }
+
+    /**
+     * Clear confirmation data
+     */
+    fun clearConfirmationData() {
+        _confirmationData.value = null
+    }
+
+    /**
+     * Cancel confirmation and reset all states
+     */
+    fun cancelConfirmation() {
+        _confirmationData.value = null
+        _scanResult.value = null
+        _error.value = null
+        _isProcessing.value = false
     }
 }
 

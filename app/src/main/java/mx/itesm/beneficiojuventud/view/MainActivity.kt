@@ -37,6 +37,10 @@ import mx.itesm.beneficiojuventud.model.RoomDB.LocalDatabase
 import mx.itesm.beneficiojuventud.model.webhook.PromotionData
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewcollab.QRScannerScreen
+import mx.itesm.beneficiojuventud.viewcollab.QRScannerViewModel
+import mx.itesm.beneficiojuventud.viewcollab.QRConfirmationScreen
+import mx.itesm.beneficiojuventud.viewcollab.QRConfirmationData
+import mx.itesm.beneficiojuventud.viewmodel.QRConfirmationViewModel
 import mx.itesm.beneficiojuventud.viewcollab.EditProfileCollab
 import mx.itesm.beneficiojuventud.viewcollab.GeneratePromotionScreen
 import mx.itesm.beneficiojuventud.viewcollab.BranchManagementScreen
@@ -456,6 +460,60 @@ private fun AppNav(
                 nav = nav,
                 branchId = branchId,
                 collaboratorId = collabId
+            )
+        }
+        composable(
+            route = Screens.QRConfirmation.route,
+            arguments = Screens.QRConfirmation.arguments
+        ) { backStackEntry ->
+            val userName = java.net.URLDecoder.decode(
+                backStackEntry.arguments?.getString("userName") ?: "",
+                "UTF-8"
+            )
+            val promotionTitle = java.net.URLDecoder.decode(
+                backStackEntry.arguments?.getString("promotionTitle") ?: "",
+                "UTF-8"
+            )
+            val collaboratorName = java.net.URLDecoder.decode(
+                backStackEntry.arguments?.getString("collaboratorName") ?: "",
+                "UTF-8"
+            )
+            val promotionId = backStackEntry.arguments?.getInt("promotionId") ?: 0
+            val userId = java.net.URLDecoder.decode(
+                backStackEntry.arguments?.getString("userId") ?: "",
+                "UTF-8"
+            )
+            val branchId = backStackEntry.arguments?.getInt("branchId") ?: 0
+            val nonce = java.net.URLDecoder.decode(
+                backStackEntry.arguments?.getString("nonce") ?: "",
+                "UTF-8"
+            )
+            val qrTimestamp = backStackEntry.arguments?.getLong("qrTimestamp") ?: 0L
+
+            val qrConfirmationData = QRConfirmationData(
+                userName = userName,
+                promotionTitle = promotionTitle,
+                collaboratorName = collaboratorName,
+                promotionId = promotionId,
+                userId = userId,
+                branchId = branchId,
+                nonce = nonce,
+                qrTimestamp = qrTimestamp
+            )
+
+            val qrScannerViewModel: QRScannerViewModel = viewModel()
+
+            QRConfirmationScreen(
+                nav = nav,
+                qrConfirmationData = qrConfirmationData,
+                onConfirm = {
+                    qrScannerViewModel.confirmRedeemedCoupon(qrConfirmationData)
+                },
+                onCancel = {
+                    qrScannerViewModel.cancelConfirmation()
+                    nav.popBackStack()
+                },
+                viewModel = qrScannerViewModel
             )
         }
         composable(Screens.StatsScreen.route) {
