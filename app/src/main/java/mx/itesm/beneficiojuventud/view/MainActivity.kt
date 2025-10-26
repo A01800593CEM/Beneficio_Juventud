@@ -512,7 +512,8 @@ private fun AppNav(
                 onCancel = {
                     qrScannerViewModel.cancelConfirmation()
                     nav.popBackStack()
-                }
+                },
+                viewModel = qrScannerViewModel
             )
         }
         composable(Screens.StatsScreen.route) {

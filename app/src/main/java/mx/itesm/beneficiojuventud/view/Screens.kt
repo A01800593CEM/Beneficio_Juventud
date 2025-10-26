@@ -54,6 +54,10 @@ sealed class Screens(val route: String) {
         fun createRoute(branchId: Int) = "qr_scanner/$branchId"
         val arguments = listOf(navArgument("branchId") { type = NavType.IntType })
     }
+
+    // Alias para QRScannerScreen
+    val QRScannerScreen: Screens
+        get() = QrScanner
     data object ProfileCollab : Screens("profile_collab")
     data object StatsScreen : Screens("stats_screen")
     data object PromotionsScreen : Screens("promotions_screen/{collabId}") {

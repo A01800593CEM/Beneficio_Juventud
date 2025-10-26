@@ -16,6 +16,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -25,11 +27,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import mx.itesm.beneficiojuventud.components.MainButton
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.view.Screens
+import mx.itesm.beneficiojuventud.view.StatusType
+import mx.itesm.beneficiojuventud.viewcollab.QRScannerViewModel
 
 /**
  * Data class para pasar información a la pantalla de confirmación de QR
@@ -54,8 +59,47 @@ fun QRConfirmationScreen(
     nav: NavHostController,
     qrConfirmationData: QRConfirmationData,
     onConfirm: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    viewModel: QRScannerViewModel = viewModel()
 ) {
+    // Observar cambios en el resultado del scan
+    val scanResult = viewModel.scanResult.collectAsState()
+    val error = viewModel.error.collectAsState()
+
+    // Manejar éxito de redención
+    LaunchedEffect(scanResult.value) {
+        scanResult.value?.let {
+            // Cupón canjeado exitosamente
+            nav.navigate(
+                Screens.Status.createRoute(
+                    StatusType.QR_SCAN_SUCCESS,
+                    Screens.HomeScreenCollab.route
+                )
+            ) {
+                popUpTo(Screens.QrScanner.route) { inclusive = true }
+                launchSingleTop = true
+            }
+            viewModel.clearResult()
+        }
+    }
+
+    // Manejar errores
+    LaunchedEffect(error.value) {
+        error.value?.let {
+            // Error al canjear
+            nav.navigate(
+                Screens.Status.createRoute(
+                    StatusType.QR_SCAN_ERROR,
+                    Screens.HomeScreenCollab.route
+                )
+            ) {
+                popUpTo(Screens.QrScanner.route) { inclusive = true }
+                launchSingleTop = true
+            }
+            viewModel.clearError()
+        }
+    }
+
     // Bloquea el botón de retroceso
     BackHandler(enabled = true) {
         onCancel()
