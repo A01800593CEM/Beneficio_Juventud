@@ -43,6 +43,7 @@ import com.amplifyframework.storage.StoragePath
 import mx.itesm.beneficiojuventud.R
 import mx.itesm.beneficiojuventud.components.GradientDivider
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.BranchViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 import java.io.File
 
@@ -154,7 +155,11 @@ fun ProfileCollab(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
-        bottomBar = { BJBottomBarCollab(nav = nav) }
+        bottomBar = {
+            val branchViewModel: BranchViewModel = viewModel()
+            val selectedBranchId by branchViewModel.selectedBranchId.collectAsState()
+            BJBottomBarCollab(nav = nav, branchId = selectedBranchId)
+        }
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding),

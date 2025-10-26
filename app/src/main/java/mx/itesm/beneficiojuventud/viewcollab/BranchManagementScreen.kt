@@ -20,9 +20,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.launch
 import mx.itesm.beneficiojuventud.components.BJTopHeader
@@ -31,6 +33,7 @@ import mx.itesm.beneficiojuventud.model.Branch
 import mx.itesm.beneficiojuventud.model.BranchState
 import mx.itesm.beneficiojuventud.model.branch.CreateBranchRequest
 import mx.itesm.beneficiojuventud.model.branch.UpdateBranchRequest
+import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
 import mx.itesm.beneficiojuventud.viewmodel.BranchViewModel
 
@@ -49,6 +52,7 @@ fun BranchManagementScreen(
     branchViewModel: BranchViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val branches by branchViewModel.branchListState.collectAsState()
 
@@ -68,7 +72,7 @@ fun BranchManagementScreen(
         if (collaboratorId.isNotEmpty()) {
             isLoading = true
             runCatching {
-                branchViewModel.getBranchesByCollaborator(collaboratorId)
+                branchViewModel.getBranchesByCollaborator(collaboratorId, context)
             }.onFailure { error ->
                 errorMessage = "Error al cargar sucursales: ${error.message}"
             }.also {
@@ -128,6 +132,8 @@ fun BranchManagementScreen(
                     items(branches) { branch ->
                         BranchItemCard(
                             branch = branch,
+                            branchViewModel = branchViewModel,
+                            collaboratorId = collaboratorId,
                             onEditClick = {
                                 editingBranch = branch
                                 showDialog = true
@@ -256,6 +262,158 @@ fun BranchManagementScreen(
 @Composable
 private fun BranchItemCard(
     branch: Branch,
+    branchViewModel: BranchViewModel,
+    collaboratorId: String,
+    onEditClick: () -> Unit
+) {
+    val context = LocalContext.current
+    var showLocationDialog by remember { mutableStateOf(false) }
+    val selectedBranchId by branchViewModel.selectedBranchId.collectAsState()
+    val isSelected = branch.branchId == selectedBranchId
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .border(
+                width = if (isSelected) 3.dp else 1.dp,
+                color = if (isSelected) Teal else BorderColor,
+                shape = RoundedCornerShape(12.dp)
+            ),
+        color = if (isSelected) Color(0xFFE0F7FA) else CardWhite
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Branch info
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = branch.name ?: "Sin nombre",
+                            fontWeight = FontWeight.Bold,
+                            color = TextColor,
+                            fontSize = 16.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Outlined.CheckCircle,
+                                contentDescription = "Sucursal activa",
+                                tint = Teal,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = branch.address ?: "Sin dirección",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (!branch.phone.isNullOrBlank()) {
+                        Text(
+                            text = formatMxPhone(branch.phone),
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Status badges
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (branch.state == BranchState.ACTIVE) {
+                            StatusBadge(
+                                text = "Activa",
+                                color = ActiveGreen
+                            )
+                        }
+                        if (branch.location != null) {
+                            LocationBadge(
+                                onClick = { showLocationDialog = true }
+                            )
+                        }
+                        if (isSelected) {
+                            StatusBadge(
+                                text = "En uso para QR",
+                                color = Teal
+                            )
+                        }
+                    }
+                }
+
+                // Edit button
+                IconButton(onClick = onEditClick) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = "Editar",
+                        tint = Teal
+                    )
+                }
+            }
+
+            // Select branch button - Always show for active branches
+            if (branch.state == BranchState.ACTIVE) {
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        branch.branchId?.let {
+                            branchViewModel.setSelectedBranch(it, context, collaboratorId)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSelected,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isSelected) Color.Gray else Teal,
+                        disabledContainerColor = Color.LightGray
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isSelected) Icons.Outlined.CheckCircle else Icons.Outlined.CheckCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (isSelected) "Sucursal Actual" else "Seleccionar como Sucursal Actual",
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+    }
+
+    // Location viewer dialog
+    if (showLocationDialog && branch.location != null) {
+        ViewBranchLocationDialog(
+            branch = branch,
+            onDismiss = { showLocationDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun OldBranchItemCard_REMOVED(
+    branch: Branch,
     onEditClick: () -> Unit
 ) {
     var showLocationDialog by remember { mutableStateOf(false) }
@@ -267,70 +425,90 @@ private fun BranchItemCard(
             .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
         color = CardWhite
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Branch info
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = branch.name ?: "Sin nombre",
-                    fontWeight = FontWeight.Bold,
-                    color = TextColor,
-                    fontSize = 16.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = branch.address ?: "Sin dirección",
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (!branch.phone.isNullOrBlank()) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Branch info
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = formatMxPhone(branch.phone),
-                        color = TextSecondary,
-                        fontSize = 12.sp,
+                        text = branch.name ?: "Sin nombre",
+                        fontWeight = FontWeight.Bold,
+                        color = TextColor,
+                        fontSize = 16.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = branch.address ?: "Sin dirección",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (!branch.phone.isNullOrBlank()) {
+                        Text(
+                            text = formatMxPhone(branch.phone),
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Status badges
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (branch.state == BranchState.ACTIVE) {
+                            StatusBadge(
+                                text = "Activa",
+                                color = ActiveGreen
+                            )
+                        }
+                        if (branch.location != null) {
+                            LocationBadge(
+                                onClick = { showLocationDialog = true }
+                            )
+                        }
+                    }
                 }
 
-                Spacer(Modifier.height(8.dp))
-
-                // Status badges
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (branch.state == BranchState.ACTIVE) {
-                        StatusBadge(
-                            text = "Activa",
-                            color = ActiveGreen
-                        )
-                    }
-                    if (branch.location != null) {
-                        LocationBadge(
-                            onClick = { showLocationDialog = true }
-                        )
-                    }
+                // Edit button
+                IconButton(onClick = onEditClick) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = "Editar",
+                        tint = Teal
+                    )
                 }
             }
+            HorizontalDivider(
+                modifier = Modifier.padding(10.dp),
+                thickness = 2.dp,
+                color = BorderColor
+            )
 
-            // Edit button
-            IconButton(onClick = onEditClick) {
+            Row(modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center) {
                 Icon(
-                    imageVector = Icons.Outlined.Edit,
-                    contentDescription = "Editar",
+                    imageVector = Icons.Outlined.CheckCircle,
+                    contentDescription = null,
                     tint = Teal
                 )
+                Text(text = "Seleccionar como sucursal activa")
             }
         }
+
+
+
     }
 
     // Location viewer dialog
@@ -549,3 +727,5 @@ private fun ErrorCard(message: String, onDismiss: () -> Unit) {
         }
     }
 }
+
+

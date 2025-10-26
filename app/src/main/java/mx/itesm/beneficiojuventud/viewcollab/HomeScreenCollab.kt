@@ -48,6 +48,7 @@ import mx.itesm.beneficiojuventud.model.collaborators.Collaborator
 import mx.itesm.beneficiojuventud.ui.theme.BeneficioJuventudTheme
 import mx.itesm.beneficiojuventud.view.Screens
 import mx.itesm.beneficiojuventud.viewmodel.AuthViewModel
+import mx.itesm.beneficiojuventud.viewmodel.BranchViewModel
 import mx.itesm.beneficiojuventud.viewmodel.CollabViewModel
 
 private val DarkBlue = Color(0xFF4B4C7E)
@@ -62,15 +63,23 @@ private val TextGradient = Brush.horizontalGradient(listOf(DarkBlue, Teal))
 fun HomeScreenCollab(
     nav: NavHostController,
     authViewModel: AuthViewModel = viewModel(),
-    collabViewModel: CollabViewModel = viewModel()
+    collabViewModel: CollabViewModel = viewModel(),
+    branchViewModel: BranchViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val collabState by collabViewModel.collabState.collectAsState()
     val currentUserId by authViewModel.currentUserId.collectAsState()
+    val selectedBranchId by branchViewModel.selectedBranchId.collectAsState()
 
+    // Load collaborator and their branches
     LaunchedEffect(currentUserId) {
         if (!currentUserId.isNullOrBlank()) {
-            runCatching { collabViewModel.getCollaboratorById(currentUserId!!) }
-                .onFailure { println("Error al cargar colaborador: ${it.message}") }
+            runCatching {
+                collabViewModel.getCollaboratorById(currentUserId!!)
+                branchViewModel.getBranchesByCollaborator(currentUserId!!, context)
+            }.onFailure {
+                Log.e("HomeScreenCollab", "Error al cargar colaborador o sucursales: ${it.message}")
+            }
         }
     }
 
@@ -78,7 +87,7 @@ fun HomeScreenCollab(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing
             .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-        bottomBar = { BJBottomBarCollab(nav = nav) }
+        bottomBar = { BJBottomBarCollab(nav = nav, branchId = selectedBranchId) }
     ) { innerPadding ->
         val bottomInset = WindowInsets.navigationBars
             .only(WindowInsetsSides.Bottom)
