@@ -5,7 +5,8 @@
       "Bash(./gradlew compileDebugKotlin:*)",
       "Bash(./gradlew build:*)",
       "Bash(./gradlew clean:*)",
-      "Bash(npm run start:dev:*)"
+      "Bash(npm run start:dev:*)",
+      "Bash(./gradlew app:compileDebugKotlin:*)"
     ],
     "deny": [],
     "ask": []

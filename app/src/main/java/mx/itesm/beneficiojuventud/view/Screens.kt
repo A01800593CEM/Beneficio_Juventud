@@ -2,6 +2,7 @@ package mx.itesm.beneficiojuventud.view
 
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import java.net.URLEncoder
 
 sealed class Screens(val route: String) {
     data object Login : Screens("login")
@@ -76,5 +77,29 @@ sealed class Screens(val route: String) {
     data object BranchManagement : Screens("branch_management")
     data object StatusCollabSignup : Screens("status_collab_signup")
     data object SettingsCollab : Screens("settings_collab")
+    data object QRConfirmation : Screens("qr_confirmation/{userName}/{promotionTitle}/{collaboratorName}/{promotionId}/{userId}/{branchId}/{nonce}/{qrTimestamp}") {
+        fun createRoute(
+            userName: String,
+            promotionTitle: String,
+            collaboratorName: String,
+            promotionId: Int,
+            userId: String,
+            branchId: Int,
+            nonce: String,
+            qrTimestamp: Long
+        ): String {
+            return "qr_confirmation/${java.net.URLEncoder.encode(userName, "UTF-8")}/${java.net.URLEncoder.encode(promotionTitle, "UTF-8")}/${java.net.URLEncoder.encode(collaboratorName, "UTF-8")}/$promotionId/${java.net.URLEncoder.encode(userId, "UTF-8")}/$branchId/${java.net.URLEncoder.encode(nonce, "UTF-8")}/$qrTimestamp"
+        }
+        val arguments = listOf(
+            navArgument("userName") { type = NavType.StringType },
+            navArgument("promotionTitle") { type = NavType.StringType },
+            navArgument("collaboratorName") { type = NavType.StringType },
+            navArgument("promotionId") { type = NavType.IntType },
+            navArgument("userId") { type = NavType.StringType },
+            navArgument("branchId") { type = NavType.IntType },
+            navArgument("nonce") { type = NavType.StringType },
+            navArgument("qrTimestamp") { type = NavType.LongType }
+        )
+    }
 
 }
