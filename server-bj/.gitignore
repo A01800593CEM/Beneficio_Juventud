@@ -60,3 +60,5 @@ beneficio-joven-firebase-adminsdk-fbsvc-f6886c6f95.json
 
 # Ignore SSL certificates
 src/certificates/*.pem
+
+MANUAL_TECNICO.md

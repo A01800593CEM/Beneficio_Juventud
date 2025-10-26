@@ -53,3 +53,6 @@ captures/
 *.java~
 
 server-bj/beneficio-joven-firebase-adminsdk-fbsvc-076ac563fc.json
+
+# === Documentación técnica (local only) ===
+MANUAL_TECNICO.md
