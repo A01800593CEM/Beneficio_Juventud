@@ -113,115 +113,7 @@ fun StatsScreenContent(
 
 
     // Fallback demo state for preview/testing (when backend is unavailable)
-    val fallbackUiState by remember {
-        mutableStateOf(
-            StatsUiState(
-                isLoading = false,
-                summary = AnalyticsSummary(
-                    totalPromotions = 6,
-                    activePromotions = 4,
-                    totalBookings = 145,
-                    redeemedCoupons = 89,
-                    totalFavorites = 42,
-                    conversionRate = "61.38%"
-                ),
-                redemptionEntries = listOf(5, 12, 8, 15, 10, 18, 20, 16, 14, 22, 19, 25).mapIndexed { index, value ->
-                    mx.itesm.beneficiojuventud.model.analytics.ChartEntry(index, value, "${index+1}/1")
-                },
-                bookingEntries = listOf(8, 14, 11, 17, 13, 20, 23, 19, 16, 24, 21, 28).mapIndexed { index, value ->
-                    mx.itesm.beneficiojuventud.model.analytics.ChartEntry(index, value, "${index+1}/1")
-                },
-                promotionStats = listOf(
-                    PromotionStatItem(1, "20% Descuento", "descuento", "activa", 50, 100, "50.00"),
-                    PromotionStatItem(2, "2x1 Bebidas", "multicompra", "activa", 20, 100, "80.00")
-                ),
-                // NEW: Demo data for top redeemed coupons bar chart
-                topRedeemedCoupons = listOf(
-                    BarChartEntry(label = "50% Pizza", value = 45, promotionId = 1),
-                    BarChartEntry(label = "Café Gratis", value = 38, promotionId = 2),
-                    BarChartEntry(label = "2x1 Hamburguesa", value = 32, promotionId = 3),
-                    BarChartEntry(label = "20% Ropa", value = 28, promotionId = 4),
-                    BarChartEntry(label = "Entrada Gratis Cine", value = 22, promotionId = 5)
-                ),
-                // NEW: Demo data for multi-series line chart with date labels
-                redemptionTrendsByPromotion = MultiSeriesLineChartData(
-                    type = "multiline",
-                    title = "Canjes por Cupón en el Tiempo",
-                    description = "Tendencias de los top 5 cupones",
-                    series = listOf(
-                        mx.itesm.beneficiojuventud.model.analytics.SeriesData(
-                            seriesId = "promo_1",
-                            seriesLabel = "50% Pizza",
-                            entries = listOf(
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 3, "Lun"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 5, "Mar"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 4, "Mié"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 7, "Jue"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 6, "Vie"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 8, "Sáb"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 12, "Dom")
-                            )
-                        ),
-                        mx.itesm.beneficiojuventud.model.analytics.SeriesData(
-                            seriesId = "promo_2",
-                            seriesLabel = "Café Gratis",
-                            entries = listOf(
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 2, "Lun"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 4, "Mar"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 3, "Mié"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 6, "Jue"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 5, "Vie"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 9, "Sáb"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 9, "Dom")
-                            )
-                        ),
-                        mx.itesm.beneficiojuventud.model.analytics.SeriesData(
-                            seriesId = "promo_3",
-                            seriesLabel = "2x1 Hamburguesa",
-                            entries = listOf(
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 1, "Lun"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 3, "Mar"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 2, "Mié"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 4, "Jue"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 5, "Vie"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 7, "Sáb"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 10, "Dom")
-                            )
-                        ),
-                        mx.itesm.beneficiojuventud.model.analytics.SeriesData(
-                            seriesId = "promo_4",
-                            seriesLabel = "20% Ropa",
-                            entries = listOf(
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 2, "Lun"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 2, "Mar"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 3, "Mié"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 5, "Jue"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 4, "Vie"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 6, "Sáb"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 6, "Dom")
-                            )
-                        ),
-                        mx.itesm.beneficiojuventud.model.analytics.SeriesData(
-                            seriesId = "promo_5",
-                            seriesLabel = "Entrada Gratis Cine",
-                            entries = listOf(
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(0, 1, "Lun"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(1, 2, "Mar"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(2, 2, "Mié"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(3, 3, "Jue"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(4, 4, "Vie"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(5, 5, "Sáb"),
-                                mx.itesm.beneficiojuventud.model.analytics.ChartEntry(6, 5, "Dom")
-                            )
-                        )
-                    ),
-                    xAxisLabel = "Días",
-                    yAxisLabel = "Canjes"
-                ),
-                selectedTimeRange = "month"
-            )
-        )
-    }
+
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -330,16 +222,8 @@ fun StatsScreenContent(
                     }
 
                     // Multi-Series Line Chart for Redemptions by Promotion
-                    val chartData = uiState.redemptionTrendsByPromotion
-                    val hasValidData = chartData?.series?.isNotEmpty() == true &&
-                            chartData.series.any { it.entries.isNotEmpty() }
-
-                    if (hasValidData) {
-                        MultiSeriesLineChartCard(chartData = chartData)
-                        Spacer(Modifier.height(16.dp))
-                    } else {
-                        // Fallback to demo data when no real data
-                        MultiSeriesLineChartCard(chartData = fallbackUiState.redemptionTrendsByPromotion)
+                    if (uiState.redemptionTrendsByPromotion != null) {
+                        MultiSeriesLineChartCard(chartData = uiState.redemptionTrendsByPromotion)
                         Spacer(Modifier.height(16.dp))
                     }
                     // Promotions Stats
