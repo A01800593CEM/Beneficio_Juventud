@@ -60,15 +60,16 @@ fun QRConfirmationScreen(
     qrConfirmationData: QRConfirmationData,
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
-    viewModel: QRScannerViewModel = viewModel()
+    viewModel: QRScannerViewModel
 ) {
     // Observar cambios en el resultado del scan
     val scanResult = viewModel.scanResult.collectAsState()
     val error = viewModel.error.collectAsState()
+    val isProcessing = viewModel.isProcessing.collectAsState()
 
     // Manejar éxito de redención
     LaunchedEffect(scanResult.value) {
-        scanResult.value?.let {
+        if (scanResult.value != null && !isProcessing.value) {
             // Cupón canjeado exitosamente
             nav.navigate(
                 Screens.Status.createRoute(
@@ -85,7 +86,7 @@ fun QRConfirmationScreen(
 
     // Manejar errores
     LaunchedEffect(error.value) {
-        error.value?.let {
+        if (error.value != null && !isProcessing.value) {
             // Error al canjear
             nav.navigate(
                 Screens.Status.createRoute(
@@ -217,20 +218,7 @@ fun QRConfirmationScreen(
 @Composable
 private fun QRConfirmationScreenPreview() {
     BeneficioJuventudTheme {
-        QRConfirmationScreen(
-            nav = rememberNavController(),
-            qrConfirmationData = QRConfirmationData(
-                userName = "Juan Pérez",
-                promotionTitle = "Descuento 50% en café",
-                collaboratorName = "Cafetería El Buen Café",
-                promotionId = 123,
-                userId = "user123",
-                branchId = 1,
-                nonce = "abc12345",
-                qrTimestamp = System.currentTimeMillis()
-            ),
-            onConfirm = { },
-            onCancel = { }
-        )
+        // Preview no funciona sin un ViewModel real
+        // Esta es solo una referencia visual de cómo se vería la pantalla
     }
 }
